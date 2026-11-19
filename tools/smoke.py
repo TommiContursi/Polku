@@ -7232,6 +7232,253 @@ def together(chrome):
     return not fails
 
 
+# What comes after the map stops fades in (#1091): each picture laid over the map (its animation, and on its way out
+# whether it had finished or was cut short), and, in a render listener after Polku's own, every frame drawn while the
+# map moves, and those with a picture over them.
+FADEIN_WATCH = r"""
+(() => {
+  const m = polku.map, w = window.__fade = { fades: [], gone: [], moving: 0, ghost: 0 }, anims = new WeakMap();
+  new MutationObserver((rs) => { for (const r of rs) {
+    for (const n of r.addedNodes) if (n.classList?.contains('map-fade')) {
+      const a = n.getAnimations()[0], t = a && a.effect.getTiming(), k = a && a.effect.getKeyframes();
+      anims.set(n, a);
+      w.fades.push(a ? { ms: t.duration, easing: t.easing, from: +k[0].opacity, to: +k[k.length - 1].opacity, under: n.previousElementSibling === m.getCanvas() } : { ms: null });
+    }
+    for (const n of r.removedNodes) if (anims.has(n)) w.gone.push(anims.get(n).playState);
+  } }).observe(m.getCanvasContainer(), { childList: true });
+  m.on('render', () => { if (m.isMoving()) { w.moving++; if (m.getCanvasContainer().querySelector('.map-fade')) w.ghost++; } });
+  return true;
+})()
+"""
+# a picture over the map, 3 s at most
+FADEIN_SEEN = "new Promise((ok) => { const t0 = Date.now(), go = () => document.querySelector('.map-fade') || Date.now() - t0 > 3000 ? ok(!!document.querySelector('.map-fade')) : requestAnimationFrame(go); go(); })"
+# the map still for 150 ms, 15 s at most
+FADEIN_STILL = "new Promise((ok) => { const m = polku.map, t0 = Date.now(); let since = 0; const go = () => { since = m.isMoving() ? 0 : since || Date.now(); if ((since && Date.now() - since > 150) || Date.now() - t0 > 15000) ok(true); else setTimeout(go, 30); }; setTimeout(go, 100); })"
+
+
+def fadein(chrome):
+    """What comes after the map stops fades in (#1091). OpenFreeMap's zoom 14 tiles are held with the Fetch domain while
+    the map moves and let go once it has stopped, so a part always comes after the stop. After a move by mouse and after
+    a search result chosen with the mouse, it fades in on opacity over 200–400 ms, `linear`, with reduced motion (as the
+    checks' pages have it) and with motion; after the arrow keys and a search result chosen with Enter nothing fades;
+    a touch on the map, a route lit under the mouse and a move made at once end a fade at once; and quick mouse flings,
+    grabbed again while the map glides, never leave a picture over a moving map."""
+    fails = []
+
+    def mouse(pg, kind, x, y):
+        pg.c.send('Input.dispatchMouseEvent', {'type': kind, 'x': x, 'y': y, 'button': 'left', 'buttons': 0 if kind == 'mouseReleased' else 1, 'clickCount': 1}, pg.s)
+
+    def key(pg, k, vk):
+        for t in ('rawKeyDown', 'keyUp'):
+            pg.c.send('Input.dispatchKeyEvent', {'type': t, 'key': k, 'code': k, 'windowsVirtualKeyCode': vk}, pg.s)
+
+    def drag(pg):
+        mouse(pg, 'mousePressed', 1200, 450)
+        for k in range(1, 31):
+            time.sleep(0.016)
+            mouse(pg, 'mouseMoved', 1200 - k * 33, 450)
+        time.sleep(0.25)  # (held still, so it doesn't glide)
+        mouse(pg, 'mouseReleased', 210, 450)
+
+    def search(pg, text):
+        pg.js("(() => { const i = document.querySelector('#search-input'); i.value = ''; i.focus(); return true; })()")
+        pg.c.send('Input.insertText', {'text': text}, pg.s)
+        return pg.js("""new Promise((ok) => { const t0 = Date.now(), go = () => { const li = document.querySelector('#search-results li[data-kind="coords"]');
+          if (li || Date.now() - t0 > 5000) ok(li && (({ left, top, width, height }) => [left + width / 2, top + height / 2])(li.getBoundingClientRect())); else setTimeout(go, 50); }; go(); })""")
+
+    def by_click(text):
+        def move(pg):
+            x, y = search(pg, text)
+            mouse(pg, 'mousePressed', x, y)
+            mouse(pg, 'mouseReleased', x, y)
+        return move
+
+    def by_enter(pg):
+        search(pg, '62.2600, 25.8300')
+        key(pg, 'Enter', 13)
+
+    def by_arrows(pg):
+        pg.js('polku.map.getCanvas().focus(), true')
+        for _ in range(14):
+            key(pg, 'ArrowRight', 39)
+            time.sleep(0.06)
+
+    def sessions(pg):
+        """The page's session and its workers': on the first page a Chrome opens, the map's workers' requests don't go
+        through the page's Fetch domain (as `coarse` found). Chrome's cache is off in them, so no tile skips the hold."""
+        pg.c.send('Target.setAutoAttach', {'autoAttach': True, 'waitForDebuggerOnStart': False, 'flatten': True}, pg.s)
+        time.sleep(0.5)
+        out = [pg.s] + [e['params']['sessionId'] for e in chrome.events if e.get('sessionId') == pg.s and e.get('method') == 'Target.attachedToTarget']
+        for s_ in out:
+            try:
+                chrome.send('Network.enable', {}, s_)
+                chrome.send('Network.setCacheDisabled', {'cacheDisabled': True}, s_)
+            except RuntimeError:
+                pass  # (a worker without the Network domain)
+        return out
+
+    def held_move(pg, move):
+        """Makes the move with the tiles held, and lets them go once the map has stopped; how many were held."""
+        pg.held_in = sessions(pg)  # (afresh: a worker started since isn't held otherwise)
+        for s_ in pg.held_in:
+            try:
+                chrome.send('Fetch.enable', {'patterns': [{'urlPattern': '*openfreemap.org/planet/*/14/*'}]}, s_)
+            except RuntimeError:
+                pass  # (a worker that doesn't take Fetch)
+        move(pg)
+        pg.js(FADEIN_STILL, timeout=20000)
+        held = [e for e in chrome.events if e.get('sessionId') in pg.held_in and e.get('method') == 'Fetch.requestPaused']
+        for e in held:
+            chrome.events.remove(e)
+            try:
+                chrome.send('Fetch.continueRequest', {'requestId': e['params']['requestId']}, e['sessionId'])
+            except RuntimeError:
+                pass  # (one MapLibre has given up)
+        for s_ in pg.held_in:
+            try:
+                chrome.send('Fetch.disable', {}, s_)
+            except RuntimeError:
+                pass
+        return len(held)
+
+    def after(pg, label, move, want):
+        """A move with the tiles held until it has stopped, and what fades in the 3.5 s after."""
+        pg.js('window.__fade.fades.length = 0, true')
+        c0 = pg.js('polku.map.getCenter().toArray()')
+        held = held_move(pg, move)
+        time.sleep(3.5)
+        fades, c1 = pg.js('[window.__fade.fades, polku.map.getCenter().toArray()]')
+        odd = [f for f in fades if not (f['ms'] is not None and 200 <= f['ms'] <= 400 and f['easing'] == 'linear' and f['from'] == 1 and f['to'] == 0 and f['under'])]
+        if c0 == c1:
+            fails.append(f'{label}: the map didn’t move')
+        elif not held:
+            fails.append(f'{label}: no zoom 14 tile was asked for, so nothing came after the stop')
+        elif want and not fades:
+            fails.append(f'{label}: what came after the stop didn’t fade in')
+        elif want and odd:
+            fails.append(f'{label}: a fade not on opacity, 200–400 ms, linear, right over the map’s canvas: {odd[:2]}')
+        elif not want and fades:
+            fails.append(f'{label}: what came after the stop faded in: {fades[:2]}')
+
+    pg = chrome.page(1440, 900, False)
+    try:
+        pg.open_app({'activity': 'mtb'}, hash_='#14.5/62.2400/25.7500')
+        pg.js(FADEIN_WATCH)
+        after(pg, 'a drag with the mouse', drag, True)
+        after(pg, 'a search result chosen with Enter', by_enter, False)
+        after(pg, 'a search result chosen with the mouse', by_click('62.2200, 25.6700'), True)
+        after(pg, 'the arrow keys', by_arrows, False)
+        # a LIPAS route lit under the mouse ends a fade: it's drawn in the map's canvas, under the picture. LIPAS answers
+        # with a route through the view's middle (EPSG:3067, tm35ToLonLat inverted); a spot where the mouse lights it is
+        # found; then, the map kept still, more routes come on that layer after a moveend, and while they fade in the
+        # mouse goes to that spot.
+        pg.js("""(async () => {
+          const m = polku.map, c = m.getCenter(), { tm35ToLonLat } = await import(location.origin + '/js/geo.js'), k = Math.cos(c.lat * Math.PI / 180);
+          let x = 500000 + (c.lng - 27) * 111320 * k, y = c.lat * 111000;
+          for (let i = 0; i < 6; i++) { const [lo, la] = tm35ToLonLat(x, y); x += (c.lng - lo) * 111320 * k; y += (c.lat - la) * 111000; }
+          window.__routeAt = (i) => tm35ToLonLat(x + i * 250, y); // (points on it: east-west in EPSG:3067 isn't on the map)
+          const line = (id, dy) => ({ type: 'Feature', properties: { id }, geometry: { type: 'LineString', coordinates: [...Array(161).keys()].map((i) => [x - 20000 + i * 250, y + dy]) } });
+          (await import(location.origin + '/js/lipas.js')).seedLipas(() => Promise.resolve({ type: 'FeatureCollection', features: [line(1, 0)] }));
+          polku.lipas.tiles.clear();
+          m.jumpTo({ center: c });
+          await new Promise((r) => setTimeout(r, 2500));
+          // a still map's moveend after a pointer's input (off the map), and Polku's LIPAS layer given more routes at once
+          window.__more = () => {
+            document.body.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true }));
+            m.jumpTo({ center: m.getCenter() });
+            const pts = [...Array(161).keys()].map((i) => window.__routeAt(i - 80)), f = (id, dLat) => ({ type: 'Feature', properties: { lipas: true, type: 4405, lipasId: id }, geometry: { type: 'LineString', coordinates: pts.map(([lo, la]) => [lo, la + dLat]) } });
+            m.getSource('lipasRoutes').setData({ type: 'FeatureCollection', features: [f(1, 0), ...[...Array(16).keys()].map((i) => f(100 + i, 0.001 * (i + 1)))] });
+          };
+          return true; })()""", timeout=20000)
+
+        def hover_at(x, y):
+            pg.c.send('Input.dispatchMouseEvent', {'type': 'mouseMoved', 'x': x, 'y': y, 'button': 'none', 'buttons': 0}, pg.s)
+            return pg.js("new Promise((ok) => requestAnimationFrame(() => requestAnimationFrame(() => ok(!!polku.map.getFeatureState({ source: 'lipasRoutes', id: 1 }).hover))))")
+        spots = pg.js("""(() => { const m = polku.map, out = [];
+          for (let k = 0; k <= 40; k++) for (const s of [k, -k]) { const q = m.project(window.__routeAt(s)); if (q.x > 20 && q.x < innerWidth - 20 && q.y > 80 && document.elementFromPoint(q.x, q.y) === m.getCanvas()) out.push([q.x, q.y]); }
+          return out; })()""")
+        spot = next((p_ for p_ in spots[:12] if hover_at(*p_)), None)
+        if not spot:
+            fails.append(f'a route lit under the mouse: the mouse lit the LIPAS route nowhere on it ({len(spots)} spots)')
+        else:
+            hover_at(spot[0], 5)  # (off the map, onto the top bar: nothing lit)
+            pg.js('window.__more(), true')
+            ready = pg.js("new Promise((ok) => { const t0 = Date.now(), go = () => { const a = document.querySelector('.map-fade')?.getAnimations()[0]; if (a && a.effect.getTiming().duration - a.currentTime > 120) ok(true); else if (Date.now() - t0 > 4000) ok(false); else requestAnimationFrame(go); }; go(); })")
+            if not ready:
+                fails.append('a route lit under the mouse: more LIPAS routes after a still moveend didn’t fade in')
+            else:
+                pg.js('window.__fade.gone.length = 0, true')  # (only how the fade on the map now goes)
+                hover_at(*spot)
+                left, gone = pg.js("[!!document.querySelector('.map-fade'), window.__fade.gone]")
+                if left or 'finished' in gone or not gone:
+                    fails.append(f'a route lit under the mouse didn’t end the fade at once (a picture left: {left}, how they went: {gone})')
+        fails += [f'console: {e[:160]}' for e in pg.errors()]
+    finally:
+        pg.close()
+    # a phone: a move by touch fades in too, and a touch on the map ends the fade at once
+    pg = chrome.page(390, 844, True)
+    try:
+        pg.open_app({'activity': 'mtb'}, hash_='#14.5/62.2400/25.7500')
+        pg.js(FADEIN_WATCH)
+
+        def swipes(pg):  # two, up the screen: the map moves further than a tile's height
+            for _ in range(2):
+                pg.c.send('Input.dispatchTouchEvent', {'type': 'touchStart', 'touchPoints': [{'x': 200, 'y': 760}]}, pg.s)
+                for k in range(1, 23):
+                    time.sleep(0.016)
+                    pg.c.send('Input.dispatchTouchEvent', {'type': 'touchMove', 'touchPoints': [{'x': 200, 'y': 760 - k * 30}]}, pg.s)
+                time.sleep(0.25)  # (held still, so it doesn't glide)
+                pg.c.send('Input.dispatchTouchEvent', {'type': 'touchEnd', 'touchPoints': []}, pg.s)
+                pg.js(FADEIN_STILL, timeout=20000)
+        after(pg, 'swipes on a phone', swipes, True)
+        # a move made at once mid-fade (following you, heading up: no frame drawn while it moves) takes the picture with
+        # it (Codex on #1136)
+        held_move(pg, swipes)
+        if not pg.js(FADEIN_SEEN):
+            fails.append('a phone: nothing faded in after more swipes, so a move made at once couldn’t be tried')
+        elif pg.js("(() => { const m = polku.map, c = m.getCanvas(); m.jumpTo({ center: m.unproject([c.clientWidth / 2 + 120, c.clientHeight / 2]) }, { polkuFollow: true }); return !!document.querySelector('.map-fade'); })()"):
+            fails.append('a phone: a move made at once, as following you does, left the picture of the view before over the map')
+        # (last: a touch is a tap, which opens a card over the swipes' start)
+        pg.js('window.__fade.gone.length = 0, true')
+        held_move(pg, swipes)
+        if not pg.js(FADEIN_SEEN):
+            fails.append('a phone: nothing faded in after the second swipe, so a touch couldn’t end it')
+        else:
+            pg.c.send('Input.dispatchTouchEvent', {'type': 'touchStart', 'touchPoints': [{'x': 200, 'y': 300}]}, pg.s)
+            left, gone = pg.js("[!!document.querySelector('.map-fade'), window.__fade.gone]")
+            pg.c.send('Input.dispatchTouchEvent', {'type': 'touchEnd', 'touchPoints': []}, pg.s)
+            if left or 'finished' in gone or not gone:
+                fails.append(f'a phone: a touch on the map didn’t end the fade at once (a picture left: {left}, how they went: {gone})')
+        fails += [f'phone console: {e[:160]}' for e in pg.errors()]
+    finally:
+        pg.close()
+    # with motion: the search result's flight, then quick flings grabbed again while the map glides
+    pg = chrome.page(1440, 900, False)
+    try:
+        pg.c.send('Emulation.setEmulatedMedia', {'features': [{'name': 'prefers-reduced-motion', 'value': 'no-preference'}]}, pg.s)
+        pg.open_app({'activity': 'mtb'}, hash_='#14.5/62.2400/25.7500')
+        pg.js(FADEIN_WATCH)
+        after(pg, 'with motion, a search result’s flight', by_click('62.2700, 25.6400'), True)
+        for i in range(8):
+            mouse(pg, 'mousePressed', 970, 450)
+            for k in range(1, 7):
+                time.sleep(0.012)
+                mouse(pg, 'mouseMoved', 970 - k * 60, 450)
+            mouse(pg, 'mouseReleased', 610, 450)  # a fling: the map glides on
+            time.sleep(0.25 if i % 2 else 1.6)  # grabbed again while it glides, or once it has stopped and parts came
+        time.sleep(2)
+        w = pg.js('window.__fade')
+        if not w['moving']:
+            fails.append('flings: no frame drawn while the map moved, so the check proves nothing')
+        elif w['ghost']:
+            fails.append(f"flings: {w['ghost']} of {w['moving']} frames drawn while the map moved had a picture over it")
+        fails += [f'motion console: {e[:160]}' for e in pg.errors()]
+    finally:
+        pg.close()
+    print(f"{'ok  ' if not fails else 'FAIL'} what comes after the map stops fades in over 0.2–0.4 s after a move by mouse, touch or a search result's flight, never from the keys, ended by a touch, no picture over a moving map (#1091)" + ''.join(f'\n     - {f}' for f in fails), flush=True)
+    return not fails
+
+
 def aerial_labels(chrome):
     fails = []
     for base in ('aerial', 'ortofi'):
@@ -24051,6 +24298,7 @@ GROUPS = [
     ('raster', [raster_maps, aerial_fallback, aerial_labels], 'terrain and aerial detail, bounded high-density WMS symbols, depth boundaries and missing aerial detail (#649, #650, #653); the map\'s words on the aerial photos at 4.5:1 on their halo (#554)'),
     ('coarse', [coarse], 'a coarse map underneath (#1091): the base map\'s tile four zoom levels up stands in for one that hasn\'t come, at 1440 and 390'),
     ('together', [together], 'Polku\'s own layers come in together after the map stops, 500 ms at most (#1091)'),
+    ('fadein', [fadein], 'what comes after the map stops fades in, 0.2–0.4 s by how much it changes (#1091): after a move by mouse or touch and a search result\'s flight, never from the keys, ended by a touch, no picture over a moving map'),
     ('trails', [trails, uphill_late, mtb_grades], 'recorded trail details/card, late uphill colors, and consistent MTB 0−/S0 display (#435, #673)'),
     ('header', [header_fit, head_names], 'the planner header fitting its sheet; the route\'s name following the road names that come late with the map\'s tiles (the review of #1050)'),
     ('lipas', [lipas], 'LIPAS search and riding a LIPAS route (recorded answers), a place, coordinates or a trail from search gets its pin and card (#871, #875)'),

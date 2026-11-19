@@ -289,6 +289,71 @@ function drawTogether() {
   for (const id of held || []) id === 'trailCoverage' ? restyleTrails() : setData(id, data[id]);
 }
 
+// What comes after the map stops fades in (#1091). After a flight or a move once your last input was a touch, a click
+// or the wheel (not a key, nor no input yet: the first view and a link's jump come as before; not a follow-me move,
+// made at every position), each frame MapLibre draws is copied until the map is drawn and Polku's loaders aren't busy,
+// at most 3 s. When a frame shows a part that has come, the frame before is laid over the map, under its markers, and
+// faded out: 0.2 s, up to 0.4 s as the share of the map the part changes rises to a quarter (both frames shrunk to
+// 48 × 30, cell by cell). MapLibre has no fade for vector tiles. A picture never stays over a moving map, and a touch,
+// the wheel, a key or a highlight under the mouse on the map ends a fade.
+const fade = { by: null, on: false, came: false, until: 0, copy: null, spare: null, over: null };
+addEventListener('keydown', (e) => { if (!['Shift', 'Control', 'Alt', 'Meta'].includes(e.key)) fade.by = 'keys'; }, true);
+for (const ev of ['pointerdown', 'wheel']) addEventListener(ev, () => { fade.by = 'pointer'; }, { capture: true, passive: true });
+const grid = Object.assign(document.createElement('canvas'), { width: 48, height: 60 }).getContext('2d');
+// (the two copies give their memory back once nothing fades)
+const restFade = () => { if (!fade.on && !fade.over) for (const k of [fade.copy, fade.spare]) if (k) k.width = k.height = 0; };
+function dropFade() {
+  const o = fade.over;
+  fade.on = false;
+  if (o) { o.getAnimations().forEach((a) => a.cancel()); o.remove(); fade.over = null; fade.spare = o; }
+  restFade();
+}
+map.on('moveend', (e) => {
+  if (fade.by !== 'pointer' || e.polkuFollow || map.isMoving()) return;
+  Object.assign(fade, { on: true, came: false, until: performance.now() + 3000 });
+  map.triggerRepaint(); // (a first frame to start from)
+});
+map.on('sourcedata', (e) => {
+  if (!fade.on || !e.tile) return;
+  const type = map.getSource(e.sourceId)?.type;
+  // of the GeoJSON sources only Polku's own layers' (TOGETHER): never a hover's, a pick's or the route's; and no raster
+  // that fades in by itself (raster-fade-duration: the photo and terrain bases, the overlays), so it fades once
+  if (type === 'geojson' ? TOGETHER.has(e.sourceId)
+    : !(type === 'raster' && map.getLayersOrder().some((l) => { const s = map.getLayer(l); return s.source === e.sourceId && s.type === 'raster' && map.getPaintProperty(l, 'raster-fade-duration') !== 0; }))) fade.came = true;
+});
+for (const ev of ['pointerdown', 'wheel', 'keydown']) map.getContainer().addEventListener(ev, dropFade, { capture: true, passive: true });
+// any camera move drops the picture, as it starts: one made at once (heading up, following you, reduced motion) has
+// stopped before a frame is drawn
+map.on('movestart', dropFade);
+map.on('render', () => {
+  const f = fade, c = map.getCanvas();
+  if (!f.on) return;
+  if (f.came && f.copy && f.copy.width === c.width && f.copy.height === c.height) {
+    f.came = false;
+    // the frame before above, this one below, read at once: each reading waits for the GPU (5–12 ms measured)
+    grid.drawImage(f.copy, 0, 0, 48, 30);
+    grid.drawImage(c, 0, 30, 48, 30);
+    const px = grid.getImageData(0, 0, 48, 60).data, half = 48 * 30 * 4;
+    let n = 0;
+    for (let i = 0; i < half; i += 4) if (Math.abs(px[i] - px[half + i]) + Math.abs(px[i + 1] - px[half + i + 1]) + Math.abs(px[i + 2] - px[half + i + 2]) > 24) n++;
+    // the frame before is the picture, with the part before this one as far as it has faded in (and fading out no sooner
+    // than that part would have); a part too thin to change a cell, a path, still fades, over 0.2 s
+    const pic = f.copy, o = f.over, g = pic.getContext('2d'), was = o?.getAnimations()[0], left = was ? was.effect.getTiming().duration - was.currentTime : 0;
+    if (o) { g.globalAlpha = +getComputedStyle(o).opacity; g.drawImage(o, 0, 0); g.globalAlpha = 1; o.getAnimations().forEach((x) => x.cancel()); o.remove(); }
+    f.copy = o || f.spare || document.createElement('canvas');
+    f.spare = null;
+    f.over = pic;
+    pic.className = 'map-fade';
+    c.after(pic);
+    pic.animate([{ opacity: 1 }, { opacity: 0 }], { duration: Math.round(Math.max(left, 200 + 200 * Math.min(1, n / (48 * 30) / 0.25))), easing: 'linear', fill: 'forwards' })
+      .finished.then(() => { if (f.over === pic) { pic.remove(); f.over = null; f.spare = pic; restFade(); } }, () => {});
+  }
+  f.copy ||= document.createElement('canvas');
+  if (f.copy.width !== c.width || f.copy.height !== c.height) Object.assign(f.copy, { width: c.width, height: c.height });
+  f.copy.getContext('2d').drawImage(c, 0, 0);
+  if ((map.loaded() && !together.held && !together.loaders.some((l) => l.busy)) || performance.now() > f.until) { f.on = false; restFade(); }
+});
+
 function setData(id, fc) {
   data[id] = fc;
   if (id === 'route' && flow) flow.setData(fc);
@@ -307,6 +372,7 @@ function routeHoverLeg(leg) {
   if (ctx.hoverLeg != null) map.setFeatureState({ source: 'route', id: ctx.hoverLeg }, { hover: false });
   ctx.hoverLeg = v;
   if (v != null) map.setFeatureState({ source: 'route', id: v }, { hover: true });
+  dropFade(); // (it's drawn in the map's canvas, under a fading picture)
 }
 
 // The LIPAS route under the mouse is lit along all its parts: they share its LIPAS id, the feature state's
@@ -317,6 +383,7 @@ function routeHoverRoute(p) {
   if (hoveredRoute != null) map.setFeatureState({ source: 'lipasRoutes', id: hoveredRoute }, { hover: false });
   hoveredRoute = id;
   if (id != null) map.setFeatureState({ source: 'lipasRoutes', id }, { hover: true });
+  dropFade();
 }
 
 // Light or dark (#323): the device's (Automatic, also when it changes), the person's, or the map's (Match the map: dark
@@ -614,7 +681,7 @@ const inspector = initInspector(map, {
   openShip: (mmsi) => safety.openShip(mmsi),
   openCamera: (id, name) => cameras.open(id, name),
 });
-const hover = initHover(map, { wayUnder: (ll, loaded) => wayUnder(ll, map.getZoom(), loaded), hoverPick: (coords) => planner.hoverPick(coords),
+const hover = initHover(map, { wayUnder: (ll, loaded) => wayUnder(ll, map.getZoom(), loaded), hoverPick: (coords) => { dropFade(); planner.hoverPick(coords); },
   enabled: () => state.hoverInfo && hoverCapable() && !planner.edit, isPlanning: () => planner.active, isDrawing: () => planner.drawing(), activity: () => state.activity, difficulty: showsDifficulty, bike: isBike, hoverLeg: routeHoverLeg, hoverRoute: routeHoverRoute, headAt: (point, touch) => planner.headAt(point, touch ? 18 : 10) });
 
 initSearch(map, $('#search-input'), $('#search-results'), {
