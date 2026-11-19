@@ -87,7 +87,7 @@ Checked 2026-11-19 from this machine, with `Origin: https://polku.si`:
 
 | Way | Access | What it gives | Checked |
 | --- | --- | --- | --- |
-| MML's vector tiles (`avoin-karttakuva…/vectortiles`) | API key | MML's own tile schema, styled by Polku | 401 without a key; CORS allows polku.si. Zooms, tile sizes and which classes it carries at which zoom can't be checked without a key |
+| MML's vector tiles (`avoin-karttakuva…/vectortiles`) | API key | MML's own tile schema, styled by Polku | 401 without a key; CORS allows polku.si. With a key: see below |
 | MML's property tiles (`kiinteisto-avoin/v3`) | API key | Property boundaries and property IDs as vector tiles | 401 without a key; CORS allows polku.si |
 | MML's OGC API Features | API key | GeoJSON by area | 401 without a key; no CORS header on the refusal |
 | Kapsi's mirror, downloads | none | The whole topographic database as one GeoPackage (`mtkmaasto.zip`, 22.8 GB, dated 2026-11-04), and the property map as vector files per map sheet (updated 2026-11-16) | Listed and sized; two terrain sheets downloaded |
@@ -134,12 +134,34 @@ boundaries come the same way, from Kapsi's per-sheet vector files.
 
 ### The alternative: MML's own tiles with Polku's key
 
-One key, from an account the user would create, written into the app. Least
-code: a vector source and its layers, no build job. Costs: the key is
-public, availability and volume are on MML's terms, and what the tiles
-carry at each zoom is unknown until there is a key. Settings already takes
-a person's own key for MML's raster maps; tying the bogs to that would give
-most people no bogs at all.
+One key, from an account, written into the app. Least code: a vector source
+and its layers, no build job. Costs: the key is public (MML's key
+instructions mention no way to limit a key to one site), every visitor's
+tiles count against it, and availability and volume are on MML's terms.
+Settings already takes a person's own key for MML's raster maps; tying the
+bogs to that would give most people no bogs at all.
+
+**Checked with a key, 2026-11-20** (background map `taustakartta`, v20 and
+v21; the key isn't in the repo):
+
+- Zooms 0–14, so the map overzooms from 15 on, as with OpenFreeMap. Tile
+  URL `…/vectortiles/taustakartta/wmts/1.0.0/taustakartta/default/v21/WGS84_Pseudo-Mercator/{z}/{y}/{x}.pbf`.
+- **At zoom 14 its classes match the database.** In five zoom-14 tiles at
+  Seitseminen, compared with the same tiles built from the map sheets:
+  bogs of each class, paludified land, overgrowing water, reeds (as
+  points), rock, stones, sparse boulders and cliffs, nearly feature for
+  feature (cliffs 5 of 5 and 16 of 17, sparse boulders 21 of 21). Power
+  lines (22312) matched in one tile and were missing in two where the
+  older sheets have them; whether they were removed since is not checked.
+- At zooms 12–13 the bogs are there, with fewer rock areas and no points.
+  v21 carries more than v20 at zoom 13 (paludified land and rock).
+- Tile sizes 7–77 KB from zoom 10 to 14 at Seitseminen; first byte in
+  0.07–0.13 s from this machine, against 0.21 s for a byte range from the
+  OSM data host.
+- **Property boundaries** (`kiinteisto-avoin/v3/kiinteistojaotus`): zooms
+  0–14, with boundary lines, property IDs, parcels, boundary markers and
+  their kinds. In central Jyväskylä a zoom-14 tile is 181 KB and a zoom-16
+  one 13 KB; first byte about 0.1 s.
 
 ### Property boundaries as Kapsi's raster
 
@@ -229,7 +251,6 @@ DESIGN.md and DEVELOPING.
 
 ## Not checked
 
-- MML's own tiles, without a key.
 - The other mapping services at a power line and at property boundaries,
   close up: the browser pane was hidden and the map didn't draw.
 - The whole-country build's size, time and disk.
