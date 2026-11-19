@@ -98,3 +98,38 @@ class ProductTests(unittest.TestCase):
         from pmtiles.reader import all_tiles
         els=[e for _,data in all_tiles(MemorySource((out/'places.pmtiles').read_bytes())) for e in json.loads(gzip.decompress(data))['elements']]
         self.assertEqual(els[0]['center'],{'lon':-0.01,'lat':-0.01})
+
+    def test_wetlands_are_assembled_reedbeds_beside_their_inspection_records(self):
+        nodes = ''.join(f'<node id="{i}" lon="{lon}" lat="{lat}"/>' for i, lon, lat in [
+            (30, 0.01, -0.01), (31, 0.02, -0.01), (32, 0.02, -0.02), (33, 0.01, -0.02),
+            (34, 0.013, -0.013), (35, 0.017, -0.013), (36, 0.017, -0.017), (37, 0.013, -0.017),
+            (38, 0.03, -0.01), (39, 0.031, -0.01), (40, 0.031, -0.011)])
+        reed = '<tag k="natural" v="wetland"/><tag k="wetland" v="reedbed"/>'
+        ring = lambda i, refs, tags='': f'<way id="{i}">' + ''.join(f'<nd ref="{r}"/>' for r in refs) + tags + '</way>'
+        ways = (ring(40, [30, 31, 32, 33, 30], reed)  # a reedbed way: also kept whole for inspection
+                + ring(41, [30, 31, 32]) + ring(42, [32, 33, 30]) + ring(43, [34, 35, 36, 37, 34])
+                + ring(44, [30, 31, 32, 33, 30], '<tag k="natural" v="wetland"/><tag k="wetland" v="bog"/>')
+                + ring(45, [38, 39, 40], reed))  # not closed: osmium can't make an area of it
+        rel = ('<relation id="300"><member type="way" ref="41" role="outer"/><member type="way" ref="42" role="outer"/>'
+               '<member type="way" ref="43" role="inner"/><tag k="type" v="multipolygon"/>' + reed + '</relation>')
+        out, manifest = self.build(OSM.replace('  <way id="10">', nodes + ways + '  <way id="10">').replace('</osm>', rel + '</osm>'))
+        self.assertEqual(manifest['datasets']['wetlands']['zoom'], 12)
+        els = {(e['type'], e['id']): e for e in self.tile(out, 'wetlands', 12)}
+        self.assertEqual(sorted(els), [('relation', 300), ('way', 40)])
+        self.assertEqual(els['way', 40]['tags'], {'wetland': 'reedbed'})
+        # osmium's rings: outer anticlockwise, closed
+        self.assertEqual(els['way', 40]['area'], [[[[0.01, -0.02], [0.02, -0.02], [0.02, -0.01], [0.01, -0.01], [0.01, -0.02]]]])
+        hole = els['relation', 300]['area']
+        self.assertEqual((len(hole), len(hole[0]), len(hole[0][1])), (1, 2, 5))
+        self.assertEqual(next(e for e in self.tile(out, 'inspection', 14) if e['id'] == 40)['nodes'], [30, 31, 32, 33, 30])
+        measured = json.loads((out / 'measurements.json').read_bytes())['products']['wetlands']
+        self.assertEqual((measured['features'], measured['unassembled']), (2, 0))
+
+    def test_a_reedbed_goes_into_every_tile_its_bounds_touch(self):
+        # 0.1° wide: three z12 tiles (about 0.088° each) along the equator's south side
+        nodes = ''.join(f'<node id="{i}" lon="{lon}" lat="{lat}"/>' for i, lon, lat in [
+            (30, 0.001, -0.001), (31, 0.17, -0.001), (32, 0.001, -0.002)])
+        way = '<way id="40"><nd ref="30"/><nd ref="31"/><nd ref="32"/><nd ref="30"/><tag k="natural" v="wetland"/><tag k="wetland" v="reedbed"/></way>'
+        out, _ = self.build(OSM.replace('  <way id="10">', nodes + way + '  <way id="10">'))
+        reader = Reader(MemorySource((out / 'wetlands.pmtiles').read_bytes()))
+        self.assertEqual([bool(reader.get(12, 2048 + i, 2048)) for i in range(3)], [True, True, False])
