@@ -4,6 +4,10 @@ What's new in [Polku](https://polku.si), from the latest updates back to the fir
 
 ## 2026-11-19
 
+### No-bike marks you can see at a glance ([#1137](https://github.com/TommiContursi/Polku/issues/1137))
+
+- A path, forest track or cycling path closed to bikes now has short red bars across it in the cycling sports, instead of a thin red line beside it, so it stands out on a phone and on the dark map. The bars leave the line's own colour between them and the sides of the line to the overgrown, wet and private marks.
+
 ### Cycling restriction marks on paths and forest tracks ([#1130](https://github.com/TommiContursi/Polku/issues/1130))
 
 - Red side marks show an explicit mapped bicycle prohibition on paths and forest tracks, including cycling paths, in cycling sports. Their size and spacing change with zoom and trail width class, with stronger marks in high contrast and faded marks in tunnels. Ordinary road edges do not carry these marks. Missing bicycle access information is not a prohibition. General and cycling restrictions stay consistent when detailed trail data replaces the base map.

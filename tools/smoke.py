@@ -820,7 +820,7 @@ def cycleway_style(chrome):
     return not fails
 
 
-# #1130: cycling side marks stay on paths/tracks and use zoom/width categories.
+# #1130, #1137: no-bike bars stay on paths/tracks, across the line, as wide as its halo.
 def cycling_restrictions(chrome):
     pg = chrome.page(1440, 900, False)
     pg.open_app({'activity': 'mtb', 'base': 'trail', 'highContrast': False, 'trailDetails': True})
@@ -831,6 +831,7 @@ def cycling_restrictions(chrome):
         polku.set({activity,highContrast,trailDetails:true});
         await new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)));
         if(m.getStyle().layers.some(l=>l.id.startsWith('road-')&&l.id.endsWith('-nobike')))errs.push('cycling side marks leaked onto ordinary roads');
+        const order=m.getStyle().layers.map(l=>l.id);
         for(const pass of passes)for(const [way,props] of [
           [`track-${pass}`,{class:'track'}], [`cycleway-${pass}`,{class:'path',subclass:'cycleway'}],
           [`path-${pass}`,{class:'path',subclass:'path'}], [`path-osm-${pass}`,{class:'path',subclass:'path',trail:true}]
@@ -843,16 +844,15 @@ def cycling_restrictions(chrome):
           if(matches({...tags,bicycle:'no',subclass:'footway'})||matches({...tags,access:'no',foot:'yes'}))errs.push(`${id}: footway or missing bicycle permission became a prohibition`);
           if(matches({...tags,bicycle:'no',access:'no',foot:'no'}))errs.push(`${id}: cycling and general access marks duplicated`);
           for(const other of passes.filter(x=>x!==pass))if(matches({...tags,brunnel:other,bicycle:'no'}))errs.push(`${id}: wrong structure`);
-          for(const [i,z] of [14,16,18].entries()) {
-            const width=value(id,'line-width',z,tags), want=(highContrast?[3,6,9]:[2,3,6])[i];
-            if(width!==want)errs.push(`${id}: zoom ${z} mark width ${width}, expected ${want}`);
-            for(const w of [0,1,2,3]) {
-              const sizes=way.startsWith('path-osm-')?(w===0?[1,3,4]:w>=2?[3,8,14]:[2.5,5,10]):[2.5,5,10];
-              if(value(id,'line-offset',z,{...tags,w})!==-sizes[i]*(highContrast?1.5:1))errs.push(`${id}: zoom ${z} width category ${w} offset changed`);
-            }
+          // #1137: bars across the line, the trail halo's width (times the detail's width factor) plus 2 px a side
+          for(const [i,z] of [14,16,18].entries())for(const wf of [.62,1,1.6]) {
+            const width=value(id,'line-width',z,{...tags,wf}), want=[4,7,12][i]*(highContrast?1.35:1)*(way.startsWith('path-osm-')?wf:1)+4;
+            if(Math.abs(width-want)>1e-6)errs.push(`${id}: zoom ${z} width factor ${wf}: bar length ${width}, expected ${want}`);
           }
+          if(m.getPaintProperty(id,'line-offset'))errs.push(`${id}: bars moved off the line`);
+          if(order.indexOf(id)<order.indexOf(way))errs.push(`${id}: bars drawn under the line's centre`);
           if(value(id,'line-opacity',16,tags)!==(pass==='tunnel'?.3:1))errs.push(`${id}: tunnel fading changed`);
-          if(JSON.stringify(m.getPaintProperty(id,'line-dasharray'))!==JSON.stringify(highContrast?[.4,.5]:[.2,.5]))errs.push(`${id}: mark spacing changed`);
+          if(JSON.stringify(m.getPaintProperty(id,'line-dasharray'))!==JSON.stringify(highContrast?[.35,2]:[.25,2]))errs.push(`${id}: bar thickness or spacing changed`);
         }
       }
       // Exercise Overpass -> slim tile -> rendered features, not only synthetic filter properties.
@@ -879,12 +879,12 @@ def cycling_restrictions(chrome):
         polku.set({activity});
         if(m.getStyle().layers.some(l=>l.id.endsWith('-nobike')))errs.push(`${activity}: cycling prohibition shown in another sport`);
       }
-      if(!document.querySelector('#layers-body').textContent.includes('No bikes (beside a path or forest track)'))errs.push('map key misstates restriction coverage');
+      if(!document.querySelector('#layers-body').textContent.includes('No bikes (red bars across a path or forest track)'))errs.push('map key misstates restriction coverage');
       return [...new Set(errs)];
     })()""")
     fails += [f'console: {e[:160]}' for e in pg.errors()]
     pg.close()
-    print(f"{'ok  ' if not fails else 'FAIL'} cycling restriction marks on paths and tracks (#1130)" + ''.join(f'\n     - {f}' for f in fails), flush=True)
+    print(f"{'ok  ' if not fails else 'FAIL'} cycling restriction marks on paths and tracks (#1130, #1137)" + ''.join(f'\n     - {f}' for f in fails), flush=True)
     return not fails
 
 
