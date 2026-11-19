@@ -117,17 +117,26 @@
   <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
   <div class="drop-hint" aria-hidden="true"><span>Drop a GPX or KML file</span></div>
   <input id="file-input" type="file" accept=".gpx,.kml,application/gpx+xml,application/vnd.google-earth.kml+xml" hidden>
-  <div id="start-failed" class="offline-banner saved-copy" role="alert" hidden><span>Polku didn’t finish loading: a file didn’t arrive</span><button type="button" class="btn" onclick="location.reload()">Reload</button></div>
+  <div id="start-failed" class="offline-banner saved-copy" role="alert" hidden><span>Polku didn’t finish loading: a file didn’t arrive</span><button type="button" class="btn" onclick="polkuRestart()">Reload</button></div>
   <script>
-    // A file of Polku's that didn't arrive, or the service worker's older saved copy beside new ones (#481), stops
-    // main.js before it starts: one try more by itself, then say so (#1088)
+    // A file of Polku's that didn't arrive stops main.js before it starts: one try more by itself, then say so (#1088).
+    // The service worker keeps unpkg's files as they first came: one that isn't the version Polku was tested with
+    // (its integrity) is refused on every load, so it goes before trying again (#482).
+    const polkuRestart = () => Promise.resolve().then(() => caches.open('polku-shell-v1')).then(async (c) => {
+      for (const el of document.querySelectorAll('[integrity]')) {
+        const url = el.src || el.href, r = await c.match(url);
+        if (!r) continue;
+        const sum = new Uint8Array(await crypto.subtle.digest('SHA-384', await r.arrayBuffer()));
+        if ('sha384-' + btoa(String.fromCharCode(...sum)) !== el.integrity) await c.delete(url);
+      }
+    }).catch(() => {}).then(() => location.reload());
     addEventListener('error', (e) => {
       if (window.polku || !(e instanceof ErrorEvent || e.target instanceof HTMLScriptElement)) return;
       let again = false;
       try {
         if (!sessionStorage.getItem('polku:startRetry')) { sessionStorage.setItem('polku:startRetry', '1'); again = true; }
       } catch { /* no storage, or it's full: no try more, so never a loop */ }
-      if (again) location.reload();
+      if (again) polkuRestart();
       else document.getElementById('start-failed').hidden = false;
     }, true);
     // started: a later failure gets its one try more again

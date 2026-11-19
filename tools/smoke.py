@@ -9643,22 +9643,30 @@ def tile_fails(chrome):
 
 
 
-# polku.map.__loads counts MapLibre's load events (as DEPTHS_FAIL_LAST does)
+# polku.map.__loads counts MapLibre's load events (as DEPTHS_FAIL_LAST does), and window.__steps Polku's load steps
+# (each restores the link's route or the saved one, and nothing else does)
 COUNT_LOADS = """document.addEventListener('DOMContentLoaded', () => {
   if (!window.maplibregl) return;  // (open_app's first page)
   const fire = maplibregl.Map.prototype.fire;
   maplibregl.Map.prototype.fire = function (e) { if ((e && e.type || e) === 'load') this.__loads = (this.__loads || 0) + 1; return fire.apply(this, arguments); };
-});"""
+});
+window.__steps = 0;
+let app;
+Object.defineProperty(window, 'polku', { configurable: true, get: () => app, set(v) {
+  app = v;
+  for (const k of ['restore', 'loadSaved']) { const f = v.planner[k]; v.planner[k] = function (...a) { window.__steps++; return f.apply(this, a); }; }
+} });"""
 
 
 def tile_hangs(chrome):
     """#419: Paddle with a saved route and the planner left open, Traficom's depth tiles held with the Fetch domain, so
     they never answer and MapLibre's load event never comes. Polku opens anyway: the route and the planner are back and
     the snow is looked up; a share link's route opens in the route's view; a spot's link opens its card. A point added
-    while they're held stays once they come, with one load event."""
+    while they're held stays once they come, with one load event, and the load step has run once (the review of #1109:
+    a second run kept the point too)."""
     fails = []
     held = "new Promise((ok) => { const t0 = Date.now(), go = () => (window.polku && (WANT)) || Date.now() - t0 > 20000 ? setTimeout(() => ok(!!(window.polku && (WANT))), 300) : setTimeout(go, 100); go(); })"
-    looks = """({ loaded: !!polku.map._loaded, loads: polku.map.__loads || 0, points: polku.planner.points.length, active: !!polku.planner.active,
+    looks = """({ loaded: !!polku.map._loaded, loads: polku.map.__loads || 0, steps: window.__steps, points: polku.planner.points.length, active: !!polku.planner.active,
       view: !!(polku.planner.active && polku.planner.inView()), shared: /[?&](r|pin)=/.test(location.search),
       card: polku.planner.cards.current ? polku.planner.cards.current.kind : null,
       saved: ((JSON.parse(localStorage.getItem('polku:route') || 'null') || {}).points || []).length })"""
@@ -9728,8 +9736,8 @@ def tile_hangs(chrome):
                 pg.js(LOAD_STEP)
                 time.sleep(1)
                 s = pg.js(looks)
-                if s['loads'] != 1 or s['points'] != len(TB_PTS) + 1 or s['saved'] != len(TB_PTS) + 1:
-                    fails.append(f"{name}: once the tiles came, {s['loads']} load events, {s['points']} points, {s['saved']} saved (not 1, {len(TB_PTS) + 1} and {len(TB_PTS) + 1})")
+                if s['loads'] != 1 or s['steps'] != 1 or s['points'] != len(TB_PTS) + 1 or s['saved'] != len(TB_PTS) + 1:
+                    fails.append(f"{name}: once the tiles came, {s['loads']} load events, {s['steps']} load steps, {s['points']} points, {s['saved']} saved (not 1, 1, {len(TB_PTS) + 1} and {len(TB_PTS) + 1})")
             fails += [f'{name} console: {e[:160]}' for e in pg.errors()]
             pg.close()
     print(f"{'ok  ' if not fails else 'FAIL'} the map's tiles never answering: Polku still opens the saved route, a share link and a spot's link (#419)" + ''.join(f'\n     - {f}' for f in fails), flush=True)
@@ -9872,29 +9880,52 @@ def start_fails(chrome):
 
 def cdn_tampered(chrome):
     """#482: MapLibre from unpkg answered with other bytes than the version Polku was tested with (a line added, through
-    the Fetch domain): the browser refuses it (its integrity), and Polku says it didn't finish loading (#1088)."""
+    the Fetch domain): the browser refuses it (its integrity), and Polku says it didn't finish loading (#1088). Through
+    the service worker too, which keeps unpkg's files as they first came (the review of #1109): the refused copy goes
+    before trying again, so once unpkg answers right, Reload opens Polku."""
     fails = []
+    pattern = {'urlPattern': '*unpkg.com/maplibre-gl@*/dist/maplibre-gl.js', 'requestStage': 'Response'}
+    message = "[(() => { const b = document.querySelector('#start-failed'); return b && b.checkVisibility() ? b.textContent : '' })(), !!window.__tampered, !!window.polku]"
+
+    def alter(session):  # unpkg's answers paused so far, a line added to each
+        n = 0
+        for e in [e for e in chrome.events if e.get('sessionId') == session and e.get('method') == 'Fetch.requestPaused']:
+            chrome.events.remove(e)
+            p = e['params']
+            b = chrome.send('Fetch.getResponseBody', {'requestId': p['requestId']}, session)
+            body = base64.b64decode(b['body']) if b.get('base64Encoded') else b['body'].encode()
+            chrome.send('Fetch.fulfillRequest', {'requestId': p['requestId'], 'responseCode': p.get('responseStatusCode', 200), 'responseHeaders': [h for h in p.get('responseHeaders', []) if h['name'].lower() != 'content-length'],
+                                                 'body': base64.b64encode(body + b'\nwindow.__tampered = true;\n').decode()}, session)
+            n += 1
+        return n
+
+    def watch(pg, session, until, secs=40):
+        """The page's state once `until` holds of it, or after secs, answering unpkg with altered bytes meanwhile."""
+        end, said, ran, opened, changed = time.time() + secs, '', False, False, 0
+        while time.time() < end:
+            time.sleep(0.5)
+            try:
+                pg.js('true', timeout=3000)  # (its answer brings in the events Chrome has sent so far)
+            except Exception:
+                pass
+            if session:
+                changed += alter(session)
+            try:
+                said, ran, opened = pg.js(message, timeout=3000)
+            except Exception:
+                continue  # (the page loading again)
+            if until(said, ran, opened):
+                break
+        return said, ran, opened, changed
+
+    # the worker bypassed, as on a first visit
     name = '390x844, maplibre-gl.js from unpkg with a line added'
     pg = chrome.page(390, 844, True)
     pg.goto(BASE + 'sw.js')
     pg.js("localStorage.clear(); sessionStorage.clear(); localStorage.setItem('polku:settings', JSON.stringify({activity: 'mtb', fewerOffered: true, flatOffered: true})); true")
-    chrome.send('Fetch.enable', {'patterns': [{'urlPattern': '*unpkg.com/maplibre-gl@*/dist/maplibre-gl.js', 'requestStage': 'Response'}]}, pg.s)
+    chrome.send('Fetch.enable', {'patterns': [pattern]}, pg.s)
     chrome.send('Page.navigate', {'url': BASE + '#13.6/61.5135/23.8170'}, pg.s)
-    end, said, ran, changed = time.time() + 40, '', False, 0
-    while time.time() < end and not said and not ran:
-        time.sleep(0.5)
-        try:
-            said, ran = pg.js("[(() => { const b = document.querySelector('#start-failed'); return b && b.checkVisibility() ? b.textContent : '' })(), !!window.__tampered]", timeout=5000)
-        except Exception:
-            pass  # (the page loading again)
-        for e in [e for e in chrome.events if e.get('sessionId') == pg.s and e.get('method') == 'Fetch.requestPaused']:
-            chrome.events.remove(e)
-            p = e['params']
-            b = chrome.send('Fetch.getResponseBody', {'requestId': p['requestId']}, pg.s)
-            body = base64.b64decode(b['body']) if b.get('base64Encoded') else b['body'].encode()
-            chrome.send('Fetch.fulfillRequest', {'requestId': p['requestId'], 'responseCode': p.get('responseStatusCode', 200), 'responseHeaders': [h for h in p.get('responseHeaders', []) if h['name'].lower() != 'content-length'],
-                                                 'body': base64.b64encode(body + b'\nwindow.__tampered = true;\n').decode()}, pg.s)
-            changed += 1
+    said, ran, opened, changed = watch(pg, pg.s, lambda said, ran, opened: said or ran)
     chrome.send('Fetch.disable', {}, pg.s)
     if not changed:
         fails.append(f'{name}: unpkg was never asked for maplibre-gl.js (the check proves nothing)')
@@ -9904,8 +9935,53 @@ def cdn_tampered(chrome):
         fails.append(f'{name}: no message after 40 s ({changed} answers changed)')
     pg.errors()  # (the refused file's own errors)
     pg.close()
-    print(f"{'ok  ' if not fails else 'FAIL'} MapLibre from unpkg with other bytes: refused, and Polku says it didn't finish loading (#482)" + ''.join(f'\n     - {f}' for f in fails), flush=True)
+
+    # through the worker: its saved copy gone, so it asks unpkg, gets the altered file and keeps it
+    name = '390x844, through the service worker, maplibre-gl.js from unpkg with a line added'
+    pg = chrome.page(390, 844, True)
+    pg.open_app({'activity': 'mtb'})
+    chrome.send('Network.setBypassServiceWorker', {'bypass': False}, pg.s)
+    pg.js("(async () => { for (const r of await navigator.serviceWorker.getRegistrations()) await r.unregister(); await caches.delete('polku-shell-v1'); return true })()")
+    pg.reload()
+    pg.js("(async () => { await navigator.serviceWorker.register('./sw.js'); await navigator.serviceWorker.ready; return true })()")
+    pg.reload()
+    worker = next((t for t in chrome.send('Target.getTargets')['targetInfos'] if t['type'] == 'service_worker' and t['url'] == BASE + 'sw.js'), None)
+    if not pg.js('!!navigator.serviceWorker.controller') or not worker:
+        raise RuntimeError(f'{name}: the page has no service worker')
+    ws = chrome.send('Target.attachToTarget', {'targetId': worker['targetId'], 'flatten': True})['sessionId']
+    # (the worker's own fetch would take the HTTP cache's copy, which the Fetch domain doesn't pause)
+    chrome.send('Network.enable', {}, ws)
+    chrome.send('Network.setCacheDisabled', {'cacheDisabled': True}, ws)
+    pg.js("caches.open('polku-shell-v1').then(async (c) => { for (const r of await c.keys()) if (r.url.includes('/maplibre-gl.js')) await c.delete(r); return true; })")
+    pg.close()
+    chrome.send('Fetch.enable', {'patterns': [pattern]}, ws)
+    # a fresh tab (a reload in the same one takes MapLibre from Chrome's memory, never asking the worker)
+    pg = chrome.page(390, 844, True)
+    chrome.send('Network.setBypassServiceWorker', {'bypass': False}, pg.s)
+    chrome.send('Page.navigate', {'url': BASE + '#13.6/61.5135/23.8170'}, pg.s)
+    said, ran, opened, changed = watch(pg, ws, lambda said, ran, opened: said or ran)
+    chrome.send('Fetch.disable', {}, ws)
+    if not changed:
+        fails.append(f'{name}: the worker never asked unpkg for maplibre-gl.js (the check proves nothing)')
+    elif ran:
+        fails.append(f'{name}: the changed file ran')
+    elif 'didn’t finish loading' not in said:
+        fails.append(f'{name}: no message after 40 s ({changed} answers changed)')
+    else:
+        # unpkg answers right again: Reload opens Polku
+        pg.errors()  # (the refused file's own errors)
+        r = pg.js("document.querySelector('#start-failed button').getBoundingClientRect().toJSON()")
+        pg.tap(r['x'] + r['width'] / 2, r['y'] + r['height'] / 2)
+        said, ran, opened, _ = watch(pg, None, lambda said, ran, opened: opened)
+        if not opened:
+            fails.append(f'{name}: Reload didn’t open Polku once unpkg answered right ({"the message again" if said else "no message"})')
+        fails.extend(f'{name}: console: {e[:160]}' for e in pg.errors())
+    pg.js("(async () => { for (const r of await navigator.serviceWorker.getRegistrations()) await r.unregister(); return true })()")
+    chrome.send('Target.detachFromTarget', {'sessionId': ws})
+    pg.close()
+    print(f"{'ok  ' if not fails else 'FAIL'} MapLibre from unpkg with other bytes: refused, and Polku says it didn't finish loading; once unpkg answers right, Reload opens it, through the worker too (#482)" + ''.join(f'\n     - {f}' for f in fails), flush=True)
     return not fails
+
 
 def panels(chrome):
     fails = []

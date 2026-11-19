@@ -2257,8 +2257,8 @@ const start = () => {
   // you had stays as it was
   if (pin) {
     history.replaceState(null, '', location.pathname + location.hash);
-    // (idle, or 8 s: a tile that never answers holds idle as it held load)
-    const settled = (fn) => { let done = false; const go = () => { if (!done) { done = true; fn(); } }; map.once('idle', go); setTimeout(go, 8000); };
+    // (idle, or 4 s: a tile that never answers holds idle as it held load)
+    const settled = (fn) => { let done = false; const go = () => { if (!done) { done = true; fn(); } }; map.once('idle', go); setTimeout(go, 4000); };
     settled(() => {
       map.jumpTo({ center: pin.ll, zoom: Math.max(map.getZoom(), 14) });
       settled(() => planner.openSpotCard(pin.ll, { pin: true, name: pin.name }));
