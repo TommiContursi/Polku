@@ -254,11 +254,16 @@ map.on('error', (e) => {
   if (e && e.error && !/404|Failed to fetch|AbortError/.test(String(e.error.message || e.error))) console.warn(e.error);
 });
 
+// A phone can take the map's WebGL context from a tab in the background (#1093): MapLibre has no style until it's back,
+// then brings back the one it had at the loss. Once that has loaded, it's built again from `data`, with what came meanwhile.
+map.on('webglcontextrestored', () => map.once('style.load', applyStyle));
+
 function setData(id, fc) {
   data[id] = fc;
+  if (id === 'route' && flow) flow.setData(fc);
+  if (!map.style) return; // (the context lost: above)
   const src = map.getSource(id);
   if (src) src.setData(fc);
-  if (id === 'route' && flow) flow.setData(fc);
   if (id === 'routeLit' && src) for (const [layer, v] of Object.entries(routeDim(fc.features.length > 0))) map.setPaintProperty(layer, 'line-opacity', v);
 }
 
@@ -450,7 +455,7 @@ flow = new RouteFlow(map, {
   enabled: () => state.routeFlow,
   onMoving: (on) => {
     ctx.flowMoving = on;
-    if (map.getLayer('route-arrows')) map.setLayoutProperty('route-arrows', 'visibility', on ? 'none' : 'visible');
+    if (map.style?.getLayer('route-arrows')) map.setLayoutProperty('route-arrows', 'visibility', on ? 'none' : 'visible');
   },
 });
 if (data.route) flow.setData(data.route);

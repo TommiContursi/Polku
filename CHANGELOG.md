@@ -6,8 +6,16 @@ What's new in [Polku](https://polku.si), from the latest updates back to the fir
 
 ### Polku opens on a bad connection ([#419](https://github.com/TommiContursi/Polku/issues/419), [#481](https://github.com/TommiContursi/Polku/issues/481))
 
-- When one of the map's tiles doesn't arrive as Polku opens, your saved route, a shared route, the planner you left open and a shared spot's card still come back, at most a few seconds after the map appears. Before, they waited for every tile of the map, so on a bad connection, or while Traficom's depth maps were slow, they could stay away until you moved the map.
+- When one of the map's tiles doesn't arrive as Polku opens, your saved route, a shared route and the planner you left open still come back, at most a few seconds after the map appears, and a shared spot's card a few seconds after that. Before, they waited for every tile of the map, so on a bad connection, or while Traficom's depth maps were slow, they could stay away until you moved the map.
 - Just after Polku has been updated, on a slow connection, it waits for the new version's files instead of mixing them with the copies it saved from the last version, which could leave it without its map. With no update in between, a file that's slow to come is still taken from the saved copy after 3 seconds, as before.
+
+### The route after switching apps ([#1093](https://github.com/TommiContursi/Polku/issues/1093))
+
+- When your phone takes the map's graphics memory back while Polku is in the background, a route leg or trail details that arrive in that time are on the map once you're back. Before, the map came back without them until the next change.
+
+### One quiet scrollbar everywhere ([#1100](https://github.com/TommiContursi/Polku/issues/1100))
+
+- The menus, such as the route's **⋯** menu, the search results, a point's menu on the map and the list of sports now have the same thin scrollbar as the planner and the panels. It shows only while you scroll, or while a mouse is over it. Before, they had the browser's own wide scrollbar.
 
 ### Layers and Settings stay where you scrolled ([#536](https://github.com/TommiContursi/Polku/issues/536))
 

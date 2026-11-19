@@ -1033,7 +1033,7 @@ b.wpl-name { display: block; padding: 3px 0; margin: 0; overflow-wrap: anywhere;
 .sheet-min { display: none; }
 .pl-keys > .way-x { display: none; }
 @media (min-width: 721px) { .pl-keys > .way-x { display: inline-flex; } }
-.sheet-body { flex: 1; min-height: 0; overflow: auto; padding: 0 16px 14px; overscroll-behavior: contain; scrollbar-width: thin; }
+.sheet-body { flex: 1; min-height: 0; overflow: auto; padding: 0 16px 14px; overscroll-behavior: contain; }
 /* the planner's type (#382): five roles, the route's name, a section's heading, a number, a row's or a key's words and a
    line under them; with a mouse each a size smaller and rows 40 px, as its keys are, so a desktop's planner isn't outsized */
 .sheet .row b, .sheet .row .val, .pl-pane .btn:not(.big), .sheet .kf-b, .sheet .trip-when, .pl-profile .mode-select select { font-size: var(--font-row); }
@@ -1041,12 +1041,12 @@ b.wpl-name { display: block; padding: 3px 0; margin: 0; overflow-wrap: anywhere;
 .sheet-row .sum-item b { font-size: var(--font-number); }
 .sheet .trip-when { font-weight: var(--weight-key); }
 /* a quiet scrollbar (#382, round 5's and Mine 8's): thin, and seen only while it scrolls (main.js: .scrolling, 0.9 s) and under a
-   mouse, for the planner, the cards and the panels */
-:is(.sheet, .sheet-body, .pl-way, .panel-body, .qd-body, .modal-body) { --bar: transparent; scrollbar-width: thin; scrollbar-color: var(--bar) transparent; }
-:is(.sheet, .sheet-body, .pl-way, .panel-body, .qd-body, .modal-body)::-webkit-scrollbar { width: 6px; height: 6px; }
-:is(.sheet, .sheet-body, .pl-way, .panel-body, .qd-body, .modal-body)::-webkit-scrollbar-thumb { border-radius: var(--radius-pill); background: var(--bar); }
+   mouse, on everything that scrolls (#1100; the page itself never does). `*` adds no specificity, so a row's `scrollbar-width: none` wins */
+* { --bar: transparent; scrollbar-width: thin; scrollbar-color: var(--bar) transparent; }
+*::-webkit-scrollbar { width: 6px; height: 6px; }
+*::-webkit-scrollbar-thumb { border-radius: var(--radius-pill); background: var(--bar); }
 .scrolling { --bar: color-mix(in srgb, var(--text) 32%, transparent); } /* (main.js sets it on what scrolls, 0.9 s) */
-@media (hover: hover) and (pointer: fine) { :is(.sheet, .sheet-body, .pl-way, .panel-body, .qd-body, .modal-body):hover { --bar: color-mix(in srgb, var(--text) 32%, transparent); } }
+@media (hover: hover) and (pointer: fine) { :hover { --bar: color-mix(in srgb, var(--text) 32%, transparent); } }
 .sheet[data-state="peek"]:not(.dragging) .sheet-body { visibility: hidden; }
 /* the routing bar, on the sheet's top edge (js/planner.js setBusy()), a child of the sheet so folding doesn't hide it: it waits
    300 ms, so a quick answer shows nothing, fades in, and its gradient slides on transform alone; with reduced motion a full
@@ -1142,7 +1142,7 @@ b.wpl-name { display: block; padding: 3px 0; margin: 0; overflow-wrap: anywhere;
 .sheet-row[hidden], .pl-way[hidden] { display: none; }
 .sheet.starting :is(.pl-profile, .trip-box, .sheet-body) { display: none; }
 .pl-way { display: grid; grid-template-columns: minmax(0, 1fr); grid-auto-rows: max-content; /* (a held sheet never squeezes its rows: it scrolls) */ gap: 10px; padding: 2px 2px 4px; min-width: 0;
-  overflow: hidden auto; overscroll-behavior: contain; touch-action: pan-y; scrollbar-width: thin; }
+  overflow: hidden auto; overscroll-behavior: contain; touch-action: pan-y; }
 /* as tall as there's room: the sheet stops below the top bar (a docked toolbox, 200 % zoom), and the view scrolls inside */
 .sheet.way-only { max-height: calc(100vh - 76px); max-height: calc(100dvh - 76px); }
 .sheet.way-only :is(.sheet-head, .sheet-head-in) { flex: 0 1 auto; min-height: 0; display: flex; flex-direction: column; }
