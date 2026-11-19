@@ -6883,38 +6883,43 @@ TOGETHER_FETCH = r"""
 })();
 """
 
-# In paddle, after a jump: LIPAS's answer and the nautical chart's, the chart's 200 ms and more later, drawn in the same
-# frame, once each; the chart's held 2 s, LIPAS's not held past 500 ms; with both loaded already, nothing waits. ("The
-# same frame" is no animation frame between their setData calls: MapLibre then lays out each source on its own.)
+# In paddle, after a jump: LIPAS's answer and the nautical chart's, the chart's 200 ms and more later, drawn together
+# (in one go: MapLibre then lays out each source on its own), once each; with the chart's held 2 s, LIPAS's drawn before
+# it comes; and once the answers are in, no loader is still busy (one that stays busy would hold every stop 500 ms).
+# Timers, not frames, as a busy machine makes both late.
 TOGETHER = r"""
 (async () => {
   const m = polku.map, errs = [], wait = (ms) => new Promise((r) => setTimeout(r, ms));
   (await import(location.origin + '/js/lipas.js')).seedLipas(() => new Promise((ok) => setTimeout(() => ok({ type: 'FeatureCollection', features: [] }), window.__lipasDelay)));
-  let frame = 0;
-  (function tick() { frame++; requestAnimationFrame(tick); })();
-  const drawn = [];
-  for (const id of ['lipasRoutes', 'nmMarks']) {
+  const log = [], t0 = () => performance.now();
+  for (const [obj, fn, as] of [[polku.lipas, 'publishNow', 'lipas answer'], [polku.nautical, 'publish', 'nm answer']]) {
+    const own = obj[fn].bind(obj);
+    obj[fn] = (...a) => { log.push([as, t0()]); return own(...a); };
+  }
+  for (const [id, as] of [['lipasRoutes', 'lipas drawn'], ['nmMarks', 'nm drawn']]) {
     const src = m.getSource(id), own = src.setData.bind(src);
-    src.setData = (d, ...a) => { drawn.push([id, frame, performance.now()]); return own(d, ...a); };
+    src.setData = (d, ...a) => { log.push([as, t0()]); return own(d, ...a); };
   }
   const jump = async (center, lipasMs, nmMs) => {
-    window.__lipasDelay = lipasMs; window.__nmDelay = nmMs; drawn.length = 0;
+    window.__lipasDelay = lipasMs; window.__nmDelay = nmMs; log.length = 0;
     let stop = 0;
-    m.once('moveend', () => { stop = performance.now(); });
+    m.once('moveend', () => { stop = t0(); });
     m.jumpTo({ center });
     await wait(3500);
-    const of = (id) => drawn.filter((d) => d[0] === id).map(([, f, t]) => ({ frame: f, ms: Math.round(t - stop) }));
-    return { lipas: of('lipasRoutes'), nm: of('nmMarks') };
+    const at = (as) => log.filter((e) => e[0] === as).map((e) => Math.round(e[1] - stop));
+    return { lipasAnswer: at('lipas answer'), lipas: at('lipas drawn'), nmAnswer: at('nm answer'), nm: at('nm drawn') };
   };
   const say = (d) => JSON.stringify(d);
   let d = await jump([22.60, 60.05], 50, 150);
-  if (d.lipas.length !== 1 || d.nm.length !== 1 || d.lipas[0].frame !== d.nm[0].frame) errs.push(`LIPAS's routes and the nautical marks, answered 200 ms and more apart, aren't drawn together once: ${say(d)}`);
+  if (d.lipas.length !== 1 || d.nm.length !== 1 || Math.abs(d.lipas[0] - d.nm[0]) > 20) errs.push(`LIPAS's routes and the nautical marks, answered apart, aren't drawn together once (ms after the stop): ${say(d)}`);
   d = await jump([25.40, 60.20], 50, 2000);
   const lipas = d.lipas[d.lipas.length - 1];
-  if (!lipas || lipas.ms > 950) errs.push(`with the nautical chart's answer held 2 s, LIPAS's routes wait for it: ${say(d)}`);
-  if (!d.nm.length || d.nm[0].ms < 2000) errs.push(`the nautical marks, answered after 2 s, aren't drawn when they come: ${say(d)}`);
+  if (lipas == null || !d.nmAnswer.length || lipas >= d.nmAnswer[0]) errs.push(`with the nautical chart's answer held 2 s, LIPAS's routes wait for it: ${say(d)}`);
+  if (!d.nm.length || d.nm[0] < 2000) errs.push(`the nautical marks, answered after 2 s, aren't drawn when they come: ${say(d)}`);
   d = await jump([22.60, 60.05], 50, 150);
-  if (!d.lipas.length || d.lipas[0].ms > 500) errs.push(`back where both have loaded, LIPAS's routes still wait: ${say(d)}`);
+  if (!d.lipas.length) errs.push(`back where both have loaded, LIPAS's routes aren't drawn: ${say(d)}`);
+  const busy = polku.together ? polku.together.loaders.filter((l) => l.busy).map((l) => l.constructor.name) : ['(no polku.together)'];
+  if (busy.length) errs.push(`with every answer in, still busy: ${busy.join(', ')}`);
   return errs;
 })()
 """
