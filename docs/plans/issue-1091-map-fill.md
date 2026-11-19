@@ -15,7 +15,9 @@ The mock-up: [mockups/issue-1091-map-fill.html](mockups/issue-1091-map-fill.html
 - **The crossfade on long jumps: a mock-up, 2026-11-19,** decided with /animate and measured, with one recommendation: [the crossfade on long jumps](#the-crossfade-on-long-jumps).
 - **Tried, 2026-11-19:** the crossfade read as a sudden change and then the place building up piece by piece (the copy opened on its slow network, where the hold gives up before the place is drawn), and today's flight, zooming out and back in, felt better. So two more versions, from that idea: the map flies there as now, and the place fades in after it lands, all together or each part as it comes: [the flight, then a fade](#the-flight-then-a-fade).
 - **Decided, 2026-11-19: no crossfade; the flight stays, and once it has landed each part of the place fades in** (on #1091's description). In the mock-up its fade was hard to tell from today's, so it's to be easier to see: the mock-up's Fade switch sets the first one (0.26 s) beside an even 0.4 s.
-- **Next:** the user's choice of the fade, then the build.
+- **Decided, 2026-11-19: the fade is 0.4 s at an even pace** (on #1091's description), about the longest it should be.
+- **Two more ideas from trying it, in the mock-up to choose:** the same fade after you move the map yourself (After a move: fades in too), and a fade whose length follows how much of the map the part changes, 0.2–0.4 s (Fade: by what comes): [after a move, and by what comes](#after-a-move-and-by-what-comes).
+- **Next:** the user's choice of those two, then the build.
 
 ## What people see
 
@@ -271,6 +273,15 @@ Measured as the crossfades were, on the mock-up at 01ca0b7 (five flights, places
 - **Each part fades in leaves the map live:** the detail and Polku's layers come when they come, each softened over 0.26 s.
 - **Why the fade is hard to see on a fast network:** the place's tiles are asked for in the flight's last zoom-in and have mostly come as it lands, while the camera still moves (no picture of the frame before can be laid over a moving map), so what's left to fade in is mostly Polku's own layers. And the first fade, 0.26 s on `--ease-out`, is most of the way in after 0.1 s. The Fade switch's even fade is 0.4 s at a steady pace, as MapLibre fades the map's names in (0.3 s), so the fade itself shows. On Slow the detail comes after the landing and fades in too.
 - Checked: from the keys the flight is as today and nothing fades; a touch on the map ends the hold or the fading part at once; with reduced motion both fade on `opacity` only and the flight is a jump; no errors; in the Artifact copy a place visited before asks for its tiles again.
+
+### After a move, and by what comes
+
+Two ideas from trying the chosen version, 2026-11-19: moving the map sideways shows the same building up from pieces, so it should fade in too; and how long a fade wants to be depends on the place, longer where much comes at once (a town's paths and streets) and shorter where little does (a few paths in a forest).
+
+- **After a move: fades in too.** When you've dragged, flicked, pinched or wheeled the map yourself, what comes once it stops (squares still on their way, Polku's own layers) fades in as after a flight, until the map is drawn and Polku's loaders aren't busy, at most 3 s. While the map still moves nothing can fade: a picture of the frame before wouldn't line up with a moving map, and MapLibre has no fade for vector tiles. From the arrow keys nothing fades (DESIGN.md), and a touch, the wheel or a key ends a fade at once.
+- **Fade: by what comes.** As the even fade, but its length follows how much of the map the part changes: the frame before and the frame with it, each shrunk to 48 × 30, compared cell by cell; 0.2 s for a part that changes little, rising to 0.4 s when a quarter of the map or more changes. Measured in the Artifact copy after flights to the six places, at 1440 × 900 and 390 × 844: the place's detail coming after the landing changed 74–100 % of the map and faded over 0.4 s everywhere; Polku's own layers changed 58–74 % at Jyväskylä's harbour (0.4 s) and 0–5 % in the forests (about 0.2 s); after a drag at the harbour the parts changed 0–21 % and faded over 0.2–0.37 s.
+- **What /animate says about the first:** moving the map comes many times a minute, and what comes that often gets no motion or near-imperceptible motion. This fade moves nothing and delays nothing: the map is yours at once, and only what comes after the stop softens, as MapLibre already fades the names in after every move (0.3 s). Whether 0.2–0.4 s after every stop feels slow when you move around a lot is what to try; by what comes keeps it short where little changes.
+- **What they cost:** after every stop, a copy of each frame drawn until the map is drawn (on a fast network about 0.6 s, as Polku's own layers come then), and for by what comes two 48 × 30 readings per part. On a phone that's battery and frame time many times a minute, the first thing a build measures.
 
 ### Chosen: flies there, each part fades in
 
