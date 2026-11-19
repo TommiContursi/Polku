@@ -202,9 +202,10 @@ at 03:17 UTC. Build checks, transformation, gzip validation, country count and
 extent gates, and full-country browser checks all run before publication.
 Each country job has up to 150 minutes, including a 40-minute download step.
 Each PBF transfer gets up to 30 minutes and starts retries only in its first
-five minutes. Each download also retries a refused connection, up to five
-times 30 seconds apart, since Geofabrik sometimes refuses a runner for a while
-(#1131). In the November 9 build, repeated 15-minute timeouts consumed
+five minutes. Every Geofabrik download after the snapshot step also retries any error, a
+refused connection or a 404 included, up to three times 30 seconds apart:
+Geofabrik sometimes refuses a runner for a while, or answers 404 for a file it
+has (#1131). In the November 9 build, repeated 15-minute timeouts consumed
 nearly 58 minutes downloading Norway before its transformation timed out.
 The source must be at most 14 days old. The workflow retains source and release
 artifacts for 14 days and rollback pointers for 90 days; GitHub artifact quota

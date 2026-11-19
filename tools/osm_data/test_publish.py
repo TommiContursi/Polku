@@ -371,15 +371,15 @@ class PublishTests(unittest.TestCase):
                 self.assertEqual(eval(expr.replace('&&', 'and').replace('||', 'or'), {'__builtins__': {}}), expected)
         self.assertIn('run-id: ${{ needs.geometry.outputs.run_id }}', job)
 
-    def test_build_downloads_retry_a_refused_connection(self):
-        # curl's --retry alone gives up at once when Geofabrik refuses the runner (#1131)
-        workflow = (Path(__file__).resolve().parents[2] / '.github/workflows/osm-data.yml').read_text()
-        step = workflow.split('name: Download one complete country, checksum and clipping polygon', 1)[1].split('\n      - name:', 1)[0]
-        downloads = [line for line in step.splitlines() if 'download.geofabrik.de' in line]
-        self.assertEqual(len(downloads), 3)
-        for line in downloads:
-            with self.subTest(line=line.strip()[-60:]):
-                self.assertIn('--retry-connrefused', line)
+    def test_geofabrik_requests_retry_a_refused_connection(self):
+        # curl's --retry alone gives up at once when Geofabrik refuses the runner or briefly answers 404 for a file it has (#1131)
+        workflow = (Path(__file__).resolve().parents[2] / '.github/workflows/osm-data.yml').read_text().replace('\\\n', ' ')
+        requests = [line for line in workflow.splitlines() if 'curl ' in line and '127.0.0.1' not in line]
+        self.assertEqual(len(requests), 7, 'the snapshot check, three country downloads, the reference size and its two downloads')
+        for line in requests:
+            with self.subTest(line=line.strip()[:90]):
+                # the snapshot check reads a 404 as a date not ready yet, so it retries only a refusal
+                self.assertIn('--retry-connrefused' if '$osm_region' in line else '--retry-all-errors', line)
 
     def test_snapshot_retries_temporary_failure_and_requires_one_complete_date(self):
         workflow = (Path(__file__).resolve().parents[2] / '.github/workflows/osm-data.yml').read_text()
