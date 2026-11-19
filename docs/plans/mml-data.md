@@ -24,8 +24,9 @@ Outside Finland the map stays as it is, on OpenFreeMap's tiles and OSM.
 ## What people get
 
 - **Bogs where they are.** Around Seitseminen (61.937, 23.425) at zoom 13,
-  Polku shows two small wetland patches, while other mapping services
-  show bogs on most of the ground around the trails. The two map sheets
+  Polku draws OSM's wetlands, one generic pattern over a few areas, while
+  other mapping services show bogs on most of the ground around the
+  trails. The two map sheets
   there (about 300 km²) hold 1,766 bog areas and 1,079 areas of
   paludified land (soistuma) in MML's data.
 - **What a bog is like to cross:** open or wooded, and easier or harder to
@@ -112,14 +113,17 @@ boundaries come the same way, from Kapsi's per-sheet vector files.
 
 - **For people:** no account or key, and Polku decides what's drawn, in
   its own colours and at its own zooms.
-- **To build:** a new workflow job, GDAL from Ubuntu's packages (build-only:
-  nothing new in the app), and a manifest with the dataset's date for the
+- **To build:** a new workflow job, GDAL as a build-only tool (nothing new
+  in the app: the spike used the GDAL inside `pyogrio`'s pinned pip wheel,
+  as the OSM build pins its Python tools), and a manifest with the dataset's date for the
   attribution. Data changes need a release, as the OSM data does.
 - **Measured on two sheets (N4112L and N4112R, Seitseminen):** GDAL 3.10
   read the shapefiles in ETRS-TM35FIN and wrote a single-layer archive,
   10,250 features, zooms 10–14: 2.07 MB in 7.7 s. The largest tile is 131 KB
-  at zoom 10, 37 KB at zoom 12 and 5.9 KB at zoom 14. Reading it back, every
-  feature carries its class code.
+  at zoom 10, 37 KB at zoom 12 and 5.9 KB at zoom 14. One zoom-14 tile,
+  decoded, holds the class codes as numbers (34100, 35300, 35412); GDAL's
+  own read-back showed the field empty, so the codes in the other tiles
+  weren't checked.
 - **Not measured:** the whole country's size and largest tile (scaling the
   two sheets by area gives about 2 GB; Lapland's large bogs may differ),
   the runner's time and disk for the 22.8 GB input, and the per-sheet
@@ -137,11 +141,12 @@ most people no bogs at all.
 ### Property boundaries as Kapsi's raster
 
 The smallest change: one raster overlay, as `maastoOverlay` is today
-(`wmsTiles()`'s PNG form, since Kapsi serves this layer only as PNG). Tried
-on polku.si in Jyväskylä at zoom 15–16: 1 px black lines that read like
-the map's own building outlines and paths, and a raster can't be
-recoloured (only lightened, for the Night and Aerial maps). Not
-recommended.
+(`wmsTiles()`'s PNG form, since Kapsi serves this layer only as PNG). Its
+tiles are fixed black lines with black IDs on a transparent ground, which
+can't be recoloured (only lightened, for the Night and Aerial maps). A
+first try on polku.si in Jyväskylä at zoom 15 showed thin black lines among
+the building outlines and paths; it wasn't repeated on Night or Aerial.
+Not recommended.
 
 ## How it fits the map
 
@@ -161,9 +166,10 @@ recommended.
   that Finnish terrain details aren't included. Saving it is a later part.
 - **Attribution.** "© Maanmittauslaitos, Maastotietokanta MM/YYYY, CC BY
   4.0", the date from the archive's manifest.
-- **Bases.** On the Trail, Plain and Night maps. The Maastokartta and MML
-  bases already draw these classes, and the aerial maps show the ground
-  itself; neither gets them.
+- **Bases.** Terrain on the Trail, Plain and Night maps. The Maastokartta
+  and MML bases already draw these classes, and the aerial maps show the
+  ground itself; neither gets the terrain. Property boundaries on every
+  base.
 
 ## Drawing
 
@@ -192,8 +198,8 @@ recommended.
   Terrain, off by default.
 - **Hover and tap.** A tap on a bog says its class in words ("Open bog,
   hard to cross (MML survey class)"); on a property, its ID.
-- Checked at 390 × 844 and 1440 × 900, on Trail and Night, in MTB and
-  paddle, in 3D, and with high contrast.
+- Each part is checked at 390 × 844 and 1440 × 900, on Trail and Night, in
+  MTB and paddle, in 3D, and with high contrast.
 
 ## Parts
 
@@ -224,3 +230,9 @@ DESIGN.md and DEVELOPING.
 - The other mapping services at a power line and at property boundaries,
   close up: the browser pane was hidden and the map didn't draw.
 - The whole-country build's size, time and disk.
+- The GeoPackage itself: its tables and field names weren't opened; the
+  spike read the per-sheet shapefiles.
+- How OSM's wetlands are turned off inside Finland only. A fill layer
+  can't simply be filtered by a polygon, so this decides how "MML wins in
+  Finland" is built; it blocks the bogs part's design, not the choice of
+  delivery.
