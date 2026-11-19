@@ -289,6 +289,68 @@ function drawTogether() {
   for (const id of held || []) id === 'trailCoverage' ? restyleTrails() : setData(id, data[id]);
 }
 
+// What comes after the map stops fades in (#1091). After a flight or a move once your last input was a touch, a click
+// or the wheel (not a key, nor no input yet: the first view and a link's jump come as before; not a follow-me move,
+// made at every position), each frame MapLibre draws is copied until the map is drawn and Polku's loaders aren't busy,
+// at most 3 s. When a frame shows a part that has come, the frame before is laid over the map, under its markers, and
+// faded out: 0.2 s, up to 0.4 s as the share of the map the part changes rises to a quarter (both frames shrunk to
+// 48 × 30, cell by cell). MapLibre has no fade for vector tiles. A picture never stays over a moving map (a glide
+// grabbed again ends with a moveend while you drag), and a touch, the wheel or a key on the map ends a fade.
+const fade = { by: null, on: false, came: false, until: 0, copy: null, spare: null, over: null };
+addEventListener('keydown', (e) => { if (!['Shift', 'Control', 'Alt', 'Meta'].includes(e.key)) fade.by = 'keys'; }, true);
+for (const ev of ['pointerdown', 'wheel']) addEventListener(ev, () => { fade.by = 'pointer'; }, { capture: true, passive: true });
+const grid = Object.assign(document.createElement('canvas'), { width: 48, height: 30 }).getContext('2d');
+const cells = (src) => { grid.drawImage(src, 0, 0, 48, 30); return grid.getImageData(0, 0, 48, 30).data; };
+// a raster that fades in by itself (raster-fade-duration: the photo and terrain bases, the overlays) isn't faded twice
+const fadesItself = (id) => map.getLayersOrder().some((l) => { const s = map.getLayer(l); return s.source === id && s.type === 'raster' && map.getPaintProperty(l, 'raster-fade-duration') !== 0; });
+// (the two copies give their memory back once nothing fades)
+const restFade = () => { if (!fade.on && !fade.over) for (const k of [fade.copy, fade.spare]) if (k) k.width = k.height = 0; };
+function dropFade() {
+  const o = fade.over;
+  fade.on = false;
+  if (o) { o.getAnimations().forEach((a) => a.cancel()); o.remove(); fade.over = null; fade.spare = o; }
+  restFade();
+}
+map.on('moveend', (e) => {
+  if (fade.by !== 'pointer' || e.polkuFollow || map.isMoving()) return;
+  Object.assign(fade, { on: true, came: false, until: performance.now() + 3000 });
+  map.triggerRepaint(); // (a first frame to start from)
+});
+map.on('sourcedata', (e) => {
+  if (!fade.on || !e.tile) return;
+  const type = map.getSource(e.sourceId)?.type;
+  // of the GeoJSON sources only Polku's own layers' (TOGETHER): never a hover's, a pick's or the route's
+  if (type === 'geojson' ? TOGETHER.has(e.sourceId) : !(type === 'raster' && fadesItself(e.sourceId))) fade.came = true;
+});
+for (const ev of ['pointerdown', 'wheel', 'keydown']) map.getContainer().addEventListener(ev, dropFade, { capture: true, passive: true });
+map.on('render', () => {
+  const f = fade, c = map.getCanvas();
+  if (map.isMoving()) { if (f.on || f.over) dropFade(); return; }
+  if (!f.on) return;
+  if (f.came && f.copy && f.copy.width === c.width && f.copy.height === c.height) {
+    f.came = false;
+    const a = cells(f.copy), b = cells(c);
+    let n = 0;
+    for (let i = 0; i < a.length; i += 4) if (Math.abs(a[i] - b[i]) + Math.abs(a[i + 1] - b[i + 1]) + Math.abs(a[i + 2] - b[i + 2]) > 24) n++;
+    if (n) {
+      // the frame before is the picture, with the part before this one as far as it has faded in
+      const pic = f.copy, o = f.over, g = pic.getContext('2d');
+      if (o) { g.globalAlpha = +getComputedStyle(o).opacity; g.drawImage(o, 0, 0); g.globalAlpha = 1; o.getAnimations().forEach((x) => x.cancel()); o.remove(); }
+      f.copy = o || f.spare || document.createElement('canvas');
+      f.spare = null;
+      f.over = pic;
+      pic.className = 'map-fade';
+      c.after(pic);
+      pic.animate([{ opacity: 1 }, { opacity: 0 }], { duration: Math.round(200 + 200 * Math.min(1, n / (48 * 30) / 0.25)), easing: 'linear', fill: 'forwards' })
+        .finished.then(() => { if (f.over === pic) { pic.remove(); f.over = null; f.spare = pic; restFade(); } }, () => {});
+    }
+  }
+  f.copy ||= document.createElement('canvas');
+  if (f.copy.width !== c.width || f.copy.height !== c.height) Object.assign(f.copy, { width: c.width, height: c.height });
+  f.copy.getContext('2d').drawImage(c, 0, 0);
+  if ((map.loaded() && !together.held && !together.loaders.some((l) => l.busy)) || performance.now() > f.until) { f.on = false; restFade(); }
+});
+
 function setData(id, fc) {
   data[id] = fc;
   if (id === 'route' && flow) flow.setData(fc);
