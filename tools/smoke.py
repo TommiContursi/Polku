@@ -7331,6 +7331,7 @@ def fadein(chrome):
         # a LIPAS route lit under the mouse ends a fade: it's drawn in the map's canvas, under the picture. LIPAS answers
         # with a route through the view's middle (in EPSG:3067, from tm35ToLonLat inverted), drawn after the next stop.
         pg.js("""(async () => {
+          polku.map.jumpTo({ center: [25.745, 62.233], zoom: 14.5 }); // (Jyväsjärvi: open water along the route)
           const m = polku.map, c = m.getCenter(), { tm35ToLonLat } = await import(location.origin + '/js/geo.js'), k = Math.cos(c.lat * Math.PI / 180);
           let x = 500000 + (c.lng - 27) * 111320 * k, y = c.lat * 111000;
           for (let i = 0; i < 6; i++) { const [lo, la] = tm35ToLonLat(x, y); x += (c.lng - lo) * 111320 * k; y += (c.lat - la) * 111000; }
@@ -7343,10 +7344,12 @@ def fadein(chrome):
         at = pg.js("""new Promise((ok) => { const m = polku.map, t0 = Date.now(), go = () => {
           const a = document.querySelector('.map-fade')?.getAnimations()[0], drawn = m.queryRenderedFeatures({ layers: ['lipas-route'] }).length && a && a.effect.getTiming().duration - a.currentTime > 120;
           if (!drawn && Date.now() - t0 < 4000) return requestAnimationFrame(go);
-          for (let k = 0; drawn && k <= 40; k++) for (const s of [k, -k]) { const q = m.project(window.__routeAt(s)); if (q.x > 20 && q.x < innerWidth - 20 && document.elementFromPoint(q.x, q.y) === m.getCanvas()) return ok([q.x, q.y]); }
+          // a spot where the route is all a pointer finds (no way, icon or mark of its own within 10 px)
+          const open = (q) => m.queryRenderedFeatures([[q.x - 10, q.y - 10], [q.x + 10, q.y + 10]]).every((f) => f.layer.id.startsWith('lipas-route') || f.source === 'contours' || ['fill', 'background', 'hillshade', 'raster', 'fill-extrusion'].includes(f.layer.type));
+          for (let k = 0; drawn && k <= 40; k++) for (const s of [k, -k]) { const q = m.project(window.__routeAt(s)); if (q.x > 20 && q.x < innerWidth - 20 && document.elementFromPoint(q.x, q.y) === m.getCanvas() && open(q)) return ok([q.x, q.y]); }
           ok(null); }; go(); })""")
         if not at:
-            fails.append('a route lit under the mouse: the LIPAS route and a fade with 120 ms left weren’t on the map together')
+            fails.append('a route lit under the mouse: no open spot on the LIPAS route while a fade had 120 ms left')
         else:
             pg.js('window.__fade.gone.length = 0, true')  # (only how the fade on the map now goes)
             for dx in (0, 1):
