@@ -14,7 +14,8 @@ The mock-up: [mockups/issue-1091-map-fill.html](mockups/issue-1091-map-fill.html
 - **D: built** ([#1115](https://github.com/TommiContursi/Polku/pull/1115), merged 2026-11-19); how it differs from the plan and what it measured: [D, as built](#d-as-built).
 - **The crossfade on long jumps: a mock-up, 2026-11-19,** decided with /animate and measured, with one recommendation: [the crossfade on long jumps](#the-crossfade-on-long-jumps).
 - **Tried, 2026-11-19:** the crossfade read as a sudden change and then the place building up piece by piece (the copy opened on its slow network, where the hold gives up before the place is drawn), and today's flight, zooming out and back in, felt better. So two more versions, from that idea: the map flies there as now, and the place fades in after it lands, all together or each part as it comes: [the flight, then a fade](#the-flight-then-a-fade).
-- **Next:** the user's choice among the versions (or none); nothing is built until then.
+- **Decided, 2026-11-19: no crossfade; the flight stays, and once it has landed each part of the place fades in** (on #1091's description). In the mock-up its fade was hard to tell from today's, so it's to be easier to see: the mock-up's Fade switch sets the first one (0.26 s) beside an even 0.4 s.
+- **Next:** the user's choice of the fade, then the build.
 
 ## What people see
 
@@ -268,11 +269,12 @@ Measured as the crossfades were, on the mock-up at 01ca0b7 (five flights, places
 - **Neither changes when anything comes,** only how: the timings are today's flight's. Times are from the press; the flight takes 0.9 s.
 - **All fades in holds the landing still for about 0.55 s on a fast network,** though the map is drawn as it lands, as it waits for Polku's own layers (in Polku, 0.5–0.7 s after the camera stops: [D, as built](#d-as-built)). On Slow 4G the landing is mostly paper (Finland's overview in a forest), held until the place is drawn, then one fade.
 - **Each part fades in leaves the map live:** the detail and Polku's layers come when they come, each softened over 0.26 s.
+- **Why the fade is hard to see on a fast network:** the place's tiles are asked for in the flight's last zoom-in and have mostly come as it lands, while the camera still moves (no picture of the frame before can be laid over a moving map), so what's left to fade in is mostly Polku's own layers. And the first fade, 0.26 s on `--ease-out`, is most of the way in after 0.1 s. The Fade switch's even fade is 0.4 s at a steady pace, as MapLibre fades the map's names in (0.3 s), so the fade itself shows. On Slow the detail comes after the landing and fades in too.
 - Checked: from the keys the flight is as today and nothing fades; a touch on the map ends the hold or the fading part at once; with reduced motion both fade on `opacity` only and the flight is a jump; no errors; in the Artifact copy a place visited before asks for its tiles again.
 
-### Recommended: flies there, each part fades in
+### Chosen: flies there, each part fades in
 
-For a search result, Show the whole route and the other camera moves of #540: the flight stays, and nothing in the new place appears at once, on any network, while the map stays live. What it costs to build: about 40 lines, the callers that fly, a smoke group, and a copy of every frame for up to 3 s after a flight lands, whose cost on a phone is the first thing a build measures (frame times against today). If that costs too much, all fades in is the cheaper one: one picture, one fade.
+Recommended, and chosen on 2026-11-19, with its fade still to be settled (above). For a search result, Show the whole route and the other camera moves of #540: the flight stays, and nothing in the new place appears at once, on any network, while the map stays live. What it costs to build: about 40 lines, the callers that fly, a smoke group, and a copy of every frame for up to 3 s after a flight lands, whose cost on a phone is the first thing a build measures (frame times against today). If that costs too much, all fades in is the cheaper one: one picture, one fade.
 
 An idea for a next round, not built: the place drawn out of focus while it builds after the landing (a CSS blur on the map's canvas), coming into focus in one step once it's drawn, as a photo does while it loads. It shows something even where the overview has nothing, and hides the squares' edges; a full-screen blur costs a phone's GPU while it lasts.
 
