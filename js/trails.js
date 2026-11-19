@@ -231,7 +231,7 @@ export class TrailDetails {
     if (on === this.enabled) return;
     this.enabled = on;
     if (on) this.schedule(0);
-    else { this.covers = false; this.publish([]); }
+    else { this.covers = false; this.publish([]); this.app.onView?.(); }
   }
 
   schedule(ms = 300) {
@@ -254,7 +254,7 @@ export class TrailDetails {
     if (want.length <= MAX_VIEW) {
       const hostedOnly = z < OVERPASS_ZOOM;
       for (const [x, y] of want) {
-        if (!loadedTile(x, y)) trailTile(x, y, { hostedOnly }).catch((err) => { if (!err.held && !err.hostedOnly && this.app.onBusy) this.app.onBusy(); });
+        if (!loadedTile(x, y)) trailTile(x, y, { hostedOnly }).catch((err) => { if (!err.held && !hostedOnly && !err.hostedOnly && this.app.onBusy) this.app.onBusy(); });
       }
     }
     const list = want.filter(([x, y]) => loadedTile(x, y)).slice(0, 24);

@@ -954,6 +954,25 @@ TRACKS_FROM_13 = """(async () => {
   T.holdFetches();
   if (!err || !err.hostedOnly) errs.push(`a tile outside the hosted data below 14: ${err ? err.message : 'loaded'}`);
   if (asked() !== before) errs.push('Overpass was asked below zoom 14');
+  // ... nor said to be busy, when the trail details ask for it again and again over the Atlantic
+  {
+    let busy = 0;
+    const atlantic = { getZoom: () => 13.5, getBounds: () => ({ getWest: () => -48.15, getSouth: () => 43.6, getEast: () => -48.13, getNorth: () => 43.61 }), on: () => {} };
+    const d = new T.TrailDetails(atlantic, { onData: () => {}, onCoverage: () => {}, onBusy: () => busy++ });
+    d.enabled = true;
+    T.holdFetches(false);
+    for (let k = 0; k < 3; k++) { d.update(); await wait(1500); }
+    T.holdFetches();
+    if (busy) errs.push(`a tile outside the hosted data below 14 was called busy ${busy} times`);
+  }
+  // Trail details off (cycling on gravel): the hint is back at once
+  m.jumpTo({ center: [25.8095, 62.26066], zoom: 13.45 });
+  await wait(800); await idle();
+  if (!hint.hidden) errs.push('the hint shows at 13.45 with the trail data over the view');
+  polku.set({ activity: 'gravel' });
+  await wait(600);
+  if (hint.hidden) errs.push('no hint at 13.45 once trail details are off (gravel)');
+  polku.set({ activity: 'mtb' });
   return errs;
 })()"""
 
