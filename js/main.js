@@ -327,30 +327,27 @@ map.on('render', () => {
   const f = fade, c = map.getCanvas();
   if (map.isMoving()) { if (f.on || f.over) dropFade(); return; }
   if (!f.on) return;
-  let pic = null, before = null;
   if (f.came && f.copy && f.copy.width === c.width && f.copy.height === c.height) {
-    // the frame before is the picture, with the part before this one as far as it has faded in
     f.came = false;
-    pic = f.copy;
-    before = cells(pic);
-    const o = f.over, g = pic.getContext('2d');
-    if (o) { g.globalAlpha = +getComputedStyle(o).opacity; g.drawImage(o, 0, 0); g.globalAlpha = 1; o.getAnimations().forEach((x) => x.cancel()); o.remove(); }
-    f.copy = o || f.spare || document.createElement('canvas');
-    f.spare = null;
-    f.over = pic;
-    pic.className = 'map-fade';
-    c.after(pic);
+    const a = cells(f.copy), b = cells(c);
+    let n = 0;
+    for (let i = 0; i < a.length; i += 4) if (Math.abs(a[i] - b[i]) + Math.abs(a[i + 1] - b[i + 1]) + Math.abs(a[i + 2] - b[i + 2]) > 24) n++;
+    if (n) {
+      // the frame before is the picture, with the part before this one as far as it has faded in
+      const pic = f.copy, o = f.over, g = pic.getContext('2d');
+      if (o) { g.globalAlpha = +getComputedStyle(o).opacity; g.drawImage(o, 0, 0); g.globalAlpha = 1; o.getAnimations().forEach((x) => x.cancel()); o.remove(); }
+      f.copy = o || f.spare || document.createElement('canvas');
+      f.spare = null;
+      f.over = pic;
+      pic.className = 'map-fade';
+      c.after(pic);
+      pic.animate([{ opacity: 1 }, { opacity: 0 }], { duration: Math.round(200 + 200 * Math.min(1, n / (48 * 30) / 0.25)), easing: 'linear', fill: 'forwards' })
+        .finished.then(() => { if (f.over === pic) { pic.remove(); f.over = null; f.spare = pic; restFade(); } }, () => {});
+    }
   }
   f.copy ||= document.createElement('canvas');
   if (f.copy.width !== c.width || f.copy.height !== c.height) Object.assign(f.copy, { width: c.width, height: c.height });
   f.copy.getContext('2d').drawImage(c, 0, 0);
-  if (pic) { // (read from the copies: a reading of the map's own canvas takes several times longer)
-    const now = cells(f.copy);
-    let n = 0;
-    for (let i = 0; i < now.length; i += 4) if (Math.abs(before[i] - now[i]) + Math.abs(before[i + 1] - now[i + 1]) + Math.abs(before[i + 2] - now[i + 2]) > 24) n++;
-    pic.animate([{ opacity: 1 }, { opacity: 0 }], { duration: Math.round(200 + 200 * Math.min(1, n / (48 * 30) / 0.25)), easing: 'linear', fill: 'forwards' })
-      .finished.then(() => { if (f.over === pic) { pic.remove(); f.over = null; f.spare = pic; restFade(); } }, () => {});
-  }
   if ((map.loaded() && !together.held && !together.loaders.some((l) => l.busy)) || performance.now() > f.until) { f.on = false; restFade(); }
 });
 
