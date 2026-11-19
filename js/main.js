@@ -1151,7 +1151,10 @@ const KEYS = {
     h('h3', {}, 'Ways'),
     keyItem(keyLine('border-top:2px dashed #1f1f1f'), 'Path / trail'),
     keyItem(keyLine('border-top:2px dashed #6b4f2a;border-image:repeating-linear-gradient(90deg,#6b4f2a 0 12px,transparent 12px 15px) 1'), 'Forest road / track'),
-    keyItem(keyLine('background:#5b7fa8;height:2px'), 'Cycleway (paved)'),
+    ...[[12, 3, 'paved'], [2, 1, 'unpaved'], [5, 3, 'surface unknown']].map(([dash, gap, surface]) =>
+      keyItem(keyLine(`height:2px;background:repeating-linear-gradient(90deg,#426f99 0 ${dash}px,transparent ${dash}px ${dash + gap}px)`), `Cycling path (${surface})`)),
+    keyItem(keyLine('border-top:2px dashed #1f1f1f'), 'Footpath / pedestrian street (cycling permission not implied)'),
+    h('p', { class: 'note' }, 'Blue dashes show cycleways and footpaths or pedestrian streets explicitly tagged for bicycles. MTB-graded footpaths keep their difficulty colours. Signed cycling routes are a separate overlay.'),
     keyItem(keyLine('border-top:3px dotted #dc2626'), 'No bikes (beside a path)'),
     keyItem(keyLine('border-top:3px dotted #7c3aed'), 'Marked private or no access for your sport (beside the way): routes keep off it'),
     state.activity === 'gravel' || state.activity === 'road' ? keyItem(keyLine('background:#fde7c1;height:6px;box-shadow:0 0 0 2px #c4842d'), 'Unpaved road') : null,

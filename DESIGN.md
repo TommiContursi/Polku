@@ -192,6 +192,8 @@ A quiet, cool green-grey interface with one forest-green accent, so that the map
 
 The Trail map keeps its pale terrain fills, with stronger road edges and flat building outlines so streets, trails and buildings can be read together. Minor and service roads widen modestly at intermediate zooms; cycling sports retain the warm unpaved-road emphasis. Other basemaps and 3D building colours keep their own appearance.
 
+Cycling paths use blue surface dashes: long for known paved, short for known unpaved and intermediate for unknown. Cycleways and explicitly bike-allowed footways/pedestrian streets use that style; MTB-graded footways keep their difficulty presentation. Other pedestrian ways use the footpath style, without implying a cycling prohibition. Signed cycling routes remain separate overlays.
+
 Downhill MTB difficulty has turquoise S0− (`--mtb-s0-minus`) for very easy paths and neon-green S0 (`--mtb-s0`); S1–S6 retain the indexed scale's colors. The map, cards, keys and route/profile use the same class and words. Uphill, hiking, speed and smoothness keep the original indexed palette, including its darker green S0.
 
 ### Primary

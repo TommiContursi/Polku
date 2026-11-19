@@ -95,7 +95,7 @@ const isPathClass = ['==', ['get', 'class'], 'path'];
 // yours, or full; in winter with the winter ways on, faint (difficulty matters little under snow, as on Trailmap's winter map)
 const trailColorOpacity = (s, which) => (s.overlayOpacity && s.overlayOpacity[`trail:${which}`] != null ? s.overlayOpacity[`trail:${which}`] : 1) * (s.winterOn && s.overlays.winterWays ? 0.3 : 1);
 const k0 = (hc) => (hc ? 1.35 : 1);
-const TRAIL_SUB = ['path', 'bridleway', 'steps', 'footway'];
+const TRAIL_SUB = ['path', 'bridleway', 'steps', 'footway', 'pedestrian'];
 
 export function buildStyle(s, ctx) {
   const P = PALETTES[s.base] || PALETTES.trail;
@@ -785,6 +785,10 @@ function addRoads(s, P, hc, layers, ctx) {
   const gravel = act === 'gravel' || act === 'road';
   const roadBike = act === 'road';
   const unpaved = ['==', ['get', 'surface'], 'unpaved'];
+  // MTB-graded footways keep their trail halo, even with explicit bicycle permission.
+  const cyclingPath = ['any', ['==', ['get', 'subclass'], 'cycleway'], ['all',
+    ['in', ['get', 'subclass'], ['literal', ['footway', 'pedestrian']]],
+    ['in', ['get', 'bicycle'], ['literal', ['yes', 'designated']]], ['!', ['has', 'mtb_scale']]]];
 
   for (const brunnel of ['tunnel', 'ground', 'bridge']) {
     const bf = brunnel === 'ground'
@@ -857,11 +861,11 @@ function addRoads(s, P, hc, layers, ctx) {
     // With trail details on, the trails inside the loaded detail tiles are
     // drawn from OSM instead (below), so they're hidden from the tiles there.
     const trailSet = ['any', ['in', ['coalesce', ['get', 'subclass'], 'path'], ['literal', ['path', 'bridleway', 'steps']]], ['all', ['==', ['get', 'subclass'], 'footway'], ['has', 'mtb_scale']]];
-    const trailFilter = ['all', isPathClass, ['in', ['coalesce', ['get', 'subclass'], 'path'], ['literal', TRAIL_SUB]], bf,
+    const trailFilter = ['all', isPathClass, ['in', ['coalesce', ['get', 'subclass'], 'path'], ['literal', TRAIL_SUB]], ['!', cyclingPath], bf,
       ...(covered ? [['!', ['all', trailSet, ['within', ctx.trailCoverage]]]] : [])];
     const noBike = ['==', ['get', 'bicycle'], 'no'];
     const noFoot = ['==', ['get', 'foot'], 'no'];
-    const sidewalkish = ['all', ['==', ['get', 'subclass'], 'footway'], ['!', ['has', 'mtb_scale']]];
+    const sidewalkish = ['all', ['in', ['get', 'subclass'], ['literal', ['footway', 'pedestrian']]], ['!', ['has', 'mtb_scale']]];
     const haloOf = (idx) => (diffOn ? mtbColor(idx, plainHalo) : footAct ? (darkBase ? 'rgba(255,170,110,0.32)' : 'rgba(255,214,170,0.95)') : plainHalo);
     const haloOpacity0 = [
       'case',
@@ -931,12 +935,13 @@ function addRoads(s, P, hc, layers, ctx) {
         },
       });
     }
-    // Cycleways (kevyen liikenteen väylä): thin solid line.
+    // Cycling infrastructure: surface patterns use only the tiles' known coarse class.
     add({
       id: `cycleway-${brunnel}`, type: 'line', source: 'ofm', 'source-layer': 'transportation', minzoom: 12,
-      filter: ['all', isPathClass, ['in', ['get', 'subclass'], ['literal', ['cycleway', 'pedestrian']]], bf],
+      filter: ['all', isPathClass, cyclingPath, bf],
       paint: {
         'line-color': aerial ? '#bfe0ff' : trail ? '#426f99' : P.cycleway,
+        'line-dasharray': ['match', ['get', 'surface'], 'paved', ['literal', [6, 1.5]], 'unpaved', ['literal', [1, 0.5]], ['literal', [2.5, 1.5]]],
         // road cycling: cycleways are where you ride, so they stand out
         'line-width': zi(12, 0.6, 15, 1.6 * k * (roadBike ? 1.5 : 1), 18, 3.5 * k * (roadBike ? 1.4 : 1)),
         'line-opacity': (trail ? 0.95 : 0.85) * roadsDim,

@@ -92,6 +92,8 @@ On a desktop, **⌄** in the planner's header folds it down to its line at the f
 
 ## Read the map
 
+**Cycling paths** have blue dashes: long for a known paved surface, short for unpaved and intermediate when the surface is unknown. This includes cycleways and footpaths or pedestrian streets explicitly tagged for bicycles. MTB-graded footpaths keep their difficulty colours. Other pedestrian ways use the footpath style, without saying that cycling is prohibited. The **Map key** under **Layers → More → Trails & difficulty** shows the patterns; signed cycling routes are separate overlays.
+
 **MTB difficulty** shows S0− (very easy paths) in turquoise and S0 (easy paths) in bright green, followed by S1–S6. The map key, trail cards and route/profile breakdowns use the same grades. Uphill difficulty keeps its own colors. A white halo means no mapped MTB grade, not S0−.
 
 With editing off, a pointing-hand cursor shows roads, paths, routes and other map features you can click. Empty map space keeps the grab cursor. Rest the pointer briefly for a hint; fuller map details can follow after it appears.
