@@ -4,6 +4,10 @@ What's new in [Polku](https://polku.si), from the latest updates back to the fir
 
 ## 2026-11-19
 
+### A coarse map of Finland, kept on your device ([#1091](https://github.com/TommiContursi/Polku/issues/1091))
+
+- Polku keeps a coarse map of the whole of Finland on your device, about 1 MB, saved once. When you zoom out or jump to a new place, its lakes, sea and main roads are there at once, offline too in places you never saved, until the detail comes.
+
 ### Layers and Settings stay where you scrolled ([#536](https://github.com/TommiContursi/Polku/issues/536))
 
 - After you turn something on or off in **Layers** or **Settings**, the panel stays where you scrolled it, also when you scroll on straight away. Before, on a slow device, the panel could jump back to where it was a moment earlier.
