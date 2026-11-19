@@ -9780,6 +9780,8 @@ def start_fails(chrome):
         r = pg.js("document.querySelector('#start-failed button').getBoundingClientRect().toJSON()")
         pg.errors()  # (the failed start's own errors)
         x, y = r['x'] + r['width'] / 2, r['y'] + r['height'] / 2
+        # (the failed loads' own load events: Reload looks over the saved copies first, so it loads again a moment later)
+        chrome.events = [e for e in chrome.events if not (e.get('sessionId') == pg.s and e.get('method') == 'Page.loadEventFired')]
         if pg.phone:
             pg.tap(x, y)
         else:
@@ -9882,7 +9884,7 @@ def cdn_tampered(chrome):
     """#482: MapLibre from unpkg answered with other bytes than the version Polku was tested with (a line added, through
     the Fetch domain): the browser refuses it (its integrity), and Polku says it didn't finish loading (#1088). Through
     the service worker too, which keeps unpkg's files as they first came (the review of #1109): the refused copy goes
-    before trying again, so once unpkg answers right, Reload opens Polku."""
+    before trying again, so once unpkg answers right, Polku opened again starts."""
     fails = []
     pattern = {'urlPattern': '*unpkg.com/maplibre-gl@*/dist/maplibre-gl.js', 'requestStage': 'Response'}
     message = "[(() => { const b = document.querySelector('#start-failed'); return b && b.checkVisibility() ? b.textContent : '' })(), !!window.__tampered, !!window.polku]"
@@ -9968,18 +9970,21 @@ def cdn_tampered(chrome):
     elif 'didn’t finish loading' not in said:
         fails.append(f'{name}: no message after 40 s ({changed} answers changed)')
     else:
-        # unpkg answers right again: Reload opens Polku
+        # unpkg answers right again: Polku opened again (a fresh tab) opens. (Reload in the same tab may take the
+        # refused copy from Chrome's memory, which no page can clear.)
         pg.errors()  # (the refused file's own errors)
-        r = pg.js("document.querySelector('#start-failed button').getBoundingClientRect().toJSON()")
-        pg.tap(r['x'] + r['width'] / 2, r['y'] + r['height'] / 2)
+        pg.close()
+        pg = chrome.page(390, 844, True)
+        chrome.send('Network.setBypassServiceWorker', {'bypass': False}, pg.s)
+        chrome.send('Page.navigate', {'url': BASE + '#13.6/61.5135/23.8170'}, pg.s)
         said, ran, opened, _ = watch(pg, None, lambda said, ran, opened: opened)
         if not opened:
-            fails.append(f'{name}: Reload didn’t open Polku once unpkg answered right ({"the message again" if said else "no message"})')
+            fails.append(f'{name}: Polku opened again didn’t start once unpkg answered right ({"the message" if said else "no message"})')
         fails.extend(f'{name}: console: {e[:160]}' for e in pg.errors())
     pg.js("(async () => { for (const r of await navigator.serviceWorker.getRegistrations()) await r.unregister(); return true })()")
     chrome.send('Target.detachFromTarget', {'sessionId': ws})
     pg.close()
-    print(f"{'ok  ' if not fails else 'FAIL'} MapLibre from unpkg with other bytes: refused, and Polku says it didn't finish loading; once unpkg answers right, Reload opens it, through the worker too (#482)" + ''.join(f'\n     - {f}' for f in fails), flush=True)
+    print(f"{'ok  ' if not fails else 'FAIL'} MapLibre from unpkg with other bytes: refused, and Polku says it didn't finish loading; once unpkg answers right, it opens again, through the worker too (#482)" + ''.join(f'\n     - {f}' for f in fails), flush=True)
     return not fails
 
 
