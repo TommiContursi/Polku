@@ -4,6 +4,10 @@ What's new in [Polku](https://polku.si), from the latest updates back to the fir
 
 ## 2026-11-19
 
+### The hills lit by the sun ([#1119](https://github.com/TommiContursi/Polku/issues/1119))
+
+- On a new device the hillshade is lit by **The sun** at the timeline's hour, so the hills stand out more than in the fixed light. The shadows that hills, trees and buildings cast are off at first; turn them on under **Hillshade** in **Layers**. While the sun is down the hills have the fixed light, and if you've already set the map up, it keeps the light you have.
+
 ### Polku's own tooltips on the map's buttons and the top bar ([#304](https://github.com/TommiContursi/Polku/issues/304))
 
 - Pointing at a button in the map's column (**Plan**, **Layers**, **Weather**, **3D**, the compass, location and zoom) or in the top bar (**Plan**, **Settings**) shows Polku's own tooltip, as on the planner's toolbar: its name, its key where it has one, and what it does. It also shows when the button gets the keyboard's focus, and **Esc** hides it. The map's column has its tooltips to the left, so none covers the next button.

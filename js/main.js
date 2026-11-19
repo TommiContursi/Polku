@@ -57,9 +57,9 @@ const DEFAULTS = {
   fewerOffered: false, // Polku has offered Fewer effects on this device, once, as frames were slow
   flatOffered: false, // Polku has offered flat hills on this device, once, as frames were slow in 3D
   hillshade: true,
-  hillLight: 'fixed', // the hillshade's light: 'fixed' (the map's own) or 'sun' (at the map's hour, #910)
-  hillShadows: true, // with the sun's light, the shadows the hills cast
-  objectShadows: true, // with the sun's light, the shadows trees and buildings cast (#919)
+  hillLight: 'sun', // the hillshade's light: 'fixed' (the map's own) or 'sun' (at the map's hour, #910, the default since #1119)
+  hillShadows: false, // with the sun's light, the shadows the hills cast
+  objectShadows: false, // with the sun's light, the shadows trees and buildings cast (#919)
   contours: true,
   terrain3d: false, // the 3D button: tilted, with the hills raised while raiseHills is on
   raiseHills: true, // off: 3D only tilts the map, flat, as tilting it by hand does

@@ -6334,8 +6334,9 @@ SUNLIGHT_APP = """(async (step) => {
     shadows: !!m.getLayer('sun-shadow'), objects: !!m.getLayer('obj-shadow'), light: polku.state.hillLight });
   const out = [], expect = (where, want) => { const got = read(); if (Object.keys(want).some((k) => JSON.stringify(got[k]) !== JSON.stringify(want[k]))) out.push(`${where}: ${JSON.stringify(got)}, not ${JSON.stringify(want)}`); };
   if (step === 'before') {
-    expect('the fixed light at first', { method: 'multidirectional', shadows: false, light: 'fixed' });
-    polku.set({ hillLight: 'sun' }); w.setHour(up); await wait(1500);
+    w.setHour(up); await wait(1500);
+    expect('the sun at first, with no shadows (#1119)', { method: 'combined', shadows: false, objects: false, light: 'sun' });
+    polku.set({ hillShadows: true, objectShadows: true }); await wait(1500);
     expect(`the sun, +${up} h`, { method: 'combined', dir: Math.round(at(up).az), shadows: true, objects: true });
     // (once the hour before's are drawn, #945)
     const tiles = () => m.getSource('sunshadow') && m.getSource('sunshadow').tiles[0], want = `t=${Math.round(timeAtHour(up) / 600) * 600}`;
@@ -6351,6 +6352,7 @@ SUNLIGHT_APP = """(async (step) => {
     w.setHour(up); await wait(1500);
   } else {
     expect('after a reload, the sun kept', { light: 'sun' });
+    if (!polku.state.hillShadows || !polku.state.objectShadows) out.push('after a reload, the shadows switched off');
     polku.set({ hillLight: 'fixed' }); await wait(1000);
     expect('Fixed light', { method: 'multidirectional', shadows: false, light: 'fixed' });
   }
@@ -11479,8 +11481,9 @@ def pad3d(chrome):
             got = pg.js(PAD3D)
             if got['val'] != '1.6×' or got['ex'] != 1.6 or got['terrain'] != 1.6:
                 fails.append(f"→ on 3D height: it says {got['val']}, the setting {got['ex']}, the map's terrain {got['terrain']}, not 1.6")
-            pg.js("[...document.querySelectorAll('.menu-pop .seg button')].find((b) => b.textContent === 'The sun').click(), true")
-            time.sleep(0.6)
+            for light in ('Fixed light', 'The sun'):  # (the sun's on at first, #1119)
+                pg.js(f"[...document.querySelectorAll('.menu-pop .seg button')].find((b) => b.textContent === '{light}').click(), true")
+                time.sleep(0.6)
             got = pg.js(PAD3D)
             if not got['open'] or 'Hills’ shadows' not in got['text'] or 'buildings’ shadows' not in got['text'] or pg.js("polku.state.hillLight") != 'sun':
                 fails.append(f"The sun in the menu: {got['text'] or 'the menu closed'}")
@@ -11622,7 +11625,7 @@ def buildings_3d(chrome):
     print(f"{'ok  ' if not fails else 'FAIL'} the buildings in 3D: standing at their heights, under the route, none flat; their switch" + ''.join(f'\n     - {f}' for f in fails), flush=True)
     return not fails
 
-# Hills in 3D (#642): while 3D is on the hillshade has one light from the north-west, fixed to the map; off, the flat
+# Hills in 3D (#642), with the fixed light: while 3D is on the hillshade has one light from the north-west, fixed to the map; off, the flat
 # map's light from four directions comes back. Both kept after a reload. 3D height starts at 1.5.
 HILLS_3D = """(() => { const m = polku.map, p = (k) => m.getPaintProperty('hillshade', k);
   return { on: polku.state.terrain3d, ex: m.getTerrain() ? m.getTerrain().exaggeration : null, method: p('hillshade-method'), dir: p('hillshade-illumination-direction'), anchor: p('hillshade-illumination-anchor') }; })()"""
@@ -11633,7 +11636,7 @@ def hills_3d(chrome):
     pg = chrome.page(1440, 900, False)
     try:
         pg.c.send('Page.addScriptToEvaluateOnNewDocument', {'source': EMPTY_DEPTHS}, pg.s)
-        pg.open_app({'activity': 'mtb'}, {'polku:winter': '"off"', 'polku:seen3dHint2': 'true'}, '#13/61.8790/25.0650')
+        pg.open_app({'activity': 'mtb', 'hillLight': 'fixed'}, {'polku:winter': '"off"', 'polku:seen3dHint2': 'true'}, '#13/61.8790/25.0650')
 
         def expect(where, on):
             got = pg.js(HILLS_3D)
