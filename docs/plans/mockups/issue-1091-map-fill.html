@@ -1,0 +1,179 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light">
+<title>Map fill-in</title>
+<meta name="description" content="Mock-up for #1091: a real map that you move, as Polku fills it in today and with a coarse map ready underneath.">
+<!--
+  #1091, 2026-11-18. A real MapLibre 5.24 map on OpenFreeMap's tiles, drawn in a short copy of the trail map's colours
+  (js/style.js's PALETTES.trail): water, land cover, roads, paths, buildings and place names, no overlays. Not Polku:
+  no planner, no hillshade or contours, no trail details.
+  "Slow network" holds every tile the map asks for for a second, as a phone on a poor connection; a tile that was
+  loaded ahead comes at once, like one from the browser's cache.
+  ?way=now|coarse|ahead  &net=fast|slow  &f=390|desk
+-->
+<link rel="stylesheet" href="https://unpkg.com/maplibre-gl@5.24.0/dist/maplibre-gl.css" crossorigin="anonymous">
+<script src="https://unpkg.com/maplibre-gl@5.24.0/dist/maplibre-gl.js" crossorigin="anonymous"></script>
+<style>
+:root { --page-bg: #dfe6e0; --page-fg: #1c2420; --switch-bg: #d4d8d5; --switch-on: #fff; }
+* { box-sizing: border-box; }
+body { margin: 0; padding: 20px 16px 60px; font: 14px/1.45 system-ui, -apple-system, "Segoe UI", sans-serif; color: var(--page-fg); background: var(--page-bg); }
+.cv { max-width: 1100px; margin: 0 auto; }
+h1 { margin: 0 0 4px; font-size: 22px; }
+.bar { display: flex; flex-wrap: wrap; gap: 4px 10px; align-items: center; margin: 6px 0; }
+.bar > span { min-width: 60px; font-size: 12.5px; font-weight: 700; opacity: .8; }
+.sw { display: inline-flex; flex-wrap: wrap; gap: 2px; padding: 3px; border-radius: 22px; background: var(--switch-bg); }
+.sw button, .go { min-height: 28px; padding: 3px 11px; border: 0; border-radius: 18px; background: none; color: inherit; font: inherit; font-size: 13px; cursor: pointer; }
+.sw button[aria-pressed="true"] { background: var(--switch-on); font-weight: 650; box-shadow: 0 1px 2px rgba(0,0,0,.12); }
+.go { background: var(--switch-on); box-shadow: 0 1px 2px rgba(0,0,0,.12); font-weight: 650; }
+.frame { position: relative; overflow: hidden; margin-top: 12px; border-radius: 26px; box-shadow: 0 0 0 1px rgba(0,0,0,.18), 0 18px 40px rgba(0,0,0,.18); background: #f5f3ee; }
+.frame.f390 { width: min(390px, 100%); height: 640px; }
+.frame.fdesk { width: 100%; height: 620px; border-radius: 10px; }
+#map { position: absolute; inset: 0; }
+.count { margin: 8px 0 0; font-size: 13px; font-variant-numeric: tabular-nums; }
+.what { max-width: 760px; margin: 6px 0 0; }
+.notes { margin-top: 24px; max-width: 760px; }
+.notes li { margin: 3px 0; }
+</style>
+</head>
+<body>
+<main class="cv">
+  <h1>Map fill-in (#1091)</h1>
+  <div class="bar"><span>Way</span><div class="sw" data-k="way">
+    <button data-v="now">As now</button><button data-v="coarse">A: Coarse map underneath</button><button data-v="ahead">B: A, and the area around loaded ahead</button>
+  </div></div>
+  <div class="bar"><span>Network</span><div class="sw" data-k="net">
+    <button data-v="fast">As it is</button><button data-v="slow">Slow: a second a tile</button>
+  </div></div>
+  <div class="bar"><span>Frame</span><div class="sw" data-k="f">
+    <button data-v="390">Phone 390</button><button data-v="desk">Desktop</button>
+  </div>
+  <button class="go" id="jump" type="button">Go somewhere new</button></div>
+  <p class="what" id="what"></p>
+  <div class="frame" id="frame"><div id="map"></div></div>
+  <p class="count" id="count" aria-live="polite"></p>
+  <ul class="notes">
+    <li><b>Try:</b> Slow, As now, then drag or flick the map a screen or two: the new part is plain paper until its tiles come, and they come square by square. Go somewhere new and do the same with A.</li>
+    <li><b>A</b> keeps the map four zoom levels coarser under the view: 1–4 tiles, each one sixteen times as wide, so the same few cover a whole town and the area around it. MapLibre already draws a coarser tile it has in the place of one that hasn't come; today it seldom has one. With A it does: lakes, sea, forest and the main roads are there at once, and the paths, buildings and names sharpen in. The first time in a new region the coarse tiles come with the rest; after that they're there.</li>
+    <li><b>B</b> also loads the tiles at the map's own zoom half a screen beyond each edge, so a short move finds them ready. It costs two to three times the tiles, three quarters of them never shown.</li>
+    <li>Nothing fades or moves on its own: the map is moved many times a minute, so it gets no motion (DESIGN.md, "Motion").</li>
+    <li>Left out: Polku's controls, overlays, hillshade, contours and trail details. The counts are this page's tiles only.</li>
+  </ul>
+</main>
+<script>
+const P = { bg: '#f5f3ee', wood: '#dbeacd', grass: '#e8f1d9', farmland: '#f7f0cf', wetland: '#d9ebe3', residential: '#ece8e2', water: '#a8d1ef', waterLine: '#6fa9d6', waterText: '#24618f',
+  building: '#d9d1c8', motorway: '#f2a35e', trunk: '#f6c46b', primary: '#fbd77b', secondary: '#fde7a2', road: '#ffffff', roadCase: '#b5ad9f', track: '#6b4f2a', path: '#1f1f1f', text: '#2c2721' };
+const PLACES = [[25.73, 62.24], [23.76, 61.50], [27.68, 62.89], [29.76, 62.60], [21.60, 63.09], [28.19, 61.06], [25.47, 65.01], [24.94, 60.17], [22.27, 60.45], [26.70, 60.47], [24.73, 61.00], [27.27, 61.69]];
+const q = new URLSearchParams(location.search);
+const S = { way: q.get('way') || 'now', net: q.get('net') || 'slow', f: q.get('f') || (innerWidth < 700 ? '390' : 'desk') };
+const WHAT = {
+  now: 'As now: MapLibre asks only for the tiles in view. Where one hasn\'t come, you see the paper colour, or a coarser tile if one happens to be loaded.',
+  coarse: 'A: the map four zoom levels coarser is always kept under the view. A part that hasn\'t come yet shows that coarse map: water, forest and main roads at once, the detail sharpening in.',
+  ahead: 'B: as A, and the tiles at the map\'s own zoom half a screen beyond each edge are loaded too, so a short move finds them ready.',
+};
+
+// Every tile goes through here: on a slow network it waits a second, unless B loaded it ahead.
+const ready = new Map(), count = { detail: 0, coarse: 0, ahead: 0 };
+const wait = (ms, signal) => new Promise((ok, no) => { const t = setTimeout(ok, ms); signal?.addEventListener('abort', () => { clearTimeout(t); no(new DOMException('aborted', 'AbortError')); }); });
+const real = (url) => url.replace(/^delayed:\/\//, 'https://');
+const zoomOf = (url) => +url.match(/\/(\d+)\/\d+\/\d+\.pbf$/)[1];
+maplibregl.addProtocol('delayed', async (params, abort) => {
+  const url = real(params.url);
+  if (ready.has(url)) return { data: await ready.get(url) };
+  count[map && zoomOf(url) <= Math.min(14, Math.floor(map.getZoom())) - 3 ? 'coarse' : 'detail']++; show();
+  if (S.net === 'slow') await wait(1000, abort.signal);
+  const res = await fetch(url, { signal: abort.signal });
+  if (!res.ok) throw new Error(`${res.status} ${url}`);
+  return { data: await res.arrayBuffer() };
+});
+
+// A: every tile in view keeps the tile four zoom levels up among the map's own tiles. MapLibre draws a coarser tile it
+// has in the place of a missing one, masked to where the missing one would be; it just never has one in time today.
+// (MapLibre GL JS has no option for this: Mapbox's and MapLibre Native's prefetchZoomDelta. This reaches into its
+// TileManager, as a build would until there is one.)
+function keepCoarse(map) {
+  const tm = map.style.tileManagers.ofm, own = tm._updateRetainedTiles;
+  tm._updateRetainedTiles = function (ideal, zoom) {
+    const keep = own.call(this, ideal, zoom);
+    if (S.way !== 'now') for (const t of ideal) {
+      const up = t.scaledTo(Math.max(this._source.minzoom, t.overscaledZ - 4));
+      if (up.key !== t.key) { this._addTile(up); keep[up.key] = up; }
+    }
+    return keep;
+  };
+}
+
+// B: the tiles at the map's own zoom half a screen beyond each edge, fetched whenever the map stops.
+let template = null;
+const tileXY = (lon, lat, z) => { const n = 2 ** z, r = lat * Math.PI / 180; return [Math.floor((lon + 180) / 360 * n), Math.floor((1 - Math.log(Math.tan(r) + 1 / Math.cos(r)) / Math.PI) / 2 * n)]; };
+function loadAround() {
+  if (S.way !== 'ahead' || !template) return;
+  const b = map.getBounds(), w = b.getEast() - b.getWest(), h = b.getNorth() - b.getSouth(), z = Math.min(14, Math.floor(map.getZoom()));
+  const [x0, y0] = tileXY(b.getWest() - w / 2, b.getNorth() + h / 2, z), [x1, y1] = tileXY(b.getEast() + w / 2, b.getSouth() - h / 2, z);
+  for (let x = x0; x <= x1; x++) for (let y = y0; y <= y1; y++) {
+    const url = template.replace('{z}', z).replace('{x}', x).replace('{y}', y);
+    if (ready.has(url)) continue;
+    count.ahead++;
+    ready.set(url, (S.net === 'slow' ? wait(1000) : Promise.resolve()).then(() => fetch(url)).then((r) => r.arrayBuffer()));
+  }
+  show();
+}
+
+function show() {
+  document.getElementById('count').textContent = `Tiles asked for: ${count.detail} as the map needed them` +
+    (count.coarse ? ` · ${count.coarse} coarse` : '') + (count.ahead ? ` · ${count.ahead} around the view, ahead` : '');
+}
+
+const L = (id, type, layer, paint, extra = {}) => ({ id, type, source: 'ofm', 'source-layer': layer, paint, ...extra });
+const style = (tiles) => ({
+  version: 8,
+  glyphs: 'https://tiles.openfreemap.org/fonts/{fontstack}/{range}.pbf',
+  sources: { ofm: { type: 'vector', tiles: [tiles.replace(/^https:\/\//, 'delayed://')], maxzoom: 14, attribution: '© OpenFreeMap © OpenMapTiles © OpenStreetMap' } },
+  layers: [
+    { id: 'bg', type: 'background', paint: { 'background-color': P.bg } },
+    L('landuse', 'fill', 'landuse', { 'fill-color': P.residential }, { filter: ['in', ['get', 'class'], ['literal', ['residential', 'suburb', 'neighbourhood']]] }),
+    L('landcover', 'fill', 'landcover', { 'fill-color': ['match', ['get', 'class'], 'wood', P.wood, 'grass', P.grass, 'farmland', P.farmland, 'wetland', P.wetland, P.grass], 'fill-opacity': 0.9 }),
+    L('water', 'fill', 'water', { 'fill-color': P.water }),
+    L('waterway', 'line', 'waterway', { 'line-color': P.waterLine, 'line-width': ['interpolate', ['linear'], ['zoom'], 10, 0.6, 16, 2.5] }),
+    L('building', 'fill', 'building', { 'fill-color': P.building }, { minzoom: 13 }),
+    L('path', 'line', 'transportation', { 'line-color': P.path, 'line-width': 1, 'line-dasharray': [2, 1.5] }, { filter: ['==', ['get', 'class'], 'path'], minzoom: 12 }),
+    L('track', 'line', 'transportation', { 'line-color': P.track, 'line-width': 1.2, 'line-dasharray': [3, 1.5] }, { filter: ['==', ['get', 'class'], 'track'], minzoom: 11 }),
+    L('road-case', 'line', 'transportation', { 'line-color': P.roadCase, 'line-width': ['interpolate', ['linear'], ['zoom'], 10, 1.2, 16, 6.5] }, { filter: ['in', ['get', 'class'], ['literal', ['minor', 'service', 'tertiary', 'secondary', 'primary', 'trunk', 'motorway']]], layout: { 'line-cap': 'round', 'line-join': 'round' } }),
+    L('road', 'line', 'transportation', { 'line-color': ['match', ['get', 'class'], 'motorway', P.motorway, 'trunk', P.trunk, 'primary', P.primary, 'secondary', P.secondary, P.road], 'line-width': ['interpolate', ['linear'], ['zoom'], 10, 0.6, 16, 5] }, { filter: ['in', ['get', 'class'], ['literal', ['minor', 'service', 'tertiary', 'secondary', 'primary', 'trunk', 'motorway']]], layout: { 'line-cap': 'round', 'line-join': 'round' } }),
+    L('water-name', 'symbol', 'water_name', { 'text-color': P.waterText, 'text-halo-color': '#fff', 'text-halo-width': 1 }, { layout: { 'text-field': ['get', 'name'], 'text-font': ['Noto Sans Italic'], 'text-size': 12 } }),
+    L('place', 'symbol', 'place', { 'text-color': P.text, 'text-halo-color': '#fff', 'text-halo-width': 1.5 }, { layout: { 'text-field': ['get', 'name'], 'text-font': ['Noto Sans Regular'], 'text-size': ['match', ['get', 'class'], 'city', 16, 'town', 14, 12] } }),
+  ],
+});
+
+let map;
+function set(k, v) {
+  S[k] = v;
+  for (const b of document.querySelectorAll(`.sw[data-k="${k}"] button`)) b.setAttribute('aria-pressed', String(b.dataset.v === v));
+  const p = new URLSearchParams(location.search); p.set(k, v);
+  try { history.replaceState(null, '', '?' + p); } catch {} // (a preview from data: has no address to keep)
+  if (k === 'f') { document.getElementById('frame').className = `frame f${v}`; map?.resize(); }
+  if (k === 'way') { if (v === 'now') ready.clear(); document.getElementById('what').textContent = WHAT[v]; if (map) { map.jumpTo({ center: map.getCenter() }); loadAround(); } } // (a move of nothing: MapLibre chooses its tiles again, so A's coarse ones come now) // (as now: nothing loaded ahead stays ready)
+  show();
+}
+for (const sw of document.querySelectorAll('.sw')) for (const b of sw.querySelectorAll('button')) b.addEventListener('click', () => set(sw.dataset.k, b.dataset.v));
+for (const k of ['way', 'net', 'f']) set(k, S[k]);
+
+let place = 0;
+document.getElementById('jump').addEventListener('click', () => {
+  place = (place + 1) % PLACES.length;
+  map.jumpTo({ center: PLACES[place], zoom: 14 });
+});
+
+fetch('https://tiles.openfreemap.org/planet').then((r) => r.json()).then((j) => {
+  template = j.tiles[0];
+  map = new maplibregl.Map({ container: 'map', style: style(template), center: PLACES[0], zoom: 14, attributionControl: { compact: true } });
+  map.once('style.load', () => keepCoarse(map)); // (before the first tiles are chosen)
+  map.on('load', loadAround);
+  map.on('moveend', loadAround);
+  window.mock = { map, count, ready };
+});
+</script>
+</body>
+</html>
