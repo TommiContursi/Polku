@@ -268,7 +268,7 @@ export function buildStyle(s, ctx) {
       filter: ['!=', ['get', 'brunnel'], 'tunnel'],
       paint: {
         'line-color': P.waterLine,
-        'line-width': zi(8, ww(0.6, 0, 0), 11, ww(1.2, 0, 0), 13, ww(2.2, 0.8, 0.5), 14, ww(3, 1.5, 0.9), 16, ww(5.5, 4, 2.4), 18, ww(9, 8, 4.5)),
+        'line-width': zi(8, ww(0.6, 0, 0), 11, ww(1.2, 0, 0), 13, ww(2.2, 0.8, 0.4), 14, ww(3, 1.5, 0.7), 16, ww(5.5, 4, 1.6), 18, ww(9, 8, 3)),
         'line-dasharray': ['case', ['==', ['get', 'intermittent'], 1], ['literal', [4, 3]], ['literal', [1, 0]]],
       },
     });
