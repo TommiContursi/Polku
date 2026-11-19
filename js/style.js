@@ -796,7 +796,7 @@ function addRoads(s, P, hc, layers, ctx) {
     add({
       id, type: 'line', source, ...(source === 'trailWays' ? {} : { 'source-layer': 'transportation' }), minzoom: 13.3,
       filter: ['all', filter, ['!=', ['get', 'subclass'], 'footway'],
-        ['any', ['!=', ['get', 'access'], 'no'], ['==', ['get', 'foot'], 'yes']]],
+        ['any', ['!', ['in', ['get', 'access'], ['literal', ['no', 'private']]]], ['==', ['get', 'foot'], 'yes']]],
       paint: {
         'line-color': '#ff003c',
         'line-width': hc ? zi(12, 2, 14, 3, 16, 6, 18, 9) : zi(14, 2, 16, 3, 18, 6),

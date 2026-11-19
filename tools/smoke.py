@@ -855,6 +855,26 @@ def cycling_restrictions(chrome):
           if(JSON.stringify(m.getPaintProperty(id,'line-dasharray'))!==JSON.stringify(highContrast?[.4,.5]:[.2,.5]))errs.push(`${id}: mark spacing changed`);
         }
       }
+      // Exercise Overpass -> slim tile -> rendered features, not only synthetic filter properties.
+      const T=await import('/js/trails.js'), samples=[
+        {access:'no',foot:'no',bicycle:'no',red:false},
+        {access:'no',foot:'yes',bicycle:'no',red:true},
+        {foot:'yes',bicycle:'no',red:true},
+        {access:'private',foot:'no',bicycle:'no',red:false},
+        {access:'private',foot:'yes',bicycle:'no',red:true},
+        {access:'no',foot:'yes',red:false},
+      ];
+      T.holdFetches();
+      T.seedTile(4682,2273,{elements:samples.map(({red,...tags},i)=>({type:'way',id:900000+i,
+        tags:{highway:'path',...tags},geometry:[{lon:25.7652,lat:62.2289},{lon:25.7653,lat:62.229}]}))});
+      let converted;
+      const details=new T.TrailDetails(m,{onData:ways=>{converted=ways;},onCoverage:()=>{}});
+      details.publish([[4682,2273]]);
+      for(const [i,sample] of samples.entries()) {
+        const f=converted.features.find(f=>f.id===900000+i);
+        if(f?.properties.access!==sample.access)errs.push(`trail conversion lost access=${sample.access??'unknown'}`);
+        if(!f||m.style.getLayer('path-osm-ground-nobike')._featureFilter.filter({zoom:16},{type:2,properties:f.properties})!==sample.red)errs.push(`converted trail ${i}: cycling/general access marks disagree`);
+      }
       for(const activity of ['hike','run','trailrun','paddle']) {
         polku.set({activity});
         if(m.getStyle().layers.some(l=>l.id.endsWith('-nobike')))errs.push(`${activity}: cycling prohibition shown in another sport`);
