@@ -936,11 +936,20 @@ function addRoads(s, P, hc, layers, ctx) {
       });
     }
     // Cycling infrastructure: surface patterns use only the tiles' known coarse class.
+    if (trail) add({
+      id: `cycleway-${brunnel}-casing`, type: 'line', source: 'ofm', 'source-layer': 'transportation', minzoom: 12,
+      filter: ['all', isPathClass, cyclingPath, bf],
+      paint: {
+        'line-color': '#ffffff',
+        'line-width': zi(12, 2 * k, 14, 4 * k * (roadBike ? 1.5 : 1), 16, 7.5 * k * (roadBike ? 1.5 : 1), 18, 12 * k * (roadBike ? 1.4 : 1)),
+        'line-opacity': 0.95 * roadsDim,
+      },
+    });
     add({
       id: `cycleway-${brunnel}`, type: 'line', source: 'ofm', 'source-layer': 'transportation', minzoom: 12,
       filter: ['all', isPathClass, cyclingPath, bf],
       paint: {
-        'line-color': aerial ? '#bfe0ff' : trail ? '#426f99' : P.cycleway,
+        'line-color': aerial ? '#bfe0ff' : trail ? (hc ? '#001bc7' : '#3148d8') : P.cycleway,
         'line-dasharray': ['match', ['get', 'surface'], 'paved', ['literal', [6, 1.5]], 'unpaved', ['literal', [1, 0.5]], ['literal', [2.5, 1.5]]],
         // road cycling: cycleways are where you ride, so they stand out
         'line-width': zi(12, 1.4 * k, 14, 3 * k * (roadBike ? 1.5 : 1), 16, 5.5 * k * (roadBike ? 1.5 : 1), 18, 9 * k * (roadBike ? 1.4 : 1)),

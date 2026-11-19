@@ -768,6 +768,15 @@ def cycleway_style(chrome):
       const matches=(id,props)=>m.style.getLayer(id)._featureFilter.filter({zoom:16},{type:2,properties:props});
       for(const pass of ['ground','bridge','tunnel']) {
         const id=`cycleway-${pass}`, layer=m.style.getLayer(id);
+        const layers=m.getStyle().layers, casing=layers.find(l=>l.id===`${id}-casing`);
+        if(!casing)errs.push(`${id}: white casing missing`);
+        else {
+          if(JSON.stringify(casing.filter)!==JSON.stringify(layers.find(l=>l.id===id).filter))errs.push(`${id}: casing changes which ways are drawn`);
+          if(casing.paint['line-color']!=='#ffffff'||casing.paint['line-dasharray'])errs.push(`${id}: casing is not solid white`);
+          if(layers.indexOf(casing)>layers.findIndex(l=>l.id===id))errs.push(`${id}: casing covers the blue dashes`);
+          for(const z of zooms)if(width(`${id}-casing`,z)<width(id,z)+.5)errs.push(`${id}: zoom ${z} casing does not separate the stroke from terrain`);
+        }
+        if(m.getPaintProperty(id,'line-color')!=='#3148d8')errs.push(`${id}: normal cycling blue is not the stronger contrast color`);
         for(const [tags,cycling] of cases) {
           const props={class:'path',...tags,...(pass==='ground'?{}:{brunnel:pass})};
           if(matches(id,props)!==cycling)errs.push(`${id}: ${JSON.stringify(tags)} cycling=${!cycling}`);
@@ -783,17 +792,23 @@ def cycleway_style(chrome):
           if(JSON.stringify(dash)!==JSON.stringify(want))errs.push(`${id}: ${surface??'unknown'} dashes ${JSON.stringify(dash)}`);
         }
       }
-      // Existing basemap colors, high-contrast widths and Paddle dimming survive the new patterns.
-      for(const [base,color] of [['trail','#426f99'],['plain','#7d96b3'],['night','#7ea4cf'],['aerial','#bfe0ff']]) {
+      // Trail contrast improves; other basemap colors and sport dimming remain.
+      for(const [base,color] of [['trail','#001bc7'],['plain','#7d96b3'],['night','#7ea4cf'],['aerial','#bfe0ff']]) {
         polku.set({base,activity:'paddle',highContrast:true});
         await new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)));
         const l=m.getStyle().layers.find(l=>l.id==='cycleway-ground');
         if(l.paint['line-color']!==color)errs.push(`${base}: cycleway color ${l.paint['line-color']}`);
         if(Math.abs(l.paint['line-opacity']-(base==='trail'?.95:.85)*.55)>.00001)errs.push(`${base}: Paddle dimming changed`);
+        const casing=m.getStyle().layers.find(l=>l.id==='cycleway-ground-casing');
+        if(base==='trail') {
+          if(!casing||casing.paint['line-opacity']!==l.paint['line-opacity'])errs.push('Trail: casing loses Paddle dimming');
+          else for(const z of zooms)if(width(casing.id,z)<=width(l.id,z))errs.push(`Trail: zoom ${z} casing loses high-contrast separation`);
+        } else if(casing)errs.push(`${base}: Trail casing leaked into another basemap`);
         for(const [i,z] of zooms.entries())if(Math.abs(width('cycleway-ground',z)-normal[i]*1.35)>.000001)errs.push(`${base}: zoom ${z} high contrast does not scale the cycling width by 1.35`);
       }
-      polku.set({activity:'road',highContrast:false});
+      polku.set({base:'trail',activity:'road',highContrast:false});
       for(const [i,z] of zooms.entries())if(z>=14&&width('cycleway-ground',z)<normal[i]*1.4-.000001)errs.push(`zoom ${z}: road cycling loses its width emphasis`);
+      if(m.getLayer('cycleway-ground-casing'))for(const z of zooms)if(width('cycleway-ground-casing',z)<=width('cycleway-ground',z))errs.push(`zoom ${z}: Road cycling loses its casing`);
       const key=document.querySelector('#layers-body').textContent;
       for(const surface of ['paved','unpaved','surface unknown'])if(!key.includes(`Cycling path (${surface})`))errs.push(`map key omits ${surface}`);
       if(!key.includes('cycling permission not implied'))errs.push('map key implies pedestrian access');
