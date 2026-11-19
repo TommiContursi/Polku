@@ -259,9 +259,8 @@ export function buildStyle(s, ctx) {
   // ---- Water --------------------------------------------------------------
   if (!aerialBase && !topoBase) {
     const waterColor = isWater(act) ? (s.base === 'night' ? '#0d3b5e' : '#93c6ec') : P.water;
-    add({ id: 'water', type: 'fill', source: 'ofm', 'source-layer': 'water', filter: ['!=', ['get', 'class'], 'swimming_pool'], paint: { 'fill-color': waterColor, 'fill-antialias': true } });
-    add({ id: 'water-shore', type: 'line', source: 'ofm', 'source-layer': 'water', minzoom: 11, filter: ['!=', ['get', 'class'], 'swimming_pool'], paint: { 'line-color': P.waterLine, 'line-width': zi(11, 0.3, 15, act === 'paddle' ? 1.4 : 0.8), 'line-opacity': 0.8 } });
-    // a stream wider than a ditch or drain, so the two read apart (#1138); the tiles have them from zoom 13
+    // a stream wider than a ditch or drain, so the two read apart (#1138); the tiles have them from zoom 13.
+    // Under the water's fill, so a river's line doesn't show through a lake or strait it runs across.
     const ww = (river, stream, ditch) => ['match', ['get', 'class'], ['river', 'canal'], river, ['ditch', 'drain'], ditch, stream];
     add({
       id: 'waterway', type: 'line', source: 'ofm', 'source-layer': 'waterway', minzoom: 8,
@@ -272,6 +271,8 @@ export function buildStyle(s, ctx) {
         'line-dasharray': ['case', ['==', ['get', 'intermittent'], 1], ['literal', [4, 3]], ['literal', [1, 0]]],
       },
     });
+    add({ id: 'water', type: 'fill', source: 'ofm', 'source-layer': 'water', filter: ['!=', ['get', 'class'], 'swimming_pool'], paint: { 'fill-color': waterColor, 'fill-antialias': true } });
+    add({ id: 'water-shore', type: 'line', source: 'ofm', 'source-layer': 'water', minzoom: 11, filter: ['!=', ['get', 'class'], 'swimming_pool'], paint: { 'line-color': P.waterLine, 'line-width': zi(11, 0.3, 15, act === 'paddle' ? 1.4 : 0.8), 'line-opacity': 0.8 } });
   }
 
   // Depth & water overlays sit directly on the water.

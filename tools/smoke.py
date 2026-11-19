@@ -820,7 +820,8 @@ def cycleway_style(chrome):
     return not fails
 
 
-# #1138: streams read wider than ditches and drains; intermittent ones keep a dash; culverts stay hidden.
+# #1138: streams read wider than ditches and drains; intermittent ones keep a dash; culverts stay hidden;
+# the lines sit under the water's fill, so a river's line doesn't show across a lake.
 def waterway_style(chrome):
     pg = chrome.page(1440, 900, False)
     pg.open_app({'activity': 'mtb', 'base': 'trail'})
@@ -839,6 +840,8 @@ def waterway_style(chrome):
           if(JSON.stringify(paint('line-dasharray',16,{class:cls,intermittent:1}))!=='[4,3]')errs.push(`${at}: an intermittent ${cls} has no long dash`);
         }
         if(m.style.getLayer('waterway')._featureFilter.filter({zoom:16},{type:2,properties:{class:'stream',brunnel:'tunnel'}}))errs.push(`${at}: culverts are drawn`);
+        const ids=m.getStyle().layers.map(l=>l.id);
+        if(!(ids.indexOf('waterway')<ids.indexOf('water')))errs.push(`${at}: a river's line is drawn over the lake it crosses`);
       }
       return errs;
     })()""")
