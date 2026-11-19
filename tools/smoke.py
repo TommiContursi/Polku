@@ -5091,7 +5091,8 @@ def drawer(chrome):
 # the trail details along the route still come in (Heads-up was the same only with the layer
 # on, so a gravel ride missed the fallen trees); a heads-up row's ⋯ hides its kind (listed at
 # the end, to bring back) and says where to correct OpenStreetMap; the route menu stays inside
-# a short window; with the map's sport changed, the planner still speaks the route's sport.
+# a short window, with the quiet scrollbar like everything that scrolls (#1100); with the map's
+# sport changed, the planner still speaks the route's sport.
 SWEEP = """(async () => {
   const p = polku.planner, wait = (ms) => new Promise((r) => setTimeout(r, ms)), errs = [];
   const fx = await (await fetch(location.origin + '/tools/fixtures/route-tykkikallio-mtb.json')).json();
@@ -5141,6 +5142,11 @@ SWEEP = """(async () => {
     const r = m.getBoundingClientRect();
     if (r.top < 0 || r.bottom > innerHeight) errs.push(`route menu ${Math.round(r.top)}–${Math.round(r.bottom)} in a ${innerHeight} px window`);
     if (m.scrollHeight > m.clientHeight + 1 && getComputedStyle(m).overflowY !== 'auto') errs.push('the route menu is cut off without a scroll');
+    // every scrollbar is the quiet one, the menu's too (#1100): thin, and clear until it scrolls
+    for (const e of [...document.querySelectorAll('*')].filter((e) => e === m || /auto|scroll/.test(getComputedStyle(e).overflowY))) {
+      const s = getComputedStyle(e);
+      if (s.scrollbarWidth === 'auto' || (e === m && !s.scrollbarColor.startsWith('rgba(0, 0, 0, 0)'))) errs.push(`the browser’s own scrollbar on ${e.id ? `#${e.id}` : `.${[...e.classList].join('.')}`} (${s.scrollbarWidth}, ${s.scrollbarColor})`);
+    }
     document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
     await wait(100);
     if (document.querySelector('.menu-pop')) errs.push('Escape didn’t close the route menu');
@@ -23079,7 +23085,7 @@ GROUPS = [
     ('lit', [lit, lit_loading], 'lit ways: rendering, visible loading/partial/slow/failure states, retry, empty success, contrast and reload'),
     ('sports', [sport_switch], 'changing the sport with a route drawn (B of #233): the route keeps its sports and style (#71), the pill asks, The whole route and its Undo, land to water'),
     ('winterroute', [winter_route], 'winter on the route: snow in the time, winter Heads-up (a made-up forecast)'),
-    ('sweep', [sweep], 'the bug sweep: Heads-up without the trail layer, Hide and OSM links, the route menu, the route\'s sport'),
+    ('sweep', [sweep], 'the bug sweep: Heads-up without the trail layer, Hide and OSM links, the route menu and the quiet scrollbar (#1100), the route\'s sport'),
     ('marks', [marks], 'distance, arrival/elapsed times, default and saved settings, the departure link'),
     ('colours', [colours, wind_by_sport], 'every available route breakdown, choosing colours, folds and late data; the wind\'s colours by sport'),
     ('previews', [previews], 'bar/legend hover highlights, keyboard previews and cleanup'),

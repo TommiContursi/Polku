@@ -2,6 +2,12 @@
 
 What's new in [Polku](https://polku.si), from the latest updates back to the first release. These notes describe features available in the app, not work still in progress. For upcoming changes, see the [issues](https://github.com/TommiContursi/Polku/issues) and [roadmap](docs/ROADMAP.md).
 
+## 2026-11-19
+
+### One quiet scrollbar everywhere ([#1100](https://github.com/TommiContursi/Polku/issues/1100))
+
+- The menus, such as the route's **⋯** menu, the search results, a point's menu on the map and the list of sports now have the same thin scrollbar as the planner and the panels. It shows only while you scroll, or while a mouse is over it. Before, they had the browser's own wide scrollbar.
+
 ## 2026-11-18
 
 ### 3D without a blank map ([#636](https://github.com/TommiContursi/Polku/issues/636))
