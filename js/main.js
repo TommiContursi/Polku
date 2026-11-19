@@ -1379,8 +1379,9 @@ function renderLayersPanel() {
   if (menu3d) { const settle = settleControls(menu3d.el); menu3d.refill(items3d()); settle(); }
   if (!$('#settings-panel').hidden) renderSettingsPanel(); // (it has 3D's and the hillshade's controls too)
   const p = $('#layers-body');
-  const keepScroll = p.scrollTop; // re-rendering after a toggle must not jump to the top
-  requestAnimationFrame(() => { p.scrollTop = keepScroll; });
+  // re-rendering after a toggle must not jump to the top; put back at once, not a frame later, which would undo a scroll
+  // made since (#536)
+  const keepScroll = p.scrollTop;
   const settle = settleControls(p);
   p.innerHTML = '';
   const act = ACTIVITIES[state.activity];
@@ -1474,6 +1475,7 @@ function renderLayersPanel() {
     h('p', { class: 'note' }, 'Forecast by Open-Meteo. Radar, lightning and measured snow by FMI, and by RainViewer outside Finland. Scrub or play the next 48 hours on the timeline.')));
   refreshLitStatus();
   settle();
+  p.scrollTop = keepScroll; // (after settle(): a layout before it would start the switches' transitions from their new look)
 }
 
 // ------------------------------------------------------------------ quick layer drawer (#123)
@@ -1851,8 +1853,7 @@ const comingToggle = (label, note, on = false) => coming(toggleInfo(h('span', {}
 const comingRow = (ic, label, line, val = null) => coming(item({ icon: ic, label: h('span', {}, label, ' ', soon()), line, val, chev: val == null, k: label }));
 function renderSettingsPanel() {
   const p = $('#settings-body');
-  const keepScroll = p.scrollTop;
-  requestAnimationFrame(() => { p.scrollTop = keepScroll; });
+  const keepScroll = p.scrollTop; // (put back at once, as in Layers, #536)
   const settle = settleControls(p);
   p.innerHTML = '';
   const group = (id, title, ...kids) => layerGroup(`settings-${id}`, title, 0, ...kids);
@@ -1995,6 +1996,7 @@ function renderSettingsPanel() {
     h('p', { class: 'note' }, 'Read recent changes without leaving your route.'),
     h('div', { class: 'rows' }, comingRow('info', 'How to use Polku', ''), comingRow('info', 'Credits and licence', ''))));
   settle();
+  p.scrollTop = keepScroll;
 }
 
 // ------------------------------------------------------------------ panels & buttons
