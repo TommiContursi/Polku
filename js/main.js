@@ -300,8 +300,6 @@ const fade = { by: null, on: false, came: false, until: 0, copy: null, spare: nu
 addEventListener('keydown', (e) => { if (!['Shift', 'Control', 'Alt', 'Meta'].includes(e.key)) fade.by = 'keys'; }, true);
 for (const ev of ['pointerdown', 'wheel']) addEventListener(ev, () => { fade.by = 'pointer'; }, { capture: true, passive: true });
 const grid = Object.assign(document.createElement('canvas'), { width: 48, height: 60 }).getContext('2d');
-// a raster that fades in by itself (raster-fade-duration: the photo and terrain bases, the overlays) isn't faded twice
-const fadesItself = (id) => map.getLayersOrder().some((l) => { const s = map.getLayer(l); return s.source === id && s.type === 'raster' && map.getPaintProperty(l, 'raster-fade-duration') !== 0; });
 // (the two copies give their memory back once nothing fades)
 const restFade = () => { if (!fade.on && !fade.over) for (const k of [fade.copy, fade.spare]) if (k) k.width = k.height = 0; };
 function dropFade() {
@@ -318,8 +316,10 @@ map.on('moveend', (e) => {
 map.on('sourcedata', (e) => {
   if (!fade.on || !e.tile) return;
   const type = map.getSource(e.sourceId)?.type;
-  // of the GeoJSON sources only Polku's own layers' (TOGETHER): never a hover's, a pick's or the route's
-  if (type === 'geojson' ? TOGETHER.has(e.sourceId) : !(type === 'raster' && fadesItself(e.sourceId))) fade.came = true;
+  // of the GeoJSON sources only Polku's own layers' (TOGETHER): never a hover's, a pick's or the route's; and no raster
+  // that fades in by itself (raster-fade-duration: the photo and terrain bases, the overlays), so it fades once
+  if (type === 'geojson' ? TOGETHER.has(e.sourceId)
+    : !(type === 'raster' && map.getLayersOrder().some((l) => { const s = map.getLayer(l); return s.source === e.sourceId && s.type === 'raster' && map.getPaintProperty(l, 'raster-fade-duration') !== 0; }))) fade.came = true;
 });
 for (const ev of ['pointerdown', 'wheel', 'keydown']) map.getContainer().addEventListener(ev, dropFade, { capture: true, passive: true });
 map.on('render', () => {
