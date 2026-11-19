@@ -745,12 +745,11 @@ def cycleway_style(chrome):
     pg.open_app({'activity': 'mtb', 'base': 'trail', 'highContrast': False, 'trailDetails': False, 'trailColors': 'down'})
     fails = pg.js("""(async () => {
       const errs=[], m=polku.map, F=await import('/js/facts.js');
-      const width=(id,z)=>m.style.getLayer(id)._transitionablePaint._values['line-width'].value.expression.evaluate({zoom:z});
+      const width=(id,z,p={})=>m.style.getLayer(id)._transitionablePaint._values['line-width'].value.expression.evaluate({zoom:z},{type:2,properties:p});
       const zooms=[12,14,16,18], normal=zooms.map(z=>width('cycleway-ground',z));
-      for(const z of zooms.slice(1)) {
-        const cycle=width('cycleway-ground',z), trail=width('path-ground-halo',z);
-        if(cycle<trail*.7)errs.push(`zoom ${z}: cycling stroke ${cycle}px is too narrow beside ${trail}px trail halo`);
-      }
+      if(Math.abs(width('cycleway-ground',16,{surface:'paved'})-3.5213114754)>.00001||width('cycleway-ground',18,{surface:'paved'})!==6)errs.push('paved cycleway is out of scale');
+      if(Math.abs(width('cycleway-ground',16,{surface:'unpaved'})-(2.4+3.6*(1.2**2-1)/(1.2**3-1)))>.00001)errs.push('unpaved width curve changed');
+      if(width('cycleway-ground',16,{surface:'paved',width:1,wf:.62})!==width('cycleway-ground',16,{surface:'paved',width:5,wf:1.6}))errs.push('cycling width incorrectly follows physical width tags');
       const cases=[
         [{subclass:'cycleway'},true],
         [{subclass:'footway',bicycle:'yes'},true],
@@ -769,12 +768,13 @@ def cycleway_style(chrome):
       for(const pass of ['ground','bridge','tunnel']) {
         const id=`cycleway-${pass}`, layer=m.style.getLayer(id);
         const layers=m.getStyle().layers, casing=layers.find(l=>l.id===`${id}-casing`);
-        if(!casing)errs.push(`${id}: white casing missing`);
+        if(pass==='tunnel') { if(casing)errs.push('tunnel has an unsupported white casing'); }
+        else if(!casing)errs.push(`${id}: white casing missing`);
         else {
           if(JSON.stringify(casing.filter)!==JSON.stringify(layers.find(l=>l.id===id).filter))errs.push(`${id}: casing changes which ways are drawn`);
           if(casing.paint['line-color']!=='#ffffff'||casing.paint['line-dasharray'])errs.push(`${id}: casing is not solid white`);
           if(layers.indexOf(casing)>layers.findIndex(l=>l.id===id))errs.push(`${id}: casing covers the blue dashes`);
-          for(const z of zooms)if(width(`${id}-casing`,z)<width(id,z)+.5)errs.push(`${id}: zoom ${z} casing does not separate the stroke from terrain`);
+          if(pass==='ground'&&(width(casing.id,16)!==6||width(casing.id,18)!==12))errs.push('white casing is out of scale');
         }
         if(m.getPaintProperty(id,'line-color')!=='#3148d8')errs.push(`${id}: normal cycling blue is not the stronger contrast color`);
         for(const [tags,cycling] of cases) {
@@ -789,7 +789,8 @@ def cycleway_style(chrome):
         for(const [surface,want] of [['paved',[6,1.5]],['unpaved',[1,.5]],[undefined,[2.5,1.5]],['other',[2.5,1.5]]]) {
           const got=layer.paint.get('line-dasharray').value;
           const dash=got.evaluate?got.evaluate({zoom:16},{type:2,properties:{surface}},{}):got;
-          if(JSON.stringify(dash)!==JSON.stringify(want))errs.push(`${id}: ${surface??'unknown'} dashes ${JSON.stringify(dash)}`);
+          const expected=pass==='tunnel'?[6,1.5]:pass==='bridge'&&surface==='unpaved'?[1,.8]:want;
+          if(JSON.stringify(dash)!==JSON.stringify(expected))errs.push(`${id}: ${surface??'unknown'} dashes ${JSON.stringify(dash)}`);
         }
       }
       // Trail contrast improves; other basemap colors and sport dimming remain.
@@ -798,17 +799,16 @@ def cycleway_style(chrome):
         await new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)));
         const l=m.getStyle().layers.find(l=>l.id==='cycleway-ground');
         if(l.paint['line-color']!==color)errs.push(`${base}: cycleway color ${l.paint['line-color']}`);
-        if(Math.abs(l.paint['line-opacity']-(base==='trail'?.95:.85)*.55)>.00001)errs.push(`${base}: Paddle dimming changed`);
+        if(Math.abs(l.paint['line-opacity']-(base==='trail'?1:.85)*.55)>.00001)errs.push(`${base}: Paddle dimming changed`);
         const casing=m.getStyle().layers.find(l=>l.id==='cycleway-ground-casing');
         if(base==='trail') {
-          if(!casing||casing.paint['line-opacity']!==l.paint['line-opacity'])errs.push('Trail: casing loses Paddle dimming');
-          else for(const z of zooms)if(width(casing.id,z)<=width(l.id,z))errs.push(`Trail: zoom ${z} casing loses high-contrast separation`);
+          if(!casing||width(casing.id,16)!==7||width(casing.id,18)!==16)errs.push('Trail: high-contrast casing scale changed');
+          if(width(l.id,16,{surface:'paved'})!==4||width(l.id,16,{surface:'unpaved'})!==5||width(l.id,18)!==10)errs.push('Trail: high-contrast surface widths changed');
         } else if(casing)errs.push(`${base}: Trail casing leaked into another basemap`);
-        for(const [i,z] of zooms.entries())if(Math.abs(width('cycleway-ground',z)-normal[i]*1.35)>.000001)errs.push(`${base}: zoom ${z} high contrast does not scale the cycling width by 1.35`);
+
       }
       polku.set({base:'trail',activity:'road',highContrast:false});
-      for(const [i,z] of zooms.entries())if(z>=14&&width('cycleway-ground',z)<normal[i]*1.4-.000001)errs.push(`zoom ${z}: road cycling loses its width emphasis`);
-      if(m.getLayer('cycleway-ground-casing'))for(const z of zooms)if(width('cycleway-ground-casing',z)<=width('cycleway-ground',z))errs.push(`zoom ${z}: Road cycling loses its casing`);
+      for(const [i,z] of zooms.entries())if(width('cycleway-ground',z)!==normal[i])errs.push(`zoom ${z}: Road cycling inflates the Trail-map stroke`);
       const key=document.querySelector('#layers-body').textContent;
       for(const surface of ['paved','unpaved','surface unknown'])if(!key.includes(`Cycling path (${surface})`))errs.push(`map key omits ${surface}`);
       if(!key.includes('cycling permission not implied'))errs.push('map key implies pedestrian access');

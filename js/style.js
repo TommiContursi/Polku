@@ -936,24 +936,34 @@ function addRoads(s, P, hc, layers, ctx) {
       });
     }
     // Cycling infrastructure: surface patterns use only the tiles' known coarse class.
-    if (trail) add({
+    const surfaceWidth = (paved, rough) => ['case', unpaved, rough, paved];
+    // Shared stops preserve the two exponential surface curves; avoid duplicate zoom stops.
+    const paved17 = 1.8 + (6 - 1.8) * (1.2 ** 3 - 1) / (1.2 ** 4 - 1);
+    const cycleWidth = !trail ? zi(12, 1.4 * k, 14, 3 * k * (roadBike ? 1.5 : 1), 16, 5.5 * k * (roadBike ? 1.5 : 1), 18, 9 * k * (roadBike ? 1.4 : 1))
+      : brunnel === 'tunnel' ? ze(1.2, 14, 1.5, 16, 2.5, 18, 6)
+      : hc ? ze(1.2, 12, surfaceWidth(1.5, 2), 14, surfaceWidth(2.5, 3), 16, surfaceWidth(4, 5), 18, 10)
+      : brunnel === 'bridge' ? ze(1.2, 14, surfaceWidth(1.5, 2), 16, surfaceWidth(2.5, 3.5), 18, 6)
+      : ze(1.2, 12, surfaceWidth(1.5, 2), 14, surfaceWidth(1.8, 2.4), 17, surfaceWidth(paved17, 6), 18, 6);
+    const cycleBand = brunnel === 'bridge'
+      ? hc ? ze(1.2, 14, 6, 16, 9, 18, 22.5) : ze(1.2, 14, 1.2, 16, 10, 18, 15)
+      : hc ? ze(1.2, 14, 2.2, 15, 4, 16, 7, 18, 16) : ze(1.2, 14, 2.2, 15, 3, 16, 6, 18, 12);
+    if (trail && brunnel !== 'tunnel') add({
       id: `cycleway-${brunnel}-casing`, type: 'line', source: 'ofm', 'source-layer': 'transportation', minzoom: 12,
       filter: ['all', isPathClass, cyclingPath, bf],
       paint: {
         'line-color': '#ffffff',
-        'line-width': zi(12, 2 * k, 14, 4 * k * (roadBike ? 1.5 : 1), 16, 7.5 * k * (roadBike ? 1.5 : 1), 18, 12 * k * (roadBike ? 1.4 : 1)),
-        'line-opacity': 0.95 * roadsDim,
+        'line-width': cycleBand,
+        'line-opacity': brunnel === 'ground' ? zi(13, 0, 14, roadsDim) : roadsDim,
       },
     });
     add({
       id: `cycleway-${brunnel}`, type: 'line', source: 'ofm', 'source-layer': 'transportation', minzoom: 12,
       filter: ['all', isPathClass, cyclingPath, bf],
       paint: {
-        'line-color': aerial ? '#bfe0ff' : trail ? (hc ? '#001bc7' : '#3148d8') : P.cycleway,
-        'line-dasharray': ['match', ['get', 'surface'], 'paved', ['literal', [6, 1.5]], 'unpaved', ['literal', [1, 0.5]], ['literal', [2.5, 1.5]]],
-        // road cycling: cycleways are where you ride, so they stand out
-        'line-width': zi(12, 1.4 * k, 14, 3 * k * (roadBike ? 1.5 : 1), 16, 5.5 * k * (roadBike ? 1.5 : 1), 18, 9 * k * (roadBike ? 1.4 : 1)),
-        'line-opacity': (trail ? 0.95 : 0.85) * roadsDim,
+        'line-color': aerial ? '#bfe0ff' : trail ? (hc && brunnel !== 'tunnel' ? '#001bc7' : '#3148d8') : P.cycleway,
+        'line-dasharray': trail && brunnel === 'tunnel' ? [6, 1.5] : ['match', ['get', 'surface'], 'paved', ['literal', [6, 1.5]], 'unpaved', ['literal', [1, trail && (hc || brunnel === 'bridge') ? 0.8 : 0.5]], ['literal', [2.5, 1.5]]],
+        'line-width': cycleWidth,
+        'line-opacity': (trail ? (brunnel === 'tunnel' ? 0.5 : 1) : 0.85) * roadsDim,
       },
     });
   }
