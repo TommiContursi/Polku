@@ -23129,6 +23129,59 @@ def sheet_profile_peek(chrome):
     return not fails
 
 
+# Polku's own tooltips in place of the browser's (#304), area by area. The map's buttons and the top bar: a mouse over
+# each shows its name (and key) after the delay, the keyboard's focus at once, no `title` is left to show a second one,
+# and a tip in the map's column never covers the next button.
+MAP_TIPS = [('#btn-plan-search', 'Plan a route'), ('#btn-settings', 'Settings'), ('#btn-locate', 'Show my location'),
+            ('.compass-btn', 'North'), ('#btn-zoom-in', 'Zoom in'), ('#btn-zoom-out', 'Zoom out'), ('#btn-3d', '3D terrain'),
+            ('#btn-time', 'Time & weather'), ('#btn-layers', 'Layers'), ('#btn-plan', 'Plan a route')]
+TIP_NOW = """(() => { const t = document.getElementById('tip'); return t && !t.hidden ? t.textContent : ''; })()"""
+
+
+def map_tips(chrome):
+    fails = []
+    pg = chrome.page(1440, 900, False)
+    pg.open_app({'activity': 'mtb'}, {'polku:plannerDock': '"left"'}, '#13/61.5025/23.76')
+    for sel, name in MAP_TIPS:
+        b = pg.js(f"""(() => {{ const b = document.querySelector({json.dumps(sel)}); if (!b || !b.offsetParent) return null;
+          const r = b.getBoundingClientRect(); return {{ x: r.left + r.width / 2, y: r.top + r.height / 2, title: b.getAttribute('title') }}; }})()""")
+        if not b:
+            fails.append(f'{sel}: not on the screen')
+            continue
+        if b['title'] is not None:
+            fails.append(f'{sel}: still has the browser’s tooltip “{b["title"]}”')
+        pg.c.send('Input.dispatchMouseEvent', {'type': 'mouseMoved', 'x': b['x'], 'y': b['y'], 'button': 'none'}, pg.s)
+        time.sleep(0.9)
+        tip = pg.js(TIP_NOW)
+        if not tip.startswith(name):
+            fails.append(f'{sel}: a mouse over it shows “{tip}”, not {name}')
+        # (the next button in the column: the tip may sit under its own button, never over the next one)
+        over = pg.js(f"""(() => {{ const t = document.getElementById('tip'), b = document.querySelector({json.dumps(sel)});
+          if (t.hidden || !b.closest('#map-ctrls')) return '';
+          const r = t.getBoundingClientRect(), hit = [...document.querySelectorAll('#map-ctrls button')].filter((o) => o !== b && o.offsetParent)
+            .find((o) => {{ const q = o.getBoundingClientRect(); return q.left < r.right && q.right > r.left && q.top < r.bottom && q.bottom > r.top; }});
+          const R = (q) => [q.left, q.top, q.right, q.bottom].map(Math.round).join(',');
+          return hit ? `${{hit.getAttribute('aria-label') || hit.textContent.trim()}} (the tip ${{R(r)}}, it ${{R(hit.getBoundingClientRect())}})` : ''; }})()""")
+        if over:
+            fails.append(f'{sel}: its tooltip covers {over}')
+        pg.c.send('Input.dispatchMouseEvent', {'type': 'mouseMoved', 'x': 700, 'y': 500, 'button': 'none'}, pg.s)
+        time.sleep(0.3)
+    # the keyboard: focus shows it at once, with the key
+    for ev in ('rawKeyDown', 'keyUp'):
+        pg.c.send('Input.dispatchKeyEvent', {'type': ev, 'key': 'Tab', 'code': 'Tab', 'windowsVirtualKeyCode': 9}, pg.s)
+    for sel, name, key in (('#btn-layers', 'Layers', 'L'), ('#btn-time', 'Time & weather', 'T'), ('#btn-plan', 'Plan a route', 'R')):
+        got = pg.js(f"""(() => {{ const b = document.querySelector({json.dumps(sel)}); b.focus(); const t = document.getElementById('tip');
+          const k = t.hidden ? '' : [...t.querySelectorAll('kbd')].map((x) => x.textContent).join(' ');
+          return {{ tip: t.hidden ? '' : t.textContent, k, desc: b.getAttribute('aria-describedby') }}; }})()""")
+        if not got['tip'].startswith(name) or got['k'] != key or got['desc'] != 'tip':
+            fails.append(f'{sel}: the keyboard’s focus shows {got}')
+    pg.js("document.activeElement.blur(); true")
+    fails += [f'console: {e[:160]}' for e in pg.errors()]
+    pg.close()
+    print(f"{'ok  ' if not fails else 'FAIL'} Polku's tooltips on the map's buttons and the top bar" + ''.join(f'\n     - {f}' for f in fails), flush=True)
+    return not fails
+
+
 GROUPS = [
     ('hover', [hover_feedback], 'clickable map cursors and faster local tooltips without earlier OSM enrichment'),
     ('osmdata', [osm_data], 'static OSM: complete ways across tile boundaries, Range decoding, release cache and offline reuse'),
@@ -23190,6 +23243,7 @@ GROUPS = [
     ('tilefail', [tile_fails], 'Paddle with the depth tiles failing last (a server error, a dropped connection): the saved route, the planner left open and a share link\'s route still open, Depths says No data now, at zoom 12 too (#393, #399)'),
     ('startfail', [start_fails], 'Polku\'s files stopping it from starting, one not arriving (as on a first visit) or the worker\'s older saved copy beside new files (#481): one try more by itself, then a message whose Reload opens it (#1088)'),
     ('sportmenu', [sport_menu, menu_tap_outside], 'the sport pill\'s menu: a mouse click after its hover keeps it open, a second click, Escape and a click outside close it, touch and the keyboard (#245), and a late snow answer leaves it open (#392); a tap or a click outside the drawing menu only closes it (#845)'),
+    ('tips', [map_tips], 'Polku\'s own tooltips in place of the browser\'s (#304): the map\'s buttons and the top bar, by a mouse and the keyboard, none left with a title'),
     ('toolbox', [toolbox], 'the planner\'s toolbox and header (25a): phones and desktops, the mode\'s menu, More, the keys, tooltips; #241, #242, #251, #356, #387'),
     ('start', [start], 'the start (A with 25b), at four sizes: the ways to begin and their sport, Draw it and its style, Round trip and Where I am, Marked routes and their states, four points in four taps, loops made and picked on the map (mocked LIPAS and BRouter; #232, #109, #89, #281, #306)'),
     ('routeview', [route_view, edit_done], 'Done and the route\'s view (25c): a tap on the map shows what\'s there, on the line its menu, the markers stay put, Edit with undo, ✕ and its note, Plan, R, E, a share link and a reload as it was left (#238), a long name at 360 px and 200 %; Edit and Done in one place on a phone, and the cards editing the route after Done (#745)'),

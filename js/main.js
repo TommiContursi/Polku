@@ -25,7 +25,7 @@ import { registerServiceWorker, initOfflineStatus, openSaveOffline, renderOfflin
 import { initSearch, recentSearches, clearRecentSearches } from './search.js';
 import { parseTrackFile } from './gpx.js';
 import { lineLength, bbox, fmtDist, compass as side } from './geo.js';
-import { $, $$, h, icon, toast, store, popMenu, settleControls, infoDot } from './ui.js';
+import { $, $$, h, icon, toast, store, popMenu, settleControls, infoDot, tooltip } from './ui.js';
 import { initGestures, bindCrosshair } from './gestures.js';
 import { initView3d } from './view3d.js';
 import { CompassControl } from './compass.js';
@@ -720,10 +720,7 @@ window.polku = {
 // map's column, where the planner put away comes back. While planning both stay where they are, pressed,
 // and close it again (on phones the sheet takes the column's place). Done ends editing since 25c.
 function syncPlanButton(on) {
-  for (const b of $$('#btn-plan, #btn-plan-search')) {
-    b.setAttribute('aria-expanded', String(on));
-    b.title = on ? 'Close the planner (R): your route stays' : planner.points.length ? 'Plan: open your route (R)' : 'Plan a route (R)';
-  }
+  for (const b of $$('#btn-plan, #btn-plan-search')) b.setAttribute('aria-expanded', String(on));
 }
 
 // What the planner covers: --sheet-h for the bottom sheet, --pl-left (and --pl-mid, its middle) for the side panel. The sheet's height is the one it's
@@ -854,7 +851,7 @@ function renderActivityBar() {
   const cur = ACTIVITIES[state.activity];
   const menu = box.querySelector('.act-menu') || h('div', { class: 'act-menu', hidden: true });
   const btn = h('button', {
-    type: 'button', class: 'act-current', 'aria-haspopup': 'listbox', 'aria-expanded': String(!menu.hidden), title: `Activity: ${cur.label}`,
+    type: 'button', class: 'act-current', 'aria-haspopup': 'listbox', 'aria-expanded': String(!menu.hidden),
     // a click just after the hover opened the menu keeps it open (#245); a click on a menu it opened closes it
     onclick: () => { if (menu.hidden) openActs(); else if (actHovered) actHovered = false; else closeActs(); },
     html: pillFace(),
@@ -1005,7 +1002,6 @@ document.addEventListener('error', (e) => { if (e.target.src === AERIAL_THUMB) e
 function syncLayersButton() {
   const b = BASES.find(([k]) => k === state.base) || BASES[0];
   $('#btn-layers .fab-thumb').src = thumb(b[0]);
-  $('#btn-layers').title = `Layers — ${b[1]}, trails, weather, traffic… (L)`;
 }
 
 // What switching sport changes, said once so the connection is clear.
@@ -2122,6 +2118,24 @@ window.addEventListener('drop', (e) => {
   const f = e.dataTransfer.files[0];
   if (f) importFile(f);
 });
+
+// The map's buttons and the top bar: Polku's tooltips (#304), with the keys of the handler below. Zoom's + and − say it
+// with their name alone; the sport's pill has none, as a mouse over it opens its menu. The column's go to the left of
+// their button, so none covers the next one.
+const planTip = () => (planner.active ? { name: 'Close the planner', keys: 'R', text: 'Your route stays on the map.' }
+  : planner.points.length ? { name: 'Open your route', keys: 'R', text: 'Back to the planner and your route.' }
+    : { name: 'Plan a route', keys: 'R', text: 'Opens the planner: a click on the map adds a waypoint.' });
+tooltip($('#btn-plan-search'), planTip);
+tooltip($('#btn-settings'), { name: 'Settings', text: 'Your sport and speed, the planner, the display, offline maps and data sources.' });
+const columnTips = [
+  [$('#btn-plan'), planTip],
+  ...[$('#btn-locate'), compass.btn, $('#btn-zoom-in'), $('#btn-zoom-out')].map((b) => [b, () => ({ name: b.getAttribute('aria-label') })]),
+  [$('#btn-fit'), () => ({ name: 'Show the whole route', keys: 'F' })],
+  [$('#btn-3d'), () => ({ name: '3D terrain', text: 'Tilts the map so the hills stand up.' })],
+  [$('#btn-time'), () => ({ name: $('#btn-time').getAttribute('aria-label'), keys: 'T', text: 'The weather on the map, hour by hour.' })],
+  [$('#btn-layers'), () => ({ name: 'Layers', keys: 'L', text: `The base map (${(BASES.find(([k]) => k === state.base) || BASES[0])[1]}), trails, weather, traffic and more.` })],
+];
+for (const [b, tip] of columnTips) tooltip(b, () => ({ ...tip(), beside: 'left' }));
 
 // ------------------------------------------------------------------ keyboard
 window.addEventListener('keydown', (e) => {

@@ -329,7 +329,8 @@ export function popMenu(anchor, items, { label = '', onClose = null, align = 'ri
  */
 let tipEl = null, tipShow = 0, tipHide = 0, tipLast = 0, tipFor = null;
 // `lines`: rows of the app's own markup under its name, one a line, as the profile's tip has them (the route's list, #761)
-export function tooltip(el, { name, keys = '', text = '', lines = [], beside = false }) {
+// (`tip` a function for a control whose name changes with its state: read as it shows)
+export function tooltip(el, tip) {
   if (!tipEl) {
     tipEl = h('div', { class: 'tip', role: 'tooltip', id: 'tip', hidden: true });
     tipEl.addEventListener('pointerenter', () => clearTimeout(tipHide));
@@ -338,6 +339,7 @@ export function tooltip(el, { name, keys = '', text = '', lines = [], beside = f
     document.body.append(tipEl);
   }
   const show = () => {
+    const { name, keys = '', text = '', lines = [], beside = false } = typeof tip === 'function' ? tip() : tip;
     clearTimeout(tipHide);
     tipFor = el;
     tipEl.innerHTML = `<b>${escapeHtml(name)}${keys ? keys.split(' ').map((k) => `<kbd>${escapeHtml(k)}</kbd>`).join('') : ''}</b>${escapeHtml(text)}${lines.map((l) => `<span>${l}</span>`).join('')}`;
@@ -345,14 +347,16 @@ export function tooltip(el, { name, keys = '', text = '', lines = [], beside = f
     tipEl.classList.toggle('instant', !tipEl.hidden || Date.now() - tipLast < 900 || el.matches(':focus-visible'));
     tipEl.hidden = false;
     el.setAttribute('aria-describedby', 'tip');
+    tipEl.style.left = '0px'; // (measured where it has room: at the screen's edge its words wrap, and it widens once moved)
     const r = el.getBoundingClientRect(), w = tipEl.offsetWidth, th = tipEl.offsetHeight;
     const side = beside instanceof Element ? beside.getBoundingClientRect() : r;
-    if (beside && side.right + 8 + w <= innerWidth - 8) {
-      // a row in a list: beside it (`beside` the whole row, its buttons too), so it never covers the next row nor the
-      // row's own buttons (the route's list, #761)
-      tipEl.style.left = `${side.right + 8}px`;
+    // a row in a list: beside it (`beside` the whole row, its buttons too), so it never covers the next row nor the
+    // row's own buttons (the route's list, #761); 'left' for the map's column of buttons at the screen's right (#304)
+    const toLeft = beside === 'left';
+    if (beside && (toLeft ? side.left - 8 - w >= 8 : side.right + 8 + w <= innerWidth - 8)) {
+      tipEl.style.left = `${toLeft ? side.left - 8 - w : side.right + 8}px`;
       tipEl.style.top = `${Math.max(8, Math.min(innerHeight - 8 - th, r.top + r.height / 2 - th / 2))}px`;
-      tipEl.style.transformOrigin = `0 ${th / 2}px`;
+      tipEl.style.transformOrigin = `${toLeft ? '100%' : '0'} ${th / 2}px`;
       return;
     }
     const left = Math.max(8, Math.min(innerWidth - 8 - w, r.left + r.width / 2 - w / 2)), below = r.bottom + 8 + th <= innerHeight - 8;
@@ -370,7 +374,7 @@ export function tooltip(el, { name, keys = '', text = '', lines = [], beside = f
   el.addEventListener('pointerleave', () => { clearTimeout(tipShow); if (tipFor === el) hideTip(); });
   el.addEventListener('focus', () => { if (el.matches(':focus-visible')) show(); });
   el.addEventListener('blur', () => { if (tipFor === el) hideTip(0); });
-  el.addEventListener('pointerdown', () => { clearTimeout(tipShow); if (tipFor === el) hideTip(0); });
+  for (const ev of ['pointerdown', 'click']) el.addEventListener(ev, () => { clearTimeout(tipShow); if (tipFor === el) hideTip(0); }); // (click: a key's too, so words a press changes aren't left up)
 }
 // A round ⓘ for what a drawing can't say itself (the design round's rule: no grey words explaining things): its words in
 // tooltip() for a mouse and the keyboard, and in the same bubble on a tap, until the next tap anywhere. `tool info-dot`
