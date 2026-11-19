@@ -6,7 +6,9 @@ The mock-up: [mockups/issue-1091-map-fill.html](mockups/issue-1091-map-fill.html
 
 ## Where it stands
 
-- **Investigated, 2026-11-18.** The recommendation is A (below). The user's first pick, 2026-11-18, was A and B together, with a question about what they cost in requests; the answer is under [A and B, measured](#a-and-b-measured). Waiting for the user's choice.
+- **Investigated, 2026-11-18.** The user's first pick was A and B together, with a question about their cost in requests (answered under [A and B, measured](#a-and-b-measured)).
+- **Decided, 2026-11-18: A** (on #1091's description), not B. The coarse map follows the base map: dark on the night map, the aerial and MML maps coarser under their own detail.
+- **A: built** on `claude/coarse-map-1091` ([#1097](https://github.com/TommiContursi/Polku/pull/1097)), for the vector base (`ofm`, `ofmTrails`) and the raster bases (aerial, MML's maps) alike, with smoke's `coarse`. C, D and E, and the zoom's ragged look, are to be talked over next.
 
 ## What people see
 
@@ -74,7 +76,7 @@ All costs are against Polku as it is. OpenFreeMap has no published rate limit an
 
 ### A: a coarse map underneath (recommended)
 
-Every tile in view keeps the tile four zoom levels up among MapLibre's own tiles for that source, as Mapbox's and MapLibre Native's `prefetchZoomDelta` does. When you then move and a tile hasn't come, MapLibre's own stand-in, the coarser tile, is already there, drawn only in the missing tile's square: lakes, sea, forest, fields and the main roads appear at once, and the paths, buildings and names sharpen in where they come. Where the detail has come, nothing changes.
+Every tile in view keeps the tile four zoom levels up among MapLibre's own tiles for that source until it has come itself, as Mapbox's and MapLibre Native's `prefetchZoomDelta` does. When you then move and a tile hasn't come, MapLibre's own stand-in, the coarser tile, is already there, drawn only in the missing tile's square: lakes, sea, forest, fields and the main roads appear at once, and the paths, buildings and names sharpen in where they come. Where the detail has come, nothing changes.
 
 - **Tried in Polku:** with zoom 13's tiles held back and never answered, a move of a screen and a half on a phone showed the zoom-9 tile in their place from 167 ms on: the forest, the open ground, the roads, the contours and the hillshade, with only the paths and small names missing ([what was run](#how-a-was-tried)); and in real moves the paper fell from 10–84 % to 0–5 % ([A and B, measured](#a-and-b-measured)). Fetching the same coarse tiles into the browser's cache instead did nothing: MapLibre never asked for them while the detail loaded (above).
 - **What people gain:** almost no plain paper after a move into a place the map hasn't shown, on any network, without anything moving on screen. On a fast network that is the paper during a flick on a phone; on a slow one, one to three seconds of paper become a softer map that sharpens. It doesn't change Polku's own layers coming in after the stop, or the names' fade (D and E).
