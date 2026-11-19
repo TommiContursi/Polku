@@ -8,6 +8,10 @@ What's new in [Polku](https://polku.si), from the latest updates back to the fir
 
 - When the map stops, after you move it or it flies to a place, what comes in no longer appears piece by piece: each part fades in, briefly where little changes and up to 0.4 s where much does. Touching the map ends a fade at once. After a move with the arrow keys, or a search result chosen with **Enter**, everything appears at once, as before.
 
+### No-bike marks you can see at a glance ([#1137](https://github.com/TommiContursi/Polku/issues/1137))
+
+- A path, forest track or cycling path closed to bikes now has short red bars across it in the cycling sports, instead of a thin red line beside it, so it stands out on a phone and on the dark map. The bars leave the line's own colour between them and the sides of the line to the overgrown, wet and private marks.
+
 ### Streams and ditches by size ([#1138](https://github.com/TommiContursi/Polku/issues/1138))
 
 - Rivers, streams, ditches and drains are drawn wider when you zoom in, so they stand out on the map. Ditches and drains stay narrower than streams, so the two are easy to tell apart in the forest. A stream or ditch that only has water at times keeps a dashed line, now with longer dashes that still read as a dash.
