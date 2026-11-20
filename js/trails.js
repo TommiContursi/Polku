@@ -16,7 +16,8 @@ import { hostedTile, forgetHostedFailures } from './osm-data.js';
 import { OSM_DATA_MANIFEST, mtbClass } from './config.js';
 
 export const TILE_Z = 13;
-export const MIN_ZOOM = 14; // tiles load from here; loaded ones still draw down to z13
+export const MIN_ZOOM = 13; // tiles load from here, from the hosted data (#1128)
+const OVERPASS_ZOOM = 14; // and from Overpass only from here, so it's asked no more than before
 const RETRY = 120e3; // a failed tile is left alone for 2 minutes
 const MAX_VIEW = 12; // more tiles than this in view: zoomed out too far to load
 const MAX_KEPT = 80;
@@ -76,17 +77,23 @@ const arrived = (key) => { for (const fn of listeners) fn(key); };
 export const onTile = (fn) => listeners.add(fn);
 
 /** One z13 tile of trail details (from the browser's cache when it's fresh). */
-export function trailTile(x, y) {
+export function trailTile(x, y, { hostedOnly = false } = {}) {
   const key = `${x}/${y}`;
   const have = tiles.get(key);
-  if (have && (have.data || fetching)) return have.promise; // (held, one on its way counts as held)
+  if (have && (have.data || fetching)) { // (held, one on its way counts as held)
+    // one on its way from the hosted data alone, asked for at 14: Overpass once the hosted data misses
+    return have.hostedOnly && !hostedOnly ? have.promise.catch((err) => (err.hostedOnly ? trailTile(x, y) : Promise.reject(err))) : have.promise;
+  }
   if (!fetching) return Promise.reject(failing ? new Error('Overpass didn’t answer') : Object.assign(new Error('held'), { held: true })); // (held: whatever it did before, as a test asks)
-  if ((failed.get(key) || 0) > Date.now()) return Promise.reject(new Error('Overpass busy'));
-  const entry = { data: null };
-  entry.promise = hostedTile(OSM_DATA_MANIFEST, 'trails', TILE_Z, [x, y],
-    () => cachedOverpass(`trails3/${TILE_Z}/${key}`, tileQuery(x, y), slimTile, { oneRound: true, timeoutMs: 30000 }), { slim: slimTile })
+  // a tile the hosted data didn't have is still asked of Overpass once you're zoomed in to its zoom
+  const f = failed.get(key);
+  if (f && f.until > Date.now() && (hostedOnly || !f.hostedOnly)) return Promise.reject(new Error('Overpass busy'));
+  const entry = { data: null, hostedOnly };
+  entry.promise = hostedTile(OSM_DATA_MANIFEST, 'trails', TILE_Z, [x, y], hostedOnly
+    ? (err) => { throw Object.assign(new Error(err.message), { hostedOnly }); }
+    : () => cachedOverpass(`trails3/${TILE_Z}/${key}`, tileQuery(x, y), slimTile, { oneRound: true, timeoutMs: 30000 }), { slim: slimTile })
     .then((data) => { entry.data = data; arrived(key); return data; })
-    .catch((err) => { tiles.delete(key); failed.set(key, Date.now() + RETRY); throw err; });
+    .catch((err) => { tiles.delete(key); failed.set(key, { until: Date.now() + RETRY, hostedOnly }); throw err; });
   tiles.set(key, entry);
   // keep memory bounded: forget the oldest loaded tiles (IndexedDB still has them)
   if (tiles.size > MAX_KEPT) for (const [k, t] of tiles) { if (tiles.size <= MAX_KEPT) break; if (t.data) tiles.delete(k); }
@@ -215,6 +222,7 @@ export class TrailDetails {
     this.shown = null;
     this.timer = 0;
     this.want = []; // the tiles in view
+    this.covers = false; // every one of them drawn from the trail data
     map.on('moveend', () => this.schedule());
     onTile(() => this.schedule(60));
   }
@@ -226,7 +234,7 @@ export class TrailDetails {
     if (on === this.enabled) return;
     this.enabled = on;
     if (on) this.schedule(0);
-    else this.publish([]);
+    else { this.covers = false; this.publish([]); this.app.onView?.(); }
   }
 
   schedule(ms = 300) {
@@ -237,20 +245,25 @@ export class TrailDetails {
 
   update() {
     this.want = [];
+    this.covers = false;
     if (!this.enabled) return;
     const map = this.map;
     const z = map.getZoom();
     // below zoom 13 the details don't show anyway: the map's own trails are enough there. And no tiles are listed:
     // the world on a phone at zoom 1 is millions, 0.4 s and 840 MB on every move (#667)
-    if (z < 13) { this.publish([]); return; }
+    if (z < MIN_ZOOM) { this.publish([]); this.app.onView?.(); return; }
     const b = map.getBounds();
     const want = (this.want = tilesIn([b.getWest(), b.getSouth(), b.getEast(), b.getNorth()]));
-    if (z >= MIN_ZOOM && want.length <= MAX_VIEW) {
+    if (want.length <= MAX_VIEW) {
+      const hostedOnly = z < OVERPASS_ZOOM;
       for (const [x, y] of want) {
-        if (!loadedTile(x, y)) trailTile(x, y).catch((err) => { if (!err.held && this.app.onBusy) this.app.onBusy(); });
+        if (!loadedTile(x, y)) trailTile(x, y, { hostedOnly }).catch((err) => { if (!err.held && !hostedOnly && !err.hostedOnly && this.app.onBusy) this.app.onBusy(); });
       }
     }
-    this.publish(want.filter(([x, y]) => loadedTile(x, y)).slice(0, 24));
+    const list = want.filter(([x, y]) => loadedTile(x, y)).slice(0, 24);
+    this.covers = list.length === want.length;
+    this.publish(list);
+    this.app.onView?.();
   }
 
   publish(list) {
