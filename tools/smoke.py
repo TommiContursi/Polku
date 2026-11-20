@@ -851,6 +851,49 @@ def waterway_style(chrome):
     return not fails
 
 
+# #1148: Property boundaries, a switch in Layers' Terrain, off in every sport: MML's property map from zoom 14 in Finland, with
+# Polku's key (not plain text in the source) or a person's own, drawn and named at Jyväskylä's centre.
+def property_lines(chrome):
+    pg = chrome.page(1440, 900, False)
+    pg.open_app({'activity': 'mtb'}, None, '#16/62.2415/25.748')
+    fails = pg.js("""(async () => {
+      const errs=[], m=polku.map, frame=()=>new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)));
+      for(const activity of ['mtb','gravel','road','hike','trailrun','run','paddle','swim']) {
+        polku.set({activity}); if(polku.state.overlays.propertyLines)errs.push(`${activity}: on by default`);
+      }
+      polku.set({activity:'mtb'});
+      document.querySelector('#btn-layers').click(); await frame();
+      [...document.querySelectorAll('button')].find(b=>/^More: all layers/.test(b.getAttribute('aria-label')||''))?.click(); await frame();
+      const sw=document.querySelector('[data-group=terrain] input[role=switch][aria-label="Property boundaries"]');
+      if(!sw)return ['no Property boundaries switch in Terrain'];
+      sw.click(); await frame();
+      const src=m.getStyle().sources['ov-propertyLines'];
+      if(!src)return ['the switch drew no property source'];
+      const u=new URL(src.tiles[0]), key=u.searchParams.get('api-key');
+      if(u.hostname!=='avoin-karttakuva.maanmittauslaitos.fi'||!u.pathname.includes('/kiinteistojaotus/'))errs.push(`property tiles from ${u.hostname}${u.pathname}`);
+      if(!key||key.length<20)errs.push('no API key in the tile address');
+      const cfg=await fetch('js/config.js',{cache:'no-store'}).then(r=>r.text());
+      if(key&&cfg.includes(key))errs.push('the key is plain text in js/config.js');
+      if(src.minzoom!==14)errs.push(`property tiles asked for from zoom ${src.minzoom}, not 14`);
+      if(!src.bounds||src.bounds[0]<19||src.bounds[2]>32)errs.push(`property tiles not bounded to Finland: ${src.bounds}`);
+      const t0=performance.now();
+      while(performance.now()-t0<20000&&!(m.isSourceLoaded('ov-propertyLines')&&m.queryRenderedFeatures({layers:['property-line']}).length))await new Promise(r=>setTimeout(r,250));
+      const lines=m.queryRenderedFeatures({layers:['property-line']}).length, ids=m.queryRenderedFeatures({layers:['property-id']}).length;
+      if(!lines)errs.push('no property boundaries drawn at Jyväskylä, zoom 16');
+      if(!ids)errs.push('no property IDs drawn at Jyväskylä, zoom 16');
+      const color=(b)=>{polku.set({base:b}); return m.getPaintProperty('property-line','line-color');};
+      if(color('trail')===color('night'))errs.push('the same orange on the Night map as on the Trail map');
+      polku.set({base:'trail',mmlKey:'own-key-fixture'});
+      if(new URL(m.getStyle().sources['ov-propertyLines'].tiles[0]).searchParams.get('api-key')!=='own-key-fixture')errs.push("a person's own key isn't used");
+      polku.set({mmlKey:''});
+      return errs;
+    })()""", timeout=90000)
+    fails += [f'console: {e[:160]}' for e in pg.errors()]
+    pg.close()
+    print(f"{'ok  ' if not fails else 'FAIL'} property boundaries from MML (#1148)" + ''.join(f'\n     - {f}' for f in fails), flush=True)
+    return not fails
+
+
 # #1130, #1137: no-bike bars stay on paths/tracks, across the line, as wide as its halo.
 def cycling_restrictions(chrome):
     pg = chrome.page(1440, 900, False)
@@ -24294,7 +24337,7 @@ GROUPS = [
     ('changelog', [changelog], 'release notes, retry, safe rendering, keyboard, route preservation and real worker offline'),
     ('pacing', [pacing, paced_legs, net_fails], 'calls made together go out paced and counted (mocked services, a fake clock); legs refused for a slot follow at it (#78); the calls that failed, in Data sources (#687)'),
     ('loading', [loading, routing_edits], 'cancel obsolete routing, edits/Undo/Clear, shared subscribers, refusal/recovery, deadlines, terrain slots and LIPAS viewport/cache (mocked)'),
-    ('layers', [layers, cycleway_style, cycling_restrictions, waterway_style], 'the Layers panel in every sport'),
+    ('layers', [layers, cycleway_style, cycling_restrictions, waterway_style, property_lines], 'the Layers panel in every sport'),
     ('raster', [raster_maps, aerial_fallback, aerial_labels], 'terrain and aerial detail, bounded high-density WMS symbols, depth boundaries and missing aerial detail (#649, #650, #653); the map\'s words on the aerial photos at 4.5:1 on their halo (#554)'),
     ('coarse', [coarse], 'a coarse map underneath (#1091): the base map\'s tile four zoom levels up stands in for one that hasn\'t come, at 1440 and 390'),
     ('together', [together], 'Polku\'s own layers come in together after the map stops, 500 ms at most (#1091)'),

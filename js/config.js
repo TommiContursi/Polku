@@ -1,5 +1,5 @@
-// Data sources, activity profiles and palettes. Everything here is free and keyless,
-// except the optional MML layers that need the user's own (free) API key.
+// Data sources, activity profiles and palettes. Everything here is free; the National Land Survey's (MML) tiles
+// need an API key: Polku's, or a person's own from Settings.
 
 import { fromCss } from './palette.js';
 
@@ -29,6 +29,15 @@ export const LIPAS_WFS = 'https://lipas.fi/geoserver/lipas/ows';
 export const TRAFICOM_WMS = 'https://julkinen.traficom.fi/inspirepalvelu/rajoitettu/wms';
 export const DIGIROAD_WMS = 'https://avoinapi.vaylapilvi.fi/vaylatiedot/digiroad/ows';
 export const OPEN_METEO = 'https://api.open-meteo.com/v1/forecast';
+
+// Polku's MML API key (#1148). Not a secret: the browser sends it in every MML tile's address. It's only scrambled
+// here, so it isn't plain text in the source for scrapers to pick up. A person's own key is used instead.
+const MML_KEY = 'SAoIWBFIWFhGQxQLVUZBFFlbRk1DDV9GExNXD1pHQV9UXBYT';
+export const mmlKey = (own) => own || [...atob(MML_KEY)].map((c, i) => String.fromCharCode(c.charCodeAt(0) ^ 'polku'.charCodeAt(i % 5))).join('');
+// MML's property map as vector tiles, zooms 0–14 (#1148)
+export const mmlPropertyTiles = (key) =>
+  `https://avoin-karttakuva.maanmittauslaitos.fi/kiinteisto-avoin/tiles/wmts/1.0.0/kiinteistojaotus/default/v3/WGS84_Pseudo-Mercator/{z}/{y}/{x}.pbf?api-key=${encodeURIComponent(key)}`;
+export const FINLAND_BOUNDS = [19.0, 59.3, 31.6, 70.1];
 
 export const mmlTiles = (layer, key) =>
   `https://avoin-karttakuva.maanmittauslaitos.fi/avoin/wmts/1.0.0/${layer}/default/WGS84_Pseudo-Mercator/{z}/{y}/{x}.png?api-key=${encodeURIComponent(key)}`;
@@ -437,6 +446,7 @@ export const QUICK_TILE = {
   contours: { group: 'Terrain', label: 'Contour lines', icon: 'contours' },
   maastoOverlay: { group: 'Terrain', label: 'Maasto­kartta on top', icon: 'pin', zoom: 8 },
   mmlMaastoOverlay: { group: 'Terrain', label: 'MML terrain map on top', icon: 'pin', mml: true },
+  propertyLines: { group: 'Terrain', label: 'Property bound­aries', icon: 'parcels', zoom: 14, note: 'Finland' },
   trailColors: { group: 'Trails & difficulty', label: 'Trail colours', icon: 'trailcolors', opts: true },
   trailDetails: { group: 'Trails & difficulty', label: 'Trail details', icon: 'details' },
   labelsDown: { group: 'Trails & difficulty', label: 'Difficulty numbers', icon: 'num', zoom: 15 },
