@@ -2754,11 +2754,13 @@ def water_hidden(chrome):
 # the hidden map's tiles aren't kept (Oulujärvi, never seen), it ends at once as a straight line and says routing over
 # water needs a connection, rather than being routed on Finland's coarse overview or called land. With the page open (the
 # hidden map made online) and reloaded offline (made offline). Back online, Retry routes it. The sources are seeded (no
-# answers), so only the map's tiles are offline. ([at, from, to, the status to wait for])
+# answers), so only the map's tiles are offline. ([at, from, to, the status to wait for], none offline)
 WATER_OFFLINE_LEG = """(async ([at, a, b, until]) => {
   const wait = (ms) => new Promise((r) => setTimeout(r, ms)), fc = { type: 'FeatureCollection', features: [] };
   const D = await import(location.origin + '/js/waterdata.js');
   D.seedWater(() => ({ fairways: fc, hazards: fc, depths: null, wind: null, missing: [], skipped: [] }));
+  // offline: Chrome's emulation lets navigator.onLine turn true again at times while requests still fail
+  if (!until) Object.defineProperty(navigator, 'onLine', { configurable: true, get: () => false });
   const p = polku.planner, said = [], box = document.querySelector('#toast');
   const notes = new MutationObserver(() => { if (!box.hidden && said.at(-1) !== box.textContent) said.push(box.textContent); });
   notes.observe(box, { childList: true, subtree: true, characterData: true, attributes: true });
@@ -2772,6 +2774,7 @@ WATER_OFFLINE_LEG = """(async ([at, a, b, until]) => {
   for (let k = 0; k < 120 && (l().status === 'loading' || (until && l().status !== until)); k++) await wait(250);
   await wait(300);
   notes.disconnect();
+  delete navigator.onLine;
   return { status: l().status, water: !!(l().result && l().result.water), ms: Date.now() - t0, said };
 })(%s)"""
 WATER_OFFLINE_RETRY = """(async () => {

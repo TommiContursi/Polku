@@ -4,6 +4,11 @@ What's new in [Polku](https://polku.si), from the latest updates back to the fir
 
 ## 2026-11-20
 
+### A new leg on the water offline ([#1195](https://github.com/TommiContursi/Polku/issues/1195))
+
+- Without a connection, a new leg over water where the map's detail isn't on your device is drawn as a straight line at once, and Polku says routing over water needs a connection. Before, it could be routed on Finland's coarse map, whose lakes have no islands, and look like a finished route. Where the detail is on your device, as in an area saved with **Save offline**, the leg is still routed. Once you're back online, **Retry** in Check routes it.
+- While a leg on the water is still being routed, **What Polku looked at** no longer counts it as water Syke didn't survey ([#1196](https://github.com/TommiContursi/Polku/issues/1196)).
+
 ### Mountain passes and ridges ([#1178](https://github.com/TommiContursi/Polku/issues/1178))
 
 - Passes between fells, mapped as saddles in OpenStreetMap, are marked with OpenStreetMap's usual saddle mark, a small brown block with a notch in its top, and their name and height, like the peaks, from zoom 11 to 13. Taivaskeronsatula at Pallas is one. The map's data has them only up to zoom 13, so they aren't shown when you zoom in further. Tapping one opens its card as a pass.
