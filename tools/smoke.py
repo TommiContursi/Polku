@@ -851,7 +851,7 @@ def waterway_style(chrome):
     return not fails
 
 
-# #1148: Property boundaries, a switch in Layers' Terrain, off in every sport: MML's property map from zoom 14 in Finland, with
+# #1148: Property boundaries, a switch in Layers' Terrain with its opacity, off in every sport: MML's property map from zoom 14 in Finland, with
 # Polku's key (not plain text in the source) or a person's own, drawn and named at Jyväskylä's centre.
 def property_lines(chrome):
     pg = chrome.page(1440, 900, False)
@@ -882,6 +882,10 @@ def property_lines(chrome):
       const lines=m.queryRenderedFeatures({layers:['property-line']}).length, ids=m.queryRenderedFeatures({layers:['property-id']}).length;
       if(!lines)errs.push('no property boundaries drawn at Jyväskylä, zoom 16');
       if(!ids)errs.push('no property IDs drawn at Jyväskylä, zoom 16');
+      const range=document.querySelector('input[type=range][aria-label="Property boundaries opacity"]');
+      if(!range)errs.push('no Opacity under Property boundaries');
+      else { range.value='40'; range.dispatchEvent(new Event('input')); await frame(); await frame();
+        if(m.getPaintProperty('property-line','line-opacity')!==0.4||m.getPaintProperty('property-id','text-opacity')!==0.4)errs.push(`Opacity 40 % draws the lines at ${m.getPaintProperty('property-line','line-opacity')}`); }
       const color=(b)=>{polku.set({base:b}); return m.getPaintProperty('property-line','line-color');};
       if(color('trail')===color('night'))errs.push('the same orange on the Night map as on the Trail map');
       polku.set({base:'trail',mmlKey:'own-key-fixture'});

@@ -1309,7 +1309,7 @@ const toggleInfo = (label, on, fn, note, name = label) => {
 };
 const seg = (options, value, fn) => h('div', { class: 'seg small full' },
   ...options.map(([v, label, disabled]) => h('button', { type: 'button', 'aria-pressed': String(value === v), disabled: !!disabled, onclick: () => fn(v) }, label)));
-// A raster layer's opacity, right under its switch while it's on; remembered per layer
+// A layer's opacity, right under its switch while it's on; remembered per layer
 // (overlays by id, the weather fields as wx:rain and wx:temp; style.js reads the same keys).
 const WX_OPACITY = {
   'wx:rain': { label: 'Rain', opacity: 0.55, layers: ['wx-rain', 'wx-radar-rv', 'wx-radar-fi'], on: () => state.weather.rain },
@@ -1319,6 +1319,7 @@ const WX_OPACITY = {
 const opacitySpec = (id) => (RASTER_OVERLAYS[id]
   ? { label: RASTER_OVERLAYS[id].label, opacity: RASTER_OVERLAYS[id].opacity, layers: [`ov-${id}`], on: () => !!state.overlays[id] }
   : id === 'lit' ? { label: 'Lit ways', opacity: 1, on: () => !!state.overlays.lit } // (no layers: style.js scales its look)
+  : id === 'propertyLines' ? { label: 'Property boundaries', opacity: 0.9, on: () => !!state.overlays.propertyLines } // (lines and names: style.js)
   : WX_OPACITY[id]);
 const opacityOf = (id) => (state.overlayOpacity[id] != null ? state.overlayOpacity[id] : opacitySpec(id).opacity);
 const opacityRow = (id) => {

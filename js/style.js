@@ -337,12 +337,12 @@ export function buildStyle(s, ctx) {
   // orange, apart from the route's magenta, danger's red and the trails' colours. (ov-: its failures show as a layer's.)
   if (s.overlays.propertyLines) {
     const dark = s.base === 'night' || aerialBase;
-    const color = dark ? '#fdba74' : '#c2410c';
+    const color = dark ? '#fdba74' : '#c2410c', op = s.overlayOpacity && s.overlayOpacity.propertyLines != null ? s.overlayOpacity.propertyLines : 0.9;
     sources['ov-propertyLines'] = { type: 'vector', tiles: [mmlPropertyTiles(mmlKey(s.mmlKey))], minzoom: 14, maxzoom: 14, bounds: FINLAND_BOUNDS, attribution: '© Maanmittauslaitos, kiinteistörekisteri, CC BY 4.0' };
-    add({ id: 'property-line', type: 'line', source: 'ov-propertyLines', 'source-layer': 'KiinteistorajanSijaintitiedot', minzoom: 14, paint: { 'line-color': color, 'line-width': zi(14, 0.8, 17, 1.6, 19, 2.5), 'line-opacity': 0.9 } });
+    add({ id: 'property-line', type: 'line', source: 'ov-propertyLines', 'source-layer': 'KiinteistorajanSijaintitiedot', minzoom: 14, paint: { 'line-color': color, 'line-width': zi(14, 0.8, 17, 1.6, 19, 2.5), 'line-opacity': op } });
     add({ id: 'property-id', type: 'symbol', source: 'ov-propertyLines', 'source-layer': 'KiinteistotunnuksenSijaintitiedot', minzoom: 16,
       layout: { 'text-field': ['get', 'kiinteistotunnuksenEsitysmuoto'], 'text-font': FONT, 'text-size': 11, 'text-optional': true },
-      paint: { 'text-color': color, 'text-halo-color': dark ? 'rgba(0,0,0,0.8)' : 'rgba(255,255,255,0.9)', 'text-halo-width': 1.4 } });
+      paint: { 'text-opacity': op, 'text-color': color, 'text-halo-color': dark ? 'rgba(0,0,0,0.8)' : 'rgba(255,255,255,0.9)', 'text-halo-width': 1.4 } });
   }
 
   // In 3D the buildings stand up (#643), over the roads and trails, under the routes, the names and your route.
