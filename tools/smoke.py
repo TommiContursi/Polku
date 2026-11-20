@@ -1114,7 +1114,9 @@ def mml_bogs(chrome):
         for(const k of [39110,39120,34100,36200,38300])if(bog()._featureFilter.filter({zoom:14},as(k)))errs.push(`${base}: class ${k} drawn as a bog`);
         // MML's lake over OSM's wetlands, so a marsh OSM cut out of a lake isn't a pale patch in it (Rautpohja); its
         // overgrowing water over OSM's lake, which would hide it, in the water's own blue (paddling's too)
+        if(at('mml-lake')<0||at('mml-overgrowing')<0){errs.push(`${base}: no layer for MML's lakes or overgrowing water`);continue;}
         if(!(at('lc-wetland-pattern')<at('mml-lake')&&at('mml-lake')<at('mml-bog')))errs.push(`${base}: MML's lakes not drawn over OSM's wetlands and under the bogs`);
+        if(!drawn('mml-lake').has(36200))errs.push(`${base}: no lake drawn from the recorded tile`);
         if(m.getPaintProperty('mml-lake','fill-color')!=='#'+water)errs.push(`${base}: MML's lakes in ${m.getPaintProperty('mml-lake','fill-color')}, OSM's in #${water}`);
         if(!(at('water')<at('mml-overgrowing')&&at('mml-overgrowing')<at('water-shore')))errs.push(`${base}: overgrowing water not drawn over OSM's lakes`);
         const ow=m.getPaintProperty('mml-overgrowing','fill-pattern');
