@@ -4,6 +4,10 @@ What's new in [Polku](https://polku.si), from the latest updates back to the fir
 
 ## 2026-11-20
 
+### Lakes with marshes and overgrowing water ([#1177](https://github.com/TommiContursi/Polku/issues/1177))
+
+- In Finland, a lake's shallows that OpenStreetMap maps as marshes are now drawn as water, not as pale land in the lake. The National Land Survey's overgrowing water shows its whole shape, as blue dashes on the water's blue, paddling's too. Marshes on land are drawn as before.
+
 ### Rock, cliffs and power lines from the National Land Survey ([#1147](https://github.com/TommiContursi/Polku/issues/1147))
 
 - In Finland, the Trail, Plain and Night maps draw the National Land Survey's rock from zoom 13, in the same grey as OpenStreetMap's rock, and its boulder fields dotted. From zoom 14, rocks too small for an area, single stones and sparse boulders are small marks of their own.

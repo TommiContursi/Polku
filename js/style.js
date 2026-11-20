@@ -187,6 +187,8 @@ export function buildStyle(s, ctx) {
     add({ id: 'mml-base', type: 'raster', source: 'mmlBase' });
   }
 
+  const waterColor = isWater(act) ? (s.base === 'night' ? '#0d3b5e' : '#93c6ec') : P.water;
+
   // ---- Land ---------------------------------------------------------------
   if (vectorFills) {
     const lc = (id, cls, color, extra = {}) =>
@@ -203,14 +205,17 @@ export function buildStyle(s, ctx) {
     lc('lc-wetland', ['wetland'], P.wetland);
     // blue dashes from zoom 11 (js/icons.js): the tiles' wetlands are all one kind, so nothing about trees or footing (#1144)
     add({ id: 'lc-wetland-pattern', type: 'fill', source: 'ofm', 'source-layer': 'landcover', minzoom: 11, filter: ['==', ['get', 'class'], 'wetland'], paint: { 'fill-pattern': `wetland-${P.wetland.slice(1)}-${P.wetlandDash.slice(1)}` } });
+    // MML's lakes in Finland over OSM's wetlands: OSM's lakes leave a hole for each marsh in them, and MML's lake covers it,
+    // so the lake doesn't show land-coloured patches where MML has no overgrowing water (Rautpohja, Jyväskylä)
+    add({ id: 'mml-lake', type: 'fill', source: 'mml', 'source-layer': 'vesisto_alue', filter: ['in', cls, ['literal', [36200, 36211, 36313]]], paint: { 'fill-color': waterColor } });
     // MML's bogs in Finland (#1147), over OSM's wetlands: where MML has a bog its class shows, and OSM's wetland stays
     // where MML has none, abroad and wherever MML's tiles don't come. Their grounds are opaque, so no dashes show through.
     // Zoom 11's tiles only say open or wooded (35401/35402); a bog MML's survey classes hard to cross (35421/35422) gets
     // unbroken lines where the tiles carry the class, large ones from zoom 12 and the rest from 13.
     add({
       id: 'mml-bog', type: 'fill', source: 'mml', 'source-layer': 'maasto_alue', minzoom: 11,
-      filter: ['in', cls, ['literal', [35401, 35402, 35411, 35412, 35421, 35422, 38300]]],
-      paint: { 'fill-pattern': ['match', cls, [35401, 35411], dashes(P.wetland), [35402, 35412], dashes(P.bogWood), 35421, hard(P.wetland), 35422, hard(P.bogWood), dashes(P.water)] },
+      filter: ['in', cls, ['literal', [35401, 35402, 35411, 35412, 35421, 35422]]],
+      paint: { 'fill-pattern': ['match', cls, [35401, 35411], dashes(P.wetland), [35402, 35412], dashes(P.bogWood), 35421, hard(P.wetland), hard(P.bogWood)] },
     });
     // reedbeds over it, from Polku's own OSM data (js/osm-data.js): reed stems on the same ground, covering the dashes
     add({ id: 'lc-reedbed', type: 'fill', source: 'reedbeds', minzoom: 12, paint: { 'fill-pattern': `reedbed-${P.wetland.slice(1)}-${P.reed.slice(1)}` } });
@@ -283,7 +288,6 @@ export function buildStyle(s, ctx) {
 
   // ---- Water --------------------------------------------------------------
   if (!aerialBase && !topoBase) {
-    const waterColor = isWater(act) ? (s.base === 'night' ? '#0d3b5e' : '#93c6ec') : P.water;
     // a stream wider than a ditch or drain, so the two read apart (#1138); the tiles have them from zoom 13.
     // Under the water's fill, so a river's line doesn't show through a lake or strait it runs across.
     const ww = (river, stream, ditch) => ['match', ['get', 'class'], ['river', 'canal'], river, ['ditch', 'drain'], ditch, stream];
@@ -297,6 +301,8 @@ export function buildStyle(s, ctx) {
       },
     });
     add({ id: 'water', type: 'fill', source: 'ofm', 'source-layer': 'water', filter: ['!=', ['get', 'class'], 'swimming_pool'], paint: { 'fill-color': waterColor, 'fill-antialias': true } });
+    // MML's overgrowing water in Finland (#1147): dashes on the water's blue, over OSM's lake, which covers most of it
+    if (sources.mml) add({ id: 'mml-overgrowing', type: 'fill', source: 'mml', 'source-layer': 'maasto_alue', minzoom: 11, filter: ['==', ['get', 'kohdeluokka'], 38300], paint: { 'fill-pattern': `wetland-${waterColor.slice(1)}-${P.wetlandDash.slice(1)}` } });
     add({ id: 'water-shore', type: 'line', source: 'ofm', 'source-layer': 'water', minzoom: 11, filter: ['!=', ['get', 'class'], 'swimming_pool'], paint: { 'line-color': P.waterLine, 'line-width': zi(11, 0.3, 15, act === 'paddle' ? 1.4 : 0.8), 'line-opacity': 0.8 } });
   }
 
