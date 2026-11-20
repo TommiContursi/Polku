@@ -1279,7 +1279,9 @@ def cycling_restrictions(chrome):
           const tags={...props,...(pass==='ground'?{}:{brunnel:pass})};
           const matches=p=>l._featureFilter.filter({zoom:16},{type:2,properties:p});
           for(const bicycle of ['no','yes','designated','permissive','dismount',undefined])if(matches({...tags,...(bicycle?{bicycle}:{})})!==(bicycle==='no'))errs.push(`${id}: bicycle=${bicycle??'unknown'} misclassified`);
-          if(matches({...tags,bicycle:'no',subclass:'footway'})||matches({...tags,access:'no',foot:'yes'}))errs.push(`${id}: footway or missing bicycle permission became a prohibition`);
+          if(matches({...tags,bicycle:'no',subclass:'footway'})||matches({...tags,access:'no',foot:'yes',bicycle:'yes'}))errs.push(`${id}: footway or bicycle permission became a prohibition`);
+          // #1162: closed to everyone but people on foot counts as no bikes
+          if(!matches({...tags,access:'no',foot:'yes'})||!matches({...tags,access:'private',foot:'designated'}))errs.push(`${id}: closed to all but people on foot has no bars`);
           if(matches({...tags,bicycle:'no',access:'no',foot:'no'}))errs.push(`${id}: cycling and general access marks duplicated`);
           for(const other of passes.filter(x=>x!==pass))if(matches({...tags,brunnel:other,bicycle:'no'}))errs.push(`${id}: wrong structure`);
           // #1137: bars across the line, the trail halo's width (times the detail's width factor) plus 2 px a side
@@ -1300,7 +1302,7 @@ def cycling_restrictions(chrome):
         {foot:'yes',bicycle:'no',red:true},
         {access:'private',foot:'no',bicycle:'no',red:false},
         {access:'private',foot:'yes',bicycle:'no',red:true},
-        {access:'no',foot:'yes',red:false},
+        {access:'no',foot:'yes',red:true},
       ];
       T.holdFetches();
       T.seedTile(4682,2273,{elements:samples.map(({red,...tags},i)=>({type:'way',id:900000+i,
@@ -1313,16 +1315,32 @@ def cycling_restrictions(chrome):
         if(f?.properties.access!==sample.access)errs.push(`trail conversion lost access=${sample.access??'unknown'}`);
         if(!f||m.style.getLayer('path-osm-ground-nobike')._featureFilter.filter({zoom:16},{type:2,properties:f.properties})!==sample.red)errs.push(`converted trail ${i}: cycling/general access marks disagree`);
       }
-      for(const activity of ['hike','run','trailrun','paddle']) {
+      // #1162: one choice in Layers, on in the cycling and walking sports, everyone's marks while it's on
+      const marks=()=>m.getStyle().layers.filter(l=>l.id.endsWith('-nobike')||l.id.startsWith('way-noaccess')).length;
+      const KEY=['No bikes (red bars across a path or forest track)','No entry: private or no access (dots on both sides)','No walking (dots on one side)'];
+      const keyShown=()=>KEY.filter(t=>document.querySelector('#layers-body').textContent.includes(t)).length;
+      for(const activity of ['hike','run','trailrun','paddle','swim']) {
         polku.set({activity});
-        if(m.getStyle().layers.some(l=>l.id.endsWith('-nobike')))errs.push(`${activity}: cycling prohibition shown in another sport`);
+        const want=!['paddle','swim'].includes(activity);
+        if(!!polku.state.overlays.access!==want||!marks()!==!want)errs.push(`${activity}: access restrictions ${want?'off':'on'} by default`);
+        if(keyShown()!==(want?3:0))errs.push(`${activity}: the map key's restriction rows don't follow the choice`);
       }
-      if(!document.querySelector('#layers-body').textContent.includes('No bikes (red bars across a path or forest track)'))errs.push('map key misstates restriction coverage');
+      polku.set({activity:'hike'});
+      const dot=(id,p)=>{const l=m.style.getLayer(id); return !!l&&l._featureFilter.filter({zoom:16},{type:2,properties:{class:'path',...p}});};
+      for(const [tags,one,both] of [[{access:'no'},true,true],[{access:'private',bicycle:'no'},true,true],[{foot:'no'},true,false],[{access:'no',bicycle:'yes'},true,false],[{access:'no',foot:'yes'},false,false],[{bicycle:'no'},false,false],[{},false,false]])
+        if(dot('way-noaccess',tags)!==one||dot('way-noaccess-2',tags)!==both)errs.push(`dots for ${JSON.stringify(tags)}: one side ${dot('way-noaccess',tags)}, other ${dot('way-noaccess-2',tags)}`);
+      if(Math.sign(value('way-noaccess','line-offset',16,{}))===Math.sign(value('way-noaccess-2','line-offset',16,{})))errs.push('no entry dots on one side only');
+      if(!m.getStyle().layers.some(l=>l.id==='path-ground-nobike'))errs.push('hike: no-bike bars missing');
+      polku.set({overlays:{...polku.state.overlays,access:false}});
+      if(marks()||keyShown())errs.push('restriction marks or key rows with the choice off');
+      if(!document.querySelector('#layers-body').textContent.includes('Access restrictions'))errs.push('the Layers switch is missing');
+      polku.set({overlays:{...polku.state.overlays,access:true}});
+      if(!document.querySelector('.on-chips')?.textContent.includes('Access restrictions'))errs.push('On now misses access restrictions');
       return [...new Set(errs)];
     })()""")
     fails += [f'console: {e[:160]}' for e in pg.errors()]
     pg.close()
-    print(f"{'ok  ' if not fails else 'FAIL'} cycling restriction marks on paths and tracks (#1130, #1137)" + ''.join(f'\n     - {f}' for f in fails), flush=True)
+    print(f"{'ok  ' if not fails else 'FAIL'} access restriction marks and their choice in Layers (#1130, #1137, #1162)" + ''.join(f'\n     - {f}' for f in fails), flush=True)
     return not fails
 
 
