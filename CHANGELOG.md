@@ -10,7 +10,8 @@ What's new in [Polku](https://polku.si), from the latest updates back to the fir
 - Shoals have light lines across the water from zoom 13, and stone fields the same lines with small triangles. The depths still show through them.
 - Rapids are white bars across the river from zoom 11, and a small arrow beside a river shows which way it flows from zoom 14.
 - Jetties are dark lines from zoom 14: the National Land Survey's in Finland, and OpenStreetMap's piers everywhere.
-- With **Depth contours** and **Depth soundings** on, as they are at first when paddling, lakes that Traficom doesn't chart get the National Land Survey's depth contours, with their depths, and its depth points from zoom 13. Traficom's depths stay at sea and on charted lakes. No depth lines on a lake means it hasn't been surveyed, not that it's deep.
+- With **Depth contours** and **Depth soundings** on, as they are at first when paddling, lakes that Traficom doesn't chart get the National Land Survey's depth contours, with their depths, and its depth points from zoom 13, drawn like Traficom's. Traficom's depths stay at sea and on charted lakes. No depth lines on a lake means it hasn't been surveyed, not that it's deep.
+- A lake's surface height above the sea is written in it in italics from zoom 13, as in "94.6 m a.s.l.".
 - Where the National Land Survey's map data doesn't load, these are missing and the message says so. Outside Finland only the piers are drawn.
 
 ### Access restrictions in Layers ([#1162](https://github.com/TommiContursi/Polku/issues/1162))

@@ -251,8 +251,9 @@ Plain and Night maps, in MTB and paddle; its PR lists what else it covered.
   Traficom's): MML's depth contours with their depths, and its depth points,
   from zoom 13. MML's tiles have none at sea or on charted lakes, so the two
   sources don't overlap. Syke's dataset record says Syke makes the lake
-  depth contours and delivers them to MML (#1184). Lakes' surface
-  heights aren't drawn.
+  depth contours and delivers them to MML (#1184). They're drawn in
+  Traficom's look, so the two read as one (decided on #1170). A lake's
+  surface height is a label in the basemap, "94.6 m a.s.l.", from zoom 13.
 - **Property boundaries** (#1157) on every base, in orange (lighter on
   Night and the aerial maps), from zoom 14, property IDs from zoom 16, in
   the Layers panel under Terrain, off by default, with an **Opacity**

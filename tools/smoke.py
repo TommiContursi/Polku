@@ -1325,10 +1325,16 @@ def mml_water(chrome):
       const text=(id,f)=>m.style.getLayer(id).layout.get('text-field').evaluate(f,{}).toString();
       if(!label||text('mml-depth-label',label)!=='1.5')errs.push(`a 1.5 m contour labelled ${label&&text('mml-depth-label',label)}`);
       if(!point||text('mml-sounding',point)!=='1.1')errs.push(`a 1.1 m depth point labelled ${point&&text('mml-sounding',point)}`);
+      // in Traficom's look, so the two sources read as one: its contours' colour and black soundings
+      if(m.getPaintProperty('mml-depth','line-color')!=='#1f4d6b'||m.getPaintProperty('mml-sounding','text-color')!=='#000000')errs.push(`MML's depths not in Traficom's colours (${m.getPaintProperty('mml-depth','line-color')}, ${m.getPaintProperty('mml-sounding','text-color')})`);
+      // a lake's surface height, in the basemap: in metres above the sea, also with the depths off
+      const lakeHeight=()=>{const f=feats('mml-lake-height')[0]; return f&&[text('mml-lake-height',f),f.properties.keskikorkeus];};
+      {const h=lakeHeight(); if(!h||h[0]!==`${+(h[1]/1000).toFixed(1)} m a.s.l.`)errs.push(`a lake's height labelled ${h&&h[0]} (keskikorkeus ${h&&h[1]})`);}
       {const order=m.getStyle().layers.map(l=>l.id), i=(id)=>order.indexOf(id);
         if(!(i('ov-depthContours')<i('mml-depth')&&i('mml-depth')<i('mml-shoal')))errs.push(`MML's depth contours not over Traficom's and under the shoals (${i('ov-depthContours')}, ${i('mml-depth')}, ${i('mml-shoal')})`);}
       polku.set({overlays:{...polku.state.overlays,depthContours:false,soundings:false}}); await settle();
       for(const l of ['mml-depth','mml-depth-label','mml-sounding'])if(m.getLayer(l))errs.push(`${l} drawn with the depths off`);
+      if(!lakeHeight())errs.push("no lake's height with the depths off");
       for(const base of ['maasto','aerial']){polku.set({base}); await settle(); for(const l of ['mml-shoal','mml-rapids','mml-flow','mml-jetty','pier'])if(m.getLayer(l))errs.push(`${l} on the ${base} base`);}
       return errs;
     })()""", timeout=180000)
