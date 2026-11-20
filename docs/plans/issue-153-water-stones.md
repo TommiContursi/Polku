@@ -56,7 +56,7 @@ OSM's rocks, reefs and shoals are already one of the router's sources everywhere
 
   So beyond Finland the router knows far fewer rocks: a tenth or less of what MML has in Finland. What Polku looked at says which source it had, and the route still needs a lookout.
 - **The same rules:** OSM's rocks charted as always above the water (`seamark:rock:water_level` or `seamark:obstruction:water_level` `dry` or `always_dry`) get the 15 m of MML's stones above the surface; every other point gets 25 m, as a stone at the surface, since OSM's may be awash, under the water or not say. Reefs and shoals: the area and 15 m round it, as MML's.
-- **What Polku looked at, Rocks and shoals:** "the National Land Survey and OpenStreetMap" where MML's map covered the route's water, "OpenStreetMap" beyond it, and "OpenStreetMap, and the National Land Survey for 12 km of the 40 km on the water" across a border, all ✓. Where a source didn't answer, the row says so and Not checked has its stretch, with Retry.
+- **What Polku looked at, Rocks and shoals:** "the National Land Survey and OpenStreetMap" where MML's map covered the route's water, "OpenStreetMap" beyond it, and "OpenStreetMap, and the National Land Survey for 12.4 km" across a border, all ✓ (short, so it stays on two lines at 390 px). Where a source didn't answer, the row says so and Not checked has its stretch, with Retry.
 
 ## 2. How far to keep clear
 

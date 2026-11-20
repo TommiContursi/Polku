@@ -2641,7 +2641,7 @@ WATER_MML = """(async () => {
     p.addPoint(part[1]);
     for (let k = 0; k < 80 && !(p.analysis && p.analysis.waterWarn && p.legs[0] && p.legs[0].status === 'ok'); k++) await wait(250);
     await wait(500);
-    if (!row() || row().state !== 'ok' || !/^OpenStreetMap, and the National Land Survey for \\d+ m of the \\d+ m on the water$/.test(row().by)) errs.push(`a leg half outside MML's map: ${says()}`);
+    if (!row() || row().state !== 'ok' || !/^OpenStreetMap, and the National Land Survey for \\d+ m$/.test(row().by)) errs.push(`a leg half outside MML's map: ${says()}`);
     // beyond MML's map, OSM's rocks the same way (#153): one charted always dry as clear as MML's stones above the surface,
     // the rest as a stone at the surface
     await forget();

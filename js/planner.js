@@ -7067,7 +7067,7 @@ export class Planner {
         // (25 m for the shores' edge cells, at most half the water, as the lake depths)
         else if (wetM > 0 && gotM >= wetM - Math.min(25, wetM / 2)) row(what, 'the National Land Survey and OpenStreetMap', 'ok');
         else if (gotM < 25) row(what, 'OpenStreetMap', 'ok'); // outside Finland
-        else row(what, `OpenStreetMap, and the National Land Survey for ${fmtDist(gotM)} of the ${fmtDist(wetM)} on the water`, 'ok');
+        else row(what, `OpenStreetMap, and the National Land Survey for ${fmtDist(gotM)}`, 'ok');
       }
       source('Fairways and marks', 'fairways', 'Väylävirasto');
     }
