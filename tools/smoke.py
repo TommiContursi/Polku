@@ -1271,7 +1271,7 @@ def cycling_restrictions(chrome):
         if(m.getStyle().layers.some(l=>l.id.startsWith('road-')&&l.id.endsWith('-nobike')))errs.push('cycling side marks leaked onto ordinary roads');
         const order=m.getStyle().layers.map(l=>l.id);
         for(const pass of passes)for(const [way,props] of [
-          [`track-${pass}`,{class:'track'}], [`cycleway-${pass}`,{class:'path',subclass:'cycleway'}],
+          [`track-${pass}`,{class:'track'}], [`track-osm-${pass}`,{class:'track'}], [`cycleway-${pass}`,{class:'path',subclass:'cycleway'}],
           [`path-${pass}`,{class:'path',subclass:'path'}], [`path-osm-${pass}`,{class:'path',subclass:'path',trail:true}]
         ]) {
           const id=`${way}-nobike`, l=m.style.getLayer(id);
@@ -1286,7 +1286,7 @@ def cycling_restrictions(chrome):
           for(const other of passes.filter(x=>x!==pass))if(matches({...tags,brunnel:other,bicycle:'no'}))errs.push(`${id}: wrong structure`);
           // #1137: bars across the line, the trail halo's width (times the detail's width factor) plus 2 px a side
           for(const [i,z] of [14,16,18].entries())for(const wf of [.62,1,1.6]) {
-            const width=value(id,'line-width',z,{...tags,wf}), want=[4,7,12][i]*(highContrast?1.35:1)*(way.startsWith('path-osm-')?wf:1)+4;
+            const width=value(id,'line-width',z,{...tags,wf}), want=[4,7,12][i]*(highContrast?1.35:1)*(way.includes('-osm-')?wf:1)+4;
             if(Math.abs(width-want)>1e-6)errs.push(`${id}: zoom ${z} width factor ${wf}: bar length ${width}, expected ${want}`);
           }
           if(m.getPaintProperty(id,'line-offset'))errs.push(`${id}: bars moved off the line`);
@@ -1330,7 +1330,7 @@ def cycling_restrictions(chrome):
       for(const [tags,one,both] of [[{access:'no'},true,true],[{access:'private',bicycle:'no'},true,true],[{foot:'no'},true,false],[{access:'no',bicycle:'yes'},true,false],[{access:'no',foot:'yes'},false,false],[{bicycle:'no'},false,false],[{},false,false]])
         if(dot('way-noaccess',tags)!==one||dot('way-noaccess-2',tags)!==both)errs.push(`dots for ${JSON.stringify(tags)}: one side ${dot('way-noaccess',tags)}, other ${dot('way-noaccess-2',tags)}`);
       if(Math.sign(value('way-noaccess','line-offset',16,{}))===Math.sign(value('way-noaccess-2','line-offset',16,{})))errs.push('no entry dots on one side only');
-      if(!m.getStyle().layers.some(l=>l.id==='path-ground-nobike'))errs.push('hike: no-bike bars missing');
+      for(const id of ['path-ground-nobike','track-osm-ground-nobike'])if(!m.getStyle().layers.some(l=>l.id===id))errs.push(`hike: ${id} missing`);
       polku.set({overlays:{...polku.state.overlays,access:false}});
       if(marks()||keyShown())errs.push('restriction marks or key rows with the choice off');
       if(!document.querySelector('#layers-body').textContent.includes('Access restrictions'))errs.push('the Layers switch is missing');
@@ -1344,18 +1344,94 @@ def cycling_restrictions(chrome):
     return not fails
 
 
+# Every track from zoom 13 (#1128), on a phone: at 13.45 the trail data draws the tracks inside its tiles (a recorded tile at
+# Vuorilampi, Jyväskylä, with S0− tracks) and the map's own are hidden there; from 14 the map's own draw them. The hint
+# shows until the trail data covers the view (its neighbours seeded empty), and below 14 the hosted data alone is asked.
+TRACKS_FROM_13 = """(async () => {
+  const m = polku.map, wait = (ms) => new Promise((r) => setTimeout(r, ms)), errs = [];
+  const idle = () => new Promise((r) => { if (m.loaded()) r(); else m.once('idle', r); });
+  const T = await import('/js/trails.js'), G = await import('/js/geo.js'), hint = document.querySelector('#zoom-hint');
+  T.holdFetches();
+  T.seedTile(4683, 2272, await (await fetch('/tools/fixtures/trails-vuorilampi.json')).json());
+  m.jumpTo({ center: [25.8095, 62.26066], zoom: 13.45 });
+  await wait(1500); await idle();
+  const [w, s, e, n] = G.tileBounds(4683, 2272, 13);
+  const inside = (f) => (f.geometry.type === 'LineString' ? f.geometry.coordinates : f.geometry.coordinates.flat()).every(([x, y]) => x > w && x < e && y > s && y < n);
+  const osm = m.queryRenderedFeatures({ layers: ['track-osm-ground'] });
+  const drawn = new Set(osm.map((f) => f.properties.osm)).size;
+  if (drawn < 20) errs.push(`${drawn} tracks drawn from the trail data at 13.45`);
+  if (!osm.some((f) => f.properties.mtb === '0-')) errs.push('no S0− track drawn at 13.45');
+  const twice = m.queryRenderedFeatures({ layers: ['track-ground'] }).filter(inside).length;
+  if (twice) errs.push(`${twice} of the map's own tracks drawn under the trail data's at 13.45`);
+  if (hint.hidden) errs.push('no hint while the trail data covers only part of the view');
+  for (const [x, y] of polku.trailDetails.want) if (!T.loadedTile(x, y)) T.seedTile(x, y, { v: 1, w: [], n: [] });
+  await wait(800);
+  if (!hint.hidden) errs.push('the hint still shows with the trail data over the whole view');
+  m.jumpTo({ center: [25.8120, 62.26218], zoom: 14.03 });
+  await wait(1500); await idle();
+  if (m.queryRenderedFeatures({ layers: ['track-osm-ground'] }).length) errs.push('the trail data still draws tracks at 14.03');
+  const own = m.queryRenderedFeatures({ layers: ['track-ground'] }).filter(inside).length;
+  if (own < 10) errs.push(`${own} of the map's own tracks at 14.03`);
+  // below 14 a tile the hosted data hasn't (one in the Atlantic) isn't asked of Overpass
+  const N = await import('/js/net.js'), asked = () => N.usage().find((u) => u.id === 'overpass').session, before = asked();
+  T.holdFetches(false);
+  const err = await T.trailTile(3000, 3000, { hostedOnly: true }).then(() => null, (x) => x);
+  T.holdFetches();
+  if (!err || !err.hostedOnly) errs.push(`a tile outside the hosted data below 14: ${err ? err.message : 'loaded'}`);
+  if (asked() !== before) errs.push('Overpass was asked below zoom 14');
+  // ... nor said to be busy, when the trail details ask for it again and again over the Atlantic
+  {
+    let busy = 0;
+    const atlantic = { getZoom: () => 13.5, getBounds: () => ({ getWest: () => -48.15, getSouth: () => 43.6, getEast: () => -48.13, getNorth: () => 43.61 }), on: () => {} };
+    const d = new T.TrailDetails(atlantic, { onData: () => {}, onCoverage: () => {}, onBusy: () => busy++ });
+    d.enabled = true;
+    T.holdFetches(false);
+    for (let k = 0; k < 3; k++) { d.update(); await wait(1500); }
+    T.holdFetches();
+    if (busy) errs.push(`a tile outside the hosted data below 14 was called busy ${busy} times`);
+  }
+  // ... and zoomed in to 14 while the hosted data is still being asked for it, Overpass is asked (Codex on #1150; answered here)
+  {
+    const real = window.fetch;
+    let overpass = 0;
+    window.fetch = (u, o) => (/interpreter/.test(String(u)) ? (overpass++, Promise.resolve(new Response('{"elements":[]}', { headers: { 'content-type': 'application/json' } }))) : real(u, o));
+    T.holdFetches(false);
+    const at13 = T.trailTile(3002, 3002, { hostedOnly: true }).catch(() => null), at14 = await T.trailTile(3002, 3002).then(() => null, (x) => x);
+    await at13;
+    T.holdFetches();
+    window.fetch = real;
+    // (a profile that ran this before has the answer cached, so Overpass is asked 0 or 1 times: the tile loading is what counts)
+    if (at14) errs.push(`zoomed in to 14 during a hosted-only ask: ${at14.message}, Overpass asked ${overpass} times`);
+  }
+  // Trail details off (cycling on gravel): the hint is back at once
+  m.jumpTo({ center: [25.8095, 62.26066], zoom: 13.45 });
+  await wait(800); await idle();
+  if (!hint.hidden) errs.push('the hint shows at 13.45 with the trail data over the view');
+  polku.set({ activity: 'gravel' });
+  await wait(600);
+  if (hint.hidden) errs.push('no hint at 13.45 once trail details are off (gravel)');
+  polku.set({ activity: 'mtb' });
+  return errs;
+})()"""
+
+
 def trails(chrome):
+    pg = chrome.page(390, 844, True)
+    pg.open_app({'activity': 'mtb'}, None, '#12/62.26066/25.8095')
+    fails = [f'tracks from 13: {e}' for e in pg.js(TRACKS_FROM_13)]
+    fails += [f'console: {e[:160]}' for e in pg.errors()]
+    pg.close()
     pg = chrome.page(1440, 900, False)
     pg.open_app({'activity': 'mtb'}, {'polku:plannerDock': '"left"'}, '#12/62.2289/25.7652')
     pg.js(SEED_TRAILS)
     pg.js("polku.map.jumpTo({ center: [25.7652, 62.2289], zoom: 16 }); true")
-    fails = pg.js(TRAILS)
+    fails += pg.js(TRAILS)
     fails += [f'route: {e}' for e in pg.js(ROUTE_TRAILS)]
     fails += [f'route beside a track: {e}' for e in pg.js(ALONG_TRACK)]
     fails += [f'console: {e[:160]}' for e in pg.errors()]
     pg.close()
     fails += trail_card(chrome)
-    print(f"{'ok  ' if not fails else 'FAIL'} trail details, a trail's card on phones (#435)" + ''.join(f'\n     - {f}' for f in fails), flush=True)
+    print(f"{'ok  ' if not fails else 'FAIL'} trail details, every track from zoom 13 (#1128), a trail's card on phones (#435)" + ''.join(f'\n     - {f}' for f in fails), flush=True)
     return not fails
 
 

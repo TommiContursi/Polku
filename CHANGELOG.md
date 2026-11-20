@@ -4,6 +4,11 @@ What's new in [Polku](https://polku.si), from the latest updates back to the fir
 
 ## 2026-11-20
 
+### Every path and forest track from zoom 13 ([#1128](https://github.com/TommiContursi/Polku/issues/1128))
+
+- With **Trail details** on, as in MTB, hiking and trail running, every path and forest track now shows from zoom 13 where Polku has its own trail data, as in Finland. Before, most of them showed only from zoom 14, and what showed at zoom 13 depended on whether you had already zoomed in there. Forest tracks keep their dashes and difficulty colours.
+- **Zoom in to see every trail** now shows until zoom 14 wherever the map still leaves some paths and tracks out, and goes once the trail details cover the map.
+
 ### Lake depths on paddling routes ([#1184](https://github.com/TommiContursi/Polku/issues/1184))
 
 - In the lakes the Finnish Environment Institute (Syke) has surveyed, a paddling route keeps off water its soundings found under half a metre deep, where the way round is short. Where a route still crosses it, Check says so under **Good to know**.
