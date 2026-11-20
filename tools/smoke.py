@@ -2696,14 +2696,25 @@ def water_long(chrome):
 
 # The water router's hidden map, its last tile failing (#400): a dropped connection, after the others are in. MapLibre
 # asks for no frame after a failed tile, so its `load` never came and no water leg was routed. The first leg is routed
-# now, and the next. (Only the route's water: no fairways, rocks or wind asked for.)
+# now, and the next. Then a leg out at sea whose tile beside it fails at once while its others come 3 s later: MapLibre
+# called the map idle after the failure, and the water was read without the tiles still coming (#1195). It waits for
+# them, and goes over the water. (Only the route's water: no fairways, rocks or wind asked for.)
 WATER_HIDDEN = """(async () => {
   const wait = (ms) => new Promise((r) => setTimeout(r, ms)), errs = [];
-  let tiles = 0, failed = false;
-  // the hidden map's requests through a protocol of the test's: its first tile fails 6 s on, the rest as they are
+  let tiles = 0, failed = false, late = null;
+  const sea = [[24.955, 60.045], [24.985, 60.040]];
+  const tileOf = ([lon, lat], z) => [Math.floor((lon + 180) / 360 * 2 ** z), Math.floor((1 - Math.asinh(Math.tan(lat * Math.PI / 180)) / Math.PI) / 2 * 2 ** z)];
+  // the hidden map's requests through a protocol of the test's: its first tile fails 6 s on, the rest as they are; once
+  // `late` is set, a tile of the leg's zoom that holds neither end fails at once, and every tile comes 3 s late
   maplibregl.addProtocol('polkutest', async (params) => {
     const url = params.url.replace(/^polkutest:/, 'https:'), tile = /\\/\\d+\\/\\d+\\/\\d+/.test(url);
     if (tile && !tiles++) { await wait(6000); failed = true; throw new TypeError('Failed to fetch'); }
+    const zxy = tile && url.match(/\\/(\\d+)\\/(\\d+)\\/(\\d+)\\.pbf/).slice(1).map(Number);
+    if (late && zxy) {
+      const [z, x, y] = zxy, ends = sea.map((ll) => tileOf(ll, z).join('/'));
+      if (z >= 13 && !late.failed && !ends.includes(`${x}/${y}`)) { late.failed = true; throw new TypeError('Failed to fetch'); }
+      await wait(3000);
+    }
     const r = await fetch(url);
     return { data: tile ? await r.arrayBuffer() : await r.json() };
   });
@@ -2729,6 +2740,14 @@ WATER_HIDDEN = """(async () => {
     p.addPoint([24.9700, 60.1400]);
     for (let k = 0; k < 120 && !routed(2); k++) await wait(250);
     if (!routed(2)) errs.push(`the next leg: ${p.legs[1] ? p.legs[1].status : 'none'} after 30 s`);
+    late = { failed: false };
+    p.clear();
+    p.addPoint(sea[0]);
+    p.addPoint(sea[1]);
+    for (let k = 0; k < 120 && !(p.legs[0] && p.legs[0].status !== 'loading'); k++) await wait(250);
+    const l = p.legs[0], w = l && l.result && l.result.water, drew = w ? w.times['render+data'] : 0;
+    if (!late.failed) errs.push('(the test) no tile beside the leg out at sea failed');
+    else if (!w || l.status !== 'ok' || (l.result.portage || []).length || drew < 2500) errs.push(`a tile beside the leg failing at once, the rest 3 s late: the leg ${l ? l.status : 'none'}${w ? `, its water read after ${drew} ms, ${l.result.portage.length} carries` : ''} (#1195: read before the late tiles came)`);
     return errs;
   } finally {
     maplibregl.Map = Map0;
@@ -2743,10 +2762,10 @@ def water_hidden(chrome):
     styles = {'paddle': {'p': 'balanced', 'v': {'w': 'ignore', 'f': 'ignore', 'k': 'ignore'}}}
     pg.open_app({'activity': 'mtb'}, {'polku:plannerDock': '"left"', 'polku:styles': json.dumps(styles)}, '#13/60.152/24.97')
     pg.js("import(location.origin + '/js/trails.js').then((T) => { T.holdFetches(); return true; })")
-    fails = pg.js(WATER_HIDDEN, timeout=85000)
+    fails = pg.js(WATER_HIDDEN, timeout=130000)
     fails += [f'console: {e[:160]}' for e in pg.errors()]
     pg.close()
-    print(f"{'ok  ' if not fails else 'FAIL'} water routing when the hidden map's last tile fails (#400)" + ''.join(f'\n     - {f}' for f in fails), flush=True)
+    print(f"{'ok  ' if not fails else 'FAIL'} water routing when the hidden map's last tile fails (#400), or one fails while the others come late (#1195)" + ''.join(f'\n     - {f}' for f in fails), flush=True)
     return not fails
 
 
@@ -2754,13 +2773,11 @@ def water_hidden(chrome):
 # the hidden map's tiles aren't kept (Oulujärvi, never seen), it ends at once as a straight line and says routing over
 # water needs a connection, rather than being routed on Finland's coarse overview or called land. With the page open (the
 # hidden map made online) and reloaded offline (made offline). Back online, Retry routes it. The sources are seeded (no
-# answers), so only the map's tiles are offline. ([at, from, to, the status to wait for], none offline)
+# answers), so only the map's tiles are offline. ([at, from, to, the status to wait for])
 WATER_OFFLINE_LEG = """(async ([at, a, b, until]) => {
   const wait = (ms) => new Promise((r) => setTimeout(r, ms)), fc = { type: 'FeatureCollection', features: [] };
   const D = await import(location.origin + '/js/waterdata.js');
   D.seedWater(() => ({ fairways: fc, hazards: fc, depths: null, wind: null, missing: [], skipped: [] }));
-  // offline: Chrome's emulation lets navigator.onLine turn true again at times while requests still fail
-  if (!until) Object.defineProperty(navigator, 'onLine', { configurable: true, get: () => false });
   const p = polku.planner, said = [], box = document.querySelector('#toast');
   const notes = new MutationObserver(() => { if (!box.hidden && said.at(-1) !== box.textContent) said.push(box.textContent); });
   notes.observe(box, { childList: true, subtree: true, characterData: true, attributes: true });
@@ -2774,7 +2791,6 @@ WATER_OFFLINE_LEG = """(async ([at, a, b, until]) => {
   for (let k = 0; k < 120 && (l().status === 'loading' || (until && l().status !== until)); k++) await wait(250);
   await wait(300);
   notes.disconnect();
-  delete navigator.onLine;
   return { status: l().status, water: !!(l().result && l().result.water), ms: Date.now() - t0, said };
 })(%s)"""
 WATER_OFFLINE_RETRY = """(async () => {
