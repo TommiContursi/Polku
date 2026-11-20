@@ -938,7 +938,7 @@ function addRoads(s, P, hc, layers, ctx) {
     // Paths: a difficulty-coloured halo (MTB) under a black dashed centre line.
     // With trail details on, the trails inside the loaded detail tiles are
     // drawn from OSM instead (below), so they're hidden from the tiles there.
-    const trailSet = ['any', ['in', ['coalesce', ['get', 'subclass'], 'path'], ['literal', ['path', 'bridleway', 'steps']]], ['all', ['==', ['get', 'subclass'], 'footway'], ['has', 'mtb_scale']]];
+    const trailSet = ['any', ['in', ['coalesce', ['get', 'subclass'], 'path'], ['literal', ['path', 'bridleway']]], ['all', ['in', ['get', 'subclass'], ['literal', ['footway', 'steps']]], ['has', 'mtb_scale']]];
     const trailFilter = ['all', isPathClass, ['in', ['coalesce', ['get', 'subclass'], 'path'], ['literal', TRAIL_SUB]], ['!', cyclingPath], bf,
       ...(covered ? [['!', ['all', trailSet, ['within', ctx.trailCoverage]]]] : [])];
     const noFoot = ['==', ['get', 'foot'], 'no'];
@@ -957,18 +957,40 @@ function addRoads(s, P, hc, layers, ctx) {
     const centreW = (f) => zi(12, times(0.6 * k, f), 14, times(1.15 * k, f), 16, times(1.8 * k, f), 18, times(3 * k, f));
     const centreColor = footAct && !aerial ? '#b42318' : P.path;
     const centreOpacity = isWater(act) || roadBike ? 0.6 : 1;
-    // Footways and pedestrian streets (#1163): a thin brown dashed line without the band, apart from trails.
+    // Footways and pedestrian streets (#1163): a thin brown dashed line, on the Trail map on a white band 1 px wider a side, apart from trails.
+    const footColor = darkBase ? '#d6725c' : '#a2381f';
+    if (trail && brunnel !== 'tunnel') add({
+      id: `path-${brunnel}-foot-casing`, type: 'line', source: 'ofmTrails', 'source-layer': 'transportation', minzoom: 12,
+      filter: ['all', trailFilter, sidewalkish],
+      paint: {
+        'line-color': '#ffffff',
+        'line-width': hc ? ze(1.2, 14, 4.5, 16, 6, 18, 8) : ze(1.2, 14, 3.5, 16, 4.5, 18, 6),
+        'line-opacity': brunnel === 'ground' ? zi(13, 0, 14, centreOpacity) : centreOpacity,
+      },
+    });
     add({
       id: `path-${brunnel}-foot`, type: 'line', source: 'ofmTrails', 'source-layer': 'transportation', minzoom: 12,
       filter: ['all', trailFilter, sidewalkish],
       paint: {
-        'line-color': darkBase ? '#d6725c' : '#a2381f',
+        'line-color': footColor,
         'line-width': hc ? ze(1.2, 12, 0.9, 14, 2.5, 16, 4, 18, 6) : ze(1.2, 12, 0.8, 14, 1.5, 16, 2.5, 18, 4),
         'line-dasharray': [1.5, 0.7],
         'line-opacity': centreOpacity,
       },
     });
-    const pathFilter = ['all', trailFilter, ['!', sidewalkish]];
+    // Steps without an MTB grade: a wide brown ladder, so they stand out from the footways.
+    const steps = ['all', ['==', ['get', 'subclass'], 'steps'], ['!', ['has', 'mtb_scale']]];
+    add({
+      id: `path-${brunnel}-steps`, type: 'line', source: 'ofmTrails', 'source-layer': 'transportation', minzoom: 13,
+      filter: ['all', trailFilter, steps],
+      paint: {
+        'line-color': footColor,
+        'line-width': hc ? ze(1.2, 14, 4, 16, 9) : ze(1.2, 14, 3, 17, 9),
+        'line-dasharray': hc ? [0.4, 0.4] : [0.2, 0.2],
+        'line-opacity': centreOpacity,
+      },
+    });
+    const pathFilter = ['all', trailFilter, ['!', sidewalkish], ['!', steps]];
     add({
       id: `path-${brunnel}-halo`, type: 'line', source: 'ofmTrails', 'source-layer': 'transportation', minzoom: 12,
       filter: pathFilter,
