@@ -7195,6 +7195,8 @@ def coarse(chrome):
         pg.open_app({'activity': 'mtb'}, hash_='#13/62.2000/26.1000')
         fails += pg.js(COARSE_KEEP, timeout=60000)
         pg.c.send('Network.setBypassServiceWorker', {'bypass': False}, pg.s)
+        # this commit's worker, not one an earlier run on the port left in the profile: register() keeps that (#1134)
+        pg.js("(async () => { for (const r of await navigator.serviceWorker.getRegistrations()) await r.unregister(); return true })()")
         pg.js("Promise.race([navigator.serviceWorker.register('./sw.js').then(() => navigator.serviceWorker.ready), new Promise((_, no) => setTimeout(() => no(new Error('service worker not ready after 15 s')), 15000))]).then(() => true)", timeout=20000)
         pg.reload()
         if not pg.js('!!navigator.serviceWorker.controller'):
@@ -23866,6 +23868,7 @@ def osm_data(chrome):
               'test_resume_partial_stage_verifies_prefix_and_sends_only_missing_suffix',
               'test_snapshot_retries_temporary_failure_and_requires_one_complete_date',
               'test_geofabrik_requests_retry_a_refused_connection',
+              'test_country_checksum_and_polygon_come_from_beside_the_file_served',
               'test_country_download_leaves_time_to_build',
               'test_reference_download_leaves_time_to_compile',
               'test_weekly_and_candidate_geometry_are_gated',
