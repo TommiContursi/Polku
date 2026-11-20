@@ -896,6 +896,33 @@ def property_lines(chrome):
     fails += [f'console: {e[:160]}' for e in pg.errors()]
     pg.close()
     print(f"{'ok  ' if not fails else 'FAIL'} property boundaries from MML (#1148)" + ''.join(f'\n     - {f}' for f in fails), flush=True)
+
+# #1144: wetlands are Polku's own blue dashes on each map's wetland colour, never the tufted sprite.
+def wetland_style(chrome):
+    pg = chrome.page(1440, 900, False)
+    pg.open_app({'activity': 'mtb', 'base': 'trail'}, hash_='#15.5/62.2335/25.7905')
+    fails = pg.js("""(async () => {
+      const errs=[], m=polku.map, {makeIcon}=await import('/js/icons.js');
+      const hex=(d,i)=>'#'+[d[i],d[i+1],d[i+2]].map(v=>v.toString(16).padStart(2,'0')).join('');
+      for(const base of ['trail','plain','night']) {
+        polku.set({base});
+        await new Promise(r=>{m.once('idle',r);m.triggerRepaint();});
+        const l=m.getStyle().layers.find(l=>l.id==='lc-wetland-pattern'), fill=m.getPaintProperty('lc-wetland','fill-color');
+        const id=l&&l.paint['fill-pattern'], [,f,dash]=/^wetland-([0-9a-f]{6})-([0-9a-f]{6})$/.exec(id||'')||[];
+        if(!f){errs.push(`${base}: wetland pattern is ${id}`);continue;}
+        if('#'+f!==fill)errs.push(`${base}: the pattern's ground #${f} isn't the wetland colour ${fill}`);
+        if(l.minzoom!==11)errs.push(`${base}: the pattern starts at zoom ${l.minzoom}`);
+        if(!m.hasImage(id))errs.push(`${base}: ${id} wasn't drawn on the map`);
+        const img=makeIcon(id), px=(x,y)=>hex(img.data,(y*img.width+x)*4);
+        // 2 px per CSS pixel: a dash on row 3 at x 0-1 and 4-7, row 7 at x 0-5; ground elsewhere
+        if(px(0,6)!=='#'+dash||px(9,15)!=='#'+dash)errs.push(`${base}: no dash where the rows are`);
+        if(px(0,0)!=='#'+f||px(5,6)!=='#'+f||px(13,14)!=='#'+f)errs.push(`${base}: dashes where the ground should be`);
+      }
+      return errs;
+    })()""")
+    fails += [f'console: {e[:160]}' for e in pg.errors()]
+    pg.close()
+    print(f"{'ok  ' if not fails else 'FAIL'} wetlands as blue dashes (#1144)" + ''.join(f'\n     - {f}' for f in fails), flush=True)
     return not fails
 
 
@@ -7166,6 +7193,8 @@ def coarse(chrome):
         pg.open_app({'activity': 'mtb'}, hash_='#13/62.2000/26.1000')
         fails += pg.js(COARSE_KEEP, timeout=60000)
         pg.c.send('Network.setBypassServiceWorker', {'bypass': False}, pg.s)
+        # this commit's worker, not one an earlier run on the port left in the profile: register() keeps that (#1134)
+        pg.js("(async () => { for (const r of await navigator.serviceWorker.getRegistrations()) await r.unregister(); return true })()")
         pg.js("Promise.race([navigator.serviceWorker.register('./sw.js').then(() => navigator.serviceWorker.ready), new Promise((_, no) => setTimeout(() => no(new Error('service worker not ready after 15 s')), 15000))]).then(() => true)", timeout=20000)
         pg.reload()
         if not pg.js('!!navigator.serviceWorker.controller'):
@@ -23837,6 +23866,7 @@ def osm_data(chrome):
               'test_resume_partial_stage_verifies_prefix_and_sends_only_missing_suffix',
               'test_snapshot_retries_temporary_failure_and_requires_one_complete_date',
               'test_geofabrik_requests_retry_a_refused_connection',
+              'test_country_checksum_and_polygon_come_from_beside_the_file_served',
               'test_country_download_leaves_time_to_build',
               'test_reference_download_leaves_time_to_compile',
               'test_weekly_and_candidate_geometry_are_gated',
@@ -24342,7 +24372,7 @@ GROUPS = [
     ('changelog', [changelog], 'release notes, retry, safe rendering, keyboard, route preservation and real worker offline'),
     ('pacing', [pacing, paced_legs, net_fails], 'calls made together go out paced and counted (mocked services, a fake clock); legs refused for a slot follow at it (#78); the calls that failed, in Data sources (#687)'),
     ('loading', [loading, routing_edits], 'cancel obsolete routing, edits/Undo/Clear, shared subscribers, refusal/recovery, deadlines, terrain slots and LIPAS viewport/cache (mocked)'),
-    ('layers', [layers, cycleway_style, cycling_restrictions, waterway_style, property_lines], 'the Layers panel in every sport'),
+    ('layers', [layers, cycleway_style, cycling_restrictions, waterway_style, property_lines, wetland_style], 'the Layers panel in every sport'),
     ('raster', [raster_maps, aerial_fallback, aerial_labels], 'terrain and aerial detail, bounded high-density WMS symbols, depth boundaries and missing aerial detail (#649, #650, #653); the map\'s words on the aerial photos at 4.5:1 on their halo (#554)'),
     ('coarse', [coarse], 'a coarse map underneath (#1091): the base map\'s tile four zoom levels up stands in for one that hasn\'t come, at 1440 and 390'),
     ('together', [together], 'Polku\'s own layers come in together after the map stops, 500 ms at most (#1091)'),

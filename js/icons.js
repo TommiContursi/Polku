@@ -44,6 +44,20 @@ function lipasIcon(name, color) {
   return ctx.getImageData(0, 0, c.width, c.height);
 }
 
+// a wetland's fill: rows of short horizontal dashes on the wetland colour, as on Finnish maps (#1144).
+// `wetland-<fill>-<dashes>`, both hex without '#', so each map's palette has its own image
+function wetland(id) {
+  const [, fill, dash] = id.split('-');
+  const [c, ctx] = canvas(8, 8);
+  ctx.fillStyle = `#${fill}`;
+  ctx.fillRect(0, 0, 8, 8);
+  ctx.fillStyle = `#${dash}`;
+  // 6 on, 2 off; the second row half a dash along
+  ctx.fillRect(0, 3, 2, 1); ctx.fillRect(4, 3, 4, 1);
+  ctx.fillRect(0, 7, 6, 1);
+  return ctx.getImageData(0, 0, c.width, c.height);
+}
+
 function chevron(color, outline, w = 18, h = 14) {
   const [c, ctx] = canvas(w, h);
   ctx.lineJoin = 'round';
@@ -369,6 +383,7 @@ const SDF = new Set(['wind-arrow', 'ship']);
 
 export function makeIcon(id) {
   if (id.startsWith('wm-') && MARK[id.slice(3).split('~')[0]]) return warnMark(id.slice(3).split('~')[0]);
+  if (/^wetland-[0-9a-f]{6}-[0-9a-f]{6}$/.test(id)) return wetland(id);
   if (id === 'wind-arrow') return windArrow();
   if (id === 'ship') return ship();
   if (id === 'sf-incident') return sign('triangle', '#ef4444', '!');
