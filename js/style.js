@@ -1158,9 +1158,10 @@ function addLabels(s, P, hc, layers) {
   add({ id: 'label-road', type: 'symbol', source: 'ofm', 'source-layer': 'transportation_name', minzoom: 13, filter: ['has', 'name'], layout: { 'symbol-placement': 'line', 'text-pitch-alignment': 'viewport', 'text-field': ['get', 'name'], 'text-font': FONT, 'text-size': zi(13, 10, 17, 13), 'text-rotation-alignment': 'map' }, paint: { 'text-color': P.text, ...halo } });
   add({
     id: 'label-peak', type: 'symbol', source: 'ofm', 'source-layer': 'mountain_peak', minzoom: 11,
-    filter: ['==', ['get', 'class'], 'peak'],
+    // a saddle (#1178) is a pass's mark in the same brown; the tiles have them up to zoom 13
+    filter: ['in', ['get', 'class'], ['literal', ['peak', 'saddle']]],
     layout: {
-      'icon-image': 'triangle_11', 'icon-size': 0.75,
+      'icon-image': ['match', ['get', 'class'], 'saddle', 'saddle-6b4b2b', 'triangle_11'], 'icon-size': ['match', ['get', 'class'], 'saddle', 1, 0.75],
       'text-field': ['case', ['has', 'name'], ['concat', ['get', 'name'], '\n', ['to-string', ['get', 'ele']], ' m'], ['concat', ['to-string', ['get', 'ele']], ' m']],
       'text-font': FONT, 'text-size': 11, 'text-offset': [0, 0.8], 'text-anchor': 'top', 'text-optional': true,
     },

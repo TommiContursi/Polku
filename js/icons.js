@@ -143,6 +143,17 @@ function pylon(id) {
   return ctx.getImageData(0, 0, c.width, c.height);
 }
 
+// a mountain pass (#1178): two arcs back to back, as topographic maps mark one. `saddle-<colour>`
+function saddle(id) {
+  const [c, ctx] = canvas(9, 9);
+  ctx.strokeStyle = `#${id.slice(7)}`;
+  ctx.lineWidth = 1.3;
+  ctx.lineCap = 'round';
+  ctx.beginPath(); ctx.arc(-0.5, 4.5, 3.8, -Math.PI / 3, Math.PI / 3); ctx.stroke();
+  ctx.beginPath(); ctx.arc(9.5, 4.5, 3.8, Math.PI * 2 / 3, Math.PI * 4 / 3); ctx.stroke();
+  return ctx.getImageData(0, 0, c.width, c.height);
+}
+
 function chevron(color, outline, w = 18, h = 14) {
   const [c, ctx] = canvas(w, h);
   ctx.lineJoin = 'round';
@@ -474,6 +485,7 @@ export function makeIcon(id) {
   if (/^reed-[0-9a-f]{6}$/.test(id)) return reed(id);
   if (/^(boulders-[0-9a-f]{6}|rock-spot-[0-9a-f]{6}|rock-(stone|rocks))-[0-9a-f]{6}$/.test(id)) return rock(id);
   if (/^pylon-[0-9a-f]{6}$/.test(id)) return pylon(id);
+  if (/^saddle-[0-9a-f]{6}$/.test(id)) return saddle(id);
   if (id === 'wind-arrow') return windArrow();
   if (id === 'ship') return ship();
   if (id === 'sf-incident') return sign('triangle', '#ef4444', '!');

@@ -4,6 +4,10 @@ What's new in [Polku](https://polku.si), from the latest updates back to the fir
 
 ## 2026-11-20
 
+### Mountain passes ([#1178](https://github.com/TommiContursi/Polku/issues/1178))
+
+- Passes between fells, mapped as saddles in OpenStreetMap, are marked with a small brown )( and their name and height, like the peaks, from zoom 11 to 13. Taivaskeronsatula at Pallas is one. The map's data has them only up to zoom 13, so they aren't shown when you zoom in further.
+
 ### Access restrictions in Layers ([#1162](https://github.com/TommiContursi/Polku/issues/1162))
 
 - **Access restrictions** is a switch of its own in Layers, under Trails & difficulty. Choosing a cycling or walking sport turns it on, and Layers remembers your choice for each sport. While it's on, it shows in **On now**.
