@@ -989,8 +989,8 @@ def property_plots(chrome):
         let c=polku.planner.cards.current;
         if(c&&/^Property /.test(c.title))errs.push("with Plot selection off, a click opens the plot's card");
         polku.planner.cards.close(); await frame();
-        // a hold (the right button): the spot's card, not the property's
-        cv.dispatchEvent(new MouseEvent('contextmenu',{bubbles:true,cancelable:true,clientX:R.left+spot.x,clientY:R.top+spot.y,button:2}));
+        // a hold (the right button, whose contextmenu MapLibre passes on at its mouseup): the spot's card, not the property's
+        for(const t of ['mousedown','contextmenu','mouseup'])cv.dispatchEvent(new MouseEvent(t,{bubbles:true,cancelable:true,clientX:R.left+spot.x,clientY:R.top+spot.y,button:2,buttons:t==='mousedown'?2:0}));
         await wait(600); c=polku.planner.cards.current;
         if(!c)errs.push('with Plot selection off, a hold on a plot opens no card');
         else if(/^Property /.test(c.title))errs.push(`with Plot selection off, a hold on a plot opens ${c.title}`);
@@ -1015,7 +1015,7 @@ def property_plots(chrome):
       const m=polku.map, wait=(ms)=>new Promise(r=>setTimeout(r,ms)), t0=performance.now();
       while(performance.now()-t0<30000&&!(m.isSourceLoaded('ov-propertyLines')&&m.queryRenderedFeatures({layers:['property-plot']}).length))await wait(250);
       const {inspectLayers,pickFeature,hitBox,areaUnder}=await import(location.origin+'/js/inspect.js'), R=m.getCanvas().getBoundingClientRect();
-      for(let y=200;y<560;y+=17)for(let x=40;x<350;x+=19){const f=pickFeature(m.queryRenderedFeatures(hitBox({x,y},true),{layers:inspectLayers(m)}));if(f&&f.layer.id==='property-plot'&&!areaUnder(m,{x,y}))return [R.left+x,R.top+y];}
+      for(let y=200;y<560;y+=17)for(let x=40;x<350;x+=19){const f=pickFeature(m.queryRenderedFeatures(hitBox({x,y},true),{layers:inspectLayers(m)}));if(f&&f.layer.id==='property-plot'&&!areaUnder(m,[x,y]))return [R.left+x,R.top+y];}
       return null;
     })()""", timeout=40000)
     title = "new Promise(r=>setTimeout(()=>r(polku.planner.cards.current?.title||''),800))"
