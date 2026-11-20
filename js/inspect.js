@@ -42,12 +42,14 @@ const PRIORITY = [/^cameras$/, /^sf-ships/, /^nm-marks/, /^sf-points/, /^td-/, /
 
 // a finger covers more than a mouse pointer: a wider box to find what's under it
 export const hitBox = (pt, touch) => { const r = touch ? 14 : 7; return [[pt.x - r, pt.y - r], [pt.x + r, pt.y + r]]; };
-// The features of `layers` a tap, a click or the pointer at `pt` finds: within the box, but MML's areas only under the point
-// itself, so the forest beside a bog isn't the bog (#1175)
+// The features of `layers` a tap, a click or the pointer at `pt` finds: within the box, but MML's areas only where one is the
+// ground drawn at the point itself, so neither the forest beside a bog nor a lake, a town, a building or OSM's own rock or
+// wetland drawn over one is it (#1175). (The parks' tint is see-through.)
 const MML_AREA = /^mml-(bog|paludified|overgrowing|rock|boulders)$/;
+const ground = (map) => map.getLayersOrder().filter((id) => { const l = map.getLayer(id); return /^fill/.test(l.type) && ['ofm', 'mml', 'reedbeds'].includes(l.source) && id !== 'park-fill'; });
 export function featuresAt(map, pt, box, layers) {
-  const areas = layers.filter((id) => MML_AREA.test(id));
-  return [...map.queryRenderedFeatures(box, { layers: layers.filter((id) => !MML_AREA.test(id)) }), ...(areas.length ? map.queryRenderedFeatures([pt.x, pt.y], { layers: areas }) : [])];
+  const areas = layers.filter((id) => MML_AREA.test(id)), top = areas.length && map.queryRenderedFeatures([pt.x, pt.y], { layers: ground(map) })[0];
+  return [...map.queryRenderedFeatures(box, { layers: layers.filter((id) => !MML_AREA.test(id)) }), ...(top && areas.includes(top.layer.id) ? [top] : [])];
 }
 
 export const inspectLayers = (map) => map.getLayersOrder().filter((id) => INSPECTABLE.test(id) && !id.endsWith('-casing') && !id.endsWith('-nobike'));

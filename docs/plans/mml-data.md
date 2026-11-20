@@ -251,7 +251,9 @@ Plain and Night maps, in MTB and paddle; its PR lists what else it covered.
   to cross, from zoom 13's tiles, with the survey's caveat; zoom 12's
   classes are generalised and zoom 11's have none, so further out it says
   to zoom in. The areas (bogs, paludified land, overgrowing water, rock, boulder
-  fields) count under the point only, after the water and a property's plot
+  fields) count under the point only, and only where they're the ground
+  drawn there (not under a lake, a town, a building or OSM's own rock or
+  wetland), after the water and a property's plot
   and before a park; the lines and marks, and overgrowing water, come
   before the water they're drawn over. MML's lake is the water's, where it
   fills a marsh OSM's lake leaves a hole for. Nothing is outlined, as a tile's piece of a bog

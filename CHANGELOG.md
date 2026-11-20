@@ -8,7 +8,7 @@ What's new in [Polku](https://polku.si), from the latest updates back to the fir
 
 - In Finland, a tap or a click on the National Land Survey's bogs, paludified land, overgrowing water, rock, boulder fields, stones, cliffs, reeds, power lines and pylons opens a card that names what it is. On a desktop, resting the pointer on one says the same.
 - A bog's card has its survey class, easier or hard to cross, from zoom 13. Further out, the National Land Survey's map data has the class only roughly, and the card says to zoom in. **The survey class is not a promise about the ground today:** bogs are classed from aerial photos and surveyed again every 5–10 years.
-- A bog, paludified land, overgrowing water or rock is picked only right under your finger, not beside it, and before a park it lies in. The water, and a property's plot with **Property boundaries** on, still come first, but overgrowing water, drawn over a lake, comes before the lake. Holding the map opens the spot's card, as before.
+- A bog, paludified land, overgrowing water or rock is picked only right under your finger, not beside it, and only where the map shows it, not under a lake, a town or a house. It's picked before a park it lies in. The water, and a property's plot with **Property boundaries** on, still come first, but overgrowing water, drawn over a lake, comes before the lake. Holding the map opens the spot's card, as before.
 - A tap where the National Land Survey's lake fills a marsh that OpenStreetMap cuts out of a lake opens the water's card, as on the rest of the lake.
 
 ### Lakes with marshes and overgrowing water ([#1177](https://github.com/TommiContursi/Polku/issues/1177))

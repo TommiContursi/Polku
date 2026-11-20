@@ -1312,6 +1312,16 @@ def mml_cards(chrome):
                 if(!m.queryRenderedFeatures([x,y],{layers:['mml-bog']}).length&&m.queryRenderedFeatures(I.hitBox({x,y},true),{layers:['mml-bog']}).length)beside={x,y};
               if(!beside)errs.push('(the test) no spot beside a bog in the recorded tile');
               else if(I.featuresAt(m,beside,I.hitBox(beside,true),I.inspectLayers(m)).some((f)=>f.layer.id==='mml-bog'))errs.push('a tap beside a bog picks the bog');
+              // MML's areas only where they're the ground drawn: not a bog under the water drawn over it (a pond), yet one under a park's
+              // see-through tint (the recorded tiles have nothing else over them: a town and a house are looked at by hand)
+              let under=null, park=null;
+              for(let y=150;y<innerHeight-150&&!(under&&park);y+=3)for(let x=30;x<innerWidth-100&&!(under&&park);x+=3){
+                if(!m.queryRenderedFeatures([x,y],{layers:['mml-bog']}).length)continue;
+                if(m.queryRenderedFeatures([x,y],{layers:['water']}).length)under=under||{x,y}; else if(m.queryRenderedFeatures([x,y],{layers:['park-fill']}).length)park=park||{x,y};
+              }
+              const bogAt=(p)=>I.featuresAt(m,p,I.hitBox(p,true),I.inspectLayers(m)).some((f)=>f.layer.id==='mml-bog');
+              if(!under||!park)errs.push(`(the test) no bog ${under?'in a park':'under the water'} in the recorded tile`);
+              else { if(bogAt(under))errs.push('a bog under the water drawn over it is found'); if(!bogAt(park))errs.push('a bog in a park is not found'); }
               // MML's lake fills the hole OSM's lake leaves for a marsh (#1177): a tap there is the water's (a map with no OSM water)
               let q=null; for(let y=150;y<innerHeight-150&&!q;y+=6)for(let x=30;x<innerWidth-100&&!q;x+=6)if(m.queryRenderedFeatures([x,y],{layers:['mml-lake']}).length)q={x,y};
               const dry={getLayer:(id)=>id!=='water'&&m.getLayer(id), queryRenderedFeatures:(pt,o)=>m.queryRenderedFeatures(pt,o)};
