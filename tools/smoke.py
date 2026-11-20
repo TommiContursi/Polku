@@ -2309,6 +2309,7 @@ WATER_DEPTHS = """(async () => {
     const seed = (box, want) => ({ fairways: fc, hazards: fc, depths: want.depths ? depths : null, wind: null, missing: want.depths ? missing : [], skipped: [] });
     let free;
     D.seedWater((box, want) => new Promise((ok) => { free = () => ok(seed(box, want)); }));
+    p.setMode('water');
     p.addPoint([shoal[0] + 0.004, shoal[1]]);
     for (let k = 0; k < 20 && !(p.legs.length === 2 && free); k++) await wait(100);
     await wait(300);
