@@ -2696,24 +2696,23 @@ def water_long(chrome):
 
 # The water router's hidden map, its last tile failing (#400): a dropped connection, after the others are in. MapLibre
 # asks for no frame after a failed tile, so its `load` never came and no water leg was routed. The first leg is routed
-# now, and the next. Then a leg out at sea whose tile beside it fails at once while its others come 3 s later: MapLibre
-# called the map idle after the failure, and the water was read without the tiles still coming (#1195). It waits for
-# them, and goes over the water. (Only the route's water: no fairways, rocks or wind asked for.)
+# now, and the next. Then a leg out at sea whose coarser stand-in tile fails at once while its own come 6 s later:
+# MapLibre called the map idle after the failure, and the water was read from Finland's overview with none of the leg's
+# tiles in (#1195). It's routed once they're in. (Only the route's water: no fairways, rocks or wind asked for.)
 WATER_HIDDEN = """(async () => {
   const wait = (ms) => new Promise((r) => setTimeout(r, ms)), errs = [];
   let tiles = 0, failed = false, late = null;
-  const sea = [[24.955, 60.045], [24.985, 60.040]];
-  const tileOf = ([lon, lat], z) => [Math.floor((lon + 180) / 360 * 2 ** z), Math.floor((1 - Math.asinh(Math.tan(lat * Math.PI / 180)) / Math.PI) / 2 * 2 ** z)];
+  const sea = [[24.55, 59.95], [24.59, 59.945]]; // off Espoo, in a zoom 9 tile of its own: its stand-ins aren't held yet
   // the hidden map's requests through a protocol of the test's: its first tile fails 6 s on, the rest as they are; once
-  // `late` is set, a tile of the leg's zoom that holds neither end fails at once, and every tile comes 3 s late
+  // `late` is set, a tile below the leg's zoom 13 (a stand-in) fails at once, and the leg's own come 6 s late
   maplibregl.addProtocol('polkutest', async (params) => {
     const url = params.url.replace(/^polkutest:/, 'https:'), tile = /\\/\\d+\\/\\d+\\/\\d+/.test(url);
     if (tile && !tiles++) { await wait(6000); failed = true; throw new TypeError('Failed to fetch'); }
     const zxy = tile && url.match(/\\/(\\d+)\\/(\\d+)\\/(\\d+)\\.pbf/).slice(1).map(Number);
     if (late && zxy) {
-      const [z, x, y] = zxy, ends = sea.map((ll) => tileOf(ll, z).join('/'));
-      if (z >= 13 && !late.failed && !ends.includes(`${x}/${y}`)) { late.failed = true; throw new TypeError('Failed to fetch'); }
-      await wait(3000);
+      if (zxy[0] < 13) { late.failed = true; throw new TypeError('Failed to fetch'); }
+      await wait(6000);
+      late.came = Date.now();
     }
     const r = await fetch(url);
     return { data: tile ? await r.arrayBuffer() : await r.json() };
@@ -2740,14 +2739,14 @@ WATER_HIDDEN = """(async () => {
     p.addPoint([24.9700, 60.1400]);
     for (let k = 0; k < 120 && !routed(2); k++) await wait(250);
     if (!routed(2)) errs.push(`the next leg: ${p.legs[1] ? p.legs[1].status : 'none'} after 30 s`);
-    late = { failed: false };
+    late = { failed: false, came: 0 };
     p.clear();
     p.addPoint(sea[0]);
     p.addPoint(sea[1]);
-    for (let k = 0; k < 120 && !(p.legs[0] && p.legs[0].status !== 'loading'); k++) await wait(250);
-    const l = p.legs[0], w = l && l.result && l.result.water, drew = w ? w.times['render+data'] : 0;
-    if (!late.failed) errs.push('(the test) no tile beside the leg out at sea failed');
-    else if (!w || l.status !== 'ok' || (l.result.portage || []).length || drew < 2500) errs.push(`a tile beside the leg failing at once, the rest 3 s late: the leg ${l ? l.status : 'none'}${w ? `, its water read after ${drew} ms, ${l.result.portage.length} carries` : ''} (#1195: read before the late tiles came)`);
+    for (let k = 0; k < 300 && !(p.legs[0] && p.legs[0].status !== 'loading'); k++) await wait(100);
+    const done = Date.now(), l = p.legs[0], w = l && l.result && l.result.water;
+    if (!late.failed) errs.push('(the test) no stand-in tile failed for the leg out at sea');
+    else if (!w || l.status !== 'ok' || (l.result.portage || []).length || !late.came || late.came > done) errs.push(`a stand-in failing at once, the leg's own tiles 6 s late: the leg ${l ? l.status : 'none'}${w ? ` with ${l.result.portage.length} carries` : ''}, ${late.came && late.came <= done ? 'after' : 'before'} its tiles came (#1195)`);
     return errs;
   } finally {
     maplibregl.Map = Map0;
@@ -2765,7 +2764,7 @@ def water_hidden(chrome):
     fails = pg.js(WATER_HIDDEN, timeout=130000)
     fails += [f'console: {e[:160]}' for e in pg.errors()]
     pg.close()
-    print(f"{'ok  ' if not fails else 'FAIL'} water routing when the hidden map's last tile fails (#400), or one fails while the others come late (#1195)" + ''.join(f'\n     - {f}' for f in fails), flush=True)
+    print(f"{'ok  ' if not fails else 'FAIL'} water routing when the hidden map's last tile fails (#400), or a stand-in fails while the leg's own tiles come late (#1195)" + ''.join(f'\n     - {f}' for f in fails), flush=True)
     return not fails
 
 
