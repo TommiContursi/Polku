@@ -7118,6 +7118,8 @@ def coarse(chrome):
         pg.open_app({'activity': 'mtb'}, hash_='#13/62.2000/26.1000')
         fails += pg.js(COARSE_KEEP, timeout=60000)
         pg.c.send('Network.setBypassServiceWorker', {'bypass': False}, pg.s)
+        # this commit's worker, not one an earlier run on the port left in the profile: register() keeps that (#1134)
+        pg.js("(async () => { for (const r of await navigator.serviceWorker.getRegistrations()) await r.unregister(); return true })()")
         pg.js("Promise.race([navigator.serviceWorker.register('./sw.js').then(() => navigator.serviceWorker.ready), new Promise((_, no) => setTimeout(() => no(new Error('service worker not ready after 15 s')), 15000))]).then(() => true)", timeout=20000)
         pg.reload()
         if not pg.js('!!navigator.serviceWorker.controller'):
