@@ -4,7 +4,7 @@
 
 import {
   OFM_TILEJSON, OFM_SPRITE, OFM_GLYPHS, ESRI_IMAGERY, DEM_MAXZOOM, DEM_TILESIZE,
-  DIFF_COLORS, MTB_COLORS, MTB_GRADES, ROUTE_COLORS, RASTER_OVERLAYS, RASTER_RATIO, LIPAS_TYPES, mmlTiles, MML_KEY, MML_PROPERTY_TILES, MML_TERRAIN_TILES, FINLAND_BOUNDS, kapsiTiles, groupOf,
+  DIFF_COLORS, MTB_COLORS, MTB_GRADES, ROUTE_COLORS, RASTER_OVERLAYS, RASTER_RATIO, LIPAS_TYPES, mmlTiles, mmlApiKey, MML_PROPERTY_TILES, MML_TERRAIN_TILES, FINLAND_BOUNDS, kapsiTiles, groupOf,
   isWater, isLipasRoute, WARN_COLORS,
 } from './config.js';
 import { warnMarkId } from './icons.js';
@@ -44,7 +44,7 @@ const PALETTES = {
     bg: '#f5f3ee', wood: '#dbeacd', woodOpacity: 0.9, grass: '#e8f1d9', farmland: '#f7f0cf',
     wetland: '#dce5e3', wetlandDash: '#8fb0d3', bogWood: '#deebd0', reed: '#5f8a5a', sand: '#f3e7bb', rock: '#e2dfd8', cliff: '#5e574e', ice: '#f4fbff',
     residential: '#ece8e2', industrial: '#e8e2e8', cemetery: '#dde7d3', sport: '#dcefd3',
-    park: '#3f8f3f', water: '#a8d1ef', waterLine: '#6fa9d6', waterText: '#24618f',
+    park: '#3f8f3f', water: '#a8d1ef', waterLine: '#6fa9d6', waterText: '#24618f', shoal: '#ffffff',
     building: '#d9d1c8', buildingLine: '#c4b9ad',
     motorway: '#f2a35e', trunk: '#f6c46b', primary: '#fbd77b', secondary: '#fde7a2', tertiary: '#fff3c9',
     road: '#ffffff', roadCase: '#b5ad9f', track: '#6b4f2a', path: '#1f1f1f', cycleway: '#5b7fa8',
@@ -55,7 +55,7 @@ const PALETTES = {
     bg: '#f7f7f5', wood: '#eef3ea', woodOpacity: 0.7, grass: '#f1f4ed', farmland: '#f7f6ef',
     wetland: '#eef4f2', wetlandDash: '#b4c9de', bogWood: '#f1f4ed', reed: '#9bb796', sand: '#f4f1e6', rock: '#efeeec', cliff: '#948d83', ice: '#fafdff',
     residential: '#f0efed', industrial: '#efedf0', cemetery: '#eaefe6', sport: '#eaf1e6',
-    park: '#7aa27a', water: '#c3dcef', waterLine: '#9bbfdc', waterText: '#4a7ca3',
+    park: '#7aa27a', water: '#c3dcef', waterLine: '#9bbfdc', waterText: '#4a7ca3', shoal: '#ffffff',
     building: '#e6e3df', buildingLine: '#d6d1cb',
     motorway: '#e9c8a5', trunk: '#eed6ad', primary: '#f3e2b8', secondary: '#f6eccb', tertiary: '#faf5e4',
     road: '#ffffff', roadCase: '#cdc8c0', track: '#7f6a4c', path: '#3a3a3a', cycleway: '#7d96b3',
@@ -66,7 +66,7 @@ const PALETTES = {
     bg: '#161a1f', wood: '#1b2620', woodOpacity: 1, grass: '#1d241f', farmland: '#23231d',
     wetland: '#18232a', wetlandDash: '#2f5679', bogWood: '#1b2620', reed: '#4f7a55', sand: '#2a271f', rock: '#22221f', cliff: '#a39a8c', ice: '#20262b',
     residential: '#1e2126', industrial: '#211f25', cemetery: '#1c231d', sport: '#1b241d',
-    park: '#4e8f5b', water: '#10304a', waterLine: '#1f5a85', waterText: '#7fb6e3',
+    park: '#4e8f5b', water: '#10304a', waterLine: '#1f5a85', waterText: '#7fb6e3', shoal: '#2f6f9e',
     building: '#272b31', buildingLine: '#30353c',
     motorway: '#8a5a2f', trunk: '#80633a', primary: '#6f6040', secondary: '#5b5443', tertiary: '#4a4740',
     road: '#3b3f46', roadCase: '#22252a', track: '#c9a874', path: '#e9e6df', cycleway: '#7ea4cf',
@@ -106,7 +106,7 @@ export function buildStyle(s, ctx) {
   const topoBase = isTopo(s.base);
   const raised = s.terrain3d && s.raiseHills; // the hills raised in 3D, or 3D flat, only tilted
   // MML's tiles (#1147, #1148): your own key, or Polku's unscrambled (config.js)
-  const mmlKey = s.mmlKey || [...atob(MML_KEY)].map((c, i) => String.fromCharCode(c.charCodeAt(0) ^ 'polku'.charCodeAt(i % 5))).join('');
+  const mmlKey = mmlApiKey(s.mmlKey);
   const sources = {
     ofm: { type: 'vector', url: OFM_TILEJSON },
     // the same tiles again (from the HTTP cache), for the trail and track lines alone: with trail details on,
@@ -332,6 +332,27 @@ export function buildStyle(s, ctx) {
 
   // ---- Buildings ----------------------------------------------------------
   if (vectorFills) {
+    const cls = ['get', 'kohdeluokka'], tick = zi(13, 2, 16, 3.5, 18, 5), edge = zi(13, 0.8, 16, 1.3, 18, 1.8);
+    const hex = (c) => c.slice(1);
+    // MML's lake and river depths (#1170) with Traficom's, under the same switches, from zoom 13 (its tiles have none at sea):
+    // the contours with Depth contours, their depths and the depth points with Depth soundings (below). In Traficom's
+    // look (its WMS draws #1f4d6b lines about 2 px wide and black soundings, at the overlays' 0.75 and 0.85), so the two read
+    // as one; on the Night map light, as dark lines would vanish on its dark water, which MML's lakes have no depth areas to lighten.
+    // and at the rows' Opacity, yours or the default
+    const night = s.base === 'night', depthLine = night ? P.waterText : '#1f4d6b';
+    const depthOp = (id) => (s.overlayOpacity && s.overlayOpacity[id] != null ? s.overlayOpacity[id] : RASTER_OVERLAYS[id].opacity);
+    if (s.overlays.depthContours) add({ id: 'mml-depth', type: 'line', source: 'mml', 'source-layer': 'korkeus', minzoom: 13, filter: ['==', cls, 54100], paint: { 'line-color': depthLine, 'line-width': zi(13, 1, 16, 1.5, 18, 2), 'line-opacity': depthOp('depthContours') } });
+    // MML's water (#1170), over Traficom's depths too. Shoals and stone fields from zoom 13, as light lines on a clear
+    // ground, so the water's colour and the depths show; stone fields with MML's triangles.
+    add({ id: 'mml-shoal', type: 'fill', source: 'mml', 'source-layer': 'maasto_alue', minzoom: 13, filter: ['in', cls, ['literal', [38600, 38700]]], paint: { 'fill-pattern': ['match', cls, 38600, `stonefield-${hex(P.shoal)}-${hex(P.cliff)}`, `shoal-${hex(P.shoal)}`] } });
+    // rapids along the river from zoom 11, as white bars across it (zoom 12's tiles also have some as points, which 13 and
+    // 14's lack: not drawn)
+    add({ id: 'mml-rapids', type: 'line', source: 'mml', 'source-layer': 'vesisto_viiva', minzoom: 11, filter: ['all', ['==', cls, 38200], ['==', ['geometry-type'], 'LineString']], paint: { 'line-pattern': `rapids-${hex(P.shoal)}-${hex(P.waterText)}`, 'line-width': zi(11, 3, 14, 6, 16, 9, 18, 13) } });
+    // jetties from zoom 14: MML's in Finland, OSM's piers everywhere, in one look, so where both have one they read as one
+    const pier = ['==', ['get', 'class'], 'pier'], wide = (w) => ['match', cls, 45112, w * 1.6, w];
+    add({ id: 'pier-area', type: 'fill', source: 'ofm', 'source-layer': 'transportation', minzoom: 14, filter: ['all', pier, ['==', ['geometry-type'], 'Polygon']], paint: { 'fill-color': P.bg, 'fill-outline-color': P.cliff } });
+    add({ id: 'pier', type: 'line', source: 'ofm', 'source-layer': 'transportation', minzoom: 14, filter: ['all', pier, ['==', ['geometry-type'], 'LineString']], paint: { 'line-color': P.cliff, 'line-width': zi(14, 1, 16, 2, 18, 4) } });
+    add({ id: 'mml-jetty', type: 'line', source: 'mml', 'source-layer': 'rakennelma', minzoom: 14, filter: ['in', cls, ['literal', [45111, 45112]]], paint: { 'line-color': P.cliff, 'line-width': zi(14, wide(1), 16, wide(2), 18, wide(4)) } });
     // MML's cliffs, power lines and points in Finland (#1147), over the water, so a shore's cliff, a line across a lake
     // and the reeds show.
     // A cliff is a line with ticks on its lower side: MML draws its cliffs with the lower side on the right (37 of 37 by
@@ -340,7 +361,6 @@ export function buildStyle(s, ctx) {
     // OSM and MML each have cliffs the other lacks, so where both have one it's drawn twice, close together.
     // a ridge (#1178) is OSM's standard map's band of dots along its crest, in the peaks' brown, under the cliffs
     add({ id: 'osm-ridge', type: 'line', source: 'ofm', 'source-layer': 'mountain_peak', minzoom: 14, filter: ['==', ['get', 'class'], 'ridge'], paint: { 'line-pattern': 'ridge-6b4b2b', 'line-width': zi(14, 10, 16, 16, 18, 22), 'line-opacity': 0.7 } });
-    const cls = ['get', 'kohdeluokka'], tick = zi(13, 2, 16, 3.5, 18, 5), edge = zi(13, 0.8, 16, 1.3, 18, 1.8);
     for (const [id, source, layer, filter] of [['osm-cliff', 'ofm', 'mountain_peak', ['==', ['get', 'class'], 'cliff']], ['mml-cliff', 'mml', 'maasto_viiva', ['==', cls, 34400]]]) {
       add({ id, type: 'line', source, 'source-layer': layer, minzoom: 13, filter, paint: { 'line-color': P.cliff, 'line-width': edge } });
       add({ id: `${id}-ticks`, type: 'line', source, 'source-layer': layer, minzoom: 13, filter, paint: { 'line-color': P.cliff, 'line-width': tick, 'line-offset': zi(13, 1.4, 16, 2.4, 18, 3.4), 'line-dasharray': [0.4, 1.4] } });
@@ -350,11 +370,21 @@ export function buildStyle(s, ctx) {
     // MML's points, side by side (each symbol layer splits 3D's draped layers): from zoom 14, as only zoom 14's tiles have
     // them, flat on the ground and never hiding a label or a place. Rocks too small for an area, stones and sparse
     // boulders; reeds, one tuft each (MML's reed points lie in the water, so a tuft under it wouldn't show); pylons from 15.
-    const flat = { 'icon-allow-overlap': true, 'icon-ignore-placement': true, 'icon-pitch-alignment': 'map', 'icon-rotation-alignment': 'map' }, hex = (c) => c.slice(1);
+    // Stones in the water (#1170) too, under the surface, at it and above it, as MML's and Traficom's maps draw them.
+    const flat = { 'icon-allow-overlap': true, 'icon-ignore-placement': true, 'icon-pitch-alignment': 'map', 'icon-rotation-alignment': 'map' };
     add({
-      id: 'mml-rock-point', type: 'symbol', source: 'mml', 'source-layer': 'maasto_piste', minzoom: 14, filter: ['in', cls, ['literal', [34100, 34200, 34600]]],
-      layout: { 'icon-image': ['match', cls, 34100, `rock-spot-${hex(P.rock)}-${hex(P.cliff)}`, 34200, `rock-rocks-${hex(P.cliff)}`, `rock-stone-${hex(P.cliff)}`], 'icon-size': zi(14, 0.75, 17, 1.2), ...flat },
+      id: 'mml-rock-point', type: 'symbol', source: 'mml', 'source-layer': 'maasto_piste', minzoom: 14, filter: ['in', cls, ['literal', [34100, 34200, 34600, 38511, 38512, 38513]]],
+      layout: { 'icon-image': ['match', cls, 34100, `rock-spot-${hex(P.rock)}-${hex(P.cliff)}`, 34200, `rock-rocks-${hex(P.cliff)}`, 38511, `rock-under-${hex(P.cliff)}`, 38512, `rock-awash-${hex(P.cliff)}`, 38513, `rock-above-${hex(P.cliff)}`, `rock-stone-${hex(P.cliff)}`], 'icon-size': zi(14, 0.75, 17, 1.2), ...flat },
     });
+    // which way a river flows, from zoom 14: MML's `suunta` is in 1/10,000 radian, counter-clockwise from east (it
+    // pointed downhill at 8 of 8 arrows where the elevations differ, 2026-11-20); icon-rotate is clockwise degrees
+    // depths in metres (syvyysarvo is in millimetres): along the contours from zoom 14, and MML's depth points from 13
+    const metres = (k) => ['number-format', ['/', ['get', k], 1000], { 'max-fraction-digits': 1, locale: 'en' }];
+    if (s.overlays.depthContours) add({ id: 'mml-depth-label', type: 'symbol', source: 'mml', 'source-layer': 'korkeus', minzoom: 14, filter: ['==', cls, 54100], layout: { 'symbol-placement': 'line', 'symbol-spacing': 300, 'text-field': metres('syvyysarvo'), 'text-font': FONT, 'text-size': 10, 'text-optional': true }, paint: { 'text-color': depthLine, 'text-halo-color': P.halo, 'text-halo-width': 1, 'text-opacity': depthOp('depthContours') } });
+    if (s.overlays.soundings) add({ id: 'mml-sounding', type: 'symbol', source: 'mml', 'source-layer': 'korkeus', minzoom: 13, filter: ['==', cls, 54210], layout: { 'text-field': metres('syvyysarvo'), 'text-font': FONT_B, 'text-size': zi(13, 10, 16, 12), 'text-optional': true }, paint: { 'text-color': night ? P.text : '#000000', 'text-opacity': depthOp('soundings') } });
+    // a lake's surface height above the sea, from zoom 13, in the water names' italic: in the basemap, as a peak's height is
+    add({ id: 'mml-lake-height', type: 'symbol', source: 'mml', 'source-layer': 'korkeus', minzoom: 13, filter: ['all', ['==', cls, 36291], ['has', 'keskikorkeus']], layout: { 'text-field': ['concat', metres('keskikorkeus'), ' m a.s.l.'], 'text-font': FONT_I, 'text-size': 10.5, 'text-optional': true }, paint: { 'text-color': P.waterText, 'text-halo-color': P.halo, 'text-halo-width': 1 } });
+    add({ id: 'mml-flow', type: 'symbol', source: 'mml', 'source-layer': 'symboli', minzoom: 14, filter: ['in', cls, ['literal', [36392, 36393]]], layout: { 'icon-image': `flow-${hex(P.waterText)}-${hex(P.halo)}`, 'icon-rotate': ['*', ['get', 'suunta'], -180 / Math.PI / 10000], 'icon-size': zi(14, 1, 17, 1.5), ...flat } });
     add({ id: 'mml-reed', type: 'symbol', source: 'mml', 'source-layer': 'maasto_piste', minzoom: 14, filter: ['==', cls, 38100], layout: { 'icon-image': `reed-${hex(P.reed)}`, 'icon-size': zi(14, 1, 17, 1.5), ...flat } });
     add({ id: 'mml-pylon', type: 'symbol', source: 'mml', 'source-layer': 'rakennelma', minzoom: 15, filter: ['==', cls, 22392], layout: { 'icon-image': `pylon-${hex(P.power)}`, 'icon-size': zi(15, 1, 18, 1.5), ...flat } });
     add({ id: 'building', type: 'fill', source: 'ofm', 'source-layer': 'building', minzoom: 13, paint: { 'fill-color': s.base === 'trail' ? '#bdb8b0' : P.building, 'fill-outline-color': s.base === 'trail' ? '#918b81' : P.buildingLine, 'fill-opacity': zi(13, 0.5, 15, 1) } });
