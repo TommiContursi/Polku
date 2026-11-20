@@ -868,8 +868,8 @@ def waterway_style(chrome):
 
 
 # #1200: a layer from a Finnish source says "Finland only" on its tile and its switch where none of Finland is in view (Luleå's
-# archipelago, inside the box the code once tested), and Paddle's defaults don't count it as on there; with Tornio in view, or in
-# Finland, nothing changes. Ships and Sea ice reach farther: they say so only beyond the northern Baltic and the Baltic.
+# archipelago, inside the box the code once tested), and Paddle's defaults don't count it as on there; Marked routes asks you to zoom
+# in on Finland there. With Tornio in view, or in Finland, nothing changes. Ships and Sea ice reach farther: they say so only beyond the northern Baltic and the Baltic.
 def layer_coverage(chrome):
     pg = chrome.page(1440, 900, False)
     try:
@@ -886,7 +886,9 @@ def layer_coverage(chrome):
           const chips=()=>[...document.querySelectorAll('#layers-panel .on-chip span')].map(s=>s.textContent);
           const count=(g)=>document.querySelector(`#layers-panel [data-group="${g}"] .lg-count`)?.textContent||'';
           const FI=['Official routes (LIPAS)','Shipping lanes','Depth areas','Nautical marks & fairways'];
-          // Luleå's archipelago, Sweden: the drawer's tiles
+          // Luleå's archipelago, Sweden: Marked routes asks you to zoom in on Finland, and the drawer's tiles
+          await polku.planner.listMarked();
+          if(polku.planner.marked.state!=='far')errs.push(`Luleå: Marked routes is “${polku.planner.marked.state}”, not asking you to zoom in on Finland`);
           document.querySelector('#btn-layers').click();
           if(!await until(()=>document.querySelector('#quick-layers .qt[data-id="nautical"]')))return ['Layers opened no Paddle tiles'];
           for(const id of ['nautical','lipasPoints'])if(small(id)!=='Finland only')errs.push(`Luleå: the ${id} tile says “${small(id)}”, not Finland only`);

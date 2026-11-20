@@ -10,7 +10,7 @@ import { detailsAlong, forgetFailures as forgetTrailFailures, obstacleText } fro
 import { iconUrl, warnMarkId } from './icons.js';
 import { speedsFor, speedSummary, renderSpeedEditor, pace, pace100 } from './speeds.js';
 import { ProfileChart, COLOR_MODES, COLOR_GROUPS, PICK_MODES, colorAt, routeReadout, breakdownKey, breakdownRows, sampleRows, skyIcon, noTerrain, downClass } from './chart.js';
-import { dist, encodePolyline, decodePolyline, fmtDist, fmtDuration, compass, bbox, nearestOnLine, simplify, lineLength, pointSegment, bearing, inFinland } from './geo.js';
+import { dist, encodePolyline, decodePolyline, fmtDist, fmtDuration, compass, bbox, nearestOnLine, simplify, lineLength, pointSegment, bearing, inFinland, finlandInView } from './geo.js';
 import { lipasPlace, stitch, clipAlong } from './lipas.js';
 import { onWaterData, prefetchWater, forgetWaterFailures } from './waterdata.js';
 import { sunTimes, darkness, nightAt, sunPosition } from './sun.js';
@@ -5237,8 +5237,7 @@ export class Planner {
     const M = this.marked, sp = this.app.activity(), types = markedFor(sp);
     const gen = (M.gen = (M.gen || 0) + 1);
     if (!types.length) { M.list = []; M.state = 'none'; this.showMarked(); this.renderStart(); return; }
-    const c = this.map.getCenter();
-    const fin = c.lng > 19 && c.lng < 32 && c.lat > 59.4 && c.lat < 70.2;
+    const b = this.map.getBounds(), fin = finlandInView([b.getWest(), b.getSouth(), b.getEast(), b.getNorth()]);
     if (this.map.getZoom() < 8 || !fin || !this.app.lipasRoutesIn) { M.list = []; M.state = 'far'; this.showMarked(); this.renderStart(); return; }
     M.state = 'loading';
     this.renderStart();
