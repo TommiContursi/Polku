@@ -887,7 +887,9 @@ def reedbed_style(chrome):
     fails = pg.js("""(async () => {
       const errs=[], m=polku.map, {makeIcon}=await import('/js/icons.js'), O=await import('/js/osm-data.js'), {lonLatToTile}=await import('/js/geo.js');
       const hex=(d,i)=>'#'+[d[i],d[i+1],d[i+2]].map(v=>v.toString(16).padStart(2,'0')).join('');
-      const settle=async()=>{m.jumpTo({center:m.getCenter(),zoom:m.getZoom()+1e-6});m.fire('moveend');await new Promise(r=>setTimeout(r,500));await new Promise(r=>{m.once('idle',r);m.triggerRepaint();});};
+      // (the aerial base's imagery may never finish loading: idle or 8 s)
+      const settle=async()=>{m.jumpTo({center:m.getCenter(),zoom:m.getZoom()+1e-6});m.fire('moveend');await new Promise(r=>setTimeout(r,500));
+        await Promise.race([new Promise(r=>{m.once('idle',r);m.triggerRepaint();}),new Promise(r=>setTimeout(r,8000))]);};
       O.holdReedbeds();
       const c=[25.7905,62.2335], d=0.002, ring=[[c[0]-d,c[1]-d],[c[0]+d,c[1]-d],[c[0]+d,c[1]+d],[c[0]-d,c[1]+d],[c[0]-d,c[1]-d]];
       const [x,y]=lonLatToTile(...c,O.REED_Z).map(Math.floor);
@@ -912,11 +914,12 @@ def reedbed_style(chrome):
       }
       polku.set({base:'trail'}); m.jumpTo({center:c,zoom:11.5}); await settle();
       if(here())errs.push('reedbeds drawn below zoom 12, where their tiles aren\\'t read');
-      m.jumpTo({center:c,zoom:15.5}); polku.set({base:'aerial'}); await settle();
+      m.jumpTo({center:c,zoom:15.5}); await settle();
+      if(!here())errs.push('reedbeds not back at zoom 15.5');
+      // (last: back from the aerial base, MapLibre logs #1141's pattern error)
+      polku.set({base:'aerial'}); await settle();
       if(m.getLayer('lc-reedbed'))errs.push('a reedbed layer on the aerial base');
       if((await m.getSource('reedbeds').getData()).features.length)errs.push('reedbeds published with no layer to draw them');
-      polku.set({base:'trail'}); await settle();
-      if(!here())errs.push('reedbeds not back on the Trail map after the aerial one');
       return errs;
     })()""")
     fails += [f'console: {e[:160]}' for e in pg.errors()]

@@ -273,7 +273,7 @@ when `OSM_PUBLIC_URL` is configured, independently of unattended publication.
 Source age over 14 days, changed manifests and broken browser headers fail the
 job. It also exercises the actual deployed selection/detail consumers at 16
 locations in two browser profiles, forbidding normal covered Overpass calls
-and checking every archive in the actual manifest (28 existing products, or 29 with shared geometry). An extended release additionally requires six lake/park cases in each browser profile, exercising original containment, actual area selection and the full-tag card action. Browser work stops after 180 seconds;
+and checking every archive in the actual manifest (32 country products, or 28 in a release from before reedbeds; one more with shared geometry). An extended release additionally requires six lake/park cases in each browser profile, exercising original containment, actual area selection and the full-tag card action. Browser work stops after 180 seconds;
 the monitor job has a ten-minute limit. Synthetic public sample coordinates
 are used; no saved user routes or positions are read.
 
@@ -371,6 +371,8 @@ browser reader keep their own notices in `THIRD_PARTY_NOTICES.md`.
 ## Expanded detail/check datasets
 
 The builder also emits `trails.pmtiles` (z13), `winter.pmtiles` (z12), `hazards.pmtiles` (z11) and `places.pmtiles` (z12), with all original tags and complete ways. `trails` holds every path and track (#1128), with the footways and cycleways that carry details. Gates/fords and other supported point obstacles survive independently of highways. Overnight relation centres require complete referenced member bounds; an incomplete relation fails the build instead of becoming an empty search. Empty products have one empty sentinel tile because the existing PMTiles writer requires an entry; missing tiles within declared coverage are valid empty results.
+
+`wetlands.pmtiles` (z12, #1144) holds reedbeds: each `natural=wetland` + `wetland=reedbed` closed way or multipolygon, assembled by osmium's `AreaManager` in the staging pass (its first pass reads only reedbed relations, and every other way is stopped before the assembler, so no other area is built), as `{type, id, tags: {wetland}, area}` with `area` a GeoJSON MultiPolygon's coordinates, in every z12 tile its bounds touch. Its staging rows are keyed apart from the full-tag inspection copy of the same way or relation. `measurements.json` records `unassembled`, the tagged reedbeds osmium couldn't build (broken rings, missing members): they stay generic wetland on the map. On Finland's 2026-11-18 extract it holds 11,747 reedbeds, none unassembled, in 1,524 tiles: 4,031,730 bytes, tiles 1.0 kB gzip at the median and 50 kB at most (z12 2290/1175). The app reads it only for the map (`Reedbeds` in `js/osm-data.js`), with no public fallback. Health and the browser measurement read it where the live release has it, so a rollback to a release from before it still verifies.
 
 These products are now published in all four countries and use the shared reader. Clients also tolerate older manifests lacking optional products, falling back to existing sources. The migration plan records the independently testable extraction, inspection and country rollout PRs. Whole hosted operations stop after eight seconds; fallback uses one bounded public-provider round. Existing lighting semantics and the manual publisher/rollback/monitor remain.
 
