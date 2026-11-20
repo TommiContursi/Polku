@@ -795,7 +795,12 @@ def cycleway_style(chrome):
         if(m.getStyle().layers.findIndex(l=>l.id===`path-${pass}-halo`)<m.getStyle().layers.indexOf(fl))errs.push(`${fl.id}: drawn over the trails`);
         const fc=m.getStyle().layers.find(l=>l.id===`${fl.id}-casing`);
         if(pass==='tunnel') { if(fc)errs.push(`${fl.id}: tunnel has a white band`); }
-        else if(!fc||JSON.stringify(fc.filter)!==JSON.stringify(fl.filter)||fc.paint['line-color']!=='#ffffff'||width(fc.id,16)!==width(`cycleway-${pass}-casing`,16)||m.getStyle().layers.indexOf(fc)>m.getStyle().layers.indexOf(fl))errs.push(`${fl.id}: not on the cycleways' white band`);
+        else if(!fc||JSON.stringify(fc.filter)!==JSON.stringify(fl.filter)||fc.paint['line-color']!=='#ffffff'||width(fc.id,16)!==width(fl.id,16)+2||m.getStyle().layers.indexOf(fc)>m.getStyle().layers.indexOf(fl))errs.push(`${fl.id}: not on a white band 1 px wider a side`);
+        // ungraded steps: a wide brown ladder, not a trail; graded ones stay trails
+        const st=`path-${pass}-steps`, sl=m.getStyle().layers.find(l=>l.id===st), sp=(t)=>({class:'path',subclass:'steps',...t,...(pass==='ground'?{}:{brunnel:pass})});
+        if(!matches(st,sp({}))||matches(`path-${pass}`,sp({}))||matches(`path-${pass}-halo`,sp({})))errs.push(`${st}: steps drawn as a trail`);
+        if(matches(st,sp({mtb_scale:'1'}))||!matches(`path-${pass}`,sp({mtb_scale:'1'})))errs.push(`${st}: graded steps lost their trail style`);
+        if(sl.paint['line-color']!=='#a2381f'||JSON.stringify(sl.paint['line-dasharray'])!=='[0.2,0.2]'||width(st,17)!==9)errs.push(`${st}: not a wide brown ladder`);
         for(const [surface,want] of [['paved',[6,1.5]],['unpaved',[1,.5]],[undefined,[2.5,1.5]],['other',[2.5,1.5]]]) {
           const raw=m.getPaintProperty(id,'line-dasharray'), got=layer.paint.get('line-dasharray').value;
           const dash=typeof raw[0]==='number'?raw:got.evaluate({zoom:16},{type:2,properties:{surface}},{});
