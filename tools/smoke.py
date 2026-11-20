@@ -976,6 +976,93 @@ def reedbed_style(chrome):
     return not fails
 
 
+# #1147: MML's bogs from a recorded tile (tools/fixtures/mml-taustakartta-14-9260-4578.pbf, Seitseminen), never live MML:
+# each class's pattern on every vector base, opaque over OSM's wetlands, under the reedbeds; heath and open forest left
+# out. Where MML's tiles don't load, OSM's wetlands stay and a message says so once, and again after a tile has come.
+def mml_bogs(chrome):
+    pg = chrome.page(1440, 900, False)
+    # (zoom 10: under the source's zoom 11, so MML is asked for nothing before the test answers it)
+    pg.open_app({'activity': 'mtb', 'base': 'trail'}, hash_='#10/61.92/23.478')
+    fails = pg.js("""(async () => {
+      const errs=[], m=polku.map, {makeIcon}=await import('/js/icons.js');
+      const hex=(d,i)=>'#'+[d[i],d[i+1],d[i+2]].map(v=>v.toString(16).padStart(2,'0')).join('');
+      const settle=async()=>{await new Promise(r=>setTimeout(r,300));await Promise.race([new Promise(r=>{m.once('idle',r);m.triggerRepaint();}),new Promise(r=>setTimeout(r,10000))]);};
+      if(Object.keys(m.style.tileManagers.mml._tiles).length)return ['MML was asked for tiles at zoom 10'];
+      const fx=await (await fetch('/tools/fixtures/mml-taustakartta-14-9260-4578.pbf')).arrayBuffer();
+      let fail=false; const asked=[];
+      maplibregl.addProtocol('mmltest', async ({url}) => {
+        const [,z,y,x]=/\\/(\\d+)\\/(\\d+)\\/(\\d+)\\.pbf/.exec(url).map(Number); asked.push(url);
+        if(fail)throw new Error('Failed to fetch');
+        return {data: z===14&&x===9260&&y===4578 ? fx.slice(0) : new ArrayBuffer(0)}; // (elsewhere an empty tile)
+      });
+      m.setTransformRequest((url)=>({url: url.startsWith('https://avoin-karttakuva.maanmittauslaitos.fi/vectortiles/') ? url.replace(/^https:/,'mmltest:') : url}));
+      const tileMid=(z,x,y)=>[(x+0.5)/2**z*360-180, Math.atan(Math.sinh(Math.PI*(1-2*(y+0.5)/2**z)))*180/Math.PI];
+      m.jumpTo({center:tileMid(14,9260,4578),zoom:14.5}); await settle();
+      if(!asked.length)return ['(the test) MML was never asked for a tile'];
+      const u=new URL(asked[0].replace(/^mmltest:/,'https:')), src=m.getStyle().sources.mml;
+      if(!u.pathname.includes('/vectortiles/taustakartta/wmts/1.0.0/taustakartta/default/v21/'))errs.push(`terrain tiles from ${u.pathname}`);
+      if(!u.searchParams.get('api-key'))errs.push('no API key in the terrain tiles\\' address');
+      if(src.minzoom!==11||!src.bounds||src.bounds[0]<19||src.bounds[2]>32)errs.push(`terrain tiles asked for from zoom ${src.minzoom}, within ${src.bounds}`);
+      const drawn=(layer)=>new Set(m.queryRenderedFeatures({layers:[layer]}).map(f=>f.properties.kohdeluokka));
+      const bogs=drawn('mml-bog');
+      for(const k of [35411,35412,35421])if(!bogs.has(k))errs.push(`no bog of class ${k} drawn from the recorded tile`);
+      if(!drawn('mml-paludified').has(35300))errs.push('no paludified land drawn from the recorded tile');
+      const bog=()=>m.style.getLayer('mml-bog'), as=(cls)=>({type:3,properties:{kohdeluokka:cls}});
+      const pattern=(cls)=>{const v=bog()._transitionablePaint._values['fill-pattern'].value.expression.evaluate({zoom:14},as(cls));return v&&v.name||v;};
+      const blend=(a,b,t)=>'#'+[1,3,5].map(i=>Math.round(parseInt(b.slice(i,i+2),16)*t+parseInt(a.slice(i,i+2),16)*(1-t)).toString(16).padStart(2,'0')).join('');
+      for(const base of ['trail','plain','night']) {
+        polku.set({base}); await settle();
+        const order=m.getStyle().layers.map(l=>l.id), at=(id)=>order.indexOf(id);
+        if(!(at('lc-wetland-pattern')<at('mml-paludified')&&at('mml-paludified')<at('mml-bog')&&at('mml-bog')<at('lc-reedbed')))errs.push(`${base}: not drawn over OSM's wetlands and under the reedbeds`);
+        const osm=m.getPaintProperty('lc-wetland-pattern','fill-pattern'), [,ground,dash]=/^wetland-(\\w{6})-(\\w{6})$/.exec(osm);
+        const wood=blend(m.getPaintProperty('background','background-color'),m.getPaintProperty('lc-wood','fill-color'),m.getPaintProperty('lc-wood','fill-opacity')).slice(1);
+        const water=m.getPaintProperty('water','fill-color').slice(1);
+        // open bogs as OSM's wetlands, wooded ones on the forest's tint as drawn, the hard to cross in unbroken lines
+        const want={35401:osm,35411:osm,35402:`wetland-${wood}-${dash}`,35412:`wetland-${wood}-${dash}`,35421:`bog-hard-${ground}-${dash}`,35422:`bog-hard-${wood}-${dash}`,38300:`wetland-${water}-${dash}`};
+        for(const [k,id] of Object.entries(want)) {
+          if(!bog()._featureFilter.filter({zoom:14},as(+k)))errs.push(`${base}: class ${k} isn't drawn`);
+          else if(pattern(+k)!==id)errs.push(`${base}: class ${k} drawn as ${pattern(+k)}, not ${id}`);
+        }
+        for(const k of [39110,39120,34100,36200])if(bog()._featureFilter.filter({zoom:14},as(k)))errs.push(`${base}: class ${k} drawn as a bog`);
+        for(const id of new Set(Object.values(want))) {
+          const d=makeIcon(id).data;
+          for(let i=3;i<d.length;i+=4)if(d[i]!==255){errs.push(`${base}: ${id} has clear pixels, so OSM's dashes would show through`);break;}
+        }
+        for(const k of [35411,35412,35421])if(!m.hasImage(want[k]))errs.push(`${base}: ${want[k]} wasn't drawn on the map`);
+        // 2 px per CSS pixel: the hard bog's lines on rows 2-3 and 8-9, unbroken, ground between
+        const hard=makeIcon(want[35421]), px=(img,x,y)=>hex(img.data,(y*img.width+x)*4);
+        if([0,5,15].some(x=>px(hard,x,2)!=='#'+dash||px(hard,x,9)!=='#'+dash))errs.push(`${base}: the hard bog's lines are broken`);
+        if(px(hard,0,0)!=='#'+ground||px(hard,7,5)!=='#'+ground)errs.push(`${base}: lines where the hard bog's ground should be`);
+        // paludified land: a dash at x 4-11 on rows 6-7, the land under it showing everywhere else
+        const pid=m.getPaintProperty('mml-paludified','fill-pattern'), pal=makeIcon(pid);
+        if(pid!==`bog-paludified-${dash}`)errs.push(`${base}: paludified land drawn as ${pid}`);
+        else { if(px(pal,4,6)!=='#'+dash)errs.push(`${base}: no dash in paludified land`); if(pal.data[3]!==0)errs.push(`${base}: paludified land covers the land under it`); }
+      }
+      // MML's tiles failing: OSM's wetlands show, a message once; again once a tile has come in between
+      polku.set({base:'trail'}); await settle();
+      const box=document.querySelector('#toast'), said=()=>box.textContent.includes('bogs didn’t load');
+      box.textContent=''; fail=true;
+      m.jumpTo({center:[23.43,61.94],zoom:13.5}); await settle();
+      if(!said())errs.push(`no message where MML's tiles failed (${box.textContent})`);
+      if(!m.queryRenderedFeatures({layers:['lc-wetland-pattern']}).length)errs.push('no OSM wetlands where MML\\'s tiles failed');
+      if(m.queryRenderedFeatures({layers:['mml-bog']}).length)errs.push('MML bogs drawn where their tiles failed');
+      box.textContent=''; m.jumpTo({center:[23.20,61.80],zoom:13.5}); await settle();
+      if(said())errs.push('the message came again while MML\\'s tiles kept failing');
+      fail=false; m.jumpTo({center:[23.60,62.10],zoom:13.5}); await settle();
+      fail=true; m.jumpTo({center:[23.10,62.20],zoom:13.5}); await settle();
+      if(!said())errs.push('no message when MML\\'s tiles failed again after one came');
+      polku.set({mmlKey:'own-key-fixture'});
+      if(new URL(m.getStyle().sources.mml.tiles[0]).searchParams.get('api-key')!=='own-key-fixture')errs.push("a person's own key isn't used for the bogs");
+      polku.set({mmlKey:''});
+      for(const base of ['maasto','aerial']){polku.set({base}); if(m.getStyle().sources.mml)errs.push(`MML's bogs asked for on the ${base} base`);}
+      return errs;
+    })()""", timeout=120000)
+    fails += [f'console: {e[:160]}' for e in pg.errors()]
+    pg.close()
+    print(f"{'ok  ' if not fails else 'FAIL'} MML's bogs by class, over OSM's wetlands (#1147)" + ''.join(f'\n     - {f}' for f in fails), flush=True)
+    return not fails
+
+
 # #1130, #1137: no-bike bars stay on paths/tracks, across the line, as wide as its halo.
 def cycling_restrictions(chrome):
     pg = chrome.page(1440, 900, False)
@@ -24422,7 +24509,7 @@ GROUPS = [
     ('changelog', [changelog], 'release notes, retry, safe rendering, keyboard, route preservation and real worker offline'),
     ('pacing', [pacing, paced_legs, net_fails], 'calls made together go out paced and counted (mocked services, a fake clock); legs refused for a slot follow at it (#78); the calls that failed, in Data sources (#687)'),
     ('loading', [loading, routing_edits], 'cancel obsolete routing, edits/Undo/Clear, shared subscribers, refusal/recovery, deadlines, terrain slots and LIPAS viewport/cache (mocked)'),
-    ('layers', [layers, cycleway_style, cycling_restrictions, waterway_style, property_lines, wetland_style, reedbed_style], 'the Layers panel in every sport'),
+    ('layers', [layers, cycleway_style, cycling_restrictions, waterway_style, property_lines, wetland_style, reedbed_style, mml_bogs], 'the Layers panel in every sport'),
     ('raster', [raster_maps, aerial_fallback, aerial_labels], 'terrain and aerial detail, bounded high-density WMS symbols, depth boundaries and missing aerial detail (#649, #650, #653); the map\'s words on the aerial photos at 4.5:1 on their halo (#554)'),
     ('coarse', [coarse], 'a coarse map underneath (#1091): the base map\'s tile four zoom levels up stands in for one that hasn\'t come, at 1440 and 390'),
     ('together', [together], 'Polku\'s own layers come in together after the map stops, 500 ms at most (#1091)'),
