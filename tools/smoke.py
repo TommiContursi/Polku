@@ -916,7 +916,7 @@ def reedbed_style(chrome):
       if(here())errs.push('reedbeds drawn below zoom 12, where their tiles aren\\'t read');
       m.jumpTo({center:c,zoom:15.5}); await settle();
       if(!here())errs.push('reedbeds not back at zoom 15.5');
-      // (last: back from the aerial base, MapLibre logs #1141's pattern error)
+      // (last: back from the aerial base, MapLibre logs #1141's error from cycleway-tunnel)
       polku.set({base:'aerial'}); await settle();
       if(m.getLayer('lc-reedbed'))errs.push('a reedbed layer on the aerial base');
       if((await m.getSource('reedbeds').getData()).features.length)errs.push('reedbeds published with no layer to draw them');
