@@ -7056,10 +7056,11 @@ export class Planner {
       const lost = ['OpenStreetMap', 'the National Land Survey'].find((m) => missing(m) || skipped(m));
       if (!asked('hazards')) row('Rocks and shoals', 'not used for this route', 'na');
       else if (lost) row('Rocks and shoals', missing(lost) ? `${lost} didn’t answer` : 'not checked: a leg too long to ask for', 'bad');
-      // (25 m for the shores' edge cells, at most half the water, as the lake depths)
+      // (25 m for the shores' edge cells, at most half the water, as the lake depths). OSM's are the source beyond MML's
+      // map, so a route across a border is checked the whole way (#153's Decided list)
       else if (wetM > 0 && gotM >= wetM - Math.min(25, wetM / 2)) row('Rocks and shoals', 'the National Land Survey and OpenStreetMap', 'ok');
       else if (gotM < 25) row('Rocks and shoals', 'OpenStreetMap', 'ok'); // outside Finland
-      else row('Rocks and shoals', `OpenStreetMap, and the National Land Survey for ${fmtDist(gotM)} of the ${fmtDist(wetM)} on the water`, 'bad');
+      else row('Rocks and shoals', `OpenStreetMap, and the National Land Survey for ${fmtDist(gotM)} of the ${fmtDist(wetM)} on the water`, 'ok');
       source('Fairways and marks', 'fairways', 'Väylävirasto');
     }
     // the forecast: the weather on the way, and on the water the wind for the waves

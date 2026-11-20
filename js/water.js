@@ -44,8 +44,8 @@ function waterStyle() {
 }
 
 // clear zones (m): isolated danger marks, cardinal marks (centred this far to their danger side), rocks (OSM's, and MML's
-// stones at the surface), MML's stones above it (seen in time, and placed within 7.5 m), the edges of reefs, shoals and
-// stone fields
+// stones at the surface), stones above it (MML's, placed within 7.5 m, and OSM's charted as always dry: seen in time),
+// the edges of reefs, shoals and stone fields
 const CLEAR = { danger: 45, cardinal: 55, shift: 35, point: 25, above: 15, edge: 15 };
 const SHALLOW_M = 20; // round a sounding under 0.5 m (#1184)
 const EMPTY_FC = { type: 'FeatureCollection', features: [] };

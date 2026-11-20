@@ -6,6 +6,7 @@ The water router keeps clear of OpenStreetMap's rocks and shoals, but OSM has fe
 
 - **Plan, 2026-11-20.**
 - **Decided, 2026-11-20** (on #153's description): built now, at sea and on lakes alike, from MML's background-map tiles with Polku's key or the person's own: stones in the water at and above the surface, stone fields in the water and shoals join the water router's keep-clear zones.
+- **Decided, 2026-11-20:** the same keep-clear across borders. A route through Åland to Sweden, or across to Estonia, keeps clear of rocks and shoals the whole way: beyond MML's map from OSM's, with What Polku looked at saying which source covered which stretch ([Beyond Finland](#beyond-finland)).
 
 ## What MML's tiles have (checked 2026-11-20)
 
@@ -35,6 +36,26 @@ The hidden map draws a leg's water at 3 m a pixel or coarser, which is MapLibre'
 - **Offline:** offline saves keep OpenFreeMap's tiles, not MML's (`sw.js`), so offline a leg is routed with OSM's rocks and Not checked says MML's didn't load, unless the browser still has the tiles from that day. MML's tiles in offline saves would be a part of their own.
 - **A leg saved before** (no `checked.stones`) is routed again when the route loads online, as #1187 does for the depths.
 - **Tests** answer MML's address from recorded tiles in `tools/fixtures/` (the ones #1186 records off Kotka and on Kitkajoki), never live MML.
+
+## Beyond Finland
+
+OSM's rocks, reefs and shoals are already one of the router's sources everywhere: Polku's own OSM data has them as its `hazards` product for Finland, Sweden, Norway and Estonia, and Overpass answers elsewhere (`seamark:type` rock, obstruction and wreck, `natural` rock, reef and shoal, points and areas). So a route across a border is kept clear of OSM's the whole way, and of MML's as well where MML's map reaches.
+
+- **MML's map covers Åland:** all 36 zoom-14 tiles round Mariehamn, Föglö and Kökar have features, with 225–676 stones in each 6 × 6 km square, more than off Kotka.
+- **How much OSM has,** in the same 6 × 6 km squares (Polku's own OSM data, 2026-11-20):
+
+  | Place | OSM's rocks, reefs and shoals | MML's stones, stone fields and shoals |
+  |---|---|---|
+  | Kotka | 0 | 515 and 174 |
+  | Porvoo | 5 | 77 and 4 |
+  | Nauvo | 18 | 131 and 3 |
+  | Åland: Mariehamn, Föglö, Kökar | 98, 52, 42 | 225 and 5, 676 and 6, 534 and 3 |
+  | Stockholm's archipelago: Vaxholm, Sandhamn, Möja | 3, 19, 5 | none |
+  | Estonia's north coast: Tallinn bay, Prangli, Käsmu | 19 (15 wrecks), 3, 0 | none |
+
+  So beyond Finland the router knows far fewer rocks: a tenth or less of what MML has in Finland. What Polku looked at says which source it had, and the route still needs a lookout.
+- **The same rules:** OSM's rocks charted as always above the water (`seamark:rock:water_level` or `seamark:obstruction:water_level` `dry` or `always_dry`) get the 15 m of MML's stones above the surface; every other point gets 25 m, as a stone at the surface, since OSM's may be awash, under the water or not say. Reefs and shoals: the area and 15 m round it, as MML's.
+- **What Polku looked at, Rocks and shoals:** "the National Land Survey and OpenStreetMap" where MML's map covered the route's water, "OpenStreetMap" beyond it, and "OpenStreetMap, and the National Land Survey for 12 km of the 40 km on the water" across a border, all ✓. Where a source didn't answer, the row says so and Not checked has its stretch, with Retry.
 
 ## 2. How far to keep clear
 
@@ -77,7 +98,7 @@ Nothing in the router or Check reads rapids today, so a river route goes through
 ## 4. How Polku says it
 
 - **Route style, Rocks & shoals** (paddling and swimming): "Keeps clear of marked dangers: isolated-danger and cardinal marks (Väylävirasto), stones, stone fields and shoals on the National Land Survey's map in Finland, and the rocks, reefs and shoals in OpenStreetMap." The depths' sentence stays.
-- **What Polku looked at, Rocks and shoals:** "the National Land Survey and OpenStreetMap" when MML covered all the route's water; "OpenStreetMap; the National Land Survey's for 2.1 of 6.4 km on the water" when part; "OpenStreetMap: outside the National Land Survey's map" when none; "the National Land Survey didn't answer" when its tiles failed. Only the first is ✓ in Finland.
+- **What Polku looked at, Rocks and shoals:** as [Beyond Finland](#beyond-finland) says, and "the National Land Survey didn't answer" when its tiles failed.
 - **Not checked:** "Stones and shoals from the National Land Survey didn't load", with Retry, and "Stones and shoals: not checked, the leg is too long".
 - **README, USING, DEVELOPING and CHANGELOG** in the same PR. The CHANGELOG, something like: "Paddling routes keep clear of the stones, stone fields and shoals on the National Land Survey's map, at sea and on lakes, beside OpenStreetMap's rocks. Water routes are for planning, not navigation: keep a lookout."
 
@@ -95,5 +116,6 @@ Nothing in the router or Check reads rapids today, so a river route goes through
 
 - **Stones, stone fields and shoals,** as sections 1, 2 and 4 recommend, in [#1202](https://github.com/TommiContursi/Polku/pull/1202). The tiles are read by `decodeTile()` in `js/vectortile.js`, which the shadows' buildings now share.
 - **Measured off Kotka** with live tiles: legs between the islands go 1–5 % farther than on `main`, with **Near the shore** and without. A straight leg over a recorded stone at the surface passes 27 m from it, where `main` passes 0 m (smoke's `water_mml`).
+- **Beyond Finland,** as decided: OSM's rocks charted always dry get 15 m, the rest 25 m, and a route across a border is ✓ with both sources named.
 - **Grazes aren't items:** the first build gave a leg through Kotka's archipelago up to seven "Close to a marked rock or shoal" items of 2–6 m each, every one the edge of a zone. A rock's or shoal's event shorter than two cells is no longer an item, as for shallow water (#1187).
 - **Not done:** rapids (the question in section 3); MML's tiles in offline saves.

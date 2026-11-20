@@ -69,7 +69,10 @@ way["seamark:type"~"^(rock|obstruction)$"](${bb});
     const points = [], areas = [];
     for (const el of json.elements || []) {
       const t = el.tags || {};
-      const kind = t['seamark:type'] || t.natural || 'rock';
+      // a charted rock always above the water is kept as clear as MML's stones above the surface (#153); one that may
+      // be awash or under it, or doesn't say, as a stone at the surface
+      const dry = /^(always_)?dry$/.test(t['seamark:rock:water_level'] || t['seamark:obstruction:water_level'] || '');
+      const kind = dry ? 'above' : t['seamark:type'] || t.natural || 'rock';
       if (el.type === 'node') points.push([+el.lon.toFixed(6), +el.lat.toFixed(6), kind]);
       else if (el.geometry && el.geometry.length > 1) areas.push({ kind, coords: el.geometry.map((g) => [+g.lon.toFixed(6), +g.lat.toFixed(6)]) });
     }

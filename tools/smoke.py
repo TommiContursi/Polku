@@ -2401,6 +2401,8 @@ WATER_MML = """(async () => {
   const G = await import(location.origin + '/js/geo.js');
   const { OVERPASS, OSM_DATA_MANIFEST, OPEN_METEO, MML_TERRAIN_TILES } = await import(location.origin + '/js/config.js');
   const MML = MML_TERRAIN_TILES.split('{z}')[0];
+  /*forget*/
+  await forget();
   let mode = 'fail', held = [], asked = 0;
   const realFetch = window.fetch;
   window.fetch = (url, init = {}) => {
@@ -2412,7 +2414,9 @@ WATER_MML = """(async () => {
       return mode === 'late' ? new Promise((ok) => held.push(ok)).then(answer) : Promise.resolve(answer());
     }
     if (u.startsWith(new URL(OSM_DATA_MANIFEST).origin) || u.startsWith(OPEN_METEO)) return Promise.reject(new TypeError('Failed to fetch'));
-    if (OVERPASS.some((m) => u.startsWith(m))) return Promise.resolve(new Response('{"elements":[]}'));
+    // OSM's rocks: three in Stockholm, one charted always dry, one awash and one that doesn't say
+    const rock = (id, lon, tags) => ({ type: 'node', id, lon, lat: 59.32, tags: { 'seamark:type': 'rock', ...tags } });
+    if (OVERPASS.some((m) => u.startsWith(m))) return Promise.resolve(new Response(JSON.stringify({ elements: String(init.body || '').includes('seamark') ? [rock(1, 18.045, { 'seamark:rock:water_level': 'always_dry' }), rock(2, 18.05, { 'seamark:rock:water_level': 'awash' }), rock(3, 18.055, {})] : [] })));
     if (u.startsWith('https://avoinapi.vaylapilvi.fi/')) return Promise.resolve(new Response('{"type":"FeatureCollection","features":[]}'));
     if (u.includes('/data/depths/')) return Promise.resolve(new Response('{"tiles":[]}'));
     return realFetch(url, init);
@@ -2472,7 +2476,13 @@ WATER_MML = """(async () => {
     p.addPoint(part[1]);
     for (let k = 0; k < 80 && !(p.analysis && p.analysis.waterWarn && p.legs[0] && p.legs[0].status === 'ok'); k++) await wait(250);
     await wait(500);
-    if (!row() || row().state !== 'bad' || !/^OpenStreetMap, and the National Land Survey for \\d+ m of the \\d+ m on the water$/.test(row().by)) errs.push(`a leg half outside MML's map: ${says()}`);
+    if (!row() || row().state !== 'ok' || !/^OpenStreetMap, and the National Land Survey for \\d+ m of the \\d+ m on the water$/.test(row().by)) errs.push(`a leg half outside MML's map: ${says()}`);
+    // beyond MML's map, OSM's rocks the same way (#153): one charted always dry as clear as MML's stones above the surface,
+    // the rest as a stone at the surface
+    await forget();
+    const osm = await D.waterInputs([18.04, 59.31, 18.06, 59.33], { hazards: true, mml: true }, 0);
+    const kinds = osm.hazards.features.filter((f) => f.properties.src === 'osm').map((f) => f.properties.kind).sort().join(', ');
+    if (kinds !== 'above, rock, rock') errs.push(`OSM's rocks in Stockholm: ${kinds || 'none'} (missing ${osm.missing.join(', ')}), not above, rock, rock`);
     // too many tiles: not asked; outside Finland: nothing asked, nothing covered
     const n0 = asked;
     const big = await D.waterInputs([26.80, 60.40, 26.95, 60.50], { mml: true }, 0);
@@ -2500,6 +2510,7 @@ WATER_MML = """(async () => {
     window.fetch = realFetch;
     p.clear();
     polku.set({ activity: 'mtb' });
+    await forget();
   }
   return errs;
 })()"""
@@ -2509,7 +2520,7 @@ def water_mml(chrome):
     pg = chrome.page(1440, 900, False)
     pg.open_app({'activity': 'mtb'}, {'polku:plannerDock': '"left"'}, '#15/60.4729/26.8982')
     pg.js("import(location.origin + '/js/trails.js').then((T) => { T.holdFetches(); return true; })")
-    fails = pg.js(WATER_MML, timeout=150000)
+    fails = pg.js(WATER_MML.replace('/*forget*/', WATER_FORGET), timeout=150000)
     fails += [f'console: {e[:160]}' for e in pg.errors()]
     pg.close()
     print(f"{'ok  ' if not fails else 'FAIL'} MML's stones on the water" + ''.join(f'\n     - {f}' for f in fails), flush=True)
