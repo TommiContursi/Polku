@@ -98,7 +98,7 @@ LICENSE = {
     'name': 'Open Database License 1.0',
     'url': 'https://opendatacommons.org/licenses/odbl/1-0/',
 }
-PRODUCT_ZOOMS = {'trails': 13, 'winter': 12, 'hazards': 11, 'places': 12, 'inspection': 14}
+PRODUCT_ZOOMS = {'trails': 13, 'winter': 12, 'hazards': 11, 'places': 12, 'inspection': 14, 'wetlands': 12}
 BARRIERS = set(('gate lift_gate swing_gate sliding_gate wicket_gate hampshire_gate bump_gate chain rope bar block '
                 'stile kissing_gate turnstile horse_stile full-height_turnstile cycle_barrier motorcycle_barrier '
                 'log fallen_tree windfall debris').split())
@@ -107,6 +107,22 @@ BARRIERS = set(('gate lift_gate swing_gate sliding_gate wicket_gate hampshire_ga
 def is_stay(tags):
     return (tags.get('tourism') in {'camp_site', 'wilderness_hut', 'alpine_hut'} or
             tags.get('amenity') == 'shelter' and tags.get('shelter_type') in {'lean_to', 'basic_hut'})
+
+
+def is_reedbed(tags):
+    return tags.get('natural') == 'wetland' and tags.get('wetland') == 'reedbed'
+
+
+class ReedbedWays:
+    """Stops every other way before the area assembler: only reedbeds and their multipolygons' members are built."""
+    def __init__(self, members):
+        self.members = members
+        self.tagged = 0
+
+    def way(self, way):
+        reed = is_reedbed(way.tags) and way.is_closed()
+        self.tagged += reed
+        return not (reed or way.id in self.members)
 
 
 def products(kind, tags):
@@ -144,8 +160,13 @@ class PlaceRelations(osmium.SimpleHandler):
         super().__init__()
         self.relations = {}
         self.inspection = {}
+        self.reedbeds = 0
+        self.reedbed_members = set()
 
     def relation(self, rel):
+        if is_reedbed(rel.tags) and rel.tags.get('type') == 'multipolygon':
+            self.reedbeds += 1
+            self.reedbed_members.update(m.ref for m in rel.members if m.type == 'w')
         if inspectable(rel.tags):
             self.inspection[rel.id] = dict(rel.tags)
         self.relations[rel.id] = (dict(rel.tags) if is_stay(rel.tags) else None,
@@ -182,6 +203,9 @@ Retain the source PBF identified by manifest.json to reproduce this release.
 The archive preserves complete eligible ways without clipping or geometric
 simplification. Its rectangular bounds describe the extract's extent; they
 do not promise coverage outside the declared extract clipping polygons.
+
+Wetland records are natural=wetland + wetland=reedbed areas, assembled
+from closed ways and multipolygons by osmium, with only their wetland tag.
 
 Road/path relation records contain only the eligible way members present in each tile. Overnight place records retain their original member references and roles.
 member_count is the original relation member count; each member's index is
@@ -241,6 +265,7 @@ class Stager(osmium.SimpleHandler):
         self.needed = places.wanted()
         self.member_bounds = {}
         self.incomplete_inspection = 0
+        self.reedbeds = 0
 
     def identity(self, element):
         self.db.execute('INSERT INTO identities VALUES (?, ?, ?)',
@@ -253,13 +278,15 @@ class Stager(osmium.SimpleHandler):
     def product(self, names, element, xy_tiles):
         if not names:
             return
+        # an area is stored apart from its way or relation, which other products keep with all tags
+        kind = element['type'] + ('-area' if 'area' in element else '')
         self.db.execute('INSERT INTO features VALUES (?, ?, ?)',
-                        (element['type'], element['id'], json_bytes(element)))
+                        (kind, element['id'], json_bytes(element)))
         for name in names:
             zoom = PRODUCT_ZOOMS[name]
             factor = 2 ** (ZOOM - zoom)
             self.db.executemany('INSERT INTO tile_features VALUES (?, ?, ?, ?)',
-                [(name, zxy_to_tileid(zoom, x, y), element['type'], element['id'])
+                [(name, zxy_to_tileid(zoom, x, y), kind, element['id'])
                  for x, y in {(x // factor, y // factor) for x, y in xy_tiles}])
 
     def node(self, node):
@@ -363,6 +390,21 @@ class Stager(osmium.SimpleHandler):
                         (relation.id, json_bytes(dict(relation.tags)), len(relation.members)))
         self.db.executemany('INSERT INTO members VALUES (?, ?, ?, ?)', members)
 
+    def area(self, area):
+        if not is_reedbed(area.tags):
+            return
+        polygons = [[[[round(n.lon, 7), round(n.lat, 7)] for n in ring] for ring in (outer, *area.inner_rings(outer))]
+                    for outer in area.outer_rings()]
+        points = [p for polygon in polygons for p in polygon[0]]
+        if not points:
+            return
+        (x0, y0), (x1, y1) = [[math.floor(v) for v in tile_point(lon, lat)] for lon, lat in
+                              [(min(p[0] for p in points), max(p[1] for p in points)), (max(p[0] for p in points), min(p[1] for p in points))]]
+        self.reedbeds += 1
+        self.product(['wetlands'], {'type': 'way' if area.from_way() else 'relation', 'id': area.orig_id(),
+                                    'tags': {'wetland': 'reedbed'}, 'area': polygons},
+                     {(x, y) for x in range(x0, x1 + 1) for y in range(y0, y1 + 1)})
+
     def finish_places(self):
         def bounds_of(kind, ref, stack):
             if kind != 'r':
@@ -427,9 +469,16 @@ def stage_source(source, db, index_path):
     places = PlaceRelations()
     places.apply_file(str(source))
     handler = Stager(db, places)
-    handler.apply_file(str(source), locations=True,
-                       idx=f'sparse_file_array,{index_path}')
+    reeds = osmium.area.AreaManager()
+    with osmium.io.Reader(str(source), osmium.osm.RELATION) as reader:
+        osmium.apply(reader, osmium.filter.TagFilter(('wetland', 'reedbed')), reeds.first_pass_handler())
+    locations = osmium.NodeLocationsForWays(osmium.index.create_map(f'sparse_file_array,{index_path}'))
+    locations.ignore_errors()
+    ways = ReedbedWays(places.reedbed_members)
+    with osmium.io.Reader(str(source)) as reader:
+        osmium.apply(reader, locations, handler, ways, reeds.second_pass_handler(handler))
     handler.finish_places()
+    handler.reedbeds_tagged = ways.tagged + places.reedbeds
     db.commit()
     if not handler.ways:
         raise ValueError('Source has no eligible ways')
@@ -646,6 +695,8 @@ def build_dataset(source, output, source_info, *, full_country=False, started=No
                 print(f'Writing {country} {name} archive', flush=True)
                 stats['products'][name] = archive_product(db, stage / f'{name}.pmtiles', name, source_info, handler.bounds)
             stats['products']['inspection']['incomplete_relations'] = handler.incomplete_inspection
+            # tagged reedbeds osmium couldn't assemble (broken rings, missing members) stay generic wetland on the map
+            stats['products']['wetlands']['unassembled'] = handler.reedbeds_tagged - handler.reedbeds
             write_identities(db, stage / 'identities.jsonl.gz')
             with (stage/'geometry-roots.jsonl.gz').open('wb') as raw, gzip.GzipFile(filename='',mode='wb',fileobj=raw,mtime=0) as out:
                 for kind,ref,area,inspection,sha in db.execute('''SELECT r.type,r.id,r.area,r.inspection,i.sha256

@@ -77,6 +77,20 @@ class HealthTests(unittest.TestCase):
             result=health.verify(self.root/'out')
         self.assertEqual(result['release'],'new');self.assertEqual(result['browser_cases'],32)
 
+    def test_a_release_with_reedbeds_needs_their_four_archives_too(self):
+        for read in [32,28]:
+            with self.subTest(read=read):
+                live=pointer(self.m)
+                live['datasets']={str(i):{'url':'releases/new/'+str(i)+'.pmtiles'} for i in range(28)}
+                live['datasets'].update({k:{'url':'releases/new/'+k+'.pmtiles'} for k in ['wetlands','sweden-wetlands','norway-wetlands','estonia-wetlands']})
+                def browser(*args,**kwargs):
+                    products={'network':[{'url':'https://data.example/polku-osm/'+d['url']} for d in list(live['datasets'].values())[:read]]}
+                    json.dump({'cases':{'desktop':[dict(products,lighting={'network':[]},details={})]*16,'phone_emulated':[dict(products,lighting={'network':[]},details={})]*16}},kwargs['stdout'])
+                with patch.object(health.p,'check',return_value=live),patch.object(health.subprocess,'run',side_effect=browser):
+                    if read==32:self.assertEqual(health.verify(self.root/('out'+str(read)))['archive_count'],32)
+                    else:
+                        with self.assertRaisesRegex(ValueError,'archives'):health.verify(self.root/('out'+str(read)))
+
     def test_extended_release_requires_geometry_url_and_both_profiles_area_checks(self):
         for mode in ['ok','missing-url','missing-cases','missing-consumers']:
             with self.subTest(mode=mode):
