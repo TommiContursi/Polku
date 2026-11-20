@@ -1056,6 +1056,22 @@ def reedbed_style(chrome):
     return not fails
 
 
+# #1147: MML answered from its recorded tiles (tools/fixtures/mml-taustakartta-<z>-<x>-<y>.pbf), never live: an empty tile
+# elsewhere, and every tile failing while `fail` is set. The start of the MML checks' script, after `m` and with the tiles
+# to read in `FX`; open the page under zoom 11, so MML is asked for nothing before it answers.
+MML_FIXTURES = """
+      const fx={}, asked=[]; let fail=false;
+      for(const t of FX)fx[t]=await (await fetch(`/tools/fixtures/mml-taustakartta-${t.replaceAll('/','-')}.pbf`)).arrayBuffer();
+      maplibregl.addProtocol('mmltest', async ({url}) => {
+        const [,z,y,x]=/\\/(\\d+)\\/(\\d+)\\/(\\d+)\\.pbf/.exec(url).map(Number); asked.push(url);
+        if(fail)throw new Error('Failed to fetch');
+        const t=fx[`${z}/${x}/${y}`]; return {data: t ? t.slice(0) : new ArrayBuffer(0)};
+      });
+      m.setTransformRequest((url)=>({url: url.startsWith('https://avoin-karttakuva.maanmittauslaitos.fi/vectortiles/') ? url.replace(/^https:/,'mmltest:') : url}));
+      const tileMid=(z,x,y)=>[(x+0.5)/2**z*360-180, Math.atan(Math.sinh(Math.PI*(1-2*(y+0.5)/2**z)))*180/Math.PI];
+"""
+
+
 # #1147: MML's bogs from a recorded tile (tools/fixtures/mml-taustakartta-14-9260-4578.pbf, Seitseminen), never live MML:
 # each class's pattern on every vector base, bogs opaque over OSM's wetlands and paludified land under them; heath and open forest left
 # out. Where MML's tiles don't load, OSM's wetlands stay and a message says so once, and again after a tile has come.
@@ -1064,19 +1080,10 @@ def mml_bogs(chrome):
     # (zoom 10: under the source's zoom 11, so MML is asked for nothing before the test answers it)
     pg.open_app({'activity': 'mtb', 'base': 'trail'}, hash_='#10/61.92/23.478')
     fails = pg.js("""(async () => {
-      const errs=[], m=polku.map, {makeIcon}=await import('/js/icons.js');
+      const errs=[], m=polku.map, {makeIcon}=await import('/js/icons.js'), FX=['14/9260/4578'];
       const hex=(d,i)=>'#'+[d[i],d[i+1],d[i+2]].map(v=>v.toString(16).padStart(2,'0')).join('');
       const settle=async()=>{await new Promise(r=>setTimeout(r,300));await Promise.race([new Promise(r=>{m.once('idle',r);m.triggerRepaint();}),new Promise(r=>setTimeout(r,10000))]);};
-      if(m.style.tileManagers.mml.getIds().length)return ['MML was asked for tiles at zoom 10'];
-      const fx=await (await fetch('/tools/fixtures/mml-taustakartta-14-9260-4578.pbf')).arrayBuffer();
-      let fail=false; const asked=[];
-      maplibregl.addProtocol('mmltest', async ({url}) => {
-        const [,z,y,x]=/\\/(\\d+)\\/(\\d+)\\/(\\d+)\\.pbf/.exec(url).map(Number); asked.push(url);
-        if(fail)throw new Error('Failed to fetch');
-        return {data: z===14&&x===9260&&y===4578 ? fx.slice(0) : new ArrayBuffer(0)}; // (elsewhere an empty tile)
-      });
-      m.setTransformRequest((url)=>({url: url.startsWith('https://avoin-karttakuva.maanmittauslaitos.fi/vectortiles/') ? url.replace(/^https:/,'mmltest:') : url}));
-      const tileMid=(z,x,y)=>[(x+0.5)/2**z*360-180, Math.atan(Math.sinh(Math.PI*(1-2*(y+0.5)/2**z)))*180/Math.PI];
+      if(m.style.tileManagers.mml.getIds().length)return ['MML was asked for tiles at zoom 10'];""" + MML_FIXTURES + """
       m.jumpTo({center:tileMid(14,9260,4578),zoom:14.5}); await settle();
       if(!asked.length)return ['(the test) MML was never asked for a tile'];
       const u=new URL(asked[0].replace(/^mmltest:/,'https:')), src=m.getStyle().sources.mml;
@@ -1121,7 +1128,7 @@ def mml_bogs(chrome):
       }
       // MML's tiles failing: OSM's wetlands show, a message once; again once a tile has come in between
       polku.set({base:'trail'}); await settle();
-      const box=document.querySelector('#toast'), said=()=>box.textContent.includes('bogs didn’t load');
+      const box=document.querySelector('#toast'), said=()=>box.textContent.includes('terrain didn’t load');
       box.textContent=''; fail=true;
       m.jumpTo({center:[23.43,61.94],zoom:13.5}); await settle();
       if(!said())errs.push(`no message where MML's tiles failed (${box.textContent})`);
@@ -1141,6 +1148,58 @@ def mml_bogs(chrome):
     fails += [f'console: {e[:160]}' for e in pg.errors()]
     pg.close()
     print(f"{'ok  ' if not fails else 'FAIL'} MML's bogs by class, over OSM's wetlands (#1147)" + ''.join(f'\n     - {f}' for f in fails), flush=True)
+    return not fails
+
+
+# #1147: MML's rock, stones, cliffs, reeds and power lines from two recorded tiles, never live MML: Porvoo
+# (tools/fixtures/mml-taustakartta-14-9352-4721.pbf: rock, stones, a reed, cliffs, power lines and pylons) and Pallas
+# (…-14-9286-3913.pbf: boulder fields, sparse boulders). Each drawn from its tile on every vector base, MML's rock in
+# OSM's grey, the lines and points over the water (MML's reeds lie in it), and a cliff's ticks on its right, the lower
+# side in MML's data.
+def mml_rock(chrome):
+    pg = chrome.page(1440, 900, False)
+    pg.open_app({'activity': 'mtb', 'base': 'trail'}, hash_='#10/60.4/25.5')
+    fails = pg.js("""(async () => {
+      const errs=[], m=polku.map, {makeIcon}=await import('/js/icons.js'), FX=['14/9352/4721','14/9286/3913'];
+      const settle=async()=>{await new Promise(r=>setTimeout(r,300));await Promise.race([new Promise(r=>{m.once('idle',r);m.triggerRepaint();}),new Promise(r=>setTimeout(r,10000))]);};
+      if(m.style.tileManagers.mml.getIds().length)return ['MML was asked for tiles at zoom 10'];""" + MML_FIXTURES + """
+      const drawn=(layer)=>new Set(m.queryRenderedFeatures({layers:[layer]}).map(f=>f.properties.kohdeluokka));
+      let base; const want=(layer,classes)=>{const got=drawn(layer); for(const k of classes)if(!got.has(k))errs.push(`${base}: ${layer} drew nothing of class ${k} from the recorded tile`);};
+      const value=(id,prop,z)=>m.style.getLayer(id)._transitionablePaint._values[prop].value.expression.evaluate({zoom:z});
+      for(base of ['trail','plain','night']) {
+        polku.set({base}); m.jumpTo({center:tileMid(14,9352,4721),zoom:14.6}); await settle();
+        want('mml-rock',[34100]); want('mml-rock-point',[34100,34600]); want('mml-reed',[38100]);
+        want('mml-cliff',[34400]); want('mml-cliff-ticks',[34400]); want('mml-power',[22311,22312]);
+        if(drawn('mml-pylon').size)errs.push(`${base}: pylons drawn under zoom 15`);
+        m.jumpTo({zoom:15.2}); await settle(); want('mml-pylon',[22392]);
+        m.jumpTo({center:tileMid(14,9286,3913),zoom:14.6}); await settle();
+        want('mml-boulders',[34700]); want('mml-rock-point',[34200]);
+        const order=m.getStyle().layers.map(l=>l.id), at=(id)=>order.indexOf(id), before=(a,b,what)=>{if(!(at(a)>=0&&at(a)<at(b)))errs.push(`${base}: ${what} (${a} at ${at(a)}, ${b} at ${at(b)})`);};
+        before('lc-rock','mml-rock',"MML's rock under OSM's");
+        // over the water: MML's reed points lie in it
+        for(const l of ['mml-cliff','mml-cliff-ticks','mml-power','mml-rock-point','mml-reed','mml-pylon']){before('water',l,`${l} under the water`); before(l,'building',`${l} over the buildings`);}
+        const rock=m.getPaintProperty('lc-rock','fill-color');
+        if(m.getPaintProperty('mml-rock','fill-color')!==rock)errs.push(`${base}: MML's rock in ${m.getPaintProperty('mml-rock','fill-color')}, OSM's in ${rock}`);
+        const boulders=m.getPaintProperty('mml-boulders','fill-pattern');
+        if(!boulders.startsWith(`boulders-${rock.slice(1)}-`))errs.push(`${base}: boulder fields drawn as ${boulders}, not on the rock's grey`);
+        const icons=[boulders,m.getLayoutProperty('mml-reed','icon-image'),m.getLayoutProperty('mml-pylon','icon-image')];
+        const pts=m.getLayoutProperty('mml-rock-point','icon-image'); for(let i=3;i<pts.length;i+=2)icons.push(pts[i]); icons.push(pts[pts.length-1]);
+        for(const id of new Set(icons)){const img=makeIcon(id); if(!img||!img.data.some((v,i)=>i%4===3&&v>0))errs.push(`${base}: ${id} isn't drawn`); else if(!m.hasImage(id))errs.push(`${base}: ${id} isn't on the map`);}
+        // the ticks: a wider dashed line beside the cliff, touching it, on its right (a positive offset)
+        for(const z of [13,16,18]) {
+          const off=value('mml-cliff-ticks','line-offset',z), w=value('mml-cliff-ticks','line-width',z), e=value('mml-cliff','line-width',z);
+          if(!(off>0))errs.push(`${base}: the cliff's ticks on its left at zoom ${z} (offset ${off})`);
+          else if(Math.abs(off-(w+e)/2)>0.05)errs.push(`${base}: the cliff's ticks ${off} px from it at zoom ${z}, not ${(w+e)/2}`);
+        }
+      }
+      for(const [cls,layers] of [[35411,['mml-rock','mml-boulders','mml-rock-point','mml-reed','mml-cliff','mml-power','mml-pylon']],[34500,['mml-cliff']],[22200,['mml-power']]])
+        for(const l of layers)if(m.style.getLayer(l)._featureFilter.filter({zoom:15},{type:1,properties:{kohdeluokka:cls}}))errs.push(`${l} draws class ${cls}`);
+      for(const base of ['maasto','aerial']){polku.set({base}); await settle(); for(const l of ['mml-rock','mml-cliff','mml-power'])if(m.getLayer(l))errs.push(`${l} on the ${base} base`);}
+      return errs;
+    })()""", timeout=180000)
+    fails += [f'console: {e[:160]}' for e in pg.errors()]
+    pg.close()
+    print(f"{'ok  ' if not fails else 'FAIL'} MML's rock, stones, cliffs, reeds and power lines (#1147)" + ''.join(f'\n     - {f}' for f in fails), flush=True)
     return not fails
 
 
@@ -24590,7 +24649,7 @@ GROUPS = [
     ('changelog', [changelog], 'release notes, retry, safe rendering, keyboard, route preservation and real worker offline'),
     ('pacing', [pacing, paced_legs, net_fails], 'calls made together go out paced and counted (mocked services, a fake clock); legs refused for a slot follow at it (#78); the calls that failed, in Data sources (#687)'),
     ('loading', [loading, routing_edits], 'cancel obsolete routing, edits/Undo/Clear, shared subscribers, refusal/recovery, deadlines, terrain slots and LIPAS viewport/cache (mocked)'),
-    ('layers', [layers, cycleway_style, cycling_restrictions, waterway_style, property_lines, property_plots, wetland_style, reedbed_style, mml_bogs], 'the Layers panel in every sport'),
+    ('layers', [layers, cycleway_style, cycling_restrictions, waterway_style, property_lines, property_plots, wetland_style, reedbed_style, mml_bogs, mml_rock], 'the Layers panel in every sport'),
     ('raster', [raster_maps, aerial_fallback, aerial_labels], 'terrain and aerial detail, bounded high-density WMS symbols, depth boundaries and missing aerial detail (#649, #650, #653); the map\'s words on the aerial photos at 4.5:1 on their halo (#554)'),
     ('coarse', [coarse], 'a coarse map underneath (#1091): the base map\'s tile four zoom levels up stands in for one that hasn\'t come, at 1440 and 390'),
     ('together', [together], 'Polku\'s own layers come in together after the map stops, 500 ms at most (#1091)'),

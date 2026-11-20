@@ -4,6 +4,13 @@ What's new in [Polku](https://polku.si), from the latest updates back to the fir
 
 ## 2026-11-20
 
+### Rock, cliffs and power lines from the National Land Survey ([#1147](https://github.com/TommiContursi/Polku/issues/1147))
+
+- In Finland, the Trail, Plain and Night maps draw the National Land Survey's rock from zoom 13, in the same grey as OpenStreetMap's rock, and its boulder fields dotted. From zoom 14, rocks too small for an area, single stones and sparse boulders are small marks of their own.
+- Cliffs are drawn from zoom 13 as a dark line with short ticks on the lower side. Power lines are thin grey lines from zoom 13, with their pylons as small crosses from zoom 15. Both are drawn over lakes and the sea, so a cliff on the shore and a line across a lake show.
+- The National Land Survey's reeds are a small reed tuft each from zoom 14, in the water where the survey marks them.
+- Where its map data doesn't load, OpenStreetMap's rock is drawn as before, and cliffs and power lines are missing: the message says so. Outside Finland nothing changes, and power lines aren't drawn there yet.
+
 ### Bogs from the National Land Survey ([#1147](https://github.com/TommiContursi/Polku/issues/1147))
 
 - In Finland, the Trail, Plain and Night maps draw the National Land Survey's bogs from zoom 11, by kind. Open bogs keep the blue dashes, wooded bogs have the same dashes on the forest's green, and a bog the survey classes as hard to cross has unbroken blue lines: some from zoom 12, all of them from 13. Paludified land, ground turning into bog, has sparse short dashes from zoom 13, and overgrowing water has the dashes on the water's blue.

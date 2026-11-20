@@ -77,22 +77,68 @@ function bog(id) {
   return ctx.getImageData(0, 0, c.width, c.height);
 }
 
-// a reedbed's fill: tufts of three strokes, as Finnish maps draw reeds, on the wetland colour, so it covers the
-// dashes under it (#1144). `reedbed-<fill>-<reeds>`, both hex without '#'
+// a tuft of reeds, three strokes from (x, y) at the foot, as Finnish maps draw reeds
+function tufts(ctx, colour, feet) {
+  ctx.strokeStyle = `#${colour}`;
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  for (const [x, y] of feet) {
+    ctx.moveTo(x, y); ctx.lineTo(x, y - 4.5);
+    ctx.moveTo(x - 0.4, y); ctx.lineTo(x - 2.4, y - 3.5);
+    ctx.moveTo(x + 0.4, y); ctx.lineTo(x + 2.4, y - 3.5);
+  }
+  ctx.stroke();
+}
+
+// a reedbed's fill: tufts on the wetland colour, so it covers the dashes under it (#1144). `reedbed-<fill>-<reeds>`,
+// both hex without '#'
 function reedbed(id) {
   const [, fill, reed] = id.split('-');
   const [c, ctx] = canvas(12, 12);
   ctx.fillStyle = `#${fill}`;
   ctx.fillRect(0, 0, 12, 12);
-  ctx.strokeStyle = `#${reed}`;
-  ctx.lineWidth = 1;
-  ctx.beginPath();
   // two tufts a row apart, the second half a tile along
-  for (const [x, y] of [[3, 5.5], [9, 11.5]]) {
-    ctx.moveTo(x, y); ctx.lineTo(x, y - 4.5);
-    ctx.moveTo(x - 0.4, y); ctx.lineTo(x - 2.4, y - 3.5);
-    ctx.moveTo(x + 0.4, y); ctx.lineTo(x + 2.4, y - 3.5);
+  tufts(ctx, reed, [[3, 5.5], [9, 11.5]]);
+  return ctx.getImageData(0, 0, c.width, c.height);
+}
+
+// MML's reeds (#1147), a point: one tuft on a clear ground. `reed-<reeds>`
+function reed(id) {
+  const [c, ctx] = canvas(8, 7);
+  tufts(ctx, id.slice(5), [[4, 6]]);
+  return ctx.getImageData(0, 0, c.width, c.height);
+}
+
+// MML's rock and stone (#1147). `boulders-<ground>-<dots>`, a boulder field's fill: dots on the rock's grey, set unevenly
+// so they don't read as a grid; `rock-<kind>-<colour>`, a point: `spot-<colour>-<edge>`, a rock too small for an area,
+// a speck in the rock's grey with an edge; `stone`, one dot; `rocks`, sparse boulders, three dots
+function rock(id) {
+  const [what, kind, colour, edge] = id.split('-');
+  const dot = (ctx, x, y, r) => { ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fill(); };
+  if (what === 'boulders') {
+    const [c, ctx] = canvas(10, 10);
+    ctx.fillStyle = `#${kind}`;
+    ctx.fillRect(0, 0, 10, 10);
+    ctx.fillStyle = `#${colour}`;
+    for (const [x, y, r] of [[2, 2.5, 0.9], [7, 4, 0.7], [4, 7.5, 0.8], [8.5, 8.5, 0.6]]) dot(ctx, x, y, r);
+    return ctx.getImageData(0, 0, c.width, c.height);
   }
+  const [c, ctx] = canvas(8, 8);
+  ctx.fillStyle = `#${colour}`;
+  if (kind === 'spot') {
+    ctx.beginPath(); ctx.ellipse(4, 4, 2.6, 2, -0.4, 0, Math.PI * 2);
+    ctx.fill(); ctx.strokeStyle = `#${edge}`; ctx.lineWidth = 0.8; ctx.stroke();
+  } else if (kind === 'stone') dot(ctx, 4, 4, 1.3);
+  else for (const [x, y] of [[2.2, 5.2], [5.8, 5.2], [4, 2.4]]) dot(ctx, x, y, 1);
+  return ctx.getImageData(0, 0, c.width, c.height);
+}
+
+// a power line's pylon (#1147): a small cross. `pylon-<colour>`
+function pylon(id) {
+  const [c, ctx] = canvas(7, 7);
+  ctx.strokeStyle = `#${id.slice(6)}`;
+  ctx.lineWidth = 1.2;
+  ctx.beginPath(); ctx.moveTo(1.5, 1.5); ctx.lineTo(5.5, 5.5); ctx.moveTo(5.5, 1.5); ctx.lineTo(1.5, 5.5);
   ctx.stroke();
   return ctx.getImageData(0, 0, c.width, c.height);
 }
@@ -425,6 +471,9 @@ export function makeIcon(id) {
   if (/^wetland-[0-9a-f]{6}-[0-9a-f]{6}$/.test(id)) return wetland(id);
   if (/^reedbed-[0-9a-f]{6}-[0-9a-f]{6}$/.test(id)) return reedbed(id);
   if (/^bog-(hard-[0-9a-f]{6}|paludified)-[0-9a-f]{6}$/.test(id)) return bog(id);
+  if (/^reed-[0-9a-f]{6}$/.test(id)) return reed(id);
+  if (/^(boulders-[0-9a-f]{6}|rock-spot-[0-9a-f]{6}|rock-(stone|rocks))-[0-9a-f]{6}$/.test(id)) return rock(id);
+  if (/^pylon-[0-9a-f]{6}$/.test(id)) return pylon(id);
   if (id === 'wind-arrow') return windArrow();
   if (id === 'ship') return ship();
   if (id === 'sf-incident') return sign('triangle', '#ef4444', '!');
