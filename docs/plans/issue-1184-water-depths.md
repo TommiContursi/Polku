@@ -4,7 +4,9 @@ The water router keeps clear of marked rocks, shipping lanes and rough water, bu
 
 ## Where it stands
 
-- **Plan, 2026-11-20.** Waiting for the user's answers to the three questions below. Nothing is built yet.
+- **Plan, 2026-11-20.**
+- **Decided, 2026-11-20: the three recommendations** (on #1184's description): Polku's own depth files from Syke's download, shallow as a sounding under 0.5 m costed four times and said in Check, not for swimming, and the words of section 3.
+- **Built** in [#1187](https://github.com/TommiContursi/Polku/pull/1187): [as built](#as-built).
 
 ## What Syke's data is (checked 2026-11-20)
 
@@ -79,3 +81,13 @@ Water routes are for planning, not navigation (PRODUCT.md). The words never say 
 - Traficom's depths at sea: an agreement with Traficom, the user's to ask for (#1184's comment of 2026-11-20).
 - MML's stones in the water for the router (#153), and rapids (#856).
 - Lake depths on the map: #1170 draws MML's depth contours and points (Syke's lakes) under Depth contours and Depth soundings.
+
+## As built
+
+- **The files:** `tools/syke_depths.py` read Syke's bulk files (8.0 million soundings, 46,697 depth areas without the islands) in about a minute and wrote 428 tiles, 1.4 MB in all, the largest 25 kB, with 21,982 shallow soundings once thinned to one per 10 m square. `index.json` lists the tiles, so a leg over the sea asks for nothing but the index.
+- **Where Syke surveyed** is its depth areas as runs of 256 cells across a z10 tile (about 76 m at 60° N), drawn half a cell larger into the router's grid so the shore's water counts.
+- **The depths are a source of their own** (`Syke` in `missing` and `skipped`), with Not checked's "Lake depths didn’t load" and Retry, like the rocks.
+- **What Polku looked at:** "Lake depths" is ✓ only when all the route's water was surveyed; partly surveyed or not surveyed shows the ? of a source not checked, with how much.
+- **Measured on Matikanjärvi** (Kainuu, its shoal of soundings under 0.5 m): a leg drawn straight through a row of the shoal's soundings goes round them, 15 m or more away (the zone is 20 m), where `main` passes 0 m from them (smoke's `water_depths`).
+- **Not done:** an item for each leg, as the rocks have, so a waypoint put in a shoal gives one item for the leg into it and one for the leg out.
+

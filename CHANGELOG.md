@@ -4,6 +4,13 @@ What's new in [Polku](https://polku.si), from the latest updates back to the fir
 
 ## 2026-11-20
 
+### Lake depths on paddling routes ([#1184](https://github.com/TommiContursi/Polku/issues/1184))
+
+- In the lakes the Finnish Environment Institute (Syke) has surveyed, a paddling route keeps off water its soundings found under half a metre deep, where the way round is short. Where a route still crosses it, Check says so under **Good to know**.
+- **What Polku looked at** says how much of the route's water Syke surveyed. Syke surveyed about 1,900 lakes, and none of the sea or most of the large lakes with fairways, so most routes know the depth only in part or not at all.
+- **The depths are at each lake's survey level, so the water may be lower now, and stones can lie nearer the surface between the soundings: keep a lookout.** Water routes are for planning, not navigation. Traficom's charted depths are still shown on the map and never used for routes.
+- It's part of **Rocks & shoals: Keep clear** in the route style, and **Ignore** turns it off. A swim doesn't use it.
+
 ### Rock, cliffs and power lines from the National Land Survey ([#1147](https://github.com/TommiContursi/Polku/issues/1147))
 
 - In Finland, the Trail, Plain and Night maps draw the National Land Survey's rock from zoom 13, in the same grey as OpenStreetMap's rock, and its boulder fields dotted. From zoom 14, rocks too small for an area, single stones and sparse boulders are small marks of their own.
