@@ -933,8 +933,13 @@ def property_plots(chrome):
       const {areaUnder}=await import(location.origin+'/js/inspect.js');
       const t1=performance.now();  // (the layer's source is new: its tiles again)
       while(performance.now()-t1<30000&&!(m.isSourceLoaded('ov-propertyLines')&&m.queryRenderedFeatures({layers:['property-plot']}).length))await wait(250);
+      // (the centre's small parks: each one's middle, where nothing else the map opens is)
       let park=null;
-      for(let y=150;y<850&&!park;y+=17)for(let x=100;x<1300&&!park;x+=23){const f=pickFeature(m.queryRenderedFeatures(hitBox({x,y},false),{layers:inspectLayers(m)}));if(f&&f.layer.id==='property-plot'&&areaUnder(m,{x,y})==='park')park={x,y};}
+      for(const g of m.queryRenderedFeatures({layers:['lc-grass']}).filter(g=>g.properties.subclass==='park')){
+        const r=(g.geometry.type==='Polygon'?g.geometry.coordinates:g.geometry.coordinates[0])[0], q=m.project(r.reduce((a,p)=>[a[0]+p[0]/r.length,a[1]+p[1]/r.length],[0,0]));
+        const f=pickFeature(m.queryRenderedFeatures(hitBox(q,false),{layers:inspectLayers(m)}));
+        if(q.x>0&&q.y>0&&q.x<innerWidth&&q.y<innerHeight&&f&&f.layer.id==='property-plot'&&areaUnder(m,q)==='park'){park={x:q.x,y:q.y};break;}
+      }
       if(!park)errs.push('no spot in a park at Jyväskylä to click');
       else {
         for(const t of ['mousedown','mouseup','click'])cv.dispatchEvent(new MouseEvent(t,{bubbles:true,cancelable:true,clientX:R.left+park.x,clientY:R.top+park.y,button:0,buttons:t==='mousedown'?1:0}));
