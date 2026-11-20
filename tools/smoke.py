@@ -1153,8 +1153,8 @@ MML_FIXTURES = """
 
 
 # #1147: MML's bogs from a recorded tile (tools/fixtures/mml-taustakartta-14-9260-4578.pbf, Seitseminen), never live MML:
-# each class's pattern on every vector base, bogs opaque over OSM's wetlands and paludified land under them; heath and open forest left
-# out. Where MML's tiles don't load, OSM's wetlands stay and a message says so once, and again after a tile has come.
+# each class's pattern on every vector base, bogs opaque over OSM's wetlands and paludified land under them; heath and open forest
+# land aren't bogs (mml_open draws them). Where MML's tiles don't load, OSM's wetlands stay and a message says so once, and again after a tile has come.
 def mml_bogs(chrome):
     pg = chrome.page(1440, 900, False)
     # (zoom 10: under the source's zoom 11, so MML is asked for nothing before the test answers it)
@@ -1292,6 +1292,66 @@ def mml_rock(chrome):
     fails += [f'console: {e[:160]}' for e in pg.errors()]
     pg.close()
     print(f"{'ok  ' if not fails else 'FAIL'} MML's rock, stones, cliffs, reeds and power lines (#1147)" + ''.join(f'\n     - {f}' for f in fails), flush=True)
+    return not fails
+
+
+# #1169: heath, open forest land and open ground from three recorded tiles, never live MML: Pallas
+# (tools/fixtures/mml-taustakartta-14-9286-3913.pbf: heath and its symbol), Hailuoto (…-14-9318-4263.pbf: open forest land,
+# open shore land, a meadow, fields, the three forest symbols) and Yyteri (…-14-9171-4611.pbf: sand). On every vector base
+# each is drawn from its tile in the look of OSM's ground of the same kind, over OSM's forest and under paludified land and
+# the bogs, and OSM's heath and scrub are drawn over OSM's forest (at Pallas a forest hid the fells' heath).
+def mml_open(chrome):
+    pg = chrome.page(1440, 900, False)
+    pg.open_app({'activity': 'hike', 'base': 'trail'}, hash_='#10/65.0/24.7')
+    fails = pg.js("""(async () => {
+      const errs=[], m=polku.map, {makeIcon}=await import('/js/icons.js'), FX=['14/9286/3913','14/9318/4263','14/9171/4611'];
+      const settle=async()=>{await new Promise(r=>setTimeout(r,300));await Promise.race([new Promise(r=>{m.once('idle',r);m.triggerRepaint();}),new Promise(r=>setTimeout(r,10000))]);};
+      if(m.style.tileManagers.mml.getIds().length)return ['MML was asked for tiles at zoom 10'];""" + MML_FIXTURES + """
+      const drawn=(layer)=>new Set(m.queryRenderedFeatures({layers:[layer]}).map(f=>f.properties.kohdeluokka));
+      let base; const want=(layer,classes)=>{const got=drawn(layer); for(const k of classes)if(!got.has(k))errs.push(`${base}: ${layer} drew nothing of class ${k} from the recorded tile`);};
+      // a class's value in a layer's ['match', ['get', …], keys, value, …, fallback]
+      const pick=(id,prop,k)=>{const e=m.getPaintProperty(id,prop)||m.getLayoutProperty(id,prop); for(let i=2;i<e.length-1;i+=2)if([].concat(e[i]).includes(k))return e[i+1]; return e[e.length-1];};
+      const draws=(id,k)=>m.style.getLayer(id)._featureFilter.filter({zoom:14},{type:3,properties:{kohdeluokka:k}});
+      const osm=(id,cls,subclass)=>m.style.getLayer(id)._featureFilter.filter({zoom:14},{type:3,properties:{class:cls,subclass}});
+      for(base of ['trail','plain','night']) {
+        polku.set({base}); m.jumpTo({center:tileMid(14,9286,3913),zoom:14.6}); await settle();
+        want('mml-open',[39120]); want('mml-forest',[32715]);
+        if(!m.queryRenderedFeatures({layers:['lc-heath']}).length)errs.push(`${base}: OSM's heath not drawn at Pallas`);
+        m.jumpTo({center:tileMid(14,9318,4263),zoom:14.6}); await settle();
+        want('mml-open-forest',[39110]); want('mml-open',[39130]); want('mml-landuse',[32611,32800]); want('mml-forest',[32710,32713,32714]);
+        m.jumpTo({center:tileMid(14,9171,4611),zoom:14.6}); await settle();
+        want('mml-landuse',[34300]);
+        // one look: each of MML's classes as OSM's ground of the same kind
+        const color=(id)=>m.getPaintProperty(id,'fill-color');
+        for(const [id,k,like] of [['mml-open',39120,'lc-heath'],['mml-open',39130,'lc-grass'],['mml-open',34300,'lc-sand'],['mml-landuse',32611,'lc-farmland'],['mml-landuse',32612,'lc-farmland'],['mml-landuse',32800,'lc-grass'],['mml-landuse',34300,'lc-sand']]) {
+          if(!draws(id,k))errs.push(`${base}: ${id} doesn't draw class ${k}`);
+          else if(pick(id,'fill-color',k)!==color(like))errs.push(`${base}: class ${k} in ${pick(id,'fill-color',k)}, OSM's ${like} in ${color(like)}`);
+        }
+        const hatch=m.getPaintProperty('mml-open-forest','fill-pattern');
+        if(hatch!==m.getPaintProperty('lc-scrub','fill-pattern'))errs.push(`${base}: open forest land drawn as ${hatch}, OSM's scrub as ${m.getPaintProperty('lc-scrub','fill-pattern')}`);
+        if(hatch!==`open-forest-${m.getPaintProperty('background','background-color').slice(1)}-${hatch.split('-').pop()}`)errs.push(`${base}: open forest land's hatch ${hatch} isn't on the map's ground`);
+        const heath=color('lc-heath'); for(const id of ['lc-wood','lc-grass','lc-farmland','lc-sand'])if(color(id)===heath)errs.push(`${base}: heath in the same colour as ${id}`);
+        for(const [id,k] of [['mml-open',35411],['mml-open',39110],['mml-landuse',33100],['mml-open-forest',39120],['mml-forest',36392]])if(draws(id,k))errs.push(`${base}: ${id} draws class ${k}`);
+        if(!osm('lc-heath','grass','heath')||osm('lc-heath','grass','park')||!osm('lc-scrub','grass','scrub')||osm('lc-scrub','grass','meadow'))errs.push(`${base}: OSM's heath and scrub layers draw the wrong ground`);
+        if(m.getLayer('mml-open-forest').minzoom!==13||m.getLayer('mml-forest').minzoom!==14)errs.push(`${base}: open forest land from zoom ${m.getLayer('mml-open-forest').minzoom}, the forest symbols from ${m.getLayer('mml-forest').minzoom}`);
+        // over OSM's forest, under paludified land, OSM's wetlands and MML's bogs; the symbols with MML's points, over the water
+        const order=m.getStyle().layers.map(l=>l.id), at=(id)=>order.indexOf(id), before=(a,b)=>{if(!(at(a)>=0&&at(a)<at(b)))errs.push(`${base}: ${a} (at ${at(a)}) not under ${b} (at ${at(b)})`);};
+        for(const l of ['lc-heath','lc-scrub']){before('lc-wood',l); before(l,'mml-open');}
+        for(const l of ['mml-open','mml-landuse','mml-open-forest']){before(l,'mml-paludified'); before(l,'lc-wetland'); before(l,'mml-bog');}
+        before('water','mml-forest'); before('mml-forest','building');
+        // the hatch opaque, so the forest under it doesn't show; the symbols drawn and on the map
+        const d=makeIcon(hatch).data; for(let i=3;i<d.length;i+=4)if(d[i]!==255){errs.push(`${base}: ${hatch} has clear pixels, so the forest would show through`);break;}
+        const syms=[32710,32713,32714,32715].map(k=>pick('mml-forest','icon-image',k));
+        if(new Set(syms).size!==4)errs.push(`${base}: the forest symbols ${syms} aren't four`);
+        for(const id of syms){const img=makeIcon(id); if(!img||!img.data.some((v,i)=>i%4===3&&v>0))errs.push(`${base}: ${id} isn't drawn`);}
+        for(const id of [hatch,...syms.slice(0,2)])if(!m.hasImage(id))errs.push(`${base}: ${id} isn't on the map`);
+      }
+      for(const base of ['maasto','aerial']){polku.set({base}); await settle(); for(const l of ['lc-heath','mml-open','mml-landuse','mml-open-forest','mml-forest'])if(m.getLayer(l))errs.push(`${l} on the ${base} base`);}
+      return errs;
+    })()""", timeout=180000)
+    fails += [f'console: {e[:160]}' for e in pg.errors()]
+    pg.close()
+    print(f"{'ok  ' if not fails else 'FAIL'} MML's heath, open forest land and open ground, as OSM's (#1169)" + ''.join(f'\n     - {f}' for f in fails), flush=True)
     return not fails
 
 
@@ -24982,7 +25042,7 @@ GROUPS = [
     ('changelog', [changelog], 'release notes, retry, safe rendering, keyboard, route preservation and real worker offline'),
     ('pacing', [pacing, paced_legs, net_fails], 'calls made together go out paced and counted (mocked services, a fake clock); legs refused for a slot follow at it (#78); the calls that failed, in Data sources (#687)'),
     ('loading', [loading, routing_edits], 'cancel obsolete routing, edits/Undo/Clear, shared subscribers, refusal/recovery, deadlines, terrain slots and LIPAS viewport/cache (mocked)'),
-    ('layers', [layers, cycleway_style, cycling_restrictions, waterway_style, property_lines, property_plots, wetland_style, reedbed_style, mml_bogs, mml_rock, osm_cliffs, saddles], 'the Layers panel in every sport'),
+    ('layers', [layers, cycleway_style, cycling_restrictions, waterway_style, property_lines, property_plots, wetland_style, reedbed_style, mml_bogs, mml_rock, mml_open, osm_cliffs, saddles], 'the Layers panel in every sport'),
     ('raster', [raster_maps, aerial_fallback, aerial_labels], 'terrain and aerial detail, bounded high-density WMS symbols, depth boundaries and missing aerial detail (#649, #650, #653); the map\'s words on the aerial photos at 4.5:1 on their halo (#554)'),
     ('coarse', [coarse], 'a coarse map underneath (#1091): the base map\'s tile four zoom levels up stands in for one that hasn\'t come, at 1440 and 390'),
     ('together', [together], 'Polku\'s own layers come in together after the map stops, 500 ms at most (#1091)'),

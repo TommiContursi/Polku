@@ -4,6 +4,14 @@ What's new in [Polku](https://polku.si), from the latest updates back to the fir
 
 ## 2026-11-20
 
+### Heath, clear-cuts and open ground ([#1169](https://github.com/TommiContursi/Polku/issues/1169))
+
+- The Trail, Plain and Night maps now show open ground that used to be drawn as forest. Heath is a pale olive tint, so the fells at Pallas read as open ground above the tree line.
+- In Finland, the National Land Survey's open forest land, mostly clear-cuts, is hatched with thin diagonal lines in the forest's green from zoom 13, as on its terrain map. The survey redraws it from aerial photos every 5–10 years, so a clear-cut on the map may have grown back, and a new one may be missing. Scrub mapped in OpenStreetMap has the same hatching.
+- The National Land Survey's meadows, open shores, fields and sand fill in what OpenStreetMap lacks in Finland, in the same colours as OpenStreetMap's.
+- From zoom 14, small marks say what kind of forest it is, as on the National Land Survey's terrain map: Λ for coniferous, a ring for deciduous, the ring over Λ for mixed forest, and \ / for dwarf-shrub heath.
+- Outside Finland, and wherever the National Land Survey's map doesn't load, OpenStreetMap's heath and scrub look the same.
+
 ### Mountain passes and ridges ([#1178](https://github.com/TommiContursi/Polku/issues/1178))
 
 - Passes between fells, mapped as saddles in OpenStreetMap, are marked with OpenStreetMap's usual saddle mark, a small brown block with a notch in its top, and their name and height, like the peaks, from zoom 11 to 13. Taivaskeronsatula at Pallas is one. The map's data has them only up to zoom 13, so they aren't shown when you zoom in further. Tapping one opens its card as a pass.
