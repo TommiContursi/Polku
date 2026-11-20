@@ -957,7 +957,16 @@ function addRoads(s, P, hc, layers, ctx) {
     const centreW = (f) => zi(12, times(0.6 * k, f), 14, times(1.15 * k, f), 16, times(1.8 * k, f), 18, times(3 * k, f));
     const centreColor = footAct && !aerial ? '#b42318' : P.path;
     const centreOpacity = isWater(act) || roadBike ? 0.6 : 1;
-    // Footways and pedestrian streets (#1163): a thin brown dashed line without the band, apart from trails.
+    // the white band under cycleways and footways on the Trail map
+    const cycleBand = brunnel === 'bridge'
+      ? hc ? ze(1.2, 14, 6, 16, 9, 18, 22.5) : ze(1.2, 14, 1.2, 16, 10, 18, 15)
+      : hc ? ze(1.2, 14, 2.2, 15, 4, 16, 7, 18, 16) : ze(1.2, 14, 2.2, 15, 3, 16, 6, 18, 12);
+    // Footways and pedestrian streets (#1163): a thin brown dashed line on the cycleways' white band, apart from trails.
+    if (trail && brunnel !== 'tunnel') add({
+      id: `path-${brunnel}-foot-casing`, type: 'line', source: 'ofmTrails', 'source-layer': 'transportation', minzoom: 12,
+      filter: ['all', trailFilter, sidewalkish],
+      paint: { 'line-color': '#ffffff', 'line-width': cycleBand, 'line-opacity': brunnel === 'ground' ? zi(13, 0, 14, centreOpacity) : centreOpacity },
+    });
     add({
       id: `path-${brunnel}-foot`, type: 'line', source: 'ofmTrails', 'source-layer': 'transportation', minzoom: 12,
       filter: ['all', trailFilter, sidewalkish],
@@ -1023,9 +1032,6 @@ function addRoads(s, P, hc, layers, ctx) {
       : hc ? ze(1.2, 12, surfaceWidth(1.5, 2), 14, surfaceWidth(2.5, 3), 16, surfaceWidth(4, 5), 18, 10)
       : brunnel === 'bridge' ? ze(1.2, 14, surfaceWidth(1.5, 2), 16, surfaceWidth(2.5, 3.5), 18, 6)
       : ze(1.2, 12, surfaceWidth(1.5, 2), 14, surfaceWidth(1.8, 2.4), 17, surfaceWidth(paved17, 6), 18, 6);
-    const cycleBand = brunnel === 'bridge'
-      ? hc ? ze(1.2, 14, 6, 16, 9, 18, 22.5) : ze(1.2, 14, 1.2, 16, 10, 18, 15)
-      : hc ? ze(1.2, 14, 2.2, 15, 4, 16, 7, 18, 16) : ze(1.2, 14, 2.2, 15, 3, 16, 6, 18, 12);
     if (trail && brunnel !== 'tunnel') add({
       id: `cycleway-${brunnel}-casing`, type: 'line', source: 'ofm', 'source-layer': 'transportation', minzoom: 12,
       filter: ['all', isPathClass, cyclingPath, bf],

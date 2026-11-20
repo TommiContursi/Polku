@@ -793,6 +793,9 @@ def cycleway_style(chrome):
         const fl=m.getStyle().layers.find(l=>l.id===`path-${pass}-foot`);
         if(fl.paint['line-color']!=='#a2381f'||JSON.stringify(fl.paint['line-dasharray'])!=='[1.5,0.7]'||width(fl.id,16)!==2.5)errs.push(`${fl.id}: not a thin brown dashed line`);
         if(m.getStyle().layers.findIndex(l=>l.id===`path-${pass}-halo`)<m.getStyle().layers.indexOf(fl))errs.push(`${fl.id}: drawn over the trails`);
+        const fc=m.getStyle().layers.find(l=>l.id===`${fl.id}-casing`);
+        if(pass==='tunnel') { if(fc)errs.push(`${fl.id}: tunnel has a white band`); }
+        else if(!fc||JSON.stringify(fc.filter)!==JSON.stringify(fl.filter)||fc.paint['line-color']!=='#ffffff'||width(fc.id,16)!==width(`cycleway-${pass}-casing`,16)||m.getStyle().layers.indexOf(fc)>m.getStyle().layers.indexOf(fl))errs.push(`${fl.id}: not on the cycleways' white band`);
         for(const [surface,want] of [['paved',[6,1.5]],['unpaved',[1,.5]],[undefined,[2.5,1.5]],['other',[2.5,1.5]]]) {
           const raw=m.getPaintProperty(id,'line-dasharray'), got=layer.paint.get('line-dasharray').value;
           const dash=typeof raw[0]==='number'?raw:got.evaluate({zoom:16},{type:2,properties:{surface}},{});

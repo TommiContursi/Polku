@@ -19,7 +19,7 @@ What's new in [Polku](https://polku.si), from the latest updates back to the fir
 
 ### Footways in brown ([#1163](https://github.com/TommiContursi/Polku/issues/1163))
 
-- Footways and pedestrian streets are drawn as a thin brown dashed line without a white band, on every map and in every sport, so a trail in the woods stands out from the footways between buildings. Brown doesn't mean bikes aren't allowed: the red bars still say that. Footways open to bikes stay blue, and footways with an MTB grade keep their difficulty colour.
+- Footways and pedestrian streets are drawn as a thin brown dashed line in every sport, on the Trail map on the same white band as cycling paths, so a trail in the woods stands out from the footways between buildings. Brown doesn't mean bikes aren't allowed: the red bars still say that. Footways open to bikes stay blue, and footways with an MTB grade keep their difficulty colour.
 - Fences on the trail details are now grey instead of brown, so they aren't mistaken for footways.
 
 ### Property boundaries ([#1148](https://github.com/TommiContursi/Polku/issues/1148))
