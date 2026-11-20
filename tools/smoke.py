@@ -1322,8 +1322,11 @@ def mml_cards(chrome):
               const bogAt=(p)=>I.featuresAt(m,p,I.hitBox(p,true),I.inspectLayers(m)).some((f)=>f.layer.id==='mml-bog');
               if(!under||!park)errs.push(`(the test) no bog ${under?'in a park':'under the water'} in the recorded tile`);
               else { if(bogAt(under))errs.push('a bog under the water drawn over it is found'); if(!bogAt(park))errs.push('a bog in a park is not found'); }
+              // a hold on a bog opens the spot's card, as before (OpenStreetMap's answer would replace a bog's words there)
+              if(park){ const ll=m.unproject([park.x,park.y]); polku.planner.openSpotCard(ll,{pt:m.project(ll)}); const held=polku.planner.cards.current;
+                if(!held||/bog/i.test(held.title))errs.push(`a hold on a bog opens ${held?held.title:'no card'}`); polku.planner.cards.close(); }
               // MML's lake fills the hole OSM's lake leaves for a marsh (#1177): a tap there is the water's (a map with no OSM water)
-              let q=null; for(let y=150;y<innerHeight-150&&!q;y+=6)for(let x=30;x<innerWidth-100&&!q;x+=6)if(m.queryRenderedFeatures([x,y],{layers:['mml-lake']}).length)q={x,y};
+              let q=null; for(let y=150;y<innerHeight-150&&!q;y+=6)for(let x=30;x<innerWidth-100&&!q;x+=6)if(m.queryRenderedFeatures([x,y],{layers:['mml-lake']}).length)q=[x,y];
               const dry={getLayer:(id)=>id!=='water'&&m.getLayer(id), queryRenderedFeatures:(pt,o)=>m.queryRenderedFeatures(pt,o)};
               if(!q)errs.push('(the test) no MML lake drawn from the recorded tile');
               else if(I.areaUnder(dry,q)!=='water')errs.push(`MML's lake without OSM's over it is ${I.areaUnder(dry,q)}, not the water`);
