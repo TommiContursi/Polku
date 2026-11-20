@@ -906,6 +906,79 @@ def property_lines(chrome):
     return not fails
 
 
+# #1148: with Property boundaries on (and its Plot under the pointer, on at first), the plot under the pointer is tinted, and a click on a plot opens its card with its ID
+# and tints it more, by its id (all its tiles' pieces), until the card closes.
+def property_plots(chrome):
+    pg = chrome.page(1440, 900, False)
+    pg.open_app({'activity': 'mtb', 'overlaysByActivity': {'mtb': {'propertyLines': True}}}, None, '#16.5/62.2415/25.748')
+    fails = pg.js("""(async () => {
+      const errs=[], m=polku.map, wait=(ms)=>new Promise(r=>setTimeout(r,ms)), frame=()=>new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)));
+      const t0=performance.now();
+      while(performance.now()-t0<30000&&!m.queryRenderedFeatures({layers:['property-plot']}).length)await wait(250);
+      // a spot where a click picks the plot: nothing else the map can open there
+      const {inspectLayers,pickFeature,hitBox}=await import(location.origin+'/js/inspect.js');
+      let spot=null;
+      for(let y=200;y<800&&!spot;y+=23)for(let x=200;x<1200&&!spot;x+=29){const f=pickFeature(m.queryRenderedFeatures(hitBox({x,y},false),{layers:inspectLayers(m)}));if(f&&f.layer.id==='property-plot'&&f.id!=null)spot={x,y,f};}
+      if(!spot)return ['no spot at Jyväskylä where a click picks a plot'];
+      const st=(id)=>m.getFeatureState({source:'ov-propertyLines',sourceLayer:'PalstanSijaintitiedot',id});
+      const cv=m.getCanvas(), R=cv.getBoundingClientRect();
+      const ev=(type)=>cv.dispatchEvent(new MouseEvent(type,{bubbles:true,cancelable:true,clientX:R.left+spot.x,clientY:R.top+spot.y,button:0,buttons:type==='mouseup'?0:1}));
+      cv.dispatchEvent(new PointerEvent('pointermove',{bubbles:true,pointerType:'mouse',clientX:R.left+spot.x,clientY:R.top+spot.y,buttons:0})); await frame(); await frame();
+      if(!st(spot.f.id).hover)errs.push('the plot under the pointer is not tinted');
+      ev('mousedown'); ev('mouseup'); ev('click'); await wait(600);
+      const card=polku.planner.cards.current;
+      if(!card||!/^Property \\d/.test(card.title))errs.push(`a click on a plot opened ${card?card.title:'no card'}`);
+      if(!st(spot.f.id).lit)errs.push('the picked plot is not tinted');
+      if(m.querySourceFeatures('pickArea').length)errs.push("the plot's piece is outlined, cut at its tile's edge");
+      // the layer off and on again with the card open: the source is new, and the picked plot tinted again
+      const sw2=(v)=>{polku.state.overlaysByActivity.mtb={...(polku.state.overlaysByActivity.mtb||{}),propertyLines:v}; polku.set({overlays:{...polku.state.overlays,propertyLines:v}});};
+      sw2(false); await frame(); sw2(true); await frame(); await wait(300);
+      if(!st(spot.f.id).lit)errs.push('the picked plot is no longer tinted after the layer is switched off and on');
+      polku.planner.cards.close(); await frame();
+      if(st(spot.f.id).lit)errs.push('the plot stays tinted after its card closes');
+      // a park picks the park first, as without the layer (#574)
+      const {areaUnder}=await import(location.origin+'/js/inspect.js');
+      const t1=performance.now();  // (the layer's source is new: its tiles again)
+      while(performance.now()-t1<30000&&!(m.isSourceLoaded('ov-propertyLines')&&m.queryRenderedFeatures({layers:['property-plot']}).length))await wait(250);
+      // (the centre's small parks: each one's middle, where nothing else the map opens is)
+      let park=null;
+      for(const g of m.queryRenderedFeatures({layers:['lc-grass']}).filter(g=>g.properties.subclass==='park')){
+        const r=(g.geometry.type==='Polygon'?g.geometry.coordinates:g.geometry.coordinates[0])[0], q=m.project(r.reduce((a,p)=>[a[0]+p[0]/r.length,a[1]+p[1]/r.length],[0,0]));
+        const f=pickFeature(m.queryRenderedFeatures(hitBox(q,false),{layers:inspectLayers(m)}));
+        if(q.x>0&&q.y>0&&q.x<innerWidth&&q.y<innerHeight&&f&&f.layer.id==='property-plot'&&areaUnder(m,q)==='park'){park={x:q.x,y:q.y};break;}
+      }
+      if(!park)errs.push('no spot in a park at Jyväskylä to click');
+      else {
+        for(const t of ['mousedown','mouseup','click'])cv.dispatchEvent(new MouseEvent(t,{bubbles:true,cancelable:true,clientX:R.left+park.x,clientY:R.top+park.y,button:0,buttons:t==='mousedown'?1:0}));
+        await wait(800);
+        const c=polku.planner.cards.current;
+        if(!c)errs.push('a click in the park opened no card');
+        else if(/^Property /.test(c.title))errs.push('a click in a park opened the property under it, not the park');
+        polku.planner.cards.close(); await frame();
+      }
+      // Plot under the pointer, under the switch in Layers: off, the pointer tints nothing, and a click still picks the plot
+      document.querySelector('#btn-layers').click(); await frame();
+      [...document.querySelectorAll('button')].find(b=>/^More: all layers/.test(b.getAttribute('aria-label')||''))?.click(); await frame();
+      const sub=[...document.querySelectorAll('[data-group=terrain] input[role=switch]')].find(i=>i.closest('label')?.textContent.includes('Plot under the pointer'));
+      if(!sub)errs.push('no Plot under the pointer switch under Property boundaries');
+      else {
+        if(!sub.checked)errs.push('Plot under the pointer is off at first');
+        sub.click(); await frame(); polku.set({}); await frame();
+        cv.dispatchEvent(new PointerEvent('pointermove',{bubbles:true,pointerType:'mouse',clientX:R.left+spot.x+1,clientY:R.top+spot.y,buttons:0})); await frame(); await frame();
+        if(st(spot.f.id).hover)errs.push('the plot is tinted with Plot under the pointer off');
+        if(polku.state.plotHover!==false)errs.push('Plot under the pointer stays on after its switch');
+        ev('mousedown'); ev('mouseup'); ev('click'); await wait(600);
+        if(!st(spot.f.id).lit)errs.push('with Plot under the pointer off, a click no longer picks the plot');
+        polku.planner.cards.close();
+      }
+      return errs;
+    })()""", timeout=90000)
+    fails += [f'console: {e[:160]}' for e in pg.errors()]
+    pg.close()
+    print(f"{'ok  ' if not fails else 'FAIL'} a property's plot tinted under the pointer and picked (#1148)" + ''.join(f'\n     - {f}' for f in fails), flush=True)
+    return not fails
+
+
 # #1144: wetlands are Polku's own blue dashes on each map's wetland colour, never the tufted sprite.
 def wetland_style(chrome):
     pg = chrome.page(1440, 900, False)
@@ -24429,7 +24502,7 @@ GROUPS = [
     ('changelog', [changelog], 'release notes, retry, safe rendering, keyboard, route preservation and real worker offline'),
     ('pacing', [pacing, paced_legs, net_fails], 'calls made together go out paced and counted (mocked services, a fake clock); legs refused for a slot follow at it (#78); the calls that failed, in Data sources (#687)'),
     ('loading', [loading, routing_edits], 'cancel obsolete routing, edits/Undo/Clear, shared subscribers, refusal/recovery, deadlines, terrain slots and LIPAS viewport/cache (mocked)'),
-    ('layers', [layers, cycleway_style, cycling_restrictions, waterway_style, property_lines, wetland_style, reedbed_style], 'the Layers panel in every sport'),
+    ('layers', [layers, cycleway_style, cycling_restrictions, waterway_style, property_lines, property_plots, wetland_style, reedbed_style], 'the Layers panel in every sport'),
     ('raster', [raster_maps, aerial_fallback, aerial_labels], 'terrain and aerial detail, bounded high-density WMS symbols, depth boundaries and missing aerial detail (#649, #650, #653); the map\'s words on the aerial photos at 4.5:1 on their halo (#554)'),
     ('coarse', [coarse], 'a coarse map underneath (#1091): the base map\'s tile four zoom levels up stands in for one that hasn\'t come, at 1440 and 390'),
     ('together', [together], 'Polku\'s own layers come in together after the map stops, 500 ms at most (#1091)'),

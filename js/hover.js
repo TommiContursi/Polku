@@ -41,6 +41,7 @@ export function initHover(map, app) {
   let route = false; // showing the planner's route readout
   let current = null; // what the tooltip shows
 
+  const plots = () => !app.plotHover || app.plotHover(); // Property boundaries' Plot under the pointer (#1148)
   let glowing = false; // a leg of your route glows brighter because the pointer rests on it
   let drawn = false; // the way under the pointer drawn on the map (#574)
   const hide = () => {
@@ -69,7 +70,7 @@ export function initHover(map, app) {
     if (enrich) detailTimer = 0; else timer = 0;
     if (!at || !app.enabled() || map.isMoving() || map.getContainer().querySelector('.polku-popup')) return;
     const planning = app.isPlanning();
-    const layers = inspectLayers(map).filter((id) => id !== 'water' && !id.endsWith('-halo') && !id.startsWith('road-tunnel'));
+    const layers = inspectLayers(map).filter((id) => id !== 'water' && !id.endsWith('-halo') && !id.startsWith('road-tunnel') && (id !== 'property-plot' || plots()));
     if (planning) layers.push(...['route-casing', 'nogo-fill', ...ALT_LAYERS].filter((id) => map.getLayer(id)));
     const [x, y] = at;
     const feats = map.queryRenderedFeatures([[x - RADIUS, y - RADIUS], [x + RADIUS, y + RADIUS]], { layers });
@@ -128,7 +129,7 @@ export function initHover(map, app) {
     if (!at || app.isDrawing()) { pointer = false; light(null); return; }
     // what a click picks first is what's lit: your route's line, an alternative route (#1029) and a place's icon win over
     // a LIPAS route (inspect.js)
-    const layers = [...inspectLayers(map), ...['route-casing', 'heads-icon', 'heads-on-icon', ...ALT_LAYERS].filter((id) => map.getLayer(id))];
+    const layers = [...inspectLayers(map).filter((id) => id !== 'property-plot' || plots()), ...['route-casing', 'heads-icon', 'heads-on-icon', ...ALT_LAYERS].filter((id) => map.getLayer(id))];
     const feats = map.queryRenderedFeatures(hitBox({ x: at[0], y: at[1] }, false), { layers });
     const hit = feats.some((f) => f.layer.id !== 'route-casing' || f.properties.kind !== 'gap');
     pointer = hit; canvas.style.cursor = hit ? 'pointer' : '';
@@ -136,8 +137,9 @@ export function initHover(map, app) {
     // (a warning marker's hit area is wider than the box, and wins over the route: asked only when the route would light)
     const lights = top && top.layer.id === 'lipas-route' && !ours && !app.headAt({ x: at[0], y: at[1] }, false);
     light(lights ? top.properties : null);
+    if (app.hoverPlot) app.hoverPlot(top && top.layer.id === 'property-plot' ? top.id : null);
   };
-  const press = () => { hide(); light(null); if (pointer) { pointer = false; canvas.style.cursor = ''; } };
+  const press = () => { hide(); light(null); if (app.hoverPlot) app.hoverPlot(null); if (pointer) { pointer = false; canvas.style.cursor = ''; } };
 
   canvas.addEventListener('pointermove', (e) => {
     if (e.pointerType !== 'mouse') return;
@@ -218,6 +220,7 @@ export function describe(f, feats, ctx) {
     return { title: w ? w.name : 'Road', bits: [`${dot(aadtColor(p.aadt))}about ${fmtAadt(p.aadt)} vehicles/day`] };
   }
   if (id === 'military-fill') return { title: 'Military area', bits: ['May be closed or have live firing'] };
+  if (id === 'property-plot') return { title: `Property ${p.kiinteistotunnuksenEsitysmuoto}`, bits: ['National Land Survey'] };
   if (id === 'lipas-point') return { title: p.name || p.typeName || 'Place', bits: [e(p.typeName || ''), e(p.city || '')].filter(Boolean) };
   if (id === 'lipas-route') {
     const t = LIPAS_TYPES[p.type] || {};
