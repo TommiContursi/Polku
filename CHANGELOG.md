@@ -2,6 +2,12 @@
 
 What's new in [Polku](https://polku.si), from the latest updates back to the first release. These notes describe features available in the app, not work still in progress. For upcoming changes, see the [issues](https://github.com/TommiContursi/Polku/issues) and [roadmap](docs/ROADMAP.md).
 
+## 2026-11-20
+
+### Wetlands as blue dashes ([#1144](https://github.com/TommiContursi/Polku/issues/1144))
+
+- Wetlands are drawn as rows of short blue dashes on a grey-blue ground from zoom 11, as on Finnish maps, in place of the green tufts. The map's data doesn't say what kind of wetland it is, so the pattern doesn't tell bog from marsh or reeds, whether trees grow there or how easy it is to cross.
+
 ## 2026-11-19
 
 ### What comes in after the map stops fades in ([#1091](https://github.com/TommiContursi/Polku/issues/1091))
