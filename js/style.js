@@ -338,6 +338,8 @@ export function buildStyle(s, ctx) {
     // the elevations either side, 2026-11-20), and a positive line-offset is the right. The ticks are dashes of a wider
     // line beside it. OSM's cliffs (#1178) have their lower side on the right too, and are drawn the same, everywhere:
     // OSM and MML each have cliffs the other lacks, so where both have one it's drawn twice, close together.
+    // a ridge (#1178) is OSM's standard map's band of dots along its crest, in the peaks' brown, under the cliffs
+    add({ id: 'osm-ridge', type: 'line', source: 'ofm', 'source-layer': 'mountain_peak', minzoom: 14, filter: ['==', ['get', 'class'], 'ridge'], paint: { 'line-pattern': 'ridge-6b4b2b', 'line-width': zi(14, 10, 16, 16, 18, 22), 'line-opacity': 0.7 } });
     const cls = ['get', 'kohdeluokka'], tick = zi(13, 2, 16, 3.5, 18, 5), edge = zi(13, 0.8, 16, 1.3, 18, 1.8);
     for (const [id, source, layer, filter] of [['osm-cliff', 'ofm', 'mountain_peak', ['==', ['get', 'class'], 'cliff']], ['mml-cliff', 'mml', 'maasto_viiva', ['==', cls, 34400]]]) {
       add({ id, type: 'line', source, 'source-layer': layer, minzoom: 13, filter, paint: { 'line-color': P.cliff, 'line-width': edge } });
@@ -1164,9 +1166,10 @@ function addLabels(s, P, hc, layers) {
   add({ id: 'label-road', type: 'symbol', source: 'ofm', 'source-layer': 'transportation_name', minzoom: 13, filter: ['has', 'name'], layout: { 'symbol-placement': 'line', 'text-pitch-alignment': 'viewport', 'text-field': ['get', 'name'], 'text-font': FONT, 'text-size': zi(13, 10, 17, 13), 'text-rotation-alignment': 'map' }, paint: { 'text-color': P.text, ...halo } });
   add({
     id: 'label-peak', type: 'symbol', source: 'ofm', 'source-layer': 'mountain_peak', minzoom: 11,
-    filter: ['==', ['get', 'class'], 'peak'],
+    // a saddle (#1178) is a pass's mark in the same brown; the tiles have them up to zoom 13
+    filter: ['in', ['get', 'class'], ['literal', ['peak', 'saddle']]],
     layout: {
-      'icon-image': 'triangle_11', 'icon-size': 0.75,
+      'icon-image': ['match', ['get', 'class'], 'saddle', 'saddle-6b4b2b', 'triangle_11'], 'icon-size': ['match', ['get', 'class'], 'saddle', 1, 0.75],
       'text-field': ['case', ['has', 'name'], ['concat', ['get', 'name'], '\n', ['to-string', ['get', 'ele']], ' m'], ['concat', ['to-string', ['get', 'ele']], ' m']],
       'text-font': FONT, 'text-size': 11, 'text-offset': [0, 0.8], 'text-anchor': 'top', 'text-optional': true,
     },
