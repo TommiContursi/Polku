@@ -23,7 +23,7 @@ import { windAlong, windClass, rainBand, recentRain, pointForecasts, sampleAt, L
 import { keyFacts, factLine, sportFacts, hardestClimb, climbWords, tileTags } from './facts.js';
 import { icon, h, $, toast, store, escapeHtml, popMenu, tooltip, settleControls, mouseDrag, infoDot, sideways, holdArrow } from './ui.js';
 import { sweepDay, nameDay, good, dayStart, dayOffset, clockMins } from './besttime.js';
-import { osmDetails, OSM_KEYS, hitBox, inspectLayers, pickFeature, keepInView, areaUnder } from './inspect.js';
+import { osmDetails, OSM_KEYS, hitBox, featuresAt, inspectLayers, pickFeature, keepInView, areaUnder } from './inspect.js';
 import { describe, hoverCapable } from './hover.js';
 import { CardHost, item, rows, foldFacts } from './card.js';
 import { darkWords } from './palette.js';
@@ -4113,7 +4113,7 @@ export class Planner {
     const ll = Array.isArray(lngLat) ? lngLat : [+lngLat.lng.toFixed(6), +lngLat.lat.toFixed(6)], p = pt || this.map.project(ll);
     place = place || this.placeAt(p, touch);
     if (place) { this.openPlaceCard(place, ll, { from, pin }); return; }
-    const feats = this.map.queryRenderedFeatures(hitBox(p, touch), { layers: inspectLayers(this.map) });
+    const feats = featuresAt(this.map, p, hitBox(p, touch), inspectLayers(this.map));
     const route = feats.find((x) => x.layer.id === 'lipas-route');
     const f = pickFeature(feats), way = feats.find((x) => /^(path|track|cycleway|road)-/.test(x.layer.id)), bike = groupOf(this.app.activity()) === 'bike';
     const d = f && describe(f, feats, { ll, bike, mtb: this.app.activity() === 'mtb' });
@@ -4149,10 +4149,11 @@ export class Planner {
     this.drawThing(f);
   }
   drawThing(f) {
-    // (a property's plot is tinted by its id instead: an outline of its piece in one tile would cut it at the tile's edge)
-    const plot = f && f.layer.id === 'property-plot';
+    // (a property's plot is tinted by its id instead: an outline of its piece in one tile would cut it at the tile's edge;
+    // MML's terrain has no ids, so its lines and areas have only the card's pin, #1175)
+    const plot = f && f.layer.id === 'property-plot', piece = f && /^mml-/.test(f.layer.id) && f.geometry.type !== 'Point';
     if (this.app.lightPlot) this.app.lightPlot('lit', plot ? f.id : null);
-    const g = !plot && f && f.geometry, fc = (geometry, properties = {}) => ({ type: 'FeatureCollection', features: [{ type: 'Feature', properties, geometry }] });
+    const g = !plot && !piece && f && f.geometry, fc = (geometry, properties = {}) => ({ type: 'FeatureCollection', features: [{ type: 'Feature', properties, geometry }] });
     const line = g && /LineString/.test(g.type), area = g && /Polygon/.test(g.type);
     this.app.setData('pick', line ? fc(g, { color: '#f59e0b' }) : EMPTY);
     this.app.setData('pickSide', EMPTY);

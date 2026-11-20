@@ -1203,6 +1203,95 @@ def mml_rock(chrome):
     return not fails
 
 
+# #1175: a tap or a click on MML's terrain opens its card (the map's other things'), from the recorded tiles, never live MML:
+# a bog hard to cross with the survey's caveat (Seitseminen) and reeds in the water (Porvoo), by touch at 390 × 844 and by mouse
+# at 1440 × 900, where the pointer's tooltip says the same first. A bog's crossing class only from zoom 13's tiles, and a name
+# for every class the inspected layers draw.
+def mml_cards(chrome):
+    fails = []
+    mid = lambda x, y: [(x + 0.5) / 2 ** 14 * 360 - 180, math.degrees(math.atan(math.sinh(math.pi * (1 - 2 * (y + 0.5) / 2 ** 14))))]
+    # a spot where a click or a tap picks the layer's class (inspect.js's own choice) with nothing else there but the water, clear
+    # of the top bar and the map's buttons; a point's own spot first (sourceLayer: centred on it, as a narrow phone may not show it)
+    spot = """(async (layer, classes, touch, sourceLayer) => {
+      const m=polku.map, {inspectLayers,pickFeature,hitBox,featuresAt}=await import('/js/inspect.js'), R=m.getCanvas().getBoundingClientRect();
+      const settle=async()=>{await new Promise(r=>setTimeout(r,300));await Promise.race([new Promise(r=>{m.once('idle',r);m.triggerRepaint();}),new Promise(r=>setTimeout(r,10000))]);};
+      const pt=sourceLayer&&m.querySourceFeatures('mml',{sourceLayer}).find((f)=>classes.includes(f.properties.kohdeluokka));
+      if(pt){m.jumpTo({center:pt.geometry.coordinates}); await settle();}
+      const at=pt&&m.project(pt.geometry.coordinates);
+      for(let y=at?at.y:140;y<(at?at.y+1:innerHeight-180);y+=9)for(let x=at?at.x:24;x<(at?at.x+1:innerWidth-100);x+=9){
+        const fs=featuresAt(m,{x,y},hitBox({x,y},touch),inspectLayers(m)), f=pickFeature(fs);
+        if(f&&f.layer.id===layer&&classes.includes(f.properties.kohdeluokka)&&fs.every((g)=>g.layer.id===layer||g.layer.id==='water'))return [R.left+x,R.top+y];
+      }
+      return null;
+    })"""
+    # the card, and what marks its thing on the map a second later: a point's ring, or a line or an area outlined
+    card = """new Promise((ok) => { const t0=Date.now(), m=polku.map, go=()=>{ const c=polku.planner.cards.current, el=[...document.querySelectorAll('.pl-way.card')].find((e)=>e.getClientRects().length);
+      c&&el ? setTimeout(()=>ok({title:c.title, text:el.textContent, ring:m.querySourceFeatures('pickRing').length, drawn:m.querySourceFeatures('pick').length+m.querySourceFeatures('pickArea').length, pin:!!document.querySelector('.card-pin')}),1000) : Date.now()-t0>8000 ? ok(null) : setTimeout(go,100); }; go(); })"""
+    for name, w, h_, phone in (('390 × 844 by touch', 390, 844, True), ('1440 × 900 by mouse', 1440, 900, False)):
+        pg = chrome.page(w, h_, phone)
+        # (zoom 10: under the source's zoom 11, so MML is asked for nothing before the test answers it)
+        pg.open_app({'activity': 'mtb', 'base': 'trail'}, hash_='#10/61.92/23.478')
+        pg.js("""(async () => { const m=polku.map, FX=['14/9260/4578','14/9352/4721'];""" + MML_FIXTURES + """ return true; })()""")
+        for what, center, layer, classes, title, words, src in (
+                ('a bog hard to cross', mid(9260, 4578), 'mml-bog', [35421], 'Open bog', ['Survey class', 'Hard to cross', 'not a promise about the ground today', 'From the National Land Survey'], None),
+                ('reeds', mid(9352, 4721), 'mml-reed', [38100], 'Reeds', ['From the National Land Survey'], 'maasto_piste')):
+            pg.js(f"(async () => {{ const m=polku.map; m.jumpTo({{center:{json.dumps(center)},zoom:14.6}}); await new Promise(r=>setTimeout(r,300)); "
+                  "await Promise.race([new Promise(r=>{m.once('idle',r);m.triggerRepaint();}),new Promise(r=>setTimeout(r,10000))]); return true; })()")
+            at = pg.js(f"({spot})('{layer}', {json.dumps(classes)}, {json.dumps(phone)}, {json.dumps(src)})")
+            if not at:
+                fails.append(f'{name}: no spot where a tap picks {what} from the recorded tile')
+                continue
+            if phone:
+                pg.quick_tap(*at)
+            else:
+                pg.c.send('Input.dispatchMouseEvent', {'type': 'mouseMoved', 'x': at[0], 'y': at[1], 'button': 'none'}, pg.s)
+                tip = pg.js("new Promise((ok) => setTimeout(() => { const t=document.querySelector('.hover-tip'); ok(t&&!t.hidden ? t.textContent : null); }, 700))")
+                if not tip or not tip.startswith(title) or (layer == 'mml-bog' and 'Survey class: hard to cross' not in tip):
+                    fails.append(f'{name}: the pointer resting on {what} says {tip!r}')
+                for kind in ('mousePressed', 'mouseReleased'):
+                    pg.c.send('Input.dispatchMouseEvent', {'type': kind, 'x': at[0], 'y': at[1], 'button': 'left', 'buttons': 1 if kind == 'mousePressed' else 0, 'clickCount': 1}, pg.s)
+            c = pg.js(card)
+            if not c:
+                fails.append(f'{name}: a {"tap" if phone else "click"} on {what} opened no card')
+            else:
+                if c['title'] != title:
+                    fails.append(f'{name}: a {"tap" if phone else "click"} on {what} opened {c["title"]!r}')
+                fails += [f'{name}: the card for {what} doesn’t say {w_!r}' for w_ in words if w_ not in c['text']]
+                # a bog's piece in one tile would stop at the tile's edge: the card's pin alone; reeds, a ring (in both tiles near their edge)
+                if c['drawn'] or not c['pin'] or (layer == 'mml-reed') != bool(c['ring']):
+                    fails.append(f"{name}: {what} marked by {c['drawn']} lines or areas, {c['ring']} rings and {'a' if c['pin'] else 'no'} pin")
+            pg.js("polku.planner.cards.close(); true")
+        if not phone:
+            fails += pg.js("""(async () => {
+              const errs=[], m=polku.map, I=await import('/js/inspect.js'), H=await import('/js/hover.js');
+              // zoom 12's tiles have a generalised class and zoom 11's none: a tile under 13 never says how easy it is to cross
+              for(const [z,k,want] of [[12,35421,'Zoom in to see it'],[11,35401,'Zoom in to see it'],[13,35422,'Hard to cross'],[14,35411,'Easier to cross']]) {
+                const f={_z:z,properties:{kohdeluokka:k},layer:{id:'mml-bog'},geometry:{type:'Polygon'}};
+                const row=(I.thingOf(f,m)||{rows:[]}).rows[0], tip=(H.describe(f,[f],{})||{bits:[]}).bits.join(' · ');
+                if(!row||row[1]!==want)errs.push(`a bog of class ${k} in a zoom-${z} tile: ${row&&row[1]} on the card`);
+                if(!tip.includes(`Survey class: ${want.toLowerCase()}`))errs.push(`a bog of class ${k} in a zoom-${z} tile: ${tip} under the pointer`);
+              }
+              // beside a bog, the forest isn't the bog: MML's areas only under the point itself
+              m.jumpTo({center:[23.4778,61.9131],zoom:14.6}); await new Promise(r=>setTimeout(r,300)); await Promise.race([new Promise(r=>{m.once('idle',r);m.triggerRepaint();}),new Promise(r=>setTimeout(r,10000))]);
+              let beside=null;
+              for(let y=150;y<innerHeight-150&&!beside;y+=4)for(let x=30;x<innerWidth-100&&!beside;x+=4)
+                if(!m.queryRenderedFeatures([x,y],{layers:['mml-bog']}).length&&m.queryRenderedFeatures(I.hitBox({x,y},true),{layers:['mml-bog']}).length)beside={x,y};
+              if(!beside)errs.push('(the test) no spot beside a bog in the recorded tile');
+              else if(I.featuresAt(m,beside,I.hitBox(beside,true),I.inspectLayers(m)).some((f)=>f.layer.id==='mml-bog'))errs.push('a tap beside a bog picks the bog');
+              // every class the inspected MML layers draw has its words
+              for(const id of I.inspectLayers(m).filter((id)=>id.startsWith('mml-'))) {
+                const f=JSON.stringify(m.getFilter(id)), ks=(f.match(/\\b\\d{5}\\b/g)||[]).map(Number);
+                if(!ks.length)errs.push(`${id}: no classes in its filter`);
+                for(const k of ks)if(!(I.MML_TERRAIN||{})[k])errs.push(`${id} draws class ${k}, which has no name`);
+              }
+              return errs;
+            })()""")
+        fails += [f'{name} console: {e[:160]}' for e in pg.errors()]
+        pg.close()
+    print(f"{'ok  ' if not fails else 'FAIL'} a tap on MML's terrain says what it is (#1175)" + ''.join(f'\n     - {f}' for f in fails), flush=True)
+    return not fails
+
+
 # #1130, #1137: no-bike bars stay on paths/tracks, across the line, as wide as its halo.
 def cycling_restrictions(chrome):
     pg = chrome.page(1440, 900, False)
@@ -24649,7 +24738,7 @@ GROUPS = [
     ('changelog', [changelog], 'release notes, retry, safe rendering, keyboard, route preservation and real worker offline'),
     ('pacing', [pacing, paced_legs, net_fails], 'calls made together go out paced and counted (mocked services, a fake clock); legs refused for a slot follow at it (#78); the calls that failed, in Data sources (#687)'),
     ('loading', [loading, routing_edits], 'cancel obsolete routing, edits/Undo/Clear, shared subscribers, refusal/recovery, deadlines, terrain slots and LIPAS viewport/cache (mocked)'),
-    ('layers', [layers, cycleway_style, cycling_restrictions, waterway_style, property_lines, property_plots, wetland_style, reedbed_style, mml_bogs, mml_rock], 'the Layers panel in every sport'),
+    ('layers', [layers, cycleway_style, cycling_restrictions, waterway_style, property_lines, property_plots, wetland_style, reedbed_style, mml_bogs, mml_rock, mml_cards], 'the Layers panel in every sport'),
     ('raster', [raster_maps, aerial_fallback, aerial_labels], 'terrain and aerial detail, bounded high-density WMS symbols, depth boundaries and missing aerial detail (#649, #650, #653); the map\'s words on the aerial photos at 4.5:1 on their halo (#554)'),
     ('coarse', [coarse], 'a coarse map underneath (#1091): the base map\'s tile four zoom levels up stands in for one that hasn\'t come, at 1440 and 390'),
     ('together', [together], 'Polku\'s own layers come in together after the map stops, 500 ms at most (#1091)'),
