@@ -13,6 +13,10 @@ What's new in [Polku](https://polku.si), from the latest updates back to the fir
 - With **Depth contours** and **Depth soundings** on, as they are at first when paddling, lakes that Traficom doesn't chart get the National Land Survey's depth contours, with their depths, and its depth points from zoom 13. Traficom's depths stay at sea and on charted lakes. No depth lines on a lake means it hasn't been surveyed, not that it's deep.
 - Where the National Land Survey's map data doesn't load, these are missing and the message says so. Outside Finland only the piers are drawn.
 
+### Lakes with marshes and overgrowing water ([#1177](https://github.com/TommiContursi/Polku/issues/1177))
+
+- In Finland, a lake's shallows that OpenStreetMap maps as marshes are now drawn as water, not as pale land in the lake. The National Land Survey's overgrowing water shows its whole shape, as blue dashes on the water's blue, paddling's too. Marshes on land are drawn as before.
+
 ### Rock, cliffs and power lines from the National Land Survey ([#1147](https://github.com/TommiContursi/Polku/issues/1147))
 
 - In Finland, the Trail, Plain and Night maps draw the National Land Survey's rock from zoom 13, in the same grey as OpenStreetMap's rock, and its boulder fields dotted. From zoom 14, rocks too small for an area, single stones and sparse boulders are small marks of their own.
@@ -28,8 +32,9 @@ What's new in [Polku](https://polku.si), from the latest updates back to the fir
 
 ### Footways in brown ([#1163](https://github.com/TommiContursi/Polku/issues/1163))
 
-- Footways and pedestrian streets are drawn as a thin brown dashed line without a white band, on every map and in every sport, so a trail in the woods stands out from the footways between buildings. Brown doesn't mean bikes aren't allowed: the red bars still say that. Footways open to bikes stay blue, and footways with an MTB grade keep their difficulty colour.
+- Footways and pedestrian streets are drawn as a thin brown dashed line in every sport, on the Trail map on a narrow white band, so a trail in the woods stands out from the footways between buildings. Brown doesn't mean bikes aren't allowed: the red bars still say that. Footways open to bikes stay blue, and footways with an MTB grade keep their difficulty colour.
 - Fences on the trail details are now grey instead of brown, so they aren't mistaken for footways.
+- Steps are a wide brown ladder, so they stand out from the footways around them. Steps with an MTB grade keep their difficulty colour.
 
 ### Property boundaries ([#1148](https://github.com/TommiContursi/Polku/issues/1148))
 

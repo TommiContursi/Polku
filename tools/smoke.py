@@ -793,6 +793,14 @@ def cycleway_style(chrome):
         const fl=m.getStyle().layers.find(l=>l.id===`path-${pass}-foot`);
         if(fl.paint['line-color']!=='#a2381f'||JSON.stringify(fl.paint['line-dasharray'])!=='[1.5,0.7]'||width(fl.id,16)!==2.5)errs.push(`${fl.id}: not a thin brown dashed line`);
         if(m.getStyle().layers.findIndex(l=>l.id===`path-${pass}-halo`)<m.getStyle().layers.indexOf(fl))errs.push(`${fl.id}: drawn over the trails`);
+        const fc=m.getStyle().layers.find(l=>l.id===`${fl.id}-casing`);
+        if(pass==='tunnel') { if(fc)errs.push(`${fl.id}: tunnel has a white band`); }
+        else if(!fc||JSON.stringify(fc.filter)!==JSON.stringify(fl.filter)||fc.paint['line-color']!=='#ffffff'||width(fc.id,16)!==width(fl.id,16)+2||m.getStyle().layers.indexOf(fc)>m.getStyle().layers.indexOf(fl))errs.push(`${fl.id}: not on a white band 1 px wider a side`);
+        // ungraded steps: a wide brown ladder, not a trail; graded ones stay trails
+        const st=`path-${pass}-steps`, sl=m.getStyle().layers.find(l=>l.id===st), sp=(t)=>({class:'path',subclass:'steps',...t,...(pass==='ground'?{}:{brunnel:pass})});
+        if(!matches(st,sp({}))||matches(`path-${pass}`,sp({}))||matches(`path-${pass}-halo`,sp({})))errs.push(`${st}: steps drawn as a trail`);
+        if(matches(st,sp({mtb_scale:'1'}))||!matches(`path-${pass}`,sp({mtb_scale:'1'})))errs.push(`${st}: graded steps lost their trail style`);
+        if(sl.paint['line-color']!=='#a2381f'||JSON.stringify(sl.paint['line-dasharray'])!=='[0.2,0.2]'||width(st,17)!==9)errs.push(`${st}: not a wide brown ladder`);
         for(const [surface,want] of [['paved',[6,1.5]],['unpaved',[1,.5]],[undefined,[2.5,1.5]],['other',[2.5,1.5]]]) {
           const raw=m.getPaintProperty(id,'line-dasharray'), got=layer.paint.get('line-dasharray').value;
           const dash=typeof raw[0]==='number'?raw:got.evaluate({zoom:16},{type:2,properties:{surface}},{});
@@ -1106,12 +1114,24 @@ def mml_bogs(chrome):
         const wood=blend(m.getPaintProperty('background','background-color'),m.getPaintProperty('lc-wood','fill-color'),m.getPaintProperty('lc-wood','fill-opacity')).slice(1);
         const water=m.getPaintProperty('water','fill-color').slice(1);
         // open bogs as OSM's wetlands, wooded ones on the forest's tint as drawn, the hard to cross in unbroken lines
-        const want={35401:osm,35411:osm,35402:`wetland-${wood}-${dash}`,35412:`wetland-${wood}-${dash}`,35421:`bog-hard-${ground}-${dash}`,35422:`bog-hard-${wood}-${dash}`,38300:`wetland-${water}-${dash}`};
+        const want={35401:osm,35411:osm,35402:`wetland-${wood}-${dash}`,35412:`wetland-${wood}-${dash}`,35421:`bog-hard-${ground}-${dash}`,35422:`bog-hard-${wood}-${dash}`};
         for(const [k,id] of Object.entries(want)) {
           if(!bog()._featureFilter.filter({zoom:14},as(+k)))errs.push(`${base}: class ${k} isn't drawn`);
           else if(pattern(+k)!==id)errs.push(`${base}: class ${k} drawn as ${pattern(+k)}, not ${id}`);
         }
-        for(const k of [39110,39120,34100,36200])if(bog()._featureFilter.filter({zoom:14},as(k)))errs.push(`${base}: class ${k} drawn as a bog`);
+        for(const k of [39110,39120,34100,36200,38300])if(bog()._featureFilter.filter({zoom:14},as(k)))errs.push(`${base}: class ${k} drawn as a bog`);
+        // MML's lake over OSM's wetlands, so a marsh OSM cut out of a lake isn't a pale patch in it (Rautpohja); its
+        // overgrowing water over OSM's lake, which would hide it, in the water's own blue (paddling's too)
+        if(at('mml-lake')<0||at('mml-overgrowing')<0){errs.push(`${base}: no layer for MML's lakes or overgrowing water`);continue;}
+        if(!(at('lc-wetland-pattern')<at('mml-lake')&&at('mml-lake')<at('mml-bog')))errs.push(`${base}: MML's lakes not drawn over OSM's wetlands and under the bogs`);
+        if(!drawn('mml-lake').has(36200))errs.push(`${base}: no lake drawn from the recorded tile`);
+        if(m.getPaintProperty('mml-lake','fill-color')!=='#'+water)errs.push(`${base}: MML's lakes in ${m.getPaintProperty('mml-lake','fill-color')}, OSM's in #${water}`);
+        if(!(at('water')<at('mml-overgrowing')&&at('mml-overgrowing')<at('water-shore')))errs.push(`${base}: overgrowing water not drawn over OSM's lakes`);
+        const ow=m.getPaintProperty('mml-overgrowing','fill-pattern');
+        if(ow!==`wetland-${water}-${dash}`)errs.push(`${base}: overgrowing water drawn as ${ow}, not wetland-${water}-${dash}`);
+        if(base==='trail'){polku.set({activity:'paddle'}); await settle(); const w=m.getPaintProperty('water','fill-color').slice(1), o=m.getPaintProperty('mml-overgrowing','fill-pattern');
+          if(o!==`wetland-${w}-${dash}`||m.getPaintProperty('mml-lake','fill-color')!=='#'+w)errs.push(`paddling: overgrowing water ${o} and MML's lakes ${m.getPaintProperty('mml-lake','fill-color')} on water #${w}`);
+          polku.set({activity:'mtb'}); await settle();}
         for(const id of new Set(Object.values(want))) {
           const d=makeIcon(id).data;
           for(let i=3;i<d.length;i+=4)if(d[i]!==255){errs.push(`${base}: ${id} has clear pixels, so OSM's dashes would show through`);break;}
