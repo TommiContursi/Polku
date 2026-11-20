@@ -4,6 +4,10 @@ What's new in [Polku](https://polku.si), from the latest updates back to the fir
 
 ## 2026-11-20
 
+### One switch for picking plots ([#1199](https://github.com/TommiContursi/Polku/issues/1199))
+
+- **Plot selection**, under **Property boundaries** in **Layers → More → Terrain**, turns off both the plot tinted and named under the mouse pointer and the plot's card on a click or a tap. It's there on phones too. With it off, a click or a tap on a plot opens what's under it, such as a park or the water, or nothing, and a long press opens the spot's card, as without the layer. The boundaries and property IDs stay on the map.
+
 ### Mountain passes and ridges ([#1178](https://github.com/TommiContursi/Polku/issues/1178))
 
 - Passes between fells, mapped as saddles in OpenStreetMap, are marked with OpenStreetMap's usual saddle mark, a small brown block with a notch in its top, and their name and height, like the peaks, from zoom 11 to 13. Taivaskeronsatula at Pallas is one. The map's data has them only up to zoom 13, so they aren't shown when you zoom in further. Tapping one opens its card as a pass.
@@ -62,7 +66,7 @@ What's new in [Polku](https://polku.si), from the latest updates back to the fir
 ### Property boundaries ([#1148](https://github.com/TommiContursi/Polku/issues/1148))
 
 - **Property boundaries**, a new switch under **Layers → More → Terrain** (or a tile of your own), draws the National Land Survey's property boundaries in Finland in orange from zoom 14, and each property's ID from zoom 16, so you can see whose land you're on. **Opacity** under its switch makes them fainter. It's off at first in every sport. The boundaries come from the National Land Survey with Polku's API key, or with your own if you have added one in Settings. They aren't saved in offline areas, and the tile says **No data now** when they don't load.
-- With **Property boundaries** on, the plot under the mouse pointer is tinted and named (**Plot under the pointer**, under its switch, turns that off), and a click or tap on a plot opens its card with the property's ID and tints the plot until the card closes. Roads, paths and the water keep their own cards where they are.
+- With **Property boundaries** on, the plot under the mouse pointer is tinted and named, and a click or tap on a plot opens its card with the property's ID and tints the plot until the card closes. Roads, paths and the water keep their own cards where they are.
 
 ### Reedbeds on the map ([#1144](https://github.com/TommiContursi/Polku/issues/1144))
 
