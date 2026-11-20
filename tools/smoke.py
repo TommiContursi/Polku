@@ -877,7 +877,8 @@ def property_lines(chrome):
       if(src.minzoom!==14)errs.push(`property tiles asked for from zoom ${src.minzoom}, not 14`);
       if(!src.bounds||src.bounds[0]<19||src.bounds[2]>32)errs.push(`property tiles not bounded to Finland: ${src.bounds}`);
       const t0=performance.now();
-      while(performance.now()-t0<20000&&!(m.isSourceLoaded('ov-propertyLines')&&m.queryRenderedFeatures({layers:['property-line']}).length))await new Promise(r=>setTimeout(r,250));
+      // (the IDs come after the lines: their glyphs load first)
+      while(performance.now()-t0<30000&&!(m.isSourceLoaded('ov-propertyLines')&&m.queryRenderedFeatures({layers:['property-line']}).length&&m.queryRenderedFeatures({layers:['property-id']}).length))await new Promise(r=>setTimeout(r,250));
       const lines=m.queryRenderedFeatures({layers:['property-line']}).length, ids=m.queryRenderedFeatures({layers:['property-id']}).length;
       if(!lines)errs.push('no property boundaries drawn at Jyväskylä, zoom 16');
       if(!ids)errs.push('no property IDs drawn at Jyväskylä, zoom 16');
