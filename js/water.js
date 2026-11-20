@@ -581,7 +581,7 @@ function eventsAlong(grid, coords, comfort, got) {
         harbour: water && grid.fair && grid.fair[i] === 2,
         hazard: water && grid.haz && grid.haz[i] === 1,
         shallow: water && grid.shallow && grid.shallow[i] === 1,
-        rapids: water && grid.rapids && grid.rapids[i] === 1,
+        rapids: i >= 0 && grid.type[i] !== 0 && grid.rapids && grid.rapids[i] === 1, // (on a stream too)
         rough: water && comfort && grid.wave && grid.wave[i] > comfort,
       };
       for (const kind of Object.keys(on)) {

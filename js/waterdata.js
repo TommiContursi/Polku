@@ -129,53 +129,57 @@ async function lakeDepths(box) {
 }
 
 // Stones in the water, stone fields and shoals on MML's background map (#153): its zoom-14 tiles, the only ones with
-// the stones, at the map's own address and key, so the browser's cache has those the map has shown. A tile with no
-// features at all is outside MML's map, as every tile outside Finland is.
+// the stones, at the map's own address and key, so the browser's cache has those the map has shown. A tile with its
+// layers and no features is outside MML's map, as every tile outside Finland is; one with no layers didn't load.
 const MZ = 14;
 const MML_KINDS = { 38512: 'rock', 38513: 'above', 38600: 'stonefield', 38700: 'shoal' }; // a stone at the surface, above it
 const MML_RAPIDS = 38200;
 let mmlOwn = '';
 /** The person's own MML key (Settings), or none for Polku's. */
 export const useMmlKey = (key) => { mmlOwn = key || ''; };
-const mmlTiles = new Map(); // "x/y" -> Promise<{ x, y, covered, points, areas, rapids }>
+const mmlTiles = new Map(); // "z/x/y" -> Promise<{ z, x, y, covered, points, areas, rapids }>
 const failedMml = new Set();
-function mmlTile(x, y) {
-  const id = `${x}/${y}`;
+function mmlTile(x, y, z = MZ) {
+  const id = `${z}/${x}/${y}`;
   if (mmlTiles.has(id)) return mmlTiles.get(id);
-  const url = `${MML_TERRAIN_TILES.replace('{z}', MZ).replace('{y}', y).replace('{x}', x)}?api-key=${encodeURIComponent(mmlApiKey(mmlOwn))}`;
-  const ll = (fx, fy) => { const [lon, , , lat] = tileBounds(x + fx, y + fy, MZ); return [+lon.toFixed(6), +lat.toFixed(6)]; };
+  const url = `${MML_TERRAIN_TILES.replace('{z}', z).replace('{y}', y).replace('{x}', x)}?api-key=${encodeURIComponent(mmlApiKey(mmlOwn))}`;
+  const ll = (fx, fy) => { const [lon, , , lat] = tileBounds(x + fx, y + fy, z); return [+lon.toFixed(6), +lat.toFixed(6)]; };
   const line = (r) => { const c = []; for (let i = 0; i < r.length; i += 2) c.push(ll(r[i], r[i + 1])); return c; };
   const ring = (r) => { const c = line(r); c.push(c[0]); return c; };
   // as the depth files: one that fails pauses nothing else, and one that hangs fails in time
   const p = request('mml', url, { backoff: false, timeoutMs: 10000 }).then(async (r) => {
     if (!r.ok) throw new Error(`MML ${id}: ${r.status}`);
     const t = decodeTile(new Uint8Array(await r.arrayBuffer()), ['maasto_piste', 'maasto_alue', 'vesisto_viiva']), points = [], areas = [];
+    if (!t.seen) throw new Error(`MML ${id}: an empty answer`);
     for (const f of t.layers.maasto_piste || []) { const kind = MML_KINDS[f.props.kohdeluokka]; if (kind) for (const r of f.rings) points.push([...ll(r[0], r[1]), kind]); }
     for (const f of t.layers.maasto_alue || []) { const kind = MML_KINDS[f.props.kohdeluokka]; if (kind) areas.push({ kind, rings: f.rings.map(ring) }); }
     const rapids = (t.layers.vesisto_viiva || []).filter((f) => f.props.kohdeluokka === MML_RAPIDS).flatMap((f) => f.rings.map(line));
-    return { x, y, covered: t.n > 0, points, areas, rapids };
+    return { z, x, y, covered: t.n > 0, points, areas, rapids };
   });
   p.catch(() => { failedMml.add(id); setTimeout(() => { if (mmlTiles.get(id) === p) { mmlTiles.delete(id); lateArrived(); } failedMml.delete(id); }, AGAIN_MS); });
   mmlTiles.set(id, p);
   return p;
 }
 // the tiles over the box and Finland's (none outside it); null: too many to ask for
-function mmlTilesIn([w, s, e, n], max) {
+function mmlTilesIn([w, s, e, n], max, z = MZ) {
   const [W, S, E, N] = FINLAND_BOUNDS;
   if (e < W || w > E || n < S || s > N) return [];
-  const [x0, y0] = lonLatToTile(Math.max(w, W), Math.min(n, N), MZ).map(Math.floor);
-  const [x1, y1] = lonLatToTile(Math.min(e, E), Math.max(s, S), MZ).map(Math.floor);
+  const [x0, y0] = lonLatToTile(Math.max(w, W), Math.min(n, N), z).map(Math.floor);
+  const [x1, y1] = lonLatToTile(Math.min(e, E), Math.max(s, S), z).map(Math.floor);
   if ((x1 - x0 + 1) * (y1 - y0 + 1) > max) return null;
   const list = [];
-  for (let x = x0; x <= x1; x++) for (let y = y0; y <= y1; y++) list.push(mmlTile(x, y));
+  for (let x = x0; x <= x1; x++) for (let y = y0; y <= y1; y++) list.push(mmlTile(x, y, z));
   return list;
 }
 async function mmlStones(box) {
-  const tiles = mmlTilesIn(box, 64); // legs up to about 5 km
+  // legs up to about 5 km; a longer one is too long only where MML has a map: zoom 11's tiles all empty, as off
+  // Tallinn, is outside it ([], as for a shorter leg there)
+  const tiles = mmlTilesIn(box, 64) || mmlTilesIn(box, 16, 11);
   if (!tiles) return null;
   const all = Promise.all(tiles);
   try {
-    return await waitFor('mml', all);
+    const got = await waitFor('mml', all);
+    return !got.length || got[0].z === MZ ? got : got.some((t) => t.covered) ? null : [];
   } catch (err) {
     all.then(lateArrived, () => {});
     throw err;

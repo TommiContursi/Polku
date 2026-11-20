@@ -2554,7 +2554,8 @@ def water_depths(chrome):
 
 
 # MML's stones in the water (#153), from a recorded tile off Kotka (tools/fixtures/mml-taustakartta-14-9416-4714.pbf),
-# never live MML: its other tiles answer empty (no features: outside MML's map), and every other source answers nothing.
+# never live MML: its other tiles answer as off Tallinn (tools/fixtures/mml-taustakartta-14-9318-4808.pbf: the layers,
+# no features: outside MML's map), and every other source answers nothing.
 # MML failing: Not checked, with Retry; answering late: the leg is routed again with it; then a leg straight over a stone
 # at the surface keeps 20 m from it (its zone is 25 m), one over a stone above the surface 11 m (15 m), What Polku looked
 # at says MML's map covered the route's water, or how much of it, a box too big isn't asked for, one outside Finland
@@ -2562,6 +2563,7 @@ def water_depths(chrome):
 WATER_MML = """(async () => {
   const wait = (ms) => new Promise((r) => setTimeout(r, ms)), errs = [];
   const tile = await (await fetch(location.origin + '/tools/fixtures/mml-taustakartta-14-9416-4714.pbf')).arrayBuffer();
+  const outside = await (await fetch(location.origin + '/tools/fixtures/mml-taustakartta-14-9318-4808.pbf')).arrayBuffer();
   const D = await import(location.origin + '/js/waterdata.js');
   const W = await import(location.origin + '/js/water.js');
   const G = await import(location.origin + '/js/geo.js');
@@ -2576,7 +2578,9 @@ WATER_MML = """(async () => {
     if (u.startsWith(MML)) {
       asked++;
       if (mode === 'fail') return Promise.reject(new TypeError('Failed to fetch'));
-      const answer = () => new Response(u.includes('/14/4714/9416.pbf') ? tile : new ArrayBuffer(0));
+      if (mode === 'void') return Promise.resolve(new Response(new ArrayBuffer(0)));
+      // (zoom 11's tile over the recorded one has something in it too)
+      const answer = () => new Response(u.includes('/14/4714/9416.pbf') || u.includes('/11/589/1177.pbf') ? tile : outside);
       return mode === 'late' ? new Promise((ok) => held.push(ok)).then(answer) : Promise.resolve(answer());
     }
     if (u.startsWith(new URL(OSM_DATA_MANIFEST).origin) || u.startsWith(OPEN_METEO)) return Promise.reject(new TypeError('Failed to fetch'));
@@ -2648,13 +2652,21 @@ WATER_MML = """(async () => {
     const osm = await D.waterInputs([18.04, 59.31, 18.06, 59.33], { hazards: true }, 0);
     const kinds = osm.hazards.features.filter((f) => f.properties.src === 'osm').map((f) => f.properties.kind).sort().join(', ');
     if (kinds !== 'above, rock, rock') errs.push(`OSM's rocks in Stockholm: ${kinds || 'none'} (missing ${osm.missing.join(', ')}), not above, rock, rock`);
-    // too many tiles: not asked; outside Finland: nothing asked, nothing covered
-    const n0 = asked;
+    // too many tiles: not asked where zoom 11's have anything in them, outside MML's map (off Tallinn) nothing covered,
+    // and outside Finland's box nothing asked
     const big = await D.waterInputs([26.80, 60.40, 26.95, 60.50], { rapids: true }, 0);
-    if (!big.skipped.includes('the National Land Survey') || big.mml !== null) errs.push(`a box of 100 tiles: skipped ${big.skipped.join(', ') || 'nothing'}, ${JSON.stringify(big.mml)}`);
+    if (!big.skipped.includes('the National Land Survey') || big.mml !== null) errs.push(`a box of 100 tiles off Kotka: skipped ${big.skipped.join(', ') || 'nothing'}, ${JSON.stringify(big.mml)}`);
+    const tallinn = await D.waterInputs([24.65, 59.40, 24.85, 59.50], { rapids: true }, 0);
+    if (tallinn.skipped.length || tallinn.missing.length || !Array.isArray(tallinn.mml) || tallinn.mml.length) errs.push(`a box of 100 tiles off Tallinn: skipped ${tallinn.skipped.join(', ') || 'nothing'}, missing ${tallinn.missing.join(', ') || 'nothing'}, ${JSON.stringify(tallinn.mml)}`);
+    const n0 = asked;
     const sweden = await D.waterInputs([18.0, 59.3, 18.1, 59.35], { rapids: true }, 0);
     if (!Array.isArray(sweden.mml) || sweden.mml.length || sweden.missing.length || sweden.skipped.length) errs.push(`Stockholm: ${JSON.stringify(sweden.mml)}, missing ${sweden.missing.join(', ')}, skipped ${sweden.skipped.join(', ')}`);
-    if (asked !== n0) errs.push(`${asked - n0} tiles asked of MML for a box too big or outside Finland`);
+    if (asked !== n0) errs.push(`${asked - n0} tiles asked of MML outside Finland's box`);
+    // an answer with nothing in it, not even the layers, didn't load: not "outside MML's map"
+    mode = 'void';
+    const empty = await D.waterInputs([25.70, 60.28, 25.71, 60.285], { rapids: true }, 0);
+    if (!empty.missing.includes('the National Land Survey')) errs.push(`MML answering with nothing: missing ${empty.missing.join(', ') || 'nothing'}, ${JSON.stringify(empty.mml)}`);
+    mode = 'ok';
     // a route saved before the router read MML: its leg on the water is routed again when it loads
     p.clear();
     p.addPoint(overRock[0]);
@@ -2702,21 +2714,24 @@ WATER_RAPIDS = """(async () => {
   /*forget*/
   await forget();
   const tile = await (await fetch(location.origin + '/tools/fixtures/mml-taustakartta-14-9364-4545.pbf')).arrayBuffer();
+  const outside = await (await fetch(location.origin + '/tools/fixtures/mml-taustakartta-14-9318-4808.pbf')).arrayBuffer();
   const D = await import(location.origin + '/js/waterdata.js');
   const W = await import(location.origin + '/js/water.js');
   const { OVERPASS, OSM_DATA_MANIFEST, OPEN_METEO, MML_TERRAIN_TILES } = await import(location.origin + '/js/config.js');
   const MML = MML_TERRAIN_TILES.split('{z}')[0], realFetch = window.fetch;
   window.fetch = (url, init = {}) => {
     const u = String(url);
-    if (u.startsWith(MML)) return Promise.resolve(new Response(u.includes('/14/4545/9364.pbf') ? tile : new ArrayBuffer(0)));
+    if (u.startsWith(MML)) return Promise.resolve(new Response(u.includes('/14/4545/9364.pbf') ? tile : outside));
     if (u.startsWith(new URL(OSM_DATA_MANIFEST).origin) || u.startsWith(OPEN_METEO)) return Promise.reject(new TypeError('Failed to fetch'));
-    // OSM: one rapid, in Stockholm
-    if (OVERPASS.some((m) => u.startsWith(m))) return Promise.resolve(new Response(JSON.stringify({ elements: String(init.body || '').includes('rapids') ? [{ type: 'way', id: 1, tags: { waterway: 'rapids' }, geometry: [{ lon: 18.045, lat: 59.32 }, { lon: 18.05, lat: 59.321 }] }] : [] })));
+    // OSM: one rapid in Stockholm, and one made up on Eerolanpuro, a stream in Jyväskylä
+    const way = (id, c) => ({ type: 'way', id, tags: { waterway: 'rapids' }, geometry: c.map(([lon, lat]) => ({ lon, lat })) });
+    if (OVERPASS.some((m) => u.startsWith(m))) return Promise.resolve(new Response(JSON.stringify({ elements: String(init.body || '').includes('rapids') ? [way(1, [[18.045, 59.32], [18.05, 59.321]]), way(2, stream)] : [] })));
     if (u.startsWith('https://avoinapi.vaylapilvi.fi/')) return Promise.resolve(new Response('{"type":"FeatureCollection","features":[]}'));
     if (u.includes('/data/depths/')) return Promise.resolve(new Response('{"tiles":[]}'));
     return realFetch(url, init);
   };
   const from = [25.7519622, 62.2575603], to = [25.7573529, 62.2487162]; // down Tourujoki, through Kangas
+  const stream = [[25.7222802, 62.247649], [25.7227633, 62.248052], [25.7227942, 62.2484233], [25.722784, 62.2486344]];
   const p = polku.planner;
   const rapids = () => (p.analysis ? p.headsUp().read.filter((w) => /^Rapids for/.test(w.text)) : []);
   const row = () => (p.analysis ? p.lookedAt(p.analysis).find((r) => r.what === 'Rapids') : null);
@@ -2749,10 +2764,13 @@ WATER_RAPIDS = """(async () => {
     // Rocks & shoals: Ignore still says where the rapids are
     const ig = await W.routeWater(from, to, { at: 0, wind: 'ignore', hazards: 'ignore' });
     if (!ig.water.events.some((e) => e.kind === 'rapids')) errs.push(`Rocks & shoals: Ignore, no rapids on the leg: ${ig.water.events.map((e) => e.kind).join(', ') || 'no events'}`);
+    // a rapid on a stream, which the router follows at a stream's cost
+    const brook = await W.routeWater([25.7212426, 62.2469252], [25.7231434, 62.2491561], { at: 0, wind: 'ignore' });
+    if (!brook.water.events.some((e) => e.kind === 'rapids')) errs.push(`up Eerolanpuro, no rapids: ${brook.water.events.map((e) => e.kind).join(', ') || 'no events'} (missing ${brook.water.missing.join(', ') || 'nothing'})`);
     // OSM's rapids are rapids, not a rock's zone
     const osm = await D.waterInputs([18.04, 59.31, 18.06, 59.33], { hazards: true, rapids: true }, 0);
     const rf = (osm.rapids && osm.rapids.features) || [];
-    if (rf.length !== 1 || osm.hazards.features.some((f) => f.properties.kind === 'rapids')) errs.push(`OSM's rapids in Stockholm: ${rf.length} rapids, hazards ${osm.hazards.features.map((f) => f.properties.kind).join(', ') || 'none'} (missing ${osm.missing.join(', ')})`);
+    if (!rf.length || rf.some((f) => f.properties.src !== 'osm') || osm.hazards.features.some((f) => f.properties.kind === 'rapids')) errs.push(`OSM's rapids in Stockholm: ${rf.length} rapids, hazards ${osm.hazards.features.map((f) => f.properties.kind).join(', ') || 'none'} (missing ${osm.missing.join(', ')})`);
   } finally {
     window.fetch = realFetch;
     p.clear();

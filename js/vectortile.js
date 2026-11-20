@@ -4,9 +4,10 @@
 const text = new TextDecoder();
 
 /**
- * The features of the layers named in `want`: { n, layers: { name: [{ props, rings }] } }. `n` counts the features
- * of every layer, wanted or not. Each ring is flat [x, y, x, y…] in tile units scaled to `size` (a point is a ring of
- * one; a polygon's rings aren't closed). Only numbers are read in `props`: a string is null.
+ * The features of the layers named in `want`: { n, seen, layers: { name: [{ props, rings }] } }. `n` counts the
+ * features of every layer, wanted or not, and `seen` the layers. Each ring is flat [x, y, x, y…] in tile units
+ * scaled to `size` (a point is a ring of one; a polygon's rings aren't closed). Only numbers are read in `props`: a
+ * string is null.
  */
 export function decodeTile(buf, want, size = 1) {
   let p = 0;
@@ -21,7 +22,7 @@ export function decodeTile(buf, want, size = 1) {
   // each field of a message up to `stop`: `on(field, wire)` reads the ones it wants and says so
   const each = (stop, on) => { while (p < stop) { const k = varint(); if (!on(k >> 3, k & 7)) skip(k & 7); } };
   const str = () => { const e = end(), s = text.decode(buf.subarray(p, e)); p = e; return s; };
-  const out = { n: 0, layers: {} };
+  const out = { n: 0, seen: 0, layers: {} };
   each(buf.length, (f) => {
     if (f !== 3) return false;
     const layer = end(), keys = [], vals = [], feats = [];
@@ -46,6 +47,7 @@ export function decodeTile(buf, want, size = 1) {
       return true;
     });
     out.n += feats.length;
+    out.seen++;
     if (want.includes(name)) {
       const list = (out.layers[name] = []);
       for (const [s, e] of feats) {
