@@ -921,7 +921,7 @@ def property_lines(chrome):
 def property_plots(chrome):
     pg = chrome.page(1440, 900, False)
     pg.open_app({'activity': 'mtb', 'overlaysByActivity': {'mtb': {'propertyLines': True}}}, None, '#16.5/62.2415/25.748')
-    fails = pg.js("""(async () => {
+    r = pg.js("""(async () => {
       const errs=[], m=polku.map, wait=(ms)=>new Promise(r=>setTimeout(r,ms)), frame=()=>new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)));
       const t0=performance.now();
       while(performance.now()-t0<30000&&!m.queryRenderedFeatures({layers:['property-plot']}).length)await wait(250);
@@ -929,7 +929,8 @@ def property_plots(chrome):
       const {inspectLayers,pickFeature,hitBox}=await import(location.origin+'/js/inspect.js');
       let spot=null;
       for(let y=200;y<800&&!spot;y+=23)for(let x=200;x<1200&&!spot;x+=29){const f=pickFeature(m.queryRenderedFeatures(hitBox({x,y},false),{layers:inspectLayers(m)}));if(f&&f.layer.id==='property-plot'&&f.id!=null)spot={x,y,f};}
-      if(!spot)return ['no spot at Jyväskylä where a click picks a plot'];
+      if(!spot)return {errs:['no spot at Jyväskylä where a click picks a plot']};
+      const ll=m.unproject([spot.x,spot.y]).toArray();
       const st=(id)=>m.getFeatureState({source:'ov-propertyLines',sourceLayer:'PalstanSijaintitiedot',id});
       const cv=m.getCanvas(), R=cv.getBoundingClientRect();
       const ev=(type)=>cv.dispatchEvent(new MouseEvent(type,{bubbles:true,cancelable:true,clientX:R.left+spot.x,clientY:R.top+spot.y,button:0,buttons:type==='mouseup'?0:1}));
@@ -989,7 +990,7 @@ def property_plots(chrome):
         if(c&&/^Property /.test(c.title))errs.push("with Plot selection off, a click opens the plot's card");
         polku.planner.cards.close(); await frame();
         // a hold (the right button): the spot's card, not the property's
-        for(const t of ['mousedown','contextmenu'])cv.dispatchEvent(new MouseEvent(t,{bubbles:true,cancelable:true,clientX:R.left+spot.x,clientY:R.top+spot.y,button:2,buttons:t==='mousedown'?2:0}));
+        cv.dispatchEvent(new MouseEvent('contextmenu',{bubbles:true,cancelable:true,clientX:R.left+spot.x,clientY:R.top+spot.y,button:2}));
         await wait(600); c=polku.planner.cards.current;
         if(!c)errs.push('with Plot selection off, a hold on a plot opens no card');
         else if(/^Property /.test(c.title))errs.push(`with Plot selection off, a hold on a plot opens ${c.title}`);
@@ -1001,18 +1002,20 @@ def property_plots(chrome):
           polku.planner.cards.close();
         }
       }
-      return errs;
+      return {errs, ll};
     })()""", timeout=90000)
+    fails, ll = r['errs'], r.get('ll')
     fails += [f'console: {e[:160]}' for e in pg.errors()]
     pg.close()
     # by touch, at a phone's size (#1199): Plot selection is there too, and with it off a tap on the plot opens nothing
+    # (at the plot the mouse picked: the phone's view of the centre is all park)
     pg = chrome.page(390, 844, True)
-    pg.open_app({'activity': 'mtb', 'overlaysByActivity': {'mtb': {'propertyLines': True}}}, None, '#16.5/62.2415/25.748')
+    pg.open_app({'activity': 'mtb', 'overlaysByActivity': {'mtb': {'propertyLines': True}}}, None, f'#17/{ll[1]:.6f}/{ll[0]:.6f}' if ll else '#17/62.2415/25.748')
     at = pg.js("""(async () => {
       const m=polku.map, wait=(ms)=>new Promise(r=>setTimeout(r,ms)), t0=performance.now();
-      while(performance.now()-t0<30000&&!m.queryRenderedFeatures({layers:['property-plot']}).length)await wait(250);
+      while(performance.now()-t0<30000&&!(m.isSourceLoaded('ov-propertyLines')&&m.queryRenderedFeatures({layers:['property-plot']}).length))await wait(250);
       const {inspectLayers,pickFeature,hitBox,areaUnder}=await import(location.origin+'/js/inspect.js'), R=m.getCanvas().getBoundingClientRect();
-      for(let y=160;y<520;y+=23)for(let x=40;x<350;x+=29){const f=pickFeature(m.queryRenderedFeatures(hitBox({x,y},true),{layers:inspectLayers(m)}));if(f&&f.layer.id==='property-plot'&&!areaUnder(m,{x,y}))return [R.left+x,R.top+y];}
+      for(let y=200;y<560;y+=17)for(let x=40;x<350;x+=19){const f=pickFeature(m.queryRenderedFeatures(hitBox({x,y},true),{layers:inspectLayers(m)}));if(f&&f.layer.id==='property-plot'&&!areaUnder(m,{x,y}))return [R.left+x,R.top+y];}
       return null;
     })()""", timeout=40000)
     title = "new Promise(r=>setTimeout(()=>r(polku.planner.cards.current?.title||''),800))"
