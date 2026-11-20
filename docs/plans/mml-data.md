@@ -13,16 +13,19 @@ Outside Finland the map stays as it is, on OpenFreeMap's tiles and OSM.
 
 - **Researched, 2026-11-19.** Services, access, licence, coverage and CORS
   were checked, and a vector-tile archive was built from two real map sheets
-  (below). Nothing is built in the app.
+  (below).
 - **Decided, 2026-11-20: MML's own vector tiles first, with Polku's API
   key in the app** (on #1147 and #1148), kept out of plain sight in the
   source; a person's own key from Settings is used instead when they have
   one. Polku's own archive, decided earlier the same day, is kept for later
   in [#1155](https://github.com/TommiContursi/Polku/issues/1155).
-- **Waits on #1146 and #1154** for the bogs and reeds: in Finland, MML's
-  bogs and OSM's wetlands would otherwise be drawn twice
-  ([Drawing](#drawing)). Property boundaries, rock, cliffs and power lines
-  don't wait.
+- **Built, 2026-11-20:** property boundaries and their plots (#1157,
+  #1159), bogs (#1160), and rock, cliffs, reeds and power lines (#1168).
+  What was built is in [Drawing](#drawing) and [Parts](#parts); the
+  decisions made while building are in the "Decided" lists of
+  [#1147](https://github.com/TommiContursi/Polku/issues/1147) and
+  [#1148](https://github.com/TommiContursi/Polku/issues/1148). More of MML's
+  classes are filed as their own issues ([Parts](#parts)).
 
 ## What people get
 
@@ -146,7 +149,7 @@ Settings already takes a person's own key for MML's raster maps; tying the
 bogs to that would give most people no bogs at all.
 
 **Checked with a key, 2026-11-20** (background map `taustakartta`, v20 and
-v21; the key isn't in the repo):
+v21):
 
 - Zooms 0–14, so the map overzooms from 15 on, as with OpenFreeMap. Tile
   URL `…/vectortiles/taustakartta/wmts/1.0.0/taustakartta/default/v21/WGS84_Pseudo-Mercator/{z}/{y}/{x}.pbf`.
@@ -193,11 +196,15 @@ Not recommended.
   then asks the browser for a preflight on every tile, doubling the
   requests.
 - **When it fails.** MML refusing the key, or not answering, leaves the
-  OSM-based map under it, and the map's data status says MML's tiles
-  didn't load. A tile with nothing in it is a successful empty tile.
-- **Offline.** Offline areas don't save MML's tiles at first; offline, the
-  layers are missing and the map says so.
-- **Attribution.** "© Maanmittauslaitos" with the dataset, CC BY 4.0.
+  OSM-based map under it: OSM's wetlands and rock show, cliffs and power
+  lines are missing, and a message says so once, and again only after a
+  tile has loaded in between (#1160, #1168). Property boundaries show "No
+  data now" in the Layers panel, as other overlays do (#1157). A tile with
+  nothing in it is a successful empty tile.
+- **Offline.** Offline areas don't save MML's tiles; offline, the layers
+  are missing and the message says so.
+- **Attribution.** "© Maanmittauslaitos" with the dataset, CC BY 4.0. The
+  dataset's date is left out, since the tiles are live.
 - **Bases.** Terrain on the Trail, Plain and Night maps. The Maastokartta
   and MML bases already draw these classes, and the aerial maps show the
   ground itself; neither gets the terrain. Property boundaries on every
@@ -205,51 +212,55 @@ Not recommended.
 
 ## Drawing
 
-- **Order.** After the landcover fills (`lc-*`) and before hillshade,
-  water and roads, so routes, trails and labels stay on top.
-- **Bogs.** One pattern per class from zoom 11, after MML's own map
-  legend
-  ([the terrain map's legend, 2025](https://www.maanmittauslaitos.fi/sites/maanmittauslaitos.fi/files/attachments/2025/09/maastokartta_karttamerkkien_selite_2025.pdf)):
-  blue horizontal dashes, sparse for easier bogs and dense for hard ones,
-  with the forest's tint kept on wooded bogs. Paludified land and
-  overgrowing water get lighter variants. The patterns are drawn in
-  `js/icons.js`, as the wetland pattern in #1146 is.
-- **Double drawing.** OSM's wetlands (#1146) and MML's bogs cover the same
-  ground in Finland. Recommended: inside Finland's coverage MML's bogs are
-  drawn and OSM's wetland pattern isn't; outside, OSM's stays. Which one
-  wins is the user's call, and this part starts after #1146 is merged, as
-  it changes `lc-wetland-pattern`.
-- **Rock, boulders, cliffs** from zoom 13: a grey rock fill, dots for
-  boulders, a cliff line with ticks on its lower side. OpenFreeMap's tiles
-  also carry OSM cliffs (`mountain_peak`, `class=cliff`): in Finland one of
-  the two is drawn, not both.
-- **Reeds** as small symbols at their points from zoom 14, never filled
-  areas. **Power lines** as thin grey lines from zoom 13, pylons from 15.
-- **Property boundaries** from zoom 14 in a colour of their own (not black,
-  not a trail colour), property IDs from zoom 17, in the Layers panel under
-  Terrain, off by default.
-- **Hover and tap.** A tap on a bog says its class in words ("Open bog,
-  hard to cross (MML survey class)"); on a property, its ID.
-- Each part is checked at 390 × 844 and 1440 × 900, on Trail and Night, in
-  MTB and paddle, in 3D, and with high contrast.
+As built. Each part was checked at 390 × 844 and 1440 × 900, on the Trail,
+Plain and Night maps, in MTB and paddle; its PR lists what else it covered.
+
+- **Bogs** (#1160) from zoom 11, over OSM's wetland pattern and under OSM's
+  reedbeds, with one opaque image per class, so MML's class covers OSM's
+  wetland where both have one and OSM's stays elsewhere (decided on #1147:
+  not a filter by Finland's outline, which MapLibre can't do for polygons).
+  Open bogs keep OSM's blue dashes; wooded bogs have them on the forest's
+  green; hard-to-cross bogs have unbroken lines. Paludified land gets
+  sparse short dashes from zoom 13, under OSM's wetlands, and overgrowing
+  water the dashes on the water's blue. The patterns are `bog()` and
+  `wetland()` in `js/icons.js`.
+- **Rock** (#1168) from zoom 13, over OSM's rock in the same grey (decided
+  on #1147), boulder fields dotted; from zoom 14, small rocks, stones and
+  sparse boulders as marks. Rock fissures aren't drawn: none were in the
+  tiles seen.
+- **Cliffs** from zoom 13, a dark line with ticks on its lower side, which
+  in MML's data is the right of the line's direction. **Power lines** as
+  thin grey lines from zoom 13, pylons as small crosses from zoom 15.
+  Cliffs, power lines and the marks are drawn over the water, so a cliff on
+  a shore and a line across a lake show.
+- **Reeds** as one tuft each from zoom 14, over the water, not under OSM's
+  reedbeds as first planned (decided on #1147: MML's reed points lie in the
+  water).
+- **Property boundaries** (#1157) on every base, in orange (lighter on
+  Night and the aerial maps), from zoom 14, property IDs from zoom 16, in
+  the Layers panel under Terrain, off by default, with an **Opacity**
+  slider. A plot is tinted under the mouse pointer and when picked, which
+  opens a card with its property ID (#1159); **Plot under the pointer** is
+  its own switch, on at first. No transition.
+- **Tap and hover** on the terrain open no card yet: MML's terrain layers
+  aren't among the layers the map picks from (`INSPECTABLE` in
+  `js/inspect.js`), so a tap on a bog opens what's under it (#1175).
 
 ## Parts
 
-Each is its own PR with its smoke check, map-only screenshots, CHANGELOG,
-DESIGN.md and DEVELOPING.
-
-1. **Property boundaries** ([#1148](https://github.com/TommiContursi/Polku/issues/1148)): the key, the property source, failure
-   state and attribution, and the layer.
-2. **Rock, boulders, cliffs and power lines** ([#1147](https://github.com/TommiContursi/Polku/issues/1147)): the terrain source.
-3. **Bogs, overgrowing water and reeds** ([#1147](https://github.com/TommiContursi/Polku/issues/1147)), after #1146 and #1154,
-   with OSM's wetlands turned off inside Finland.
-4. Later: MML's tiles in offline areas; Polku's own archive
-   ([#1155](https://github.com/TommiContursi/Polku/issues/1155)).
-
-## Open questions for the user
-
-- Which source wins where MML's bogs and OSM's wetlands overlap.
-- Whether dwarf-shrub heath and open forest land are drawn.
+1. **Property boundaries** ([#1148](https://github.com/TommiContursi/Polku/issues/1148)): the key, the
+   property source, failure state, attribution and the layer (#1157); the
+   plot under the pointer and the picked plot (#1159). Done.
+2. **Bogs, paludified land and overgrowing water** ([#1147](https://github.com/TommiContursi/Polku/issues/1147)): the terrain
+   source, after #1146 and #1154 (#1160). Done.
+3. **Rock, boulders, stones, cliffs, reeds and power lines** ([#1147](https://github.com/TommiContursi/Polku/issues/1147)) (#1168).
+   Done.
+4. Later, each its own issue in Map style: heath, clear-cuts and open
+   ground (#1169), stones, shoals and rapids in the water (#1170), paths
+   and winter roads where OSM has none (#1171), fences, gates, ski lifts and
+   masts (#1172), fire places, springs and monuments (#1173), place names
+   (#1174), a tap on the terrain (#1175), MML's tiles in offline areas
+   (#1176), and Polku's own archive (#1155).
 
 ## Not checked
 
@@ -258,6 +269,4 @@ DESIGN.md and DEVELOPING.
 - For the archive (#1155): the whole-country build's size, time and disk,
   and the GeoPackage's tables and field names (the spike read the
   per-sheet shapefiles).
-- How OSM's wetlands are turned off inside Finland only. A fill layer
-  can't simply be filtered by a polygon, so this decides how "MML wins in
-  Finland" is built; it blocks the bogs part's design.
+- On a phone: none of the parts was tried by touch on a real phone.
