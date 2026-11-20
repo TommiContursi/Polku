@@ -10,6 +10,15 @@ What's new in [Polku](https://polku.si), from the latest updates back to the fir
 - While it's on, the map shows everyone's restrictions in any sport, so you can check where bikes may go while planning a walk. Red bars across a path mean no bikes, purple dots on both sides mean no entry, and purple dots on one side mean no walking. A way closed to everyone except people on foot now counts as no bikes.
 - Routes keep off these ways in their sports whether or not the marks are shown. The marks say what OpenStreetMap says, not the law.
 
+### Cliffs and scree from OpenStreetMap ([#1178](https://github.com/TommiContursi/Polku/issues/1178))
+
+- The Trail, Plain and Night maps draw OpenStreetMap's cliffs from zoom 13, everywhere, the same way as the National Land Survey's: a dark line with short ticks on the lower side. OpenStreetMap and the National Land Survey each have cliffs the other lacks, so more of them show, at Tykkikallio in Jyväskylä for example.
+- Scree is dotted like the National Land Survey's boulder fields from zoom 13, so it reads apart from smooth rock.
+
+### Lakes with marshes and overgrowing water ([#1177](https://github.com/TommiContursi/Polku/issues/1177))
+
+- In Finland, a lake's shallows that OpenStreetMap maps as marshes are now drawn as water, not as pale land in the lake. The National Land Survey's overgrowing water shows its whole shape, as blue dashes on the water's blue, paddling's too. Marshes on land are drawn as before.
+
 ### Rock, cliffs and power lines from the National Land Survey ([#1147](https://github.com/TommiContursi/Polku/issues/1147))
 
 - In Finland, the Trail, Plain and Night maps draw the National Land Survey's rock from zoom 13, in the same grey as OpenStreetMap's rock, and its boulder fields dotted. From zoom 14, rocks too small for an area, single stones and sparse boulders are small marks of their own.
