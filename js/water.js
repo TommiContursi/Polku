@@ -93,6 +93,9 @@ const mercY = (lat) => { const s = Math.sin((lat * Math.PI) / 180); return 0.5 -
 
 async function rasteriseNow(bounds) {
   const h = ensureHidden();
+  const lost = []; // what didn't load while this leg's water was drawn: a tile's zoom, or -1 for the TileJSON
+  const onLost = (e) => lost.push(e.tile ? e.tile.tileID.canonical.z : -1);
+  h.map.on('error', onLost);
   await h.ready;
   const [w, s, e, n] = bounds;
   const midLat = (s + n) / 2;
@@ -106,6 +109,17 @@ async function rasteriseNow(bounds) {
   h.map.resize();
   h.map.fitBounds([[w, s], [e, n]], { padding: 0, animate: false });
   await waitIdle(h.map);
+  h.map.off('error', onLost);
+  // Offline, a tile of the leg's own zoom that didn't load was drawn from Finland's coarse overview (lakes without islands)
+  // or as land, and the leg looked routed (#1195). It fails instead, and the map goes: its failed tiles would stay failed
+  // for a Retry online. (The coarser tiles asked for to stand in, and the first view's, don't count.)
+  const z = Math.min(h.map.getSource('ofm').maxzoom, Math.floor(h.map.getZoom()));
+  if (!navigator.onLine && lost.some((t) => t < 0 || t >= z)) {
+    h.map.remove();
+    h.el.remove();
+    hidden = null;
+    throw new Error('Routing over water needs a connection.');
+  }
   const src = h.map.getCanvas();
   const cw = src.width, ch = src.height;
   const c = document.createElement('canvas');
