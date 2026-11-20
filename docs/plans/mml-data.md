@@ -255,8 +255,9 @@ Plain and Night maps, in MTB and paddle; its PR lists what else it covered.
   drawn there (not under a lake, a town, a building or OSM's own rock or
   wetland), after the water and a property's plot
   and before a park; the lines and marks, and overgrowing water, come
-  before the water they're drawn over. MML's lake is the water's, where it
-  fills a marsh OSM's lake leaves a hole for. Nothing is outlined, as a tile's piece of a bog
+  before the water they're drawn over. MML's lake is the water's where OSM has
+  none (a marsh OSM's lake leaves a hole for, a pond in a bog), though the
+  card's name is OSM's area around it. Nothing is outlined, as a tile's piece of a bog
   would stop at the tile's edge: the card's pin marks the spot, a point its
   ring. Nothing new is drawn, so there's no basemap or layer to weigh.
 
