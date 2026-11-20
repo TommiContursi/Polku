@@ -16,6 +16,7 @@ EXTRA = '''
 <node id="6" lon="0.007" lat="-0.005"><tag k="natural" v="rock"/></node>
 <node id="7" lon="0.008" lat="-0.005"><tag k="tourism" v="camp_site"/><tag k="name" v="Camp"/></node>
 <node id="8" lon="0.009" lat="-0.005"><tag k="ford" v="no"/></node>
+<node id="12" lon="0.010" lat="-0.005"><tag k="waterway" v="rapids"/></node>
 '''
 WAYS = '''
 <way id="20"><nd ref="1"/><nd ref="2"/><tag k="barrier" v="fence"/></way>
@@ -24,6 +25,7 @@ WAYS = '''
 <way id="23"><nd ref="1"/><nd ref="2"/><tag k="tourism" v="wilderness_hut"/></way>
 <way id="24"><nd ref="1"/><nd ref="2"/><tag k="highway" v="track"/><tag k="snowplowing" v="no"/><tag k="access" v="private"/></way>
 <way id="25"><nd ref="1"/><nd ref="2"/><tag k="highway" v="track"/></way>
+<way id="28"><nd ref="1"/><nd ref="2"/><tag k="waterway" v="rapids"/></way>
 '''
 REL = '''<relation id="200"><member type="way" ref="23" role="outer"/>
 <tag k="tourism" v="camp_site"/><tag k="custom:tag" v="full tags"/></relation>'''
@@ -48,7 +50,7 @@ class ProductTests(unittest.TestCase):
         text = text.replace('  <relation id="100">', WAYS + '  <relation id="100">').replace('</osm>', REL + '</osm>')
         out, manifest = self.build(text)
         for name, zoom, ids in [('trails', 13, [4, 5, 10, 20, 24, 25]), ('winter', 12, [21, 24]),
-                                ('hazards', 11, [6, 22]), ('places', 12, [7, 23, 200])]:
+                                ('hazards', 11, [6, 12, 22, 28]), ('places', 12, [7, 23, 200])]:
             self.assertIn(name, manifest['datasets'])
             self.assertEqual(manifest['datasets'][name]['zoom'], zoom)
             els = self.tile(out, name, zoom)

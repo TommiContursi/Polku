@@ -7,6 +7,7 @@ The water router keeps clear of OpenStreetMap's rocks and shoals, but OSM has fe
 - **Plan, 2026-11-20.**
 - **Decided, 2026-11-20** (on #153's description): built now, at sea and on lakes alike, from MML's background-map tiles with Polku's key or the person's own: stones in the water at and above the surface, stone fields in the water and shoals join the water router's keep-clear zones.
 - **Decided, 2026-11-20:** the same keep-clear across borders. A route through Åland to Sweden, or across to Estonia, keeps clear of rocks and shoals the whole way: beyond MML's map from OSM's, with What Polku looked at saying which source covered which stretch ([Beyond Finland](#beyond-finland)).
+- **Decided, 2026-11-20: rapids, option A** ([section 3](#3-rapids-a-question)): a river route stays on the river through rapids, Check warns, and **Avoid it** carries round; MML's in Finland, OSM's elsewhere. A restored stream such as Tourujoki at Kangas in Jyväskylä is rapids no kayak can take, so the grade can't be guessed from the map.
 
 ## What MML's tiles have (checked 2026-11-20)
 
@@ -118,4 +119,5 @@ Nothing in the router or Check reads rapids today, so a river route goes through
 - **Measured off Kotka** with live tiles: legs between the islands go 1–5 % farther than on `main`, with **Near the shore** and without. A straight leg over a recorded stone at the surface passes 27 m from it, where `main` passes 0 m (smoke's `water_mml`).
 - **Beyond Finland,** as decided: OSM's rocks charted always dry get 15 m, the rest 25 m, and a route across a border is ✓ with both sources named.
 - **Grazes aren't items:** the first build gave a leg through Kotka's archipelago up to seven "Close to a marked rock or shoal" items of 2–6 m each, every one the edge of a zone. A rock's or shoal's event shorter than 6 m is no longer an item; on a coarse grid, a long leg's, one cell is more, so a real pass through a zone still is.
-- **Not done:** rapids (the question in section 3); MML's tiles in offline saves.
+- **Rapids,** as decided: MML's lines and OSM's `waterway=rapids` drawn 25 m either side into the grid at no cost, read whatever Rocks & shoals is set to; runs under 50 m apart are one item, under Warnings; **Avoid it** puts places to avoid 30 m round every 40 m along the rapid. Tested down Tourujoki at Kangas, whose two MML lines (230 m and a short one) give one item of about 440 m; Avoid it carries round. OSM's rapids join Polku's own OSM data at its next build.
+- **Not done:** MML's tiles in offline saves; weirs, dams and locks (#856).

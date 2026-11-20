@@ -60,7 +60,7 @@ Water routes support paddling and swimming on lakes, rivers and through the arch
 
 - Paddling routes support sea kayaks, canoes and SUPs and flag sections where carrying is needed.
 - Wave estimates use the length of open water upwind, with routing preferences for each craft. An exposed crossing can cost more than a sheltered detour, especially for a SUP.
-- Routes aim to cross shipping lanes directly rather than follow them, and keep clear of mapped danger marks, rocks and shoals, and in Finland of the stones, stone fields and shoals on the National Land Survey's map. In the lakes Syke surveyed, they keep off water its soundings found under half a metre deep where the way round is short, and Check says where a route still crosses it.
+- Routes aim to cross shipping lanes directly rather than follow them, and keep clear of mapped danger marks, rocks and shoals, and in Finland of the stones, stone fields and shoals on the National Land Survey's map. A route on a river goes through rapids, and Check warns where. In the lakes Syke surveyed, they keep off water its soundings found under half a metre deep where the way round is short, and Check says where a route still crosses it.
 - Nautical layers show buoys, lights, sectors, fairways, speed limits and charted depths.
 - Live ship positions come from Fintraffic's AIS feed. Select a vessel for its name, type, speed, course, destination and position age, where reported, or use **Follow on map**. Tracks record positions received while the map is open; a dashed ten-minute projection assumes the ship keeps its reported course and speed.
 
@@ -93,7 +93,7 @@ Polku brings together open data and free public services. Each source keeps its 
 | Search and detailed map features | [Photon](https://photon.komoot.io); hosted OSM extracts from [Geofabrik](https://download.geofabrik.de/) on ducksoft.fi; [Overpass API](https://overpass-api.de) fallback |
 | Fairways and navigation marks | Väylävirasto (CC BY 4.0) |
 | Lake depths for routing | Finnish Environment Institute (Syke), lake and river soundings and depth areas (CC BY 4.0), in files Polku makes from them |
-| Stones and shoals for routing (Finland) | Maanmittauslaitos's topographic database, from its open vector tiles (CC BY 4.0) |
+| Stones, shoals and rapids for routing (Finland) | Maanmittauslaitos's topographic database, from its open vector tiles (CC BY 4.0) |
 | Displayed water depths | Traficom: not for navigation; its licence excludes route planning |
 | Traffic and road conditions | Fintraffic [Digitraffic](https://www.digitraffic.fi/en/) and Digiroad (CC BY 4.0) |
 | Weather and radar | [Open-Meteo](https://open-meteo.com); [FMI open data](https://en.ilmatieteenlaitos.fi/open-data); [RainViewer](https://www.rainviewer.com/api.html) |
@@ -126,7 +126,7 @@ Polku's original application code is proprietary: © 2026 Tommi Contursi, all ri
 ## Limitations
 
 - **Estimates and mapped data have gaps.** Uphill grades, travel times and wave heights are estimates from terrain, tags and forecasts. They cannot confirm conditions on the ground.
-- **Water routing cannot assess every hazard.** It knows depths only where Syke surveyed a lake (none of the sea and few of the large lakes), at the survey's water level. The National Land Survey's map has stones at and above the surface in Finland, not those just under it; beyond Finland the router knows only OpenStreetMap's rocks and shoals, a tenth or less as many; and no map has every stone. It does not know currents, rapids, private shores or bird-protection areas. Use official charts and keep a lookout.
+- **Water routing cannot assess every hazard.** It knows depths only where Syke surveyed a lake (none of the sea and few of the large lakes), at the survey's water level. The National Land Survey's map has stones at and above the surface in Finland, not those just under it; beyond Finland the router knows only OpenStreetMap's rocks and shoals, a tenth or less as many; and no map has every stone. It knows rapids only where the National Land Survey or OpenStreetMap maps them, and not how hard they are. It does not know currents, private shores or bird-protection areas. Use official charts and keep a lookout.
 - **A path on the map is not necessarily an official route or permission to enter.** Respect everyman's rights, access restrictions and local rules. Ski tracks are not for walking or cycling.
 - **Offline covers the saved map, terrain and route.** Elsewhere in Finland there's only the coarse map, with no trails or terrain. Routing, search, weather and traffic still need a connection.
 - **The full trail network appears from zoom 14,** or from zoom 13 with **Trail details** on where Polku has its own trail data, as in Finland. Zoom in if trails seem to be missing.

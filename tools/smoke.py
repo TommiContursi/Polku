@@ -2258,7 +2258,7 @@ WATER_DEPTHS = """(async () => {
   let depths = [tile], missing = [];
   // MML's map covers the lake as well (#153): where Syke surveyed and where MML covers overlap in the router's grid
   const covered = ([w, s, e, n]) => { const t = [], [x0, y0] = G.lonLatToTile(w, n, 14).map(Math.floor), [x1, y1] = G.lonLatToTile(e, s, 14).map(Math.floor); for (let x = x0; x <= x1; x++) for (let y = y0; y <= y1; y++) t.push({ x, y, covered: true }); return t; };
-  D.seedWater((box, want) => ({ fairways: fc, hazards: fc, mml: want.mml ? covered(box) : null, depths: want.depths ? depths : null, wind: null, missing: want.depths ? missing : [], skipped: [] }));
+  D.seedWater((box, want) => ({ fairways: fc, hazards: fc, mml: want.rapids ? covered(box) : null, depths: want.depths ? depths : null, wind: null, missing: want.depths ? missing : [], skipped: [] }));
   // from and to straight through a row of the shoal's soundings; the shoal's end on one of them
   const from = [28.6095, 64.23944], to = [28.6185, 64.23944], shoal = [28.61389, 64.23989];
   const near = (c) => Math.min(...tile.shallow.map((p) => G.nearestOnLine(p, c).d));
@@ -2446,7 +2446,7 @@ WATER_MML = """(async () => {
     for (let k = 0; k < 80 && !(lost() && p.legs[0].status === 'ok'); k++) await wait(250);
     if (!lost()) errs.push(`MML failing: ${p.headsUp().not.map((x) => `${x.text} (${x.by})`).join(' / ') || 'nothing in Not checked'}`);
     else {
-      if (lost().text !== 'Stones and shoals from the National Land Survey didn’t load' || typeof lost().retry !== 'function') errs.push(`MML failing, Not checked: ${lost().text}, Retry ${typeof lost().retry}`);
+      if (lost().text !== 'Stones, shoals and rapids from the National Land Survey didn’t load' || typeof lost().retry !== 'function') errs.push(`MML failing, Not checked: ${lost().text}, Retry ${typeof lost().retry}`);
       if (!row() || row().state !== 'bad' || row().by !== 'the National Land Survey didn’t answer') errs.push(`MML failing, What Polku looked at: ${says()}`);
       // Retry, MML answering only after the leg stopped waiting for it: routed without, then again with it
       mode = 'late';
@@ -2469,7 +2469,6 @@ WATER_MML = """(async () => {
       const da = G.nearestOnLine(stone, a.coords).d, db = G.nearestOnLine(stone, b.coords).d;
       if (db > 6) errs.push(`(the test) ignoring rocks, the leg passes ${Math.round(db)} m from the stone ${what}, not over it`);
       if (da < keep) errs.push(`passes ${Math.round(da)} m from a stone ${what} (keeps ${keep} m or more)`);
-      if (b.water.mml || (b.water.checked || {}).mml) errs.push(`Rocks & shoals: Ignore still reads MML: ${JSON.stringify(b.water.mml)}`);
       // a graze of a zone's edge, under 6 m, isn't an item of Check
       const graze = a.water.events.find((e) => e.kind === 'hazard' && e.len < 6);
       if (graze) errs.push(`over the stone ${what}: an item for a graze of ${graze.len.toFixed(1)} m at ${Math.round(graze.at)} m`);
@@ -2505,7 +2504,7 @@ WATER_MML = """(async () => {
     const leg = saved && saved.routed && saved.routed[0];
     if (!leg || !leg.water || !leg.water.mml) errs.push(`(the test) no saved water leg with MML's: ${JSON.stringify(leg && leg.water && leg.water.checked)}`);
     else {
-      delete leg.water.mml; delete leg.water.checked.mml;
+      delete leg.water.mml; delete leg.water.checked.rapids;
       localStorage.setItem('polku:route', JSON.stringify(saved));
       p.loadSaved();
       for (let k = 0; k < 60 && !(p.legs[0] && p.legs[0].result && p.legs[0].result.water && p.legs[0].result.water.mml && p.analysis && p.analysis.waterWarn); k++) await wait(250);
@@ -2529,6 +2528,89 @@ def water_mml(chrome):
     fails += [f'console: {e[:160]}' for e in pg.errors()]
     pg.close()
     print(f"{'ok  ' if not fails else 'FAIL'} MML's stones on the water" + ''.join(f'\n     - {f}' for f in fails), flush=True)
+    return not fails
+
+
+# Rapids (#153): MML's on Tourujoki at Kangas in Jyväskylä, a restored stream no kayak can take, from a recorded tile
+# (tools/fixtures/mml-taustakartta-14-9364-4545.pbf), never live MML: its other tiles answer empty, and every other source
+# nothing. A leg down the river stays on it and Check warns of the rapids under Warnings, once; What Polku looked at says
+# where it had them from; Avoid it carries round them; Rocks & shoals: Ignore still warns; and OSM's rapids, beyond MML's
+# map, are rapids, not rocks to keep clear of.
+WATER_RAPIDS = """(async () => {
+  const wait = (ms) => new Promise((r) => setTimeout(r, ms)), errs = [];
+  /*forget*/
+  await forget();
+  const tile = await (await fetch(location.origin + '/tools/fixtures/mml-taustakartta-14-9364-4545.pbf')).arrayBuffer();
+  const D = await import(location.origin + '/js/waterdata.js');
+  const W = await import(location.origin + '/js/water.js');
+  const { OVERPASS, OSM_DATA_MANIFEST, OPEN_METEO, MML_TERRAIN_TILES } = await import(location.origin + '/js/config.js');
+  const MML = MML_TERRAIN_TILES.split('{z}')[0], realFetch = window.fetch;
+  window.fetch = (url, init = {}) => {
+    const u = String(url);
+    if (u.startsWith(MML)) return Promise.resolve(new Response(u.includes('/14/4545/9364.pbf') ? tile : new ArrayBuffer(0)));
+    if (u.startsWith(new URL(OSM_DATA_MANIFEST).origin) || u.startsWith(OPEN_METEO)) return Promise.reject(new TypeError('Failed to fetch'));
+    // OSM: one rapid, in Stockholm
+    if (OVERPASS.some((m) => u.startsWith(m))) return Promise.resolve(new Response(JSON.stringify({ elements: String(init.body || '').includes('rapids') ? [{ type: 'way', id: 1, tags: { waterway: 'rapids' }, geometry: [{ lon: 18.045, lat: 59.32 }, { lon: 18.05, lat: 59.321 }] }] : [] })));
+    if (u.startsWith('https://avoinapi.vaylapilvi.fi/')) return Promise.resolve(new Response('{"type":"FeatureCollection","features":[]}'));
+    if (u.includes('/data/depths/')) return Promise.resolve(new Response('{"tiles":[]}'));
+    return realFetch(url, init);
+  };
+  const from = [25.7519622, 62.2575603], to = [25.7573529, 62.2487162]; // down Tourujoki, through Kangas
+  const p = polku.planner;
+  const rapids = () => (p.analysis ? p.headsUp().read.filter((w) => /^Rapids for/.test(w.text)) : []);
+  const row = () => (p.analysis ? p.lookedAt(p.analysis).find((r) => r.what === 'Rapids') : null);
+  const routed = () => p.legs.length === 1 && p.legs[0].status === 'ok' && p.legs[0].result && p.legs[0].result.water && p.analysis && p.analysis.waterWarn;
+  try {
+    polku.set({ activity: 'paddle' });
+    await wait(800);
+    p.setActive(true);
+    p.clear();
+    p.setMode('water');
+    p.addPoint(from);
+    p.addPoint(to);
+    for (let k = 0; k < 120 && !(routed() && rapids().length); k++) await wait(250);
+    const r = rapids();
+    if (r.length !== 1) errs.push(`down Tourujoki: ${r.length} rapids in Warnings (${p.headsUp().read.map((w) => w.text).join(' / ') || 'none'}), not one`);
+    else {
+      if (!(r[0].len > 250 && r[0].len < 600) || r[0].src.by !== 'the National Land Survey and OpenStreetMap' || !/isn’t known/.test(r[0].note)) errs.push(`the rapids' item: ${r[0].text} · ${Math.round(r[0].len)} m · ${r[0].note} · ${r[0].src.by}`);
+      if (!row() || row().state !== 'ok' || !/National Land Survey/.test(row().by)) errs.push(`What Polku looked at, rapids: ${row() ? `${row().state} · ${row().by}` : 'no row'}`);
+      // Avoid it: places to avoid all along them, and the leg carries round
+      const act = p.itemActions({ g: 'read', w: r[0] }).main;
+      if (!act || act.label !== 'Avoid it') errs.push(`the rapids' action: ${act ? act.label : 'none'}`);
+      else {
+        const carried = p.legs[0].result.portage.length, n0 = p.nogos.length;
+        act.fn();
+        if (p.nogos.length - n0 < 5) errs.push(`Avoid it put ${p.nogos.length - n0} places to avoid along the rapids`);
+        for (let k = 0; k < 120 && !(routed() && !rapids().length); k++) await wait(250);
+        if (rapids().length || !(p.legs[0].result.portage.length > carried)) errs.push(`after Avoid it: ${rapids().map((w) => w.text).join(' / ') || 'no rapids'}, ${p.legs[0].result.portage.length} carries (${carried} before)`);
+      }
+    }
+    // Rocks & shoals: Ignore still says where the rapids are
+    const ig = await W.routeWater(from, to, { at: 0, wind: 'ignore', hazards: 'ignore' });
+    if (!ig.water.events.some((e) => e.kind === 'rapids')) errs.push(`Rocks & shoals: Ignore, no rapids on the leg: ${ig.water.events.map((e) => e.kind).join(', ') || 'no events'}`);
+    // OSM's rapids are rapids, not a rock's zone
+    const osm = await D.waterInputs([18.04, 59.31, 18.06, 59.33], { hazards: true, rapids: true }, 0);
+    const rf = (osm.rapids && osm.rapids.features) || [];
+    if (rf.length !== 1 || osm.hazards.features.some((f) => f.properties.kind === 'rapids')) errs.push(`OSM's rapids in Stockholm: ${rf.length} rapids, hazards ${osm.hazards.features.map((f) => f.properties.kind).join(', ') || 'none'} (missing ${osm.missing.join(', ')})`);
+  } finally {
+    window.fetch = realFetch;
+    p.clear();
+    while (p.nogos.length) p.removeNogo(0);
+    polku.set({ activity: 'mtb' });
+    await forget();
+  }
+  return errs;
+})()"""
+
+
+def water_rapids(chrome):
+    pg = chrome.page(1440, 900, False)
+    pg.open_app({'activity': 'mtb'}, {'polku:plannerDock': '"left"'}, '#15/62.253/25.755')
+    pg.js("import(location.origin + '/js/trails.js').then((T) => { T.holdFetches(); return true; })")
+    fails = pg.js(WATER_RAPIDS.replace('/*forget*/', WATER_FORGET), timeout=150000)
+    fails += [f'console: {e[:160]}' for e in pg.errors()]
+    pg.close()
+    print(f"{'ok  ' if not fails else 'FAIL'} rapids on the water: a warning, and Avoid it carries round" + ''.join(f'\n     - {f}' for f in fails), flush=True)
     return not fails
 
 # what a water check forgets before and after (WATER_LATE, WATER_BACK)
@@ -2764,7 +2846,7 @@ def water_back(chrome):
 # A leg too long to ask for the rocks and the fairways (#490), not seeded: the services mocked (the hosted OSM data and
 # Overpass fail, Väylävirasto answers with nothing), the wind ignored. A 30 km leg, Turku to Nauvo, is routed without
 # OSM's rocks, and Check says it wasn't checked, the leg being too long, not that OpenStreetMap didn't answer; What
-# Polku looked at too. A box too big for Väylävirasto too skips both, and a small one neither.
+# Polku looked at too. A box too big for Väylävirasto too skips both, and MML's stones (#153), and a small one none.
 WATER_LONG = """(async () => {
   const wait = (ms) => new Promise((r) => setTimeout(r, ms)), errs = [];
   const D = await import(location.origin + '/js/waterdata.js');
@@ -2784,7 +2866,7 @@ WATER_LONG = """(async () => {
   try {
     const say = (r) => `missing ${r.missing.join(', ') || 'nothing'}, skipped ${(r.skipped || []).join(', ') || 'nothing'}`;
     const big = await D.waterInputs([21.0, 59.9, 23.6, 61.0], want, 0);
-    if (big.missing.length || String((big.skipped || []).sort()) !== 'OpenStreetMap,Väylävirasto') errs.push(`a 140 × 120 km box: ${say(big)}, not both skipped`);
+    if (big.missing.length || String((big.skipped || []).sort()) !== 'OpenStreetMap,Väylävirasto,the National Land Survey') errs.push(`a 140 × 120 km box: ${say(big)}, not all three skipped`);
     const small = await D.waterInputs([24.97, 60.15, 24.98, 60.155], want, 0);
     if ((small.skipped || []).length) errs.push(`a 1 km box: ${say(small)}`);
     polku.set({ activity: 'paddle' });
@@ -25145,7 +25227,7 @@ GROUPS = [
     ('header', [header_fit, head_names], 'the planner header fitting its sheet; the route\'s name following the road names that come late with the map\'s tiles (the review of #1050)'),
     ('lipas', [lipas], 'LIPAS search and riding a LIPAS route (recorded answers), a place, coordinates or a trail from search gets its pin and card (#871, #875)'),
     ('marked', [marked], 'marked routes picked on the map (#308): a hand and the whole route lit under a mouse before a click, a tap 10 px beside the line lit while its card is open and one 30 px away not (recorded LIPAS, cut in two parts)'),
-    ('water', [water, water_depths, water_mml, water_late, water_back, water_long, water_hidden, paddle_map, best_time_water], 'the paddling router\'s costs (recorded fairways, a fixed wind), lake depths from a recorded tile (#1184), MML\'s stones from a recorded tile (#153), OSM\'s rocks coming late, failing and coming back, Undo, a leg too long to ask for them (mocked), the hidden map\'s last tile failing (#129, #80, #490, #400), and Paddle\'s map: a leg over water stands out from the sea, no hint about trails (#611, #613)'),
+    ('water', [water, water_depths, water_mml, water_rapids, water_late, water_back, water_long, water_hidden, paddle_map, best_time_water], 'the paddling router\'s costs (recorded fairways, a fixed wind), lake depths from a recorded tile (#1184), MML\'s stones and rapids from recorded tiles (#153), OSM\'s rocks coming late, failing and coming back, Undo, a leg too long to ask for them (mocked), the hidden map\'s last tile failing (#129, #80, #490, #400), and Paddle\'s map: a leg over water stands out from the sea, no hint about trails (#611, #613)'),
     ('multi', [multi], 'multisport: a sport per leg, changeovers, share links, Reorder (straight legs)'),
     ('editing', [editing], 'midpoint handle and line drags: one via point, Undo/Redo, mouse and touch in four sports'),
     ('routemenu', [route_menu, quick_taps], 'clicks and taps on the route (straight legs), LIPAS over trails, and quick taps on a busy page (#293)'),
