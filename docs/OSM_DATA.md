@@ -203,9 +203,13 @@ extent gates, and full-country browser checks all run before publication.
 Each country job has up to 150 minutes, including a 40-minute download step.
 Each PBF transfer gets up to 30 minutes and starts retries only in its first
 five minutes. Every Geofabrik download after the snapshot step also retries
-any error, a refused connection or a 404 included, up to three times 30
-seconds apart, since Geofabrik sometimes refuses a runner (#1131). The checksum
-and polygon come from beside the file actually served: Geofabrik is moving
+any error, a 404 included, up to three times 30 seconds apart. No retry gets
+past a refused connection: Geofabrik refuses whole /24 networks, two of
+GitHub's runner networks among them, and a job keeps its runner's address
+(#1043). So when every failed job of a build on `main` was refused,
+**Polku OSM alerts** re-runs the failed jobs on new runners, up to 15 attempts
+in all, unless a newer build exists. A re-run that succeeds goes on to publish.
+The checksum and polygon come from beside the file actually served: Geofabrik is moving
 countries into folders of their own, and its old addresses keep a different
 checksum (#1151). In the November 9 build, repeated 15-minute timeouts consumed
 nearly 58 minutes downloading Norway before its transformation timed out.
