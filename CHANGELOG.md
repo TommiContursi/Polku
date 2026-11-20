@@ -4,6 +4,10 @@ What's new in [Polku](https://polku.si), from the latest updates back to the fir
 
 ## 2026-11-20
 
+### Property boundaries ([#1148](https://github.com/TommiContursi/Polku/issues/1148))
+
+- **Property boundaries**, a new switch under **Layers → More → Terrain** (or a tile of your own), draws the National Land Survey's property boundaries in Finland in orange from zoom 14, and each property's ID from zoom 16, so you can see whose land you're on. **Opacity** under its switch makes them fainter. It's off at first in every sport. The boundaries come from the National Land Survey with Polku's API key, or with your own if you have added one in Settings. They aren't saved in offline areas, and the tile says **No data now** when they don't load.
+
 ### Reedbeds on the map ([#1144](https://github.com/TommiContursi/Polku/issues/1144))
 
 - Reedbeds that OpenStreetMap marks as such are drawn with small reed tufts from zoom 12 on the Trail, Plain and Night maps, so a shore's reeds no longer look like a bog. Where Polku's own map data can't be read, or doesn't cover the place, they're drawn as ordinary wetland.

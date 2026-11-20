@@ -1191,6 +1191,7 @@ const OVERLAY_LABEL = {
   lipasRoutes: 'Official routes (LIPAS)',
   lipasPoints: 'Lean-tos, huts, campfire & landing sites (LIPAS)',
   pois: 'OSM outdoor places',
+  propertyLines: 'Property boundaries',
   lit: 'Lit ways',
 };
 const OVERLAY_NOTE = {
@@ -1199,6 +1200,7 @@ const OVERLAY_NOTE = {
   lipasRoutes: 'LIPAS, Finland',
   lipasPoints: 'LIPAS, Finland',
   pois: 'OpenStreetMap',
+  propertyLines: 'National Land Survey · Finland · zoom 14+, property IDs at 16+',
 };
 const overlayLabel = (id) => OVERLAY_LABEL[id] || (RASTER_OVERLAYS[id] && RASTER_OVERLAYS[id].label) || (SAFETY_OVERLAYS[id] && SAFETY_OVERLAYS[id].label) || id;
 
@@ -1309,7 +1311,7 @@ const toggleInfo = (label, on, fn, note, name = label) => {
 };
 const seg = (options, value, fn) => h('div', { class: 'seg small full' },
   ...options.map(([v, label, disabled]) => h('button', { type: 'button', 'aria-pressed': String(value === v), disabled: !!disabled, onclick: () => fn(v) }, label)));
-// A raster layer's opacity, right under its switch while it's on; remembered per layer
+// A layer's opacity, right under its switch while it's on; remembered per layer
 // (overlays by id, the weather fields as wx:rain and wx:temp; style.js reads the same keys).
 const WX_OPACITY = {
   'wx:rain': { label: 'Rain', opacity: 0.55, layers: ['wx-rain', 'wx-radar-rv', 'wx-radar-fi'], on: () => state.weather.rain },
@@ -1319,6 +1321,7 @@ const WX_OPACITY = {
 const opacitySpec = (id) => (RASTER_OVERLAYS[id]
   ? { label: RASTER_OVERLAYS[id].label, opacity: RASTER_OVERLAYS[id].opacity, layers: [`ov-${id}`], on: () => !!state.overlays[id] }
   : id === 'lit' ? { label: 'Lit ways', opacity: 1, on: () => !!state.overlays.lit } // (no layers: style.js scales its look)
+  : id === 'propertyLines' ? { label: 'Property boundaries', opacity: 0.9, on: () => !!state.overlays.propertyLines } // (lines and names: style.js)
   : WX_OPACITY[id]);
 const opacityOf = (id) => (state.overlayOpacity[id] != null ? state.overlayOpacity[id] : opacitySpec(id).opacity);
 const opacityRow = (id) => {
@@ -1479,7 +1482,7 @@ const DEPTHS = ['depthAreas', 'depthContours', 'soundings'];
 const onNowIds = () => [
   ...(state.trailColors !== 'off' ? ['trailColors'] : []),
   ...(state.trailDetails ? ['trailDetails'] : []),
-  ...[...LAYER_GROUPS.flatMap((g) => g.ids), 'maastoOverlay', 'mmlMaastoOverlay'].filter((id) => state.overlays[id]),
+  ...[...LAYER_GROUPS.flatMap((g) => g.ids), 'maastoOverlay', 'mmlMaastoOverlay', 'propertyLines'].filter((id) => state.overlays[id]),
   ...['wind', 'temp', 'rain', 'cloud', 'thunder', 'snow', 'towns'].filter((k) => state.weather[k]).map((k) => `wx:${k}`),
 ];
 
@@ -1503,7 +1506,7 @@ function renderLayersPanel() {
     h('button', { type: 'button', class: 'link', onclick: (e) => { openPanel(null); openActs(!e.detail); $('#activity-bar .act-menu .act[aria-selected="true"]')?.focus(); } }, 'Change')));
 
   // what is on right now, at a glance
-  const on = [...LAYER_GROUPS.flatMap((g) => g.ids), 'maastoOverlay', 'mmlMaastoOverlay'].filter((id) => state.overlays[id]);
+  const on = [...LAYER_GROUPS.flatMap((g) => g.ids), 'maastoOverlay', 'mmlMaastoOverlay', 'propertyLines'].filter((id) => state.overlays[id]);
   const wx = [['wind', 'Wind'], ['temp', 'Temperature'], ['rain', 'Rain'], ['cloud', 'Clouds'], ['thunder', 'Thunder'], ['snow', 'Snow depth'], ['towns', 'Weather at places']].filter(([k]) => state.weather[k]);
   const trailOn = state.trailColors !== 'off';
   const custom = Object.keys(state.overlaysByActivity[state.activity] || {}).length > 0 || Object.keys(state.trailsByActivity[state.activity] || {}).length > 0;
@@ -1541,11 +1544,12 @@ function renderLayersPanel() {
     ...terrain3dControls()));
 
   // terrain shading right after the base maps and 3D, open unless you close it
-  p.append(layerGroup('terrain', 'Terrain', state.overlays.maastoOverlay ? 1 : 0, true,
+  p.append(layerGroup('terrain', 'Terrain', ['maastoOverlay', 'propertyLines'].filter((id) => state.overlays[id]).length, true,
     hillshadeControls(),
     toggleInfo('Contour lines', state.contours, (v) => { state.contours = v; applyStyle(); }, '5 m, 2.5 m when zoomed in'),
     withOpacity('maastoOverlay', toggleInfo(RASTER_OVERLAYS.maastoOverlay.label, !!state.overlays.maastoOverlay, rerender((v) => setOverlay('maastoOverlay', v)), RASTER_OVERLAYS.maastoOverlay.attribution.replace('© ', ''))),
-    state.mmlKey ? withOpacity('mmlMaastoOverlay', toggle(RASTER_OVERLAYS.mmlMaastoOverlay.label, !!state.overlays.mmlMaastoOverlay, rerender((v) => setOverlay('mmlMaastoOverlay', v)))) : null));
+    state.mmlKey ? withOpacity('mmlMaastoOverlay', toggle(RASTER_OVERLAYS.mmlMaastoOverlay.label, !!state.overlays.mmlMaastoOverlay, rerender((v) => setOverlay('mmlMaastoOverlay', v)))) : null,
+    overlayToggle('propertyLines')));
 
   // trails & difficulty (and the map key for the base map's lines): in every sport
   p.append(layerGroup('trails', 'Trails & difficulty', (state.trailColors !== 'off' ? 1 : 0) + (state.trailDetails ? 1 : 0) + (state.labelsDown ? 1 : 0) + (state.labelsUp ? 1 : 0), ...trailControls()));
@@ -1656,7 +1660,7 @@ function tileZoom(id) {
 }
 function tileFailing(id) {
   // (the depths that show at this zoom: below its own zoom a layer asks for no tiles, so never fails, #399)
-  const raster = id === 'depths' ? DEPTHS.filter((d) => state.overlays[d] && map.getZoom() >= (RASTER_OVERLAYS[d].minzoom || 0)) : RASTER_OVERLAYS[id] ? [id] : [];
+  const raster = id === 'depths' ? DEPTHS.filter((d) => state.overlays[d] && map.getZoom() >= (RASTER_OVERLAYS[d].minzoom || 0)) : RASTER_OVERLAYS[id] || id === 'propertyLines' ? [id] : [];
   if (raster.length && raster.every((d) => rasterDown(`ov-${d}`))) return true;
   if (id === 'trailDetails') return Date.now() - detailsBusyAt < 120e3;
   if (id === 'lit') return litWays.progress.failed > 0; // Overpass deliberately has no global backoff status
@@ -2091,7 +2095,7 @@ function renderSettingsPanel() {
       planner.retryFailed();
     } }, 'Save')), routerNote,
     h('div', { class: 'tg-text' }, 'MML API key (optional)'),
-    h('p', { class: 'note' }, 'Maastokartta works without a key via Kapsi. A key adds the official MML WMTS service as an extra base and overlay. Keys are free from ',
+    h('p', { class: 'note' }, 'Maastokartta works without a key via Kapsi. A key adds the official MML WMTS service as an extra base and overlay, and is used in place of Polku’s own key for property boundaries. Keys are free from ',
       h('a', { href: 'https://www.maanmittauslaitos.fi/rajapinnat/api-avaimen-ohje', target: '_blank', rel: 'noopener' }, 'maanmittauslaitos.fi'),
       ' and is stored only in this browser.'),
     h('div', { class: 'key-row' }, keyInput, h('button', { type: 'button', class: 'btn', onclick: () => {
