@@ -31,7 +31,7 @@ The hidden map draws a leg's water at 3 m a pixel or coarser, which is MapLibre'
 - **The network:** through `request()`, as a source of its own (`mml`, "National Land Survey" in Settings → Data sources), at the address and key the map's `mml` source uses, so the browser's cache has the tiles the map has shown at zoom 14. As the depth files: no back-off and a 10 s deadline, so one that fails pauses nothing else and one that hangs is asked again. A tile that failed is asked again in two minutes, and at once on Retry.
 - **Reading a tile:** the vector-tile reader in `js/shadows.js`, made to read any layer, so there's one reader. Only the classes above are kept.
 - **Not complete where it isn't:** a tile with no features at all counts as outside MML's map. The router measures how much of the leg's water lies in tiles MML covered, as it does for Syke's surveyed water, and What Polku looked at says so.
-- **OSM's rocks stay everywhere,** beside MML's: no code to switch between them, and neither set has all the other's. Where MML doesn't answer, OSM's are still there.
+- **OSM's rocks stay everywhere,** beside MML's: no code to switch between them, and neither set has all the other's. They're the fallback beyond Finland that AGENTS.md asks for (#1201), and where MML doesn't answer they're still there.
 - **Offline:** offline saves keep OpenFreeMap's tiles, not MML's (`sw.js`), so offline a leg is routed with OSM's rocks and Not checked says MML's didn't load, unless the browser still has the tiles from that day. MML's tiles in offline saves would be a part of their own.
 - **A leg saved before** (no `checked.stones`) is routed again when the route loads online, as #1187 does for the depths.
 - **Tests** answer MML's address from recorded tiles in `tools/fixtures/` (the ones #1186 records off Kotka and on Kitkajoki), never live MML.
@@ -64,7 +64,7 @@ The second row is the same 25 m for the stones you see as for the awash ones. Ko
 Nothing in the router or Check reads rapids today, so a river route goes through them without a word.
 
 - **MML:** rapids (38200) as lines along the river, in zoom 14's tiles the router reads anyway: 8 lines over Ruunaa, 37 m to 987 m long. No grade.
-- **OSM:** 696 rapids in Finland (549 points, 143 lines), none with a whitewater grade. OpenFreeMap's tiles have none, so they'd come from Polku's hosted OSM data and Overpass, which means changing the OSM build's hazards product.
+- **OSM:** 696 rapids in Finland (549 points, 143 lines), none with a whitewater grade. OpenFreeMap's tiles have none, so they'd come with OSM's rocks: from Polku's hosted OSM data (Finland, Sweden, Norway and Estonia) and from Overpass elsewhere. That adds `waterway=rapids` to the OSM build's hazards product and to the rocks' Overpass query; the hosted data has them once the build next publishes.
 
 | | What the route does | For | Against |
 |---|---|---|---|
@@ -72,7 +72,7 @@ Nothing in the router or Check reads rapids today, so a river route goes through
 | B. Carry round every rapid | Rapids cost as much as land, so the router carries round each, and Check says so | Never through rapids unwarned | Wrong for small rapids most paddlers run and for whitewater; the data can't tell a riffle from a fall |
 | C. A route style: Run or Carry round | A new **Rapids** control | One choice for the whole route | A new setting; still blind to grade |
 
-**Recommended: A, from MML's tiles in Finland.** OSM's rapids, for the rest of the world, would be a later part with the OSM build. What Polku looked at gains a row "Rapids", from MML's map where it covers the route's water, and "not known outside Finland" elsewhere. Avoid's circle is at most 150 m round today, too small for a rapid longer than about 270 m, so a rapid's item carries circles along its length, as a group of fallen trees does.
+**Recommended: A, from MML's tiles in Finland and OSM's rapids everywhere,** both at once as with the rocks: AGENTS.md asks for a fallback beyond Finland (#1201). What Polku looked at gains a row "Rapids": "the National Land Survey and OpenStreetMap" where MML's map covers the route's water, "OpenStreetMap" beyond it. Avoid's circle is at most 150 m round today, too small for a rapid longer than about 270 m, so a rapid's item carries circles along its length, as a group of fallen trees does.
 
 ## 4. How Polku says it
 

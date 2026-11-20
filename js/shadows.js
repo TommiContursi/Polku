@@ -10,6 +10,7 @@ import { sunPosition } from './sun.js';
 import { DEM_TILESIZE as T } from './config.js';
 import { request } from './net.js';
 import { ofmTemplate } from './offline.js';
+import { decodeTile } from './vectortile.js';
 
 const S = T / 2; // a tile's own pixels: one DEM tile a zoom out covers 2 × 2 tiles, so 9 m a pixel at zoom 13 in southern Finland
 const CANOPY = 'https://data.source.coop/tge-labs/meta-chm-v2/chm/';
@@ -95,76 +96,8 @@ const canopy = (z, x, y) => {
 };
 
 // ---- the buildings: OpenFreeMap's footprints ---------------------------------------------------------------
-const text = new TextDecoder();
-
-/** The `building` layer of a vector tile (protobuf, read by hand): each footprint's rings in tile units, and height. */
-export function decodeBuildings(buf) {
-  let p = 0;
-  const varint = () => {
-    let v = 0, s = 1, b;
-    do { b = buf[p++]; v += (b & 0x7f) * s; s *= 128; } while (b & 0x80);
-    return v;
-  };
-  const zigzag = () => { const n = varint(); return n % 2 ? -(n + 1) / 2 : n / 2; };
-  const end = () => { const n = varint(); return p + n; };
-  const skip = (w) => { if (w === 0) varint(); else { const n = w === 1 ? 8 : w === 5 ? 4 : varint(); p += n; } };
-  // each field of a message up to `stop`: `on(field, wire)` reads the ones it wants and says so
-  const each = (stop, on) => { while (p < stop) { const k = varint(); if (!on(k >> 3, k & 7)) skip(k & 7); } };
-  const str = () => { const e = end(), s = text.decode(buf.subarray(p, e)); p = e; return s; };
-  const out = [];
-  each(buf.length, (f) => {
-    if (f !== 3) return false;
-    const layer = end(), keys = [], vals = [], feats = [];
-    let name = '', extent = 4096;
-    each(layer, (f) => {
-      if (f === 1) name = str();
-      else if (f === 2) { const e = end(); feats.push([p, e]); p = e; }
-      else if (f === 3) keys.push(str());
-      else if (f === 4) {
-        let v = null;
-        each(end(), (f) => {
-          if (f === 2) { v = new DataView(buf.buffer, buf.byteOffset + p, 4).getFloat32(0, true); p += 4; }
-          else if (f === 3) { v = new DataView(buf.buffer, buf.byteOffset + p, 8).getFloat64(0, true); p += 8; }
-          else if (f === 4 || f === 5) v = varint();
-          else if (f === 6) v = zigzag();
-          else return false;
-          return true;
-        });
-        vals.push(v);
-      } else if (f === 5) extent = varint();
-      else return false;
-      return true;
-    });
-    if (name === 'building') {
-      for (const [s, e] of feats) {
-        p = s;
-        let h = 0, rings = null;
-        each(e, (f) => {
-          if (f === 2) { const t = end(); while (p < t) { const k = keys[varint()], v = vals[varint()]; if (k === 'render_height') h = v; } }
-          else if (f === 4) {
-            // MoveTo starts a ring, LineTo goes on, ClosePath has no point; each point is a step from the last
-            const t = end();
-            let x = 0, y = 0, ring;
-            rings = [];
-            while (p < t) {
-              const c = varint(), cmd = c & 7;
-              for (let i = 0; i < (cmd === 7 ? 0 : c >> 3); i++) {
-                x += zigzag(); y += zigzag();
-                if (cmd === 1) rings.push((ring = []));
-                ring.push((x * T) / extent, (y * T) / extent);
-              }
-            }
-          } else return false;
-          return true;
-        });
-        if (rings) out.push({ h, rings });
-      }
-    }
-    p = layer;
-    return true;
-  });
-  return out;
-}
+/** The `building` layer of a vector tile: each footprint's rings in tile units, and height. */
+export const decodeBuildings = (buf) => (decodeTile(buf, ['building'], T).layers.building || []).map(({ props, rings }) => ({ h: props.render_height || 0, rings }));
 
 // The buildings' heights in the grid of 3 × 3 tiles around (x, y), from the zoom 14 tiles it covers.
 async function buildings(z, x, y) {
