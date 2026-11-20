@@ -212,23 +212,14 @@ export function buildStyle(s, ctx) {
       filter: ['in', cls, ['literal', [35401, 35402, 35411, 35412, 35421, 35422, 38300]]],
       paint: { 'fill-pattern': ['match', cls, [35401, 35411], dashes(P.wetland), [35402, 35412], dashes(P.bogWood), 35421, hard(P.wetland), 35422, hard(P.bogWood), dashes(P.water)] },
     });
-    // MML's points lie flat on the ground, in 3D too, and never hide a label or a place (only zoom 14's tiles have them)
-    const flat = { 'icon-allow-overlap': true, 'icon-ignore-placement': true, 'icon-pitch-alignment': 'map', 'icon-rotation-alignment': 'map' };
-    // MML's reeds (#1147), a point each: one tuft, under OSM's reedbeds, so where OSM maps a reedbed's area, the area shows
-    add({ id: 'mml-reed', type: 'symbol', source: 'mml', 'source-layer': 'maasto_piste', minzoom: 14, filter: ['==', cls, 38100], layout: { 'icon-image': `reed-${hex(P.reed)}`, 'icon-size': zi(14, 0.8, 17, 1.2), ...flat } });
     // reedbeds over it, from Polku's own OSM data (js/osm-data.js): reed stems on the same ground, covering the dashes
     add({ id: 'lc-reedbed', type: 'fill', source: 'reedbeds', minzoom: 12, paint: { 'fill-pattern': `reedbed-${P.wetland.slice(1)}-${P.reed.slice(1)}` } });
     lc('lc-sand', ['sand'], P.sand);
     lc('lc-rock', ['rock'], P.rock);
     // MML's rock in Finland (#1147), from zoom 13, over OSM's in the same grey, so the two read as one: OSM's stays where
-    // MML has none, abroad and wherever MML's tiles don't come. Boulder fields are dotted; rocks too small for an area,
-    // stones and sparse boulders are points from zoom 14.
+    // MML has none, abroad and wherever MML's tiles don't come. Boulder fields are dotted. (Its points are over the water.)
     add({ id: 'mml-rock', type: 'fill', source: 'mml', 'source-layer': 'maasto_alue', minzoom: 13, filter: ['==', cls, 34100], paint: { 'fill-color': P.rock, 'fill-antialias': false } });
     add({ id: 'mml-boulders', type: 'fill', source: 'mml', 'source-layer': 'maasto_alue', minzoom: 13, filter: ['==', cls, 34700], paint: { 'fill-pattern': `boulders-${hex(P.rock)}-${hex(P.cliff)}` } });
-    add({
-      id: 'mml-rock-point', type: 'symbol', source: 'mml', 'source-layer': 'maasto_piste', minzoom: 14, filter: ['in', cls, ['literal', [34100, 34200, 34600]]],
-      layout: { 'icon-image': ['match', cls, 34100, `rock-spot-${hex(P.rock)}-${hex(P.cliff)}`, 34200, `rock-rocks-${hex(P.cliff)}`, `rock-stone-${hex(P.cliff)}`], 'icon-size': zi(14, 0.75, 17, 1.2), ...flat },
-    });
     lc('lc-ice', ['ice'], P.ice);
 
     const lu = (id, cls, color, minzoom = 8) =>
@@ -333,16 +324,26 @@ export function buildStyle(s, ctx) {
 
   // ---- Buildings ----------------------------------------------------------
   if (vectorFills) {
-    // MML's cliffs and power lines in Finland (#1147), over the water, so a shore's cliff and a line across a lake show.
+    // MML's cliffs, power lines and points in Finland (#1147), over the water, so a shore's cliff, a line across a lake
+    // and the reeds show.
     // A cliff is a line with ticks on its lower side: MML draws its cliffs with the lower side on the right (37 of 37 by
     // the elevations either side, 2026-11-20), and a positive line-offset is the right. The ticks are dashes of a wider
     // line beside it. MML has no cliffs in Finland's neighbours, and OSM's aren't drawn.
     const cls = ['get', 'kohdeluokka'], cliff = ['==', cls, 34400], tick = zi(13, 2, 16, 3.5, 18, 5), edge = zi(13, 0.8, 16, 1.3, 18, 1.8);
     add({ id: 'mml-cliff', type: 'line', source: 'mml', 'source-layer': 'maasto_viiva', minzoom: 13, filter: cliff, paint: { 'line-color': P.cliff, 'line-width': edge } });
     add({ id: 'mml-cliff-ticks', type: 'line', source: 'mml', 'source-layer': 'maasto_viiva', minzoom: 13, filter: cliff, paint: { 'line-color': P.cliff, 'line-width': tick, 'line-offset': zi(13, 1.4, 16, 2.4, 18, 3.4), 'line-dasharray': [0.4, 1.4] } });
-    // power lines as thin grey lines from zoom 13 (110 kV and up, and under 110 kV), their pylons from 15
+    // power lines as thin grey lines from zoom 13 (110 kV and up, and under 110 kV)
     add({ id: 'mml-power', type: 'line', source: 'mml', 'source-layer': 'rakennelma', minzoom: 13, filter: ['in', cls, ['literal', [22311, 22312]]], paint: { 'line-color': P.power, 'line-width': zi(13, 0.6, 16, 1, 18, 1.4) } });
-    add({ id: 'mml-pylon', type: 'symbol', source: 'mml', 'source-layer': 'rakennelma', minzoom: 15, filter: ['==', cls, 22392], layout: { 'icon-image': `pylon-${P.power.slice(1)}`, 'icon-size': zi(15, 0.8, 18, 1.2), 'icon-allow-overlap': true, 'icon-ignore-placement': true, 'icon-pitch-alignment': 'map' } });
+    // MML's points, side by side (each symbol layer splits 3D's draped layers): from zoom 14, as only zoom 14's tiles have
+    // them, flat on the ground and never hiding a label or a place. Rocks too small for an area, stones and sparse
+    // boulders; reeds, one tuft each (MML's reed points lie in the water, so a tuft under it wouldn't show); pylons from 15.
+    const flat = { 'icon-allow-overlap': true, 'icon-ignore-placement': true, 'icon-pitch-alignment': 'map', 'icon-rotation-alignment': 'map' }, hex = (c) => c.slice(1);
+    add({
+      id: 'mml-rock-point', type: 'symbol', source: 'mml', 'source-layer': 'maasto_piste', minzoom: 14, filter: ['in', cls, ['literal', [34100, 34200, 34600]]],
+      layout: { 'icon-image': ['match', cls, 34100, `rock-spot-${hex(P.rock)}-${hex(P.cliff)}`, 34200, `rock-rocks-${hex(P.cliff)}`, `rock-stone-${hex(P.cliff)}`], 'icon-size': zi(14, 0.75, 17, 1.2), ...flat },
+    });
+    add({ id: 'mml-reed', type: 'symbol', source: 'mml', 'source-layer': 'maasto_piste', minzoom: 14, filter: ['==', cls, 38100], layout: { 'icon-image': `reed-${hex(P.reed)}`, 'icon-size': zi(14, 0.8, 17, 1.2), ...flat } });
+    add({ id: 'mml-pylon', type: 'symbol', source: 'mml', 'source-layer': 'rakennelma', minzoom: 15, filter: ['==', cls, 22392], layout: { 'icon-image': `pylon-${hex(P.power)}`, 'icon-size': zi(15, 0.8, 18, 1.2), ...flat } });
     add({ id: 'building', type: 'fill', source: 'ofm', 'source-layer': 'building', minzoom: 13, paint: { 'fill-color': s.base === 'trail' ? '#bdb8b0' : P.building, 'fill-outline-color': s.base === 'trail' ? '#918b81' : P.buildingLine, 'fill-opacity': zi(13, 0.5, 15, 1) } });
     add({ id: 'aeroway', type: 'line', source: 'ofm', 'source-layer': 'aeroway', minzoom: 11, filter: ['in', ['get', 'class'], ['literal', ['runway', 'taxiway']]], paint: { 'line-color': '#c9c6c0', 'line-width': ze(1.5, 11, 1, 16, 30) } });
   }

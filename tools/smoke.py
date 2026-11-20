@@ -1154,8 +1154,8 @@ def mml_bogs(chrome):
 # #1147: MML's rock, stones, cliffs, reeds and power lines from two recorded tiles, never live MML: Porvoo
 # (tools/fixtures/mml-taustakartta-14-9352-4721.pbf: rock, stones, a reed, cliffs, power lines and pylons) and Pallas
 # (…-14-9286-3913.pbf: boulder fields, sparse boulders). Each drawn from its tile on every vector base, MML's rock in
-# OSM's grey, reeds under OSM's reedbeds, cliffs and power lines over the water, and a cliff's ticks on its right, the
-# lower side in MML's data.
+# OSM's grey, the lines and points over the water (MML's reeds lie in it), and a cliff's ticks on its right, the lower
+# side in MML's data.
 def mml_rock(chrome):
     pg = chrome.page(1440, 900, False)
     pg.open_app({'activity': 'mtb', 'base': 'trail'}, hash_='#10/60.4/25.5')
@@ -1175,9 +1175,9 @@ def mml_rock(chrome):
         m.jumpTo({center:tileMid(14,9286,3913),zoom:14.6}); await settle();
         want('mml-boulders',[34700]); want('mml-rock-point',[34200]);
         const order=m.getStyle().layers.map(l=>l.id), at=(id)=>order.indexOf(id), before=(a,b,what)=>{if(!(at(a)>=0&&at(a)<at(b)))errs.push(`${base}: ${what} (${a} at ${at(a)}, ${b} at ${at(b)})`);};
-        before('mml-bog','mml-reed','reeds under the bogs'); before('mml-reed','lc-reedbed',"reeds over OSM's reedbeds");
-        before('lc-rock','mml-rock',"MML's rock under OSM's"); before('mml-rock','mml-rock-point','rock points under the rock');
-        for(const l of ['mml-cliff','mml-cliff-ticks','mml-power','mml-pylon']){before('water',l,`${l} under the water`); before(l,'building',`${l} over the buildings`);}
+        before('lc-rock','mml-rock',"MML's rock under OSM's");
+        // over the water: MML's reed points lie in it
+        for(const l of ['mml-cliff','mml-cliff-ticks','mml-power','mml-rock-point','mml-reed','mml-pylon']){before('water',l,`${l} under the water`); before(l,'building',`${l} over the buildings`);}
         const rock=m.getPaintProperty('lc-rock','fill-color');
         if(m.getPaintProperty('mml-rock','fill-color')!==rock)errs.push(`${base}: MML's rock in ${m.getPaintProperty('mml-rock','fill-color')}, OSM's in ${rock}`);
         const boulders=m.getPaintProperty('mml-boulders','fill-pattern');
