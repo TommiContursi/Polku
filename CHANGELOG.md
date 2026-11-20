@@ -9,6 +9,22 @@ What's new in [Polku](https://polku.si), from the latest updates back to the fir
 - Passes between fells, mapped as saddles in OpenStreetMap, are marked with OpenStreetMap's usual saddle mark, a small brown block with a notch in its top, and their name and height, like the peaks, from zoom 11 to 13. Taivaskeronsatula at Pallas is one. The map's data has them only up to zoom 13, so they aren't shown when you zoom in further. Tapping one opens its card as a pass.
 - Ridges mapped in OpenStreetMap are drawn as OpenStreetMap's standard map draws them, a soft band of brown dots along the crest that thins out to either side, from zoom 14. They have no names on the map.
 
+### A smoother glide after a flick ([#1193](https://github.com/TommiContursi/Polku/issues/1193))
+
+- The map keeps the speed of your finger when you flick it and then slows down smoothly, instead of braking as you let go. With reduced motion it stops where you let go, as before.
+
+### Every path and forest track from zoom 13 ([#1128](https://github.com/TommiContursi/Polku/issues/1128))
+
+- With **Trail details** on, as in MTB, hiking and trail running, every path and forest track now shows from zoom 13 where Polku has its own trail data, as in Finland. Before, most of them showed only from zoom 14, and what showed at zoom 13 depended on whether you had already zoomed in there. Forest tracks keep their dashes and difficulty colours.
+- **Zoom in to see every trail** now shows until zoom 14 wherever the map still leaves some paths and tracks out, and goes once the trail details cover the map.
+
+### Lake depths on paddling routes ([#1184](https://github.com/TommiContursi/Polku/issues/1184))
+
+- In the lakes the Finnish Environment Institute (Syke) has surveyed, a paddling route keeps off water its soundings found under half a metre deep, where the way round is short. Where a route still crosses it, Check says so under **Good to know**.
+- **What Polku looked at** says how much of the route's water Syke surveyed. Syke surveyed about 1,900 lakes, and none of the sea or most of the large lakes with fairways, so most routes know the depth only in part or not at all.
+- **The depths are at each lake's survey level, so the water may be lower now, and stones can lie nearer the surface between the soundings: keep a lookout.** Water routes are for planning, not navigation. Traficom's charted depths are still shown on the map and never used for routes.
+- Keeping off shallow water is part of **Rocks & shoals: Keep clear** in the route style, and **Ignore** turns it off. A swim doesn't use it.
+
 ### Access restrictions in Layers ([#1162](https://github.com/TommiContursi/Polku/issues/1162))
 
 - **Access restrictions** is a switch of its own in Layers, under Trails & difficulty. Choosing a cycling or walking sport turns it on, and Layers remembers your choice for each sport. While it's on, it shows in **On now**.

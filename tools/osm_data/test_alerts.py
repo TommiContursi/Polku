@@ -1,12 +1,46 @@
 """Operations failures reach one assigned incident and recover independently."""
 import copy
+import itertools
+import json
+import os
 from pathlib import Path
+import subprocess
+import tempfile
+import textwrap
 import unittest
 from unittest.mock import patch
 from urllib.error import HTTPError
 from tools.osm_data import alerts
 
 REPO='TommiContursi/Polku'
+WORKFLOW=Path(__file__).resolve().parents[2]/'.github/workflows/osm-data-alerts.yml'
+REFUSED="curl: (7) Failed to connect to download.geofabrik.de port 443 after 685 ms: Couldn't connect to server"
+# Stand-ins for the retry job: gh answers the API from JSON files through jq and records re-runs, curl serves job logs
+FAKE_GH='''#!/bin/bash
+if [ "$1 $2" = 'run rerun' ]; then echo "$*" >> "$FAKE/reruns"; exit 0; fi
+case "$2" in
+  "repos/$GITHUB_REPOSITORY/actions/workflows/osm-data.yml/runs?"*) jq -r "$4" "$FAKE/runs.json";;
+  "repos/$GITHUB_REPOSITORY/actions/runs/$RUN/attempts/$ATTEMPT/jobs?"*) jq -r "$4" "$FAKE/jobs.json";;
+  *) echo "unexpected: gh $*" >&2; exit 1;;
+esac
+'''
+FAKE_CURL='''#!/bin/bash
+url=${!#}
+case "$url" in "$GITHUB_API_URL/repos/$GITHUB_REPOSITORY/actions/jobs/"*/logs) ;; *) echo "unexpected: curl $*" >&2; exit 1;; esac
+id=${url%/logs}; cat "$FAKE/log-${id##*/}"
+'''
+
+
+def retry_job():
+    """The retry job's condition and its script, from the alerts workflow (#1161)."""
+    lines=WORKFLOW.read_text().splitlines()
+    job=lines[lines.index('  retry:')+1:]
+    job=list(itertools.takewhile(lambda line: not line.strip() or line.startswith('    '),job))
+    condition=next(line.split('if:',1)[1].strip() for line in job if line.strip().startswith('if:'))
+    body=job[next(i for i,line in enumerate(job) if line.strip()=='run: |')+1:]
+    indent=len(body[0])-len(body[0].lstrip())
+    script=textwrap.dedent('\n'.join(itertools.takewhile(lambda line: not line.strip() or len(line)-len(line.lstrip())>=indent,body)))
+    return condition,script
 
 
 def event(operation='build',conclusion='failure',branch='main'):
@@ -49,6 +83,41 @@ class AlertTests(unittest.TestCase):
             for name,value in [('github.event.workflow_run.head_repository.full_name',head),('github.event.workflow_run.head_branch',branch),('github.event.workflow_run.event',source),('github.event_name',event),('github.repository',REPO),('github.ref',ref)]:
                 expression=expression.replace(name,repr(value))
             self.assertEqual(eval(expression.replace('&&','and').replace('||','or'),{'__builtins__':{}}),expected)
+
+    def test_retry_runs_only_for_a_failed_main_build_below_the_attempt_cap(self):
+        condition,_=retry_job()
+        base=dict(event='workflow_run',branch='main',head=REPO,source='schedule',title='OSM data / build',conclusion='failure',attempt=1)
+        for change,expected in [({},True),(dict(source='workflow_dispatch',attempt=14),True),(dict(attempt=15),False),
+            (dict(conclusion='success'),False),(dict(conclusion='cancelled'),False),(dict(title='OSM data / check'),False),
+            (dict(source='pull_request'),False),(dict(branch='feature'),False),(dict(head='attacker/Polku'),False),(dict(event='workflow_dispatch'),False)]:
+            run=dict(base,**change);expression=condition
+            for name,value in [('github.event.workflow_run.head_repository.full_name',run['head']),('github.event.workflow_run.head_branch',run['branch']),
+                ('github.event.workflow_run.display_title',run['title']),('github.event.workflow_run.conclusion',run['conclusion']),
+                ('github.event.workflow_run.run_attempt',run['attempt']),('github.event.workflow_run.event',run['source']),
+                ('github.event_name',run['event']),('github.repository',REPO)]:
+                expression=expression.replace(name,repr(value))
+            self.assertEqual(eval(expression.replace('&&','and').replace('||','or'),{'__builtins__':{}}),expected,change)
+
+    def test_retry_reruns_the_build_only_when_geofabrik_refused_every_failed_job(self):
+        _,script=retry_job()
+        for case,newest,failed,expected in [('every failed job refused',900,{1:REFUSED,2:REFUSED},True),
+            ('one failed job had a bad checksum',900,{1:REFUSED,2:'MD5 mismatch for estonia-261118.osm.pbf'},False),
+            ('a newer build exists',901,{1:REFUSED},False),('no failed job',900,{},False)]:
+            with self.subTest(case),tempfile.TemporaryDirectory() as fake:
+                fake=Path(fake);(fake/'bin').mkdir()
+                for name,text in [('gh',FAKE_GH),('curl',FAKE_CURL)]:
+                    (fake/'bin'/name).write_text(text);(fake/'bin'/name).chmod(0o755)
+                (fake/'runs.json').write_text(json.dumps({'workflow_runs':[{'id':905,'display_title':'OSM data / check'},
+                    {'id':newest,'display_title':'OSM data / build'},{'id':899,'display_title':'OSM data / build'}]}))
+                (fake/'jobs.json').write_text(json.dumps({'jobs':[{'id':3,'conclusion':'success'}]+[{'id':job,'conclusion':'failure'} for job in failed]}))
+                for job,log in failed.items(): (fake/f'log-{job}').write_text('Downloading…\n'+log+'\n')
+                env=dict(os.environ,PATH=f"{fake/'bin'}:{os.environ['PATH']}",FAKE=str(fake),GH_TOKEN='test-token',RUN='900',ATTEMPT='4',
+                    GITHUB_REPOSITORY=REPO,GITHUB_API_URL='https://api.github.com')
+                # A run: step without a shell of its own runs under bash -e
+                result=subprocess.run(['bash','-e','-c',script],env=env,capture_output=True,text=True,timeout=20)
+                self.assertEqual(result.returncode,0,result.stderr)
+                reruns=(fake/'reruns').read_text() if (fake/'reruns').exists() else ''
+                self.assertEqual(reruns,f'run rerun 900 --failed --repo {REPO}\n' if expected else '',result.stdout)
 
     def test_only_trusted_main_operations_are_classified(self):
         self.assertEqual(alerts.classify(event(),REPO)['kind'],'update')
