@@ -183,6 +183,7 @@ function rasteriseCosts(grid, { fairways, hazards, nogos, depths, mml }) {
   // lake depths: a tile's cells are squares in Web Mercator, as the grid is (half a cell more each side, so the
   // shore's water isn't left out where Syke's shoreline and the map's differ)
   const sc = ((depths && depths.length) || (mml && mml.length)) && canvas();
+  if (sc) sc.globalCompositeOperation = 'lighter'; // where Syke surveyed (red) and MML's map (green) add up
   if (depths && depths.length) {
     hc.fillStyle = '#0000ff';
     sc.fillStyle = '#ff0000';
@@ -212,6 +213,8 @@ function rasteriseCosts(grid, { fairways, hazards, nogos, depths, mml }) {
   grid.fair = new Uint8Array(n);
   grid.haz = new Uint8Array(n);
   grid.nogo = new Uint8Array(n);
+  // anything that costs (MML's coverage alone doesn't): string-pulling then weighs the costs, which takes longer
+  grid.costly = !!((fairways && fairways.features.length) || (hazards && hazards.features.length) || (nogos && nogos.length) || (depths && depths.length));
   if (depths && depths.length) { grid.shallow = new Uint8Array(n); grid.surveyed = new Uint8Array(n); }
   if (mml) grid.mml = new Uint8Array(n);
   for (let i = 0, j = 0; i < n; i++, j += 4) {
@@ -382,7 +385,7 @@ function astar(grid, sx, sy, tx, ty, landCost, near = false, comfort = 0, fairCo
     return c;
   };
   grid.cellCost = cellCost;
-  grid.special = !!(fair || haz || nogo || (wave && comfort));
+  grid.special = !!(grid.costly || (wave && comfort));
   const DX = [1, -1, 0, 0, 1, 1, -1, -1];
   const DY = [0, 0, 1, -1, 1, -1, 1, -1];
   const DL = [1, 1, 1, 1, Math.SQRT2, Math.SQRT2, Math.SQRT2, Math.SQRT2];
@@ -585,8 +588,8 @@ function eventsAlong(grid, coords, comfort, got) {
   // names: the shipping lane under each crossing
   const names = got && got.fairways ? got.fairways.features : [];
   for (const e of out) e.name = e.kind === 'ship' ? nameAt(names, coords, e.at + e.len / 2) : '';
-  // (a graze of a zone's edge shorter than two cells isn't one: MML's stones are many, #153)
-  return { events: out.filter((e) => e.len >= 2 * grid.res), wave: grid.wave ? wave : null, depth: depths ? { water: wet, surveyed } : null, mml: mml ? { water: wet, covered } : null };
+  // (a graze of a rock's zone under 6 m isn't one: MML's stones are many, #153; on a coarse grid one cell is more)
+  return { events: out.filter((e) => e.len >= 2 * grid.res || (e.kind === 'hazard' && e.len >= 6)), wave: grid.wave ? wave : null, depth: depths ? { water: wet, surveyed } : null, mml: mml ? { water: wet, covered } : null };
 }
 
 function nameAt(fairways, coords, at) {

@@ -208,11 +208,11 @@ async function osmHazards(box) {
 
 /**
  * Fetch what the router will want for the map's view ahead of time (paddling,
- * zoomed in): OSM's hazards, MML's stones, Väylävirasto's fairways and marks, and the lake depths.
+ * zoomed in): OSM's hazards, Väylävirasto's fairways and marks, and the lake depths. (MML's stones aren't: their
+ * zoom-14 tiles are the map's own at zoom 14.)
  */
 export function prefetchWater(view) {
   hazTilesIn(view, 6);
-  mmlTilesIn(view, 16);
   waterwaysIn(view, 8).catch(() => {});
   depthsIn(view, 8)?.catch(() => {});
 }

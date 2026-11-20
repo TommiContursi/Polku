@@ -2256,7 +2256,9 @@ WATER_DEPTHS = """(async () => {
   const N = await import(location.origin + '/js/net.js');
   const fc = { type: 'FeatureCollection', features: [] };
   let depths = [tile], missing = [];
-  D.seedWater((box, want) => ({ fairways: fc, hazards: fc, depths: want.depths ? depths : null, wind: null, missing: want.depths ? missing : [], skipped: [] }));
+  // MML's map covers the lake as well (#153): where Syke surveyed and where MML covers overlap in the router's grid
+  const covered = ([w, s, e, n]) => { const t = [], [x0, y0] = G.lonLatToTile(w, n, 14).map(Math.floor), [x1, y1] = G.lonLatToTile(e, s, 14).map(Math.floor); for (let x = x0; x <= x1; x++) for (let y = y0; y <= y1; y++) t.push({ x, y, covered: true }); return t; };
+  D.seedWater((box, want) => ({ fairways: fc, hazards: fc, mml: want.mml ? covered(box) : null, depths: want.depths ? depths : null, wind: null, missing: want.depths ? missing : [], skipped: [] }));
   // from and to straight through a row of the shoal's soundings; the shoal's end on one of them
   const from = [28.6095, 64.23944], to = [28.6185, 64.23944], shoal = [28.61389, 64.23989];
   const near = (c) => Math.min(...tile.shallow.map((p) => G.nearestOnLine(p, c).d));
@@ -2330,6 +2332,8 @@ WATER_DEPTHS = """(async () => {
   const { OVERPASS, OSM_DATA_MANIFEST, OPEN_METEO } = await import(location.origin + '/js/config.js');
   let mode = 'fail', held = [];
   const realFetch = window.fetch;
+  // MML's tiles answered with one off Kotka with only the sea on it: covered, nothing to keep clear of (#153), never live
+  const mmlSea = await (await fetch(location.origin + '/tools/fixtures/mml-taustakartta-14-9418-4721.pbf')).arrayBuffer(), MML = (await import(location.origin + '/js/config.js')).MML_TERRAIN_TILES.split('{z}')[0];
   window.fetch = (url, init = {}) => {
     const u = String(url);
     if (u.includes('/data/depths/')) {
@@ -2341,6 +2345,7 @@ WATER_DEPTHS = """(async () => {
     if (u.startsWith(new URL(OSM_DATA_MANIFEST).origin) || u.startsWith(OPEN_METEO)) return Promise.reject(new TypeError('Failed to fetch'));
     if (OVERPASS.some((m) => u.startsWith(m))) return Promise.resolve(new Response('{"elements":[]}'));
     if (u.startsWith('https://avoinapi.vaylapilvi.fi/')) return Promise.resolve(new Response('{"type":"FeatureCollection","features":[]}'));
+    if (u.startsWith(MML)) return Promise.resolve(new Response(mmlSea));
     return realFetch(url, init);
   };
   const syke = () => p.headsUp().not.find((x) => x.key === 'water' && x.by === 'Syke');
@@ -2465,7 +2470,7 @@ WATER_MML = """(async () => {
       if (db > 6) errs.push(`(the test) ignoring rocks, the leg passes ${Math.round(db)} m from the stone ${what}, not over it`);
       if (da < keep) errs.push(`passes ${Math.round(da)} m from a stone ${what} (keeps ${keep} m or more)`);
       if (b.water.mml || (b.water.checked || {}).mml) errs.push(`Rocks & shoals: Ignore still reads MML: ${JSON.stringify(b.water.mml)}`);
-      // a graze of a zone's edge (under two cells, 3 m each at least) isn't an item of Check
+      // a graze of a zone's edge, under 6 m, isn't an item of Check
       const graze = a.water.events.find((e) => e.kind === 'hazard' && e.len < 6);
       if (graze) errs.push(`over the stone ${what}: an item for a graze of ${graze.len.toFixed(1)} m at ${Math.round(graze.at)} m`);
     }
@@ -2564,6 +2569,8 @@ WATER_LATE = """(async () => {
   const rockAnswer = () => new Response(JSON.stringify({ elements: rocks.map(([lon, lat], i) => ({ type: 'node', id: i + 1, lon, lat, tags: { natural: 'rock' } })) }));
   const empty = () => new Response('{"type":"FeatureCollection","features":[]}');
   const release = () => { hold = false; const h = held; held = []; for (const ok of h) ok(); };
+  // MML's tiles answered with one off Kotka with only the sea on it: covered, nothing to keep clear of (#153), never live
+  const mmlSea = await (await fetch(location.origin + '/tools/fixtures/mml-taustakartta-14-9418-4721.pbf')).arrayBuffer(), MML = (await import(location.origin + '/js/config.js')).MML_TERRAIN_TILES.split('{z}')[0];
   window.fetch = (url, init = {}) => {
     const u = String(url);
     if (u.startsWith(new URL(OSM_DATA_MANIFEST).origin)) return Promise.reject(new TypeError('Failed to fetch'));
@@ -2582,6 +2589,7 @@ WATER_LATE = """(async () => {
       if (vaylaB === true) vaylaB = new Promise((ok) => { const off = D.onWaterData(() => { off(); ok(); }); setTimeout(release, 100); });
       return vaylaB.then(empty);
     }
+    if (u.startsWith(MML)) return Promise.resolve(new Response(mmlSea));
     return realFetch(url, init);
   };
   const along = (c, f) => {
@@ -2681,6 +2689,8 @@ WATER_BACK = """(async () => {
   /*forget*/
   let fail = true, asked = 0;
   const realFetch = window.fetch, realTimeout = window.setTimeout;
+  // MML's tiles answered with one off Kotka with only the sea on it: covered, nothing to keep clear of (#153), never live
+  const mmlSea = await (await fetch(location.origin + '/tools/fixtures/mml-taustakartta-14-9418-4721.pbf')).arrayBuffer(), MML = (await import(location.origin + '/js/config.js')).MML_TERRAIN_TILES.split('{z}')[0];
   window.fetch = (url, init = {}) => {
     const u = String(url);
     if (u.startsWith(new URL(OSM_DATA_MANIFEST).origin)) return Promise.reject(new TypeError('Failed to fetch'));
@@ -2689,6 +2699,7 @@ WATER_BACK = """(async () => {
       return Promise.resolve(fail ? new Response('', { status: 500 }) : new Response('{"elements":[]}'));
     }
     if (u.startsWith('https://avoinapi.vaylapilvi.fi/')) return Promise.resolve(new Response('{"type":"FeatureCollection","features":[]}'));
+    if (u.startsWith(MML)) return Promise.resolve(new Response(mmlSea));
     return realFetch(url, init);
   };
   // the water router's two minutes before it asks a failed source again: 1.5 s
@@ -2759,11 +2770,14 @@ WATER_LONG = """(async () => {
   const D = await import(location.origin + '/js/waterdata.js');
   const { OVERPASS, OSM_DATA_MANIFEST } = await import(location.origin + '/js/config.js');
   const realFetch = window.fetch;
+  // MML's tiles answered with one off Kotka with only the sea on it: covered, nothing to keep clear of (#153), never live
+  const mmlSea = await (await fetch(location.origin + '/tools/fixtures/mml-taustakartta-14-9418-4721.pbf')).arrayBuffer(), MML = (await import(location.origin + '/js/config.js')).MML_TERRAIN_TILES.split('{z}')[0];
   window.fetch = (url, init = {}) => {
     const u = String(url);
     if (u.startsWith(new URL(OSM_DATA_MANIFEST).origin)) return Promise.reject(new TypeError('Failed to fetch'));
     if (OVERPASS.some((m) => u.startsWith(m))) return Promise.resolve(new Response('', { status: 500 }));
     if (u.startsWith('https://avoinapi.vaylapilvi.fi/')) return Promise.resolve(new Response('{"type":"FeatureCollection","features":[]}'));
+    if (u.startsWith(MML)) return Promise.resolve(new Response(mmlSea));
     return realFetch(url, init);
   };
   const p = polku.planner, want = { fairways: true, hazards: true, wind: false };
