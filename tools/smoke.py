@@ -1275,7 +1275,7 @@ def cycling_restrictions(chrome):
       for(const activity of ['hike','run','trailrun','paddle','swim']) {
         polku.set({activity});
         const want=!['paddle','swim'].includes(activity);
-        if(polku.state.overlays.access!==want||!marks()!==!want)errs.push(`${activity}: access restrictions ${want?'off':'on'} by default`);
+        if(!!polku.state.overlays.access!==want||!marks()!==!want)errs.push(`${activity}: access restrictions ${want?'off':'on'} by default`);
         if(keyShown()!==(want?3:0))errs.push(`${activity}: the map key's restriction rows don't follow the choice`);
       }
       polku.set({activity:'hike'});
