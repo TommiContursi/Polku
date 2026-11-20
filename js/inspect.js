@@ -32,11 +32,11 @@ export const isHttp = (u) => /^https?:\/\//i.test(u) ? u : /^www\./i.test(u) ? `
 // Layers a click can inspect, and the order it picks from when several are
 // under the pointer. The hover tooltip uses the same order, so it previews
 // exactly what a click opens.
-const INSPECTABLE = /^(cameras$|td-points$|td-way-tree$|td-way-ford$|winter-way$|winter-ski$|winter-closed$|nm-marks|nm-navline$|nm-sector|nm-restrict-fill|nm-fairway|sf-ships|sf-points|sf-lines|sf-aadt|military-fill|lipas-point|poi-outdoor|poi-minor|label-peak|lipas-route$|uphill-line|path-|track-|cycleway-|road-|water$)/;
+const INSPECTABLE = /^(cameras$|td-points$|td-way-tree$|td-way-ford$|winter-way$|winter-ski$|winter-closed$|nm-marks|nm-navline$|nm-sector|nm-restrict-fill|nm-fairway|sf-ships|sf-points|sf-lines|sf-aadt|military-fill|lipas-point|poi-outdoor|poi-minor|label-peak|lipas-route$|uphill-line|path-|track-|cycleway-|road-|water$|property-plot$)/;
 // An official (LIPAS) route drawn over a trail is what a click there means: its card
 // links to the trail under it, and the trail's card back to the route.
 const PRIORITY = [/^cameras$/, /^sf-ships/, /^nm-marks/, /^sf-points/, /^td-/, /^lipas-point/, /^poi-|^label-peak/, /^sf-lines/, /^lipas-route/, /^uphill-line/, /^(path|track|cycleway)-/, /^winter-/,
-  /^sf-aadt/, /^road-/, /^nm-sector/, /^nm-navline/, /^nm-restrict/, /^military/, /^nm-fairway/, /^water$/];
+  /^sf-aadt/, /^road-/, /^nm-sector/, /^nm-navline/, /^nm-restrict/, /^military/, /^nm-fairway/, /^water$/, /^property-plot$/];
 
 // a finger covers more than a mouse pointer: a wider box to find what's under it
 export const hitBox = (pt, touch) => { const r = touch ? 14 : 7; return [[pt.x - r, pt.y - r], [pt.x + r, pt.y + r]]; };
@@ -96,14 +96,15 @@ export function initInspector(map, app) {
     const leg = map.getLayer('route-casing') && map.queryRenderedFeatures(box, { layers: ['route-casing'] }).find((x) => x.properties.kind === 'leg');
     if (leg && app.openRoute) { app.openRoute(leg.properties.leg, e.lngLat); return; }
     const feats = map.queryRenderedFeatures(box, { layers: inspectLayers(map) });
-    // (nothing else there: a lake or a park is picked too, #574)
-    const f = pickFeature(feats) || (areaUnder(map, e.point) && { layer: { id: 'area' } });
+    // (nothing else there: a lake or a park is picked too, #574; a property's plot only after them, #1148)
+    const top = pickFeature(feats), plot = top && top.layer.id === 'property-plot';
+    const f = (!plot && top) || (areaUnder(map, e.point) && { layer: { id: 'area' } }) || top;
     if (!f) return;
     // cameras and ships open their own modal / live card
     if (f.layer.id === 'cameras') { app.openCamera(f.properties.id, f.properties.name); return; }
     if (/^sf-ships/.test(f.layer.id)) { app.openShip(f.properties.mmsi); return; }
     // a way, a place, a LIPAS route or place, a lake, a park: the planner's card at the spot (25d part 6)
-    if (!/^(nm-|sf-|military)/.test(f.layer.id)) { app.openSpot(f, ll, e.point, touch); return; }
+    if (!/^(nm-|sf-|military|property-)/.test(f.layer.id)) { app.openSpot(f, ll, e.point, touch); return; }
     // the map's other things (road works, a sea mark…): the same card (#564)
     app.openThing(f, ll);
   });
@@ -257,6 +258,8 @@ const clip = (t, n) => (t && t.length > n ? `${t.slice(0, n)}…` : t);
 export function thingOf(f, map) {
   const p = f.properties, id = f.layer.id, rows = (...r) => r.filter(Boolean);
   if (id === 'military-fill') return { title: 'Military area', rows: [], info: 'May be closed or have live firing. Check the Defence Forces’ notices before you go.' };
+  if (id === 'property-plot') return { title: `Property ${p.kiinteistotunnuksenEsitysmuoto}`, sub: 'National Land Survey', rows: [['Property ID', p.kiinteistotunnuksenEsitysmuoto]],
+    info: 'The plot you picked is tinted; a property can have more than one plot. From the National Land Survey’s property map.' };
   if (/^sf-/.test(id)) {
     if (p.kind === 'incident' || p.kind === 'roadwork') {
       return { title: p.kind === 'incident' ? 'Traffic incident' : 'Road works', sub: p.title || '', group: p.kind === 'incident' ? 'The incident' : 'The works',

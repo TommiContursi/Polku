@@ -600,6 +600,7 @@ TRAILS = """(async () => {
   const pts = m.queryRenderedFeatures({ layers: ['td-points'] });
   if (!pts.some((f) => f.properties.kind === 'tree') || !pts.some((f) => f.properties.kind === 'gate-no')) errs.push(`icons: ${pts.map((f) => f.properties.kind).join(', ') || 'none'}`);
   if (!m.queryRenderedFeatures({ layers: ['td-fence'] }).length) errs.push('no fences drawn');
+  if (m.getPaintProperty('td-fence', 'line-color').at(-1) !== '#545454') errs.push('fences are no longer grey, apart from the brown footways (#1163)');
   const tree = pts.find((f) => f.properties.kind === 'tree');
   if (tree) {
     const point = m.project(tree.geometry.coordinates);
@@ -739,7 +740,7 @@ def mtb_grades(chrome):
     return not fails
 
 
-# #1123: physical cycling paths, pedestrian ways and MTB footways keep distinct styles.
+# #1123, #1163: physical cycling paths, pedestrian ways (thin brown dashes) and MTB footways keep distinct styles.
 def cycleway_style(chrome):
     pg = chrome.page(1440, 900, False)
     pg.open_app({'activity': 'mtb', 'base': 'trail', 'highContrast': False, 'trailDetails': False, 'trailColors': 'down'})
@@ -780,12 +781,18 @@ def cycleway_style(chrome):
         for(const [tags,cycling] of cases) {
           const props={class:'path',...tags,...(pass==='ground'?{}:{brunnel:pass})};
           if(matches(id,props)!==cycling)errs.push(`${id}: ${JSON.stringify(tags)} cycling=${!cycling}`);
-          if(!cycling&&!matches(`path-${pass}`,props))errs.push(`${id}: non-cycling way disappeared`);
-          if(cycling&&matches(`path-${pass}`,props))errs.push(`${id}: cycling way also drawn as a trail`);
+          // #1163: footways and pedestrian streets without a grade are brown lines, not trails
+          const foot=['footway','pedestrian'].includes(tags.subclass)&&!('mtb_scale' in tags);
+          if(!cycling&&!matches(foot?`path-${pass}-foot`:`path-${pass}`,props))errs.push(`${id}: non-cycling way disappeared`);
+          if(!cycling&&foot&&(matches(`path-${pass}`,props)||matches(`path-${pass}-halo`,props)))errs.push(`${id}: ${JSON.stringify(tags)} also drawn as a trail`);
+          if(cycling&&(matches(`path-${pass}`,props)||matches(`path-${pass}-foot`,props)))errs.push(`${id}: cycling way also drawn as a trail`);
           for(const other of ['ground','bridge','tunnel'].filter(x=>x!==pass))if(matches(`cycleway-${other}`,props))errs.push(`${id}: also in ${other}`);
           const kind=F.kindOf({highway:tags.subclass,bicycle:tags.bicycle});
           if(!('mtb_scale' in tags)&&cycling!==(kind==='cycleway'))errs.push(`${id}: disagrees with way facts`);
         }
+        const fl=m.getStyle().layers.find(l=>l.id===`path-${pass}-foot`);
+        if(fl.paint['line-color']!=='#a2381f'||JSON.stringify(fl.paint['line-dasharray'])!=='[1.5,0.7]'||width(fl.id,16)!==2.5)errs.push(`${fl.id}: not a thin brown dashed line`);
+        if(m.getStyle().layers.findIndex(l=>l.id===`path-${pass}-halo`)<m.getStyle().layers.indexOf(fl))errs.push(`${fl.id}: drawn over the trails`);
         for(const [surface,want] of [['paved',[6,1.5]],['unpaved',[1,.5]],[undefined,[2.5,1.5]],['other',[2.5,1.5]]]) {
           const raw=m.getPaintProperty(id,'line-dasharray'), got=layer.paint.get('line-dasharray').value;
           const dash=typeof raw[0]==='number'?raw:got.evaluate({zoom:16},{type:2,properties:{surface}},{});
@@ -851,7 +858,352 @@ def waterway_style(chrome):
     return not fails
 
 
-# #1130: cycling side marks stay on paths/tracks and use zoom/width categories.
+# #1148: Property boundaries, a switch in Layers' Terrain with its opacity, off in every sport: MML's property map from zoom 14 in Finland, with
+# Polku's key (not plain text in the source) or a person's own, drawn and named at Jyväskylä's centre.
+def property_lines(chrome):
+    pg = chrome.page(1440, 900, False)
+    pg.open_app({'activity': 'mtb'}, None, '#16/62.2415/25.748')
+    fails = pg.js("""(async () => {
+      const errs=[], m=polku.map, frame=()=>new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)));
+      for(const activity of ['mtb','gravel','road','hike','trailrun','run','paddle','swim']) {
+        polku.set({activity}); if(polku.state.overlays.propertyLines)errs.push(`${activity}: on by default`);
+      }
+      polku.set({activity:'mtb'});
+      document.querySelector('#btn-layers').click(); await frame();
+      [...document.querySelectorAll('button')].find(b=>/^More: all layers/.test(b.getAttribute('aria-label')||''))?.click(); await frame();
+      const sw=document.querySelector('[data-group=terrain] input[role=switch][aria-label="Property boundaries"]');
+      if(!sw)return ['no Property boundaries switch in Terrain'];
+      sw.click(); await frame();
+      const src=m.getStyle().sources['ov-propertyLines'];
+      if(!src)return ['the switch drew no property source'];
+      const u=new URL(src.tiles[0]), key=u.searchParams.get('api-key');
+      if(u.hostname!=='avoin-karttakuva.maanmittauslaitos.fi'||!u.pathname.includes('/kiinteistojaotus/'))errs.push(`property tiles from ${u.hostname}${u.pathname}`);
+      if(!key||key.length<20)errs.push('no API key in the tile address');
+      const cfg=await fetch('js/config.js',{cache:'no-store'}).then(r=>r.text());
+      if(key&&cfg.includes(key))errs.push('the key is plain text in js/config.js');
+      if(src.minzoom!==14)errs.push(`property tiles asked for from zoom ${src.minzoom}, not 14`);
+      if(!src.bounds||src.bounds[0]<19||src.bounds[2]>32)errs.push(`property tiles not bounded to Finland: ${src.bounds}`);
+      const t0=performance.now();
+      // (the IDs come after the lines: their glyphs load first)
+      while(performance.now()-t0<30000&&!(m.isSourceLoaded('ov-propertyLines')&&m.queryRenderedFeatures({layers:['property-line']}).length&&m.queryRenderedFeatures({layers:['property-id']}).length))await new Promise(r=>setTimeout(r,250));
+      const lines=m.queryRenderedFeatures({layers:['property-line']}).length, ids=m.queryRenderedFeatures({layers:['property-id']}).length;
+      if(!lines)errs.push('no property boundaries drawn at Jyväskylä, zoom 16');
+      if(!ids)errs.push('no property IDs drawn at Jyväskylä, zoom 16');
+      const range=document.querySelector('input[type=range][aria-label="Property boundaries opacity"]');
+      if(!range)errs.push('no Opacity under Property boundaries');
+      else { range.value='40'; range.dispatchEvent(new Event('input')); await frame(); await frame();
+        if(m.getPaintProperty('property-line','line-opacity')!==0.4||m.getPaintProperty('property-id','text-opacity')!==0.4)errs.push(`Opacity 40 % draws the lines at ${m.getPaintProperty('property-line','line-opacity')}`); }
+      const color=(b)=>{polku.set({base:b}); return m.getPaintProperty('property-line','line-color');};
+      if(color('trail')===color('night'))errs.push('the same orange on the Night map as on the Trail map');
+      polku.set({base:'trail',mmlKey:'own-key-fixture'});
+      if(new URL(m.getStyle().sources['ov-propertyLines'].tiles[0]).searchParams.get('api-key')!=='own-key-fixture')errs.push("a person's own key isn't used");
+      polku.set({mmlKey:''});
+      return errs;
+    })()""", timeout=90000)
+    fails += [f'console: {e[:160]}' for e in pg.errors()]
+    pg.close()
+    print(f"{'ok  ' if not fails else 'FAIL'} property boundaries from MML (#1148)" + ''.join(f'\n     - {f}' for f in fails), flush=True)
+    return not fails
+
+
+# #1148: with Property boundaries on (and its Plot under the pointer, on at first), the plot under the pointer is tinted, and a click on a plot opens its card with its ID
+# and tints it more, by its id (all its tiles' pieces), until the card closes.
+def property_plots(chrome):
+    pg = chrome.page(1440, 900, False)
+    pg.open_app({'activity': 'mtb', 'overlaysByActivity': {'mtb': {'propertyLines': True}}}, None, '#16.5/62.2415/25.748')
+    fails = pg.js("""(async () => {
+      const errs=[], m=polku.map, wait=(ms)=>new Promise(r=>setTimeout(r,ms)), frame=()=>new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)));
+      const t0=performance.now();
+      while(performance.now()-t0<30000&&!m.queryRenderedFeatures({layers:['property-plot']}).length)await wait(250);
+      // a spot where a click picks the plot: nothing else the map can open there
+      const {inspectLayers,pickFeature,hitBox}=await import(location.origin+'/js/inspect.js');
+      let spot=null;
+      for(let y=200;y<800&&!spot;y+=23)for(let x=200;x<1200&&!spot;x+=29){const f=pickFeature(m.queryRenderedFeatures(hitBox({x,y},false),{layers:inspectLayers(m)}));if(f&&f.layer.id==='property-plot'&&f.id!=null)spot={x,y,f};}
+      if(!spot)return ['no spot at Jyväskylä where a click picks a plot'];
+      const st=(id)=>m.getFeatureState({source:'ov-propertyLines',sourceLayer:'PalstanSijaintitiedot',id});
+      const cv=m.getCanvas(), R=cv.getBoundingClientRect();
+      const ev=(type)=>cv.dispatchEvent(new MouseEvent(type,{bubbles:true,cancelable:true,clientX:R.left+spot.x,clientY:R.top+spot.y,button:0,buttons:type==='mouseup'?0:1}));
+      cv.dispatchEvent(new PointerEvent('pointermove',{bubbles:true,pointerType:'mouse',clientX:R.left+spot.x,clientY:R.top+spot.y,buttons:0})); await frame(); await frame();
+      if(!st(spot.f.id).hover)errs.push('the plot under the pointer is not tinted');
+      ev('mousedown'); ev('mouseup'); ev('click'); await wait(600);
+      const card=polku.planner.cards.current;
+      if(!card||!/^Property \\d/.test(card.title))errs.push(`a click on a plot opened ${card?card.title:'no card'}`);
+      if(!st(spot.f.id).lit)errs.push('the picked plot is not tinted');
+      if(m.querySourceFeatures('pickArea').length)errs.push("the plot's piece is outlined, cut at its tile's edge");
+      // the layer off and on again with the card open: the source is new, and the picked plot tinted again
+      const sw2=(v)=>{polku.state.overlaysByActivity.mtb={...(polku.state.overlaysByActivity.mtb||{}),propertyLines:v}; polku.set({overlays:{...polku.state.overlays,propertyLines:v}});};
+      sw2(false); await frame(); sw2(true); await frame(); await wait(300);
+      if(!st(spot.f.id).lit)errs.push('the picked plot is no longer tinted after the layer is switched off and on');
+      polku.planner.cards.close(); await frame();
+      if(st(spot.f.id).lit)errs.push('the plot stays tinted after its card closes');
+      // a park picks the park first, as without the layer (#574)
+      const {areaUnder}=await import(location.origin+'/js/inspect.js');
+      const t1=performance.now();  // (the layer's source is new: its tiles again)
+      while(performance.now()-t1<30000&&!(m.isSourceLoaded('ov-propertyLines')&&m.queryRenderedFeatures({layers:['property-plot']}).length))await wait(250);
+      // (the centre's small parks: each one's middle, where nothing else the map opens is)
+      let park=null;
+      for(const g of m.queryRenderedFeatures({layers:['lc-grass']}).filter(g=>g.properties.subclass==='park')){
+        const r=(g.geometry.type==='Polygon'?g.geometry.coordinates:g.geometry.coordinates[0])[0], q=m.project(r.reduce((a,p)=>[a[0]+p[0]/r.length,a[1]+p[1]/r.length],[0,0]));
+        const f=pickFeature(m.queryRenderedFeatures(hitBox(q,false),{layers:inspectLayers(m)}));
+        if(q.x>0&&q.y>0&&q.x<innerWidth&&q.y<innerHeight&&f&&f.layer.id==='property-plot'&&areaUnder(m,q)==='park'){park={x:q.x,y:q.y};break;}
+      }
+      if(!park)errs.push('no spot in a park at Jyväskylä to click');
+      else {
+        for(const t of ['mousedown','mouseup','click'])cv.dispatchEvent(new MouseEvent(t,{bubbles:true,cancelable:true,clientX:R.left+park.x,clientY:R.top+park.y,button:0,buttons:t==='mousedown'?1:0}));
+        await wait(800);
+        const c=polku.planner.cards.current;
+        if(!c)errs.push('a click in the park opened no card');
+        else if(/^Property /.test(c.title))errs.push('a click in a park opened the property under it, not the park');
+        polku.planner.cards.close(); await frame();
+      }
+      // Plot under the pointer, under the switch in Layers: off, the pointer tints nothing, and a click still picks the plot
+      document.querySelector('#btn-layers').click(); await frame();
+      [...document.querySelectorAll('button')].find(b=>/^More: all layers/.test(b.getAttribute('aria-label')||''))?.click(); await frame();
+      const sub=[...document.querySelectorAll('[data-group=terrain] input[role=switch]')].find(i=>i.closest('label')?.textContent.includes('Plot under the pointer'));
+      if(!sub)errs.push('no Plot under the pointer switch under Property boundaries');
+      else {
+        if(!sub.checked)errs.push('Plot under the pointer is off at first');
+        sub.click(); await frame(); polku.set({}); await frame();
+        cv.dispatchEvent(new PointerEvent('pointermove',{bubbles:true,pointerType:'mouse',clientX:R.left+spot.x+1,clientY:R.top+spot.y,buttons:0})); await frame(); await frame();
+        if(st(spot.f.id).hover)errs.push('the plot is tinted with Plot under the pointer off');
+        if(polku.state.plotHover!==false)errs.push('Plot under the pointer stays on after its switch');
+        ev('mousedown'); ev('mouseup'); ev('click'); await wait(600);
+        if(!st(spot.f.id).lit)errs.push('with Plot under the pointer off, a click no longer picks the plot');
+        polku.planner.cards.close();
+      }
+      return errs;
+    })()""", timeout=90000)
+    fails += [f'console: {e[:160]}' for e in pg.errors()]
+    pg.close()
+    print(f"{'ok  ' if not fails else 'FAIL'} a property's plot tinted under the pointer and picked (#1148)" + ''.join(f'\n     - {f}' for f in fails), flush=True)
+    return not fails
+
+
+# #1144: wetlands are Polku's own blue dashes on each map's wetland colour, never the tufted sprite.
+def wetland_style(chrome):
+    pg = chrome.page(1440, 900, False)
+    pg.open_app({'activity': 'mtb', 'base': 'trail'}, hash_='#15.5/62.2335/25.7905')
+    fails = pg.js("""(async () => {
+      const errs=[], m=polku.map, {makeIcon}=await import('/js/icons.js');
+      const hex=(d,i)=>'#'+[d[i],d[i+1],d[i+2]].map(v=>v.toString(16).padStart(2,'0')).join('');
+      for(const base of ['trail','plain','night']) {
+        polku.set({base});
+        await new Promise(r=>{m.once('idle',r);m.triggerRepaint();});
+        const l=m.getStyle().layers.find(l=>l.id==='lc-wetland-pattern'), fill=m.getPaintProperty('lc-wetland','fill-color');
+        const id=l&&l.paint['fill-pattern'], [,f,dash]=/^wetland-([0-9a-f]{6})-([0-9a-f]{6})$/.exec(id||'')||[];
+        if(!f){errs.push(`${base}: wetland pattern is ${id}`);continue;}
+        if('#'+f!==fill)errs.push(`${base}: the pattern's ground #${f} isn't the wetland colour ${fill}`);
+        if(l.minzoom!==11)errs.push(`${base}: the pattern starts at zoom ${l.minzoom}`);
+        if(!m.hasImage(id))errs.push(`${base}: ${id} wasn't drawn on the map`);
+        const img=makeIcon(id), px=(x,y)=>hex(img.data,(y*img.width+x)*4);
+        // 2 px per CSS pixel: a dash on row 3 at x 0-1 and 4-7, row 7 at x 0-5; ground elsewhere
+        if(px(0,6)!=='#'+dash||px(9,15)!=='#'+dash)errs.push(`${base}: no dash where the rows are`);
+        if(px(0,0)!=='#'+f||px(5,6)!=='#'+f||px(13,14)!=='#'+f)errs.push(`${base}: dashes where the ground should be`);
+      }
+      return errs;
+    })()""")
+    fails += [f'console: {e[:160]}' for e in pg.errors()]
+    pg.close()
+    print(f"{'ok  ' if not fails else 'FAIL'} wetlands as blue dashes (#1144)" + ''.join(f'\n     - {f}' for f in fails), flush=True)
+    return not fails
+
+
+# #1144: reedbeds from Polku's own OSM data, as reed tufts over the wetland dashes, on the vector bases only.
+def reedbed_style(chrome):
+    pg = chrome.page(1440, 900, False)
+    pg.open_app({'activity': 'mtb', 'base': 'trail'}, hash_='#15.5/62.2335/25.7905')
+    fails = pg.js("""(async () => {
+      const errs=[], m=polku.map, {makeIcon}=await import('/js/icons.js'), O=await import('/js/osm-data.js'), {lonLatToTile}=await import('/js/geo.js');
+      const hex=(d,i)=>'#'+[d[i],d[i+1],d[i+2]].map(v=>v.toString(16).padStart(2,'0')).join('');
+      // (the aerial base's imagery may never finish loading: idle or 8 s)
+      const settle=async()=>{m.jumpTo({center:m.getCenter(),zoom:m.getZoom()+1e-6});m.fire('moveend');await new Promise(r=>setTimeout(r,500));
+        await Promise.race([new Promise(r=>{m.once('idle',r);m.triggerRepaint();}),new Promise(r=>setTimeout(r,8000))]);};
+      O.holdReedbeds();
+      const c=[25.7905,62.2335], d=0.002, ring=[[c[0]-d,c[1]-d],[c[0]+d,c[1]-d],[c[0]+d,c[1]+d],[c[0]-d,c[1]+d],[c[0]-d,c[1]-d]];
+      const [x,y]=lonLatToTile(...c,O.REED_Z).map(Math.floor);
+      try{O.seedReedbeds(x,y,{schema:1,elements:[{type:'way',id:1,tags:{wetland:'reedbed'},area:[[ring.slice(0,3)]]}]});errs.push('a ring of three points was taken');}catch{}
+      O.seedReedbeds(x,y,{schema:1,elements:[{type:'relation',id:1302976,tags:{wetland:'reedbed'},area:[[ring]]}]});
+      const at=m.project(c), here=()=>m.queryRenderedFeatures([at.x,at.y],{layers:['lc-reedbed']}).length;
+      for(const base of ['trail','plain','night']) {
+        polku.set({base});
+        await settle();
+        const layers=m.getStyle().layers, i=layers.findIndex(l=>l.id==='lc-reedbed'), l=layers[i];
+        if(!l){errs.push(`${base}: no reedbed layer`);continue;}
+        if(i<layers.findIndex(l=>l.id==='lc-wetland-pattern'))errs.push(`${base}: reedbeds under the wetland dashes`);
+        const fill=m.getPaintProperty('lc-wetland','fill-color'), id=l.paint['fill-pattern'], [,f,reed]=/^reedbed-([0-9a-f]{6})-([0-9a-f]{6})$/.exec(id||'')||[];
+        if(!f){errs.push(`${base}: reedbed pattern is ${id}`);continue;}
+        if('#'+f!==fill)errs.push(`${base}: the pattern's ground #${f} isn't the wetland colour ${fill}`);
+        if(!m.hasImage(id))errs.push(`${base}: ${id} wasn't drawn on the map`);
+        const img=makeIcon(id), px=(x,y)=>hex(img.data,(y*img.width+x)*4);
+        // 2 px per CSS pixel: a tuft's middle stroke at x 3, y 1-5.5; open ground in the corner and beside it
+        if(px(5,6)!=='#'+reed||px(6,8)!=='#'+reed)errs.push(`${base}: no reed stroke in the tuft`);
+        if(px(0,0)!=='#'+f||px(22,2)!=='#'+f)errs.push(`${base}: reeds where the ground should be`);
+        if(!here())errs.push(`${base}: the seeded reedbed isn't on the map`);
+      }
+      polku.set({base:'trail'}); m.jumpTo({center:c,zoom:11.5}); await settle();
+      if(here())errs.push('reedbeds drawn below zoom 12, where their tiles aren\\'t read');
+      m.jumpTo({center:c,zoom:15.5}); await settle();
+      if(!here())errs.push('reedbeds not back at zoom 15.5');
+      // (last: back from the aerial base, MapLibre logs #1141's error from cycleway-tunnel)
+      polku.set({base:'aerial'}); await settle();
+      if(m.getLayer('lc-reedbed'))errs.push('a reedbed layer on the aerial base');
+      if((await m.getSource('reedbeds').getData()).features.length)errs.push('reedbeds published with no layer to draw them');
+      return errs;
+    })()""")
+    fails += [f'console: {e[:160]}' for e in pg.errors()]
+    pg.close()
+    print(f"{'ok  ' if not fails else 'FAIL'} reedbeds as reed tufts (#1144)" + ''.join(f'\n     - {f}' for f in fails), flush=True)
+    return not fails
+
+
+# #1147: MML answered from its recorded tiles (tools/fixtures/mml-taustakartta-<z>-<x>-<y>.pbf), never live: an empty tile
+# elsewhere, and every tile failing while `fail` is set. The start of the MML checks' script, after `m` and with the tiles
+# to read in `FX`; open the page under zoom 11, so MML is asked for nothing before it answers.
+MML_FIXTURES = """
+      const fx={}, asked=[]; let fail=false;
+      for(const t of FX)fx[t]=await (await fetch(`/tools/fixtures/mml-taustakartta-${t.replaceAll('/','-')}.pbf`)).arrayBuffer();
+      maplibregl.addProtocol('mmltest', async ({url}) => {
+        const [,z,y,x]=/\\/(\\d+)\\/(\\d+)\\/(\\d+)\\.pbf/.exec(url).map(Number); asked.push(url);
+        if(fail)throw new Error('Failed to fetch');
+        const t=fx[`${z}/${x}/${y}`]; return {data: t ? t.slice(0) : new ArrayBuffer(0)};
+      });
+      m.setTransformRequest((url)=>({url: url.startsWith('https://avoin-karttakuva.maanmittauslaitos.fi/vectortiles/') ? url.replace(/^https:/,'mmltest:') : url}));
+      const tileMid=(z,x,y)=>[(x+0.5)/2**z*360-180, Math.atan(Math.sinh(Math.PI*(1-2*(y+0.5)/2**z)))*180/Math.PI];
+"""
+
+
+# #1147: MML's bogs from a recorded tile (tools/fixtures/mml-taustakartta-14-9260-4578.pbf, Seitseminen), never live MML:
+# each class's pattern on every vector base, bogs opaque over OSM's wetlands and paludified land under them; heath and open forest left
+# out. Where MML's tiles don't load, OSM's wetlands stay and a message says so once, and again after a tile has come.
+def mml_bogs(chrome):
+    pg = chrome.page(1440, 900, False)
+    # (zoom 10: under the source's zoom 11, so MML is asked for nothing before the test answers it)
+    pg.open_app({'activity': 'mtb', 'base': 'trail'}, hash_='#10/61.92/23.478')
+    fails = pg.js("""(async () => {
+      const errs=[], m=polku.map, {makeIcon}=await import('/js/icons.js'), FX=['14/9260/4578'];
+      const hex=(d,i)=>'#'+[d[i],d[i+1],d[i+2]].map(v=>v.toString(16).padStart(2,'0')).join('');
+      const settle=async()=>{await new Promise(r=>setTimeout(r,300));await Promise.race([new Promise(r=>{m.once('idle',r);m.triggerRepaint();}),new Promise(r=>setTimeout(r,10000))]);};
+      if(m.style.tileManagers.mml.getIds().length)return ['MML was asked for tiles at zoom 10'];""" + MML_FIXTURES + """
+      m.jumpTo({center:tileMid(14,9260,4578),zoom:14.5}); await settle();
+      if(!asked.length)return ['(the test) MML was never asked for a tile'];
+      const u=new URL(asked[0].replace(/^mmltest:/,'https:')), src=m.getStyle().sources.mml;
+      if(!u.pathname.includes('/vectortiles/taustakartta/wmts/1.0.0/taustakartta/default/v21/'))errs.push(`terrain tiles from ${u.pathname}`);
+      if(!u.searchParams.get('api-key'))errs.push('no API key in the terrain tiles\\' address');
+      if(src.minzoom!==11||!src.bounds||src.bounds[0]<19||src.bounds[2]>32)errs.push(`terrain tiles asked for from zoom ${src.minzoom}, within ${src.bounds}`);
+      const drawn=(layer)=>new Set(m.queryRenderedFeatures({layers:[layer]}).map(f=>f.properties.kohdeluokka));
+      const bogs=drawn('mml-bog');
+      for(const k of [35411,35412,35421])if(!bogs.has(k))errs.push(`no bog of class ${k} drawn from the recorded tile`);
+      if(!drawn('mml-paludified').has(35300))errs.push('no paludified land drawn from the recorded tile');
+      const bog=()=>m.style.getLayer('mml-bog'), as=(cls)=>({type:3,properties:{kohdeluokka:cls}});
+      const pattern=(cls)=>{const v=bog()._transitionablePaint._values['fill-pattern'].value.expression.evaluate({zoom:14},as(cls));return v&&v.name||v;};
+      const blend=(a,b,t)=>'#'+[1,3,5].map(i=>Math.round(parseInt(b.slice(i,i+2),16)*t+parseInt(a.slice(i,i+2),16)*(1-t)).toString(16).padStart(2,'0')).join('');
+      for(const base of ['trail','plain','night']) {
+        polku.set({base}); await settle();
+        const order=m.getStyle().layers.map(l=>l.id), at=(id)=>order.indexOf(id);
+        if(!(at('lc-wetland-pattern')<at('mml-bog')&&at('mml-bog')<at('lc-reedbed')))errs.push(`${base}: bogs not drawn over OSM's wetlands and under the reedbeds`);
+        if(!(at('lc-wood')<at('mml-paludified')&&at('mml-paludified')<at('lc-wetland')))errs.push(`${base}: paludified land not drawn over the forest and under OSM's wetlands`);
+        const osm=m.getPaintProperty('lc-wetland-pattern','fill-pattern'), [,ground,dash]=/^wetland-(\\w{6})-(\\w{6})$/.exec(osm);
+        const wood=blend(m.getPaintProperty('background','background-color'),m.getPaintProperty('lc-wood','fill-color'),m.getPaintProperty('lc-wood','fill-opacity')).slice(1);
+        const water=m.getPaintProperty('water','fill-color').slice(1);
+        // open bogs as OSM's wetlands, wooded ones on the forest's tint as drawn, the hard to cross in unbroken lines
+        const want={35401:osm,35411:osm,35402:`wetland-${wood}-${dash}`,35412:`wetland-${wood}-${dash}`,35421:`bog-hard-${ground}-${dash}`,35422:`bog-hard-${wood}-${dash}`,38300:`wetland-${water}-${dash}`};
+        for(const [k,id] of Object.entries(want)) {
+          if(!bog()._featureFilter.filter({zoom:14},as(+k)))errs.push(`${base}: class ${k} isn't drawn`);
+          else if(pattern(+k)!==id)errs.push(`${base}: class ${k} drawn as ${pattern(+k)}, not ${id}`);
+        }
+        for(const k of [39110,39120,34100,36200])if(bog()._featureFilter.filter({zoom:14},as(k)))errs.push(`${base}: class ${k} drawn as a bog`);
+        for(const id of new Set(Object.values(want))) {
+          const d=makeIcon(id).data;
+          for(let i=3;i<d.length;i+=4)if(d[i]!==255){errs.push(`${base}: ${id} has clear pixels, so OSM's dashes would show through`);break;}
+        }
+        for(const k of [35411,35412,35421])if(!m.hasImage(want[k]))errs.push(`${base}: ${want[k]} wasn't drawn on the map`);
+        // 2 px per CSS pixel: the hard bog's lines on rows 2-3 and 8-9, unbroken, ground between
+        const hard=makeIcon(want[35421]), px=(img,x,y)=>hex(img.data,(y*img.width+x)*4);
+        if([0,5,15].some(x=>px(hard,x,2)!=='#'+dash||px(hard,x,9)!=='#'+dash))errs.push(`${base}: the hard bog's lines are broken`);
+        if(px(hard,0,0)!=='#'+ground||px(hard,7,5)!=='#'+ground)errs.push(`${base}: lines where the hard bog's ground should be`);
+        // paludified land: a dash at x 4-11 on rows 6-7, the land under it showing everywhere else
+        const pid=m.getPaintProperty('mml-paludified','fill-pattern'), pal=makeIcon(pid);
+        if(pid!==`bog-paludified-${dash}`)errs.push(`${base}: paludified land drawn as ${pid}`);
+        else { if(px(pal,4,6)!=='#'+dash)errs.push(`${base}: no dash in paludified land`); if(pal.data[3]!==0)errs.push(`${base}: paludified land covers the land under it`); }
+      }
+      // MML's tiles failing: OSM's wetlands show, a message once; again once a tile has come in between
+      polku.set({base:'trail'}); await settle();
+      const box=document.querySelector('#toast'), said=()=>box.textContent.includes('terrain didn’t load');
+      box.textContent=''; fail=true;
+      m.jumpTo({center:[23.43,61.94],zoom:13.5}); await settle();
+      if(!said())errs.push(`no message where MML's tiles failed (${box.textContent})`);
+      if(!m.queryRenderedFeatures({layers:['lc-wetland-pattern']}).length)errs.push('no OSM wetlands where MML\\'s tiles failed');
+      if(m.queryRenderedFeatures({layers:['mml-bog']}).length)errs.push('MML bogs drawn where their tiles failed');
+      box.textContent=''; m.jumpTo({center:[23.20,61.80],zoom:13.5}); await settle();
+      if(said())errs.push('the message came again while MML\\'s tiles kept failing');
+      fail=false; m.jumpTo({center:[23.60,62.10],zoom:13.5}); await settle();
+      fail=true; m.jumpTo({center:[23.10,62.20],zoom:13.5}); await settle();
+      if(!said())errs.push('no message when MML\\'s tiles failed again after one came');
+      polku.set({mmlKey:'own-key-fixture'});
+      if(new URL(m.getStyle().sources.mml.tiles[0]).searchParams.get('api-key')!=='own-key-fixture')errs.push("a person's own key isn't used for the bogs");
+      polku.set({mmlKey:''});
+      for(const base of ['maasto','aerial']){polku.set({base}); if(m.getStyle().sources.mml)errs.push(`MML's bogs asked for on the ${base} base`);}
+      return errs;
+    })()""", timeout=120000)
+    fails += [f'console: {e[:160]}' for e in pg.errors()]
+    pg.close()
+    print(f"{'ok  ' if not fails else 'FAIL'} MML's bogs by class, over OSM's wetlands (#1147)" + ''.join(f'\n     - {f}' for f in fails), flush=True)
+    return not fails
+
+
+# #1147: MML's rock, stones, cliffs, reeds and power lines from two recorded tiles, never live MML: Porvoo
+# (tools/fixtures/mml-taustakartta-14-9352-4721.pbf: rock, stones, a reed, cliffs, power lines and pylons) and Pallas
+# (…-14-9286-3913.pbf: boulder fields, sparse boulders). Each drawn from its tile on every vector base, MML's rock in
+# OSM's grey, the lines and points over the water (MML's reeds lie in it), and a cliff's ticks on its right, the lower
+# side in MML's data.
+def mml_rock(chrome):
+    pg = chrome.page(1440, 900, False)
+    pg.open_app({'activity': 'mtb', 'base': 'trail'}, hash_='#10/60.4/25.5')
+    fails = pg.js("""(async () => {
+      const errs=[], m=polku.map, {makeIcon}=await import('/js/icons.js'), FX=['14/9352/4721','14/9286/3913'];
+      const settle=async()=>{await new Promise(r=>setTimeout(r,300));await Promise.race([new Promise(r=>{m.once('idle',r);m.triggerRepaint();}),new Promise(r=>setTimeout(r,10000))]);};
+      if(m.style.tileManagers.mml.getIds().length)return ['MML was asked for tiles at zoom 10'];""" + MML_FIXTURES + """
+      const drawn=(layer)=>new Set(m.queryRenderedFeatures({layers:[layer]}).map(f=>f.properties.kohdeluokka));
+      let base; const want=(layer,classes)=>{const got=drawn(layer); for(const k of classes)if(!got.has(k))errs.push(`${base}: ${layer} drew nothing of class ${k} from the recorded tile`);};
+      const value=(id,prop,z)=>m.style.getLayer(id)._transitionablePaint._values[prop].value.expression.evaluate({zoom:z});
+      for(base of ['trail','plain','night']) {
+        polku.set({base}); m.jumpTo({center:tileMid(14,9352,4721),zoom:14.6}); await settle();
+        want('mml-rock',[34100]); want('mml-rock-point',[34100,34600]); want('mml-reed',[38100]);
+        want('mml-cliff',[34400]); want('mml-cliff-ticks',[34400]); want('mml-power',[22311,22312]);
+        if(drawn('mml-pylon').size)errs.push(`${base}: pylons drawn under zoom 15`);
+        m.jumpTo({zoom:15.2}); await settle(); want('mml-pylon',[22392]);
+        m.jumpTo({center:tileMid(14,9286,3913),zoom:14.6}); await settle();
+        want('mml-boulders',[34700]); want('mml-rock-point',[34200]);
+        const order=m.getStyle().layers.map(l=>l.id), at=(id)=>order.indexOf(id), before=(a,b,what)=>{if(!(at(a)>=0&&at(a)<at(b)))errs.push(`${base}: ${what} (${a} at ${at(a)}, ${b} at ${at(b)})`);};
+        before('lc-rock','mml-rock',"MML's rock under OSM's");
+        // over the water: MML's reed points lie in it
+        for(const l of ['mml-cliff','mml-cliff-ticks','mml-power','mml-rock-point','mml-reed','mml-pylon']){before('water',l,`${l} under the water`); before(l,'building',`${l} over the buildings`);}
+        const rock=m.getPaintProperty('lc-rock','fill-color');
+        if(m.getPaintProperty('mml-rock','fill-color')!==rock)errs.push(`${base}: MML's rock in ${m.getPaintProperty('mml-rock','fill-color')}, OSM's in ${rock}`);
+        const boulders=m.getPaintProperty('mml-boulders','fill-pattern');
+        if(!boulders.startsWith(`boulders-${rock.slice(1)}-`))errs.push(`${base}: boulder fields drawn as ${boulders}, not on the rock's grey`);
+        const icons=[boulders,m.getLayoutProperty('mml-reed','icon-image'),m.getLayoutProperty('mml-pylon','icon-image')];
+        const pts=m.getLayoutProperty('mml-rock-point','icon-image'); for(let i=3;i<pts.length;i+=2)icons.push(pts[i]); icons.push(pts[pts.length-1]);
+        for(const id of new Set(icons)){const img=makeIcon(id); if(!img||!img.data.some((v,i)=>i%4===3&&v>0))errs.push(`${base}: ${id} isn't drawn`); else if(!m.hasImage(id))errs.push(`${base}: ${id} isn't on the map`);}
+        // the ticks: a wider dashed line beside the cliff, touching it, on its right (a positive offset)
+        for(const z of [13,16,18]) {
+          const off=value('mml-cliff-ticks','line-offset',z), w=value('mml-cliff-ticks','line-width',z), e=value('mml-cliff','line-width',z);
+          if(!(off>0))errs.push(`${base}: the cliff's ticks on its left at zoom ${z} (offset ${off})`);
+          else if(Math.abs(off-(w+e)/2)>0.05)errs.push(`${base}: the cliff's ticks ${off} px from it at zoom ${z}, not ${(w+e)/2}`);
+        }
+      }
+      for(const [cls,layers] of [[35411,['mml-rock','mml-boulders','mml-rock-point','mml-reed','mml-cliff','mml-power','mml-pylon']],[34500,['mml-cliff']],[22200,['mml-power']]])
+        for(const l of layers)if(m.style.getLayer(l)._featureFilter.filter({zoom:15},{type:1,properties:{kohdeluokka:cls}}))errs.push(`${l} draws class ${cls}`);
+      for(const base of ['maasto','aerial']){polku.set({base}); await settle(); for(const l of ['mml-rock','mml-cliff','mml-power'])if(m.getLayer(l))errs.push(`${l} on the ${base} base`);}
+      return errs;
+    })()""", timeout=180000)
+    fails += [f'console: {e[:160]}' for e in pg.errors()]
+    pg.close()
+    print(f"{'ok  ' if not fails else 'FAIL'} MML's rock, stones, cliffs, reeds and power lines (#1147)" + ''.join(f'\n     - {f}' for f in fails), flush=True)
+    return not fails
+
+
+# #1130, #1137: no-bike bars stay on paths/tracks, across the line, as wide as its halo.
 def cycling_restrictions(chrome):
     pg = chrome.page(1440, 900, False)
     pg.open_app({'activity': 'mtb', 'base': 'trail', 'highContrast': False, 'trailDetails': True})
@@ -862,6 +1214,7 @@ def cycling_restrictions(chrome):
         polku.set({activity,highContrast,trailDetails:true});
         await new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)));
         if(m.getStyle().layers.some(l=>l.id.startsWith('road-')&&l.id.endsWith('-nobike')))errs.push('cycling side marks leaked onto ordinary roads');
+        const order=m.getStyle().layers.map(l=>l.id);
         for(const pass of passes)for(const [way,props] of [
           [`track-${pass}`,{class:'track'}], [`cycleway-${pass}`,{class:'path',subclass:'cycleway'}],
           [`path-${pass}`,{class:'path',subclass:'path'}], [`path-osm-${pass}`,{class:'path',subclass:'path',trail:true}]
@@ -874,16 +1227,15 @@ def cycling_restrictions(chrome):
           if(matches({...tags,bicycle:'no',subclass:'footway'})||matches({...tags,access:'no',foot:'yes'}))errs.push(`${id}: footway or missing bicycle permission became a prohibition`);
           if(matches({...tags,bicycle:'no',access:'no',foot:'no'}))errs.push(`${id}: cycling and general access marks duplicated`);
           for(const other of passes.filter(x=>x!==pass))if(matches({...tags,brunnel:other,bicycle:'no'}))errs.push(`${id}: wrong structure`);
-          for(const [i,z] of [14,16,18].entries()) {
-            const width=value(id,'line-width',z,tags), want=(highContrast?[3,6,9]:[2,3,6])[i];
-            if(width!==want)errs.push(`${id}: zoom ${z} mark width ${width}, expected ${want}`);
-            for(const w of [0,1,2,3]) {
-              const sizes=way.startsWith('path-osm-')?(w===0?[1,3,4]:w>=2?[3,8,14]:[2.5,5,10]):[2.5,5,10];
-              if(value(id,'line-offset',z,{...tags,w})!==-sizes[i]*(highContrast?1.5:1))errs.push(`${id}: zoom ${z} width category ${w} offset changed`);
-            }
+          // #1137: bars across the line, the trail halo's width (times the detail's width factor) plus 2 px a side
+          for(const [i,z] of [14,16,18].entries())for(const wf of [.62,1,1.6]) {
+            const width=value(id,'line-width',z,{...tags,wf}), want=[4,7,12][i]*(highContrast?1.35:1)*(way.startsWith('path-osm-')?wf:1)+4;
+            if(Math.abs(width-want)>1e-6)errs.push(`${id}: zoom ${z} width factor ${wf}: bar length ${width}, expected ${want}`);
           }
+          if(m.getPaintProperty(id,'line-offset'))errs.push(`${id}: bars moved off the line`);
+          if(order.indexOf(id)<order.indexOf(way))errs.push(`${id}: bars drawn under the line's centre`);
           if(value(id,'line-opacity',16,tags)!==(pass==='tunnel'?.3:1))errs.push(`${id}: tunnel fading changed`);
-          if(JSON.stringify(m.getPaintProperty(id,'line-dasharray'))!==JSON.stringify(highContrast?[.4,.5]:[.2,.5]))errs.push(`${id}: mark spacing changed`);
+          if(JSON.stringify(m.getPaintProperty(id,'line-dasharray'))!==JSON.stringify(highContrast?[.35,2]:[.25,2]))errs.push(`${id}: bar thickness or spacing changed`);
         }
       }
       // Exercise Overpass -> slim tile -> rendered features, not only synthetic filter properties.
@@ -910,12 +1262,12 @@ def cycling_restrictions(chrome):
         polku.set({activity});
         if(m.getStyle().layers.some(l=>l.id.endsWith('-nobike')))errs.push(`${activity}: cycling prohibition shown in another sport`);
       }
-      if(!document.querySelector('#layers-body').textContent.includes('No bikes (beside a path or forest track)'))errs.push('map key misstates restriction coverage');
+      if(!document.querySelector('#layers-body').textContent.includes('No bikes (red bars across a path or forest track)'))errs.push('map key misstates restriction coverage');
       return [...new Set(errs)];
     })()""")
     fails += [f'console: {e[:160]}' for e in pg.errors()]
     pg.close()
-    print(f"{'ok  ' if not fails else 'FAIL'} cycling restriction marks on paths and tracks (#1130)" + ''.join(f'\n     - {f}' for f in fails), flush=True)
+    print(f"{'ok  ' if not fails else 'FAIL'} cycling restriction marks on paths and tracks (#1130, #1137)" + ''.join(f'\n     - {f}' for f in fails), flush=True)
     return not fails
 
 
@@ -7118,6 +7470,8 @@ def coarse(chrome):
         pg.open_app({'activity': 'mtb'}, hash_='#13/62.2000/26.1000')
         fails += pg.js(COARSE_KEEP, timeout=60000)
         pg.c.send('Network.setBypassServiceWorker', {'bypass': False}, pg.s)
+        # this commit's worker, not one an earlier run on the port left in the profile: register() keeps that (#1134)
+        pg.js("(async () => { for (const r of await navigator.serviceWorker.getRegistrations()) await r.unregister(); return true })()")
         pg.js("Promise.race([navigator.serviceWorker.register('./sw.js').then(() => navigator.serviceWorker.ready), new Promise((_, no) => setTimeout(() => no(new Error('service worker not ready after 15 s')), 15000))]).then(() => true)", timeout=20000)
         pg.reload()
         if not pg.js('!!navigator.serviceWorker.controller'):
@@ -7229,6 +7583,253 @@ def together(chrome):
     finally:
         pg.close()
     print(f"{'ok  ' if not fails else 'FAIL'} Polku's own layers come in together after the map stops, 500 ms at most (#1091)" + ''.join(f'\n     - {f}' for f in fails), flush=True)
+    return not fails
+
+
+# What comes after the map stops fades in (#1091): each picture laid over the map (its animation, and on its way out
+# whether it had finished or was cut short), and, in a render listener after Polku's own, every frame drawn while the
+# map moves, and those with a picture over them.
+FADEIN_WATCH = r"""
+(() => {
+  const m = polku.map, w = window.__fade = { fades: [], gone: [], moving: 0, ghost: 0 }, anims = new WeakMap();
+  new MutationObserver((rs) => { for (const r of rs) {
+    for (const n of r.addedNodes) if (n.classList?.contains('map-fade')) {
+      const a = n.getAnimations()[0], t = a && a.effect.getTiming(), k = a && a.effect.getKeyframes();
+      anims.set(n, a);
+      w.fades.push(a ? { ms: t.duration, easing: t.easing, from: +k[0].opacity, to: +k[k.length - 1].opacity, under: n.previousElementSibling === m.getCanvas() } : { ms: null });
+    }
+    for (const n of r.removedNodes) if (anims.has(n)) w.gone.push(anims.get(n).playState);
+  } }).observe(m.getCanvasContainer(), { childList: true });
+  m.on('render', () => { if (m.isMoving()) { w.moving++; if (m.getCanvasContainer().querySelector('.map-fade')) w.ghost++; } });
+  return true;
+})()
+"""
+# a picture over the map, 3 s at most
+FADEIN_SEEN = "new Promise((ok) => { const t0 = Date.now(), go = () => document.querySelector('.map-fade') || Date.now() - t0 > 3000 ? ok(!!document.querySelector('.map-fade')) : requestAnimationFrame(go); go(); })"
+# the map still for 150 ms, 15 s at most
+FADEIN_STILL = "new Promise((ok) => { const m = polku.map, t0 = Date.now(); let since = 0; const go = () => { since = m.isMoving() ? 0 : since || Date.now(); if ((since && Date.now() - since > 150) || Date.now() - t0 > 15000) ok(true); else setTimeout(go, 30); }; setTimeout(go, 100); })"
+
+
+def fadein(chrome):
+    """What comes after the map stops fades in (#1091). OpenFreeMap's zoom 14 tiles are held with the Fetch domain while
+    the map moves and let go once it has stopped, so a part always comes after the stop. After a move by mouse and after
+    a search result chosen with the mouse, it fades in on opacity over 200–400 ms, `linear`, with reduced motion (as the
+    checks' pages have it) and with motion; after the arrow keys and a search result chosen with Enter nothing fades;
+    a touch on the map, a route lit under the mouse and a move made at once end a fade at once; and quick mouse flings,
+    grabbed again while the map glides, never leave a picture over a moving map."""
+    fails = []
+
+    def mouse(pg, kind, x, y):
+        pg.c.send('Input.dispatchMouseEvent', {'type': kind, 'x': x, 'y': y, 'button': 'left', 'buttons': 0 if kind == 'mouseReleased' else 1, 'clickCount': 1}, pg.s)
+
+    def key(pg, k, vk):
+        for t in ('rawKeyDown', 'keyUp'):
+            pg.c.send('Input.dispatchKeyEvent', {'type': t, 'key': k, 'code': k, 'windowsVirtualKeyCode': vk}, pg.s)
+
+    def drag(pg):
+        mouse(pg, 'mousePressed', 1200, 450)
+        for k in range(1, 31):
+            time.sleep(0.016)
+            mouse(pg, 'mouseMoved', 1200 - k * 33, 450)
+        time.sleep(0.25)  # (held still, so it doesn't glide)
+        mouse(pg, 'mouseReleased', 210, 450)
+
+    def search(pg, text):
+        pg.js("(() => { const i = document.querySelector('#search-input'); i.value = ''; i.focus(); return true; })()")
+        pg.c.send('Input.insertText', {'text': text}, pg.s)
+        return pg.js("""new Promise((ok) => { const t0 = Date.now(), go = () => { const li = document.querySelector('#search-results li[data-kind="coords"]');
+          if (li || Date.now() - t0 > 5000) ok(li && (({ left, top, width, height }) => [left + width / 2, top + height / 2])(li.getBoundingClientRect())); else setTimeout(go, 50); }; go(); })""")
+
+    def by_click(text):
+        def move(pg):
+            x, y = search(pg, text)
+            mouse(pg, 'mousePressed', x, y)
+            mouse(pg, 'mouseReleased', x, y)
+        return move
+
+    def by_enter(pg):
+        search(pg, '62.2600, 25.8300')
+        key(pg, 'Enter', 13)
+
+    def by_arrows(pg):
+        pg.js('polku.map.getCanvas().focus(), true')
+        for _ in range(14):
+            key(pg, 'ArrowRight', 39)
+            time.sleep(0.06)
+
+    def sessions(pg):
+        """The page's session and its workers': on the first page a Chrome opens, the map's workers' requests don't go
+        through the page's Fetch domain (as `coarse` found). Chrome's cache is off in them, so no tile skips the hold."""
+        pg.c.send('Target.setAutoAttach', {'autoAttach': True, 'waitForDebuggerOnStart': False, 'flatten': True}, pg.s)
+        time.sleep(0.5)
+        out = [pg.s] + [e['params']['sessionId'] for e in chrome.events if e.get('sessionId') == pg.s and e.get('method') == 'Target.attachedToTarget']
+        for s_ in out:
+            try:
+                chrome.send('Network.enable', {}, s_)
+                chrome.send('Network.setCacheDisabled', {'cacheDisabled': True}, s_)
+            except RuntimeError:
+                pass  # (a worker without the Network domain)
+        return out
+
+    def held_move(pg, move):
+        """Makes the move with the tiles held, and lets them go once the map has stopped; how many were held."""
+        pg.held_in = sessions(pg)  # (afresh: a worker started since isn't held otherwise)
+        for s_ in pg.held_in:
+            try:
+                chrome.send('Fetch.enable', {'patterns': [{'urlPattern': '*openfreemap.org/planet/*/14/*'}]}, s_)
+            except RuntimeError:
+                pass  # (a worker that doesn't take Fetch)
+        move(pg)
+        pg.js(FADEIN_STILL, timeout=20000)
+        held = [e for e in chrome.events if e.get('sessionId') in pg.held_in and e.get('method') == 'Fetch.requestPaused']
+        for e in held:
+            chrome.events.remove(e)
+            try:
+                chrome.send('Fetch.continueRequest', {'requestId': e['params']['requestId']}, e['sessionId'])
+            except RuntimeError:
+                pass  # (one MapLibre has given up)
+        for s_ in pg.held_in:
+            try:
+                chrome.send('Fetch.disable', {}, s_)
+            except RuntimeError:
+                pass
+        return len(held)
+
+    def after(pg, label, move, want):
+        """A move with the tiles held until it has stopped, and what fades in the 3.5 s after."""
+        pg.js('window.__fade.fades.length = 0, true')
+        c0 = pg.js('polku.map.getCenter().toArray()')
+        held = held_move(pg, move)
+        time.sleep(3.5)
+        fades, c1 = pg.js('[window.__fade.fades, polku.map.getCenter().toArray()]')
+        odd = [f for f in fades if not (f['ms'] is not None and 200 <= f['ms'] <= 400 and f['easing'] == 'linear' and f['from'] == 1 and f['to'] == 0 and f['under'])]
+        if c0 == c1:
+            fails.append(f'{label}: the map didn’t move')
+        elif not held:
+            fails.append(f'{label}: no zoom 14 tile was asked for, so nothing came after the stop')
+        elif want and not fades:
+            fails.append(f'{label}: what came after the stop didn’t fade in')
+        elif want and odd:
+            fails.append(f'{label}: a fade not on opacity, 200–400 ms, linear, right over the map’s canvas: {odd[:2]}')
+        elif not want and fades:
+            fails.append(f'{label}: what came after the stop faded in: {fades[:2]}')
+
+    pg = chrome.page(1440, 900, False)
+    try:
+        pg.open_app({'activity': 'mtb'}, hash_='#14.5/62.2400/25.7500')
+        pg.js(FADEIN_WATCH)
+        after(pg, 'a drag with the mouse', drag, True)
+        after(pg, 'a search result chosen with Enter', by_enter, False)
+        after(pg, 'a search result chosen with the mouse', by_click('62.2200, 25.6700'), True)
+        after(pg, 'the arrow keys', by_arrows, False)
+        # a LIPAS route lit under the mouse ends a fade: it's drawn in the map's canvas, under the picture. LIPAS answers
+        # with a route through the view's middle (EPSG:3067, tm35ToLonLat inverted); a spot where the mouse lights it is
+        # found; then, the map kept still, more routes come on that layer after a moveend, and while they fade in the
+        # mouse goes to that spot.
+        pg.js("""(async () => {
+          const m = polku.map, c = m.getCenter(), { tm35ToLonLat } = await import(location.origin + '/js/geo.js'), k = Math.cos(c.lat * Math.PI / 180);
+          let x = 500000 + (c.lng - 27) * 111320 * k, y = c.lat * 111000;
+          for (let i = 0; i < 6; i++) { const [lo, la] = tm35ToLonLat(x, y); x += (c.lng - lo) * 111320 * k; y += (c.lat - la) * 111000; }
+          window.__routeAt = (i) => tm35ToLonLat(x + i * 250, y); // (points on it: east-west in EPSG:3067 isn't on the map)
+          const line = (id, dy) => ({ type: 'Feature', properties: { id }, geometry: { type: 'LineString', coordinates: [...Array(161).keys()].map((i) => [x - 20000 + i * 250, y + dy]) } });
+          (await import(location.origin + '/js/lipas.js')).seedLipas(() => Promise.resolve({ type: 'FeatureCollection', features: [line(1, 0)] }));
+          polku.lipas.tiles.clear();
+          m.jumpTo({ center: c });
+          await new Promise((r) => setTimeout(r, 2500));
+          // a still map's moveend after a pointer's input (off the map), and Polku's LIPAS layer given more routes at once
+          window.__more = () => {
+            document.body.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true }));
+            m.jumpTo({ center: m.getCenter() });
+            const pts = [...Array(161).keys()].map((i) => window.__routeAt(i - 80)), f = (id, dLat) => ({ type: 'Feature', properties: { lipas: true, type: 4405, lipasId: id }, geometry: { type: 'LineString', coordinates: pts.map(([lo, la]) => [lo, la + dLat]) } });
+            m.getSource('lipasRoutes').setData({ type: 'FeatureCollection', features: [f(1, 0), ...[...Array(16).keys()].map((i) => f(100 + i, 0.001 * (i + 1)))] });
+          };
+          return true; })()""", timeout=20000)
+
+        def hover_at(x, y):
+            pg.c.send('Input.dispatchMouseEvent', {'type': 'mouseMoved', 'x': x, 'y': y, 'button': 'none', 'buttons': 0}, pg.s)
+            return pg.js("new Promise((ok) => requestAnimationFrame(() => requestAnimationFrame(() => ok(!!polku.map.getFeatureState({ source: 'lipasRoutes', id: 1 }).hover))))")
+        spots = pg.js("""(() => { const m = polku.map, out = [];
+          for (let k = 0; k <= 40; k++) for (const s of [k, -k]) { const q = m.project(window.__routeAt(s)); if (q.x > 20 && q.x < innerWidth - 20 && q.y > 80 && document.elementFromPoint(q.x, q.y) === m.getCanvas()) out.push([q.x, q.y]); }
+          return out; })()""")
+        spot = next((p_ for p_ in spots[:12] if hover_at(*p_)), None)
+        if not spot:
+            fails.append(f'a route lit under the mouse: the mouse lit the LIPAS route nowhere on it ({len(spots)} spots)')
+        else:
+            hover_at(spot[0], 5)  # (off the map, onto the top bar: nothing lit)
+            pg.js('window.__more(), true')
+            ready = pg.js("new Promise((ok) => { const t0 = Date.now(), go = () => { const a = document.querySelector('.map-fade')?.getAnimations()[0]; if (a && a.effect.getTiming().duration - a.currentTime > 120) ok(true); else if (Date.now() - t0 > 4000) ok(false); else requestAnimationFrame(go); }; go(); })")
+            if not ready:
+                fails.append('a route lit under the mouse: more LIPAS routes after a still moveend didn’t fade in')
+            else:
+                pg.js('window.__fade.gone.length = 0, true')  # (only how the fade on the map now goes)
+                hover_at(*spot)
+                left, gone = pg.js("[!!document.querySelector('.map-fade'), window.__fade.gone]")
+                if left or 'finished' in gone or not gone:
+                    fails.append(f'a route lit under the mouse didn’t end the fade at once (a picture left: {left}, how they went: {gone})')
+        fails += [f'console: {e[:160]}' for e in pg.errors()]
+    finally:
+        pg.close()
+    # a phone: a move by touch fades in too, and a touch on the map ends the fade at once
+    pg = chrome.page(390, 844, True)
+    try:
+        pg.open_app({'activity': 'mtb'}, hash_='#14.5/62.2400/25.7500')
+        pg.js(FADEIN_WATCH)
+
+        def swipes(pg):  # two, up the screen: the map moves further than a tile's height
+            for _ in range(2):
+                pg.c.send('Input.dispatchTouchEvent', {'type': 'touchStart', 'touchPoints': [{'x': 200, 'y': 760}]}, pg.s)
+                for k in range(1, 23):
+                    time.sleep(0.016)
+                    pg.c.send('Input.dispatchTouchEvent', {'type': 'touchMove', 'touchPoints': [{'x': 200, 'y': 760 - k * 30}]}, pg.s)
+                time.sleep(0.25)  # (held still, so it doesn't glide)
+                pg.c.send('Input.dispatchTouchEvent', {'type': 'touchEnd', 'touchPoints': []}, pg.s)
+                pg.js(FADEIN_STILL, timeout=20000)
+        after(pg, 'swipes on a phone', swipes, True)
+        # a move made at once mid-fade (following you, heading up: no frame drawn while it moves) takes the picture with
+        # it (Codex on #1136)
+        held_move(pg, swipes)
+        if not pg.js(FADEIN_SEEN):
+            fails.append('a phone: nothing faded in after more swipes, so a move made at once couldn’t be tried')
+        elif pg.js("(() => { const m = polku.map, c = m.getCanvas(); m.jumpTo({ center: m.unproject([c.clientWidth / 2 + 120, c.clientHeight / 2]) }, { polkuFollow: true }); return !!document.querySelector('.map-fade'); })()"):
+            fails.append('a phone: a move made at once, as following you does, left the picture of the view before over the map')
+        # (last: a touch is a tap, which opens a card over the swipes' start)
+        pg.js('window.__fade.gone.length = 0, true')
+        held_move(pg, swipes)
+        if not pg.js(FADEIN_SEEN):
+            fails.append('a phone: nothing faded in after the second swipe, so a touch couldn’t end it')
+        else:
+            pg.c.send('Input.dispatchTouchEvent', {'type': 'touchStart', 'touchPoints': [{'x': 200, 'y': 300}]}, pg.s)
+            left, gone = pg.js("[!!document.querySelector('.map-fade'), window.__fade.gone]")
+            pg.c.send('Input.dispatchTouchEvent', {'type': 'touchEnd', 'touchPoints': []}, pg.s)
+            if left or 'finished' in gone or not gone:
+                fails.append(f'a phone: a touch on the map didn’t end the fade at once (a picture left: {left}, how they went: {gone})')
+        fails += [f'phone console: {e[:160]}' for e in pg.errors()]
+    finally:
+        pg.close()
+    # with motion: the search result's flight, then quick flings grabbed again while the map glides
+    pg = chrome.page(1440, 900, False)
+    try:
+        pg.c.send('Emulation.setEmulatedMedia', {'features': [{'name': 'prefers-reduced-motion', 'value': 'no-preference'}]}, pg.s)
+        pg.open_app({'activity': 'mtb'}, hash_='#14.5/62.2400/25.7500')
+        pg.js(FADEIN_WATCH)
+        after(pg, 'with motion, a search result’s flight', by_click('62.2700, 25.6400'), True)
+        for i in range(8):
+            mouse(pg, 'mousePressed', 970, 450)
+            for k in range(1, 7):
+                time.sleep(0.012)
+                mouse(pg, 'mouseMoved', 970 - k * 60, 450)
+            mouse(pg, 'mouseReleased', 610, 450)  # a fling: the map glides on
+            time.sleep(0.25 if i % 2 else 1.6)  # grabbed again while it glides, or once it has stopped and parts came
+        time.sleep(2)
+        w = pg.js('window.__fade')
+        if not w['moving']:
+            fails.append('flings: no frame drawn while the map moved, so the check proves nothing')
+        elif w['ghost']:
+            fails.append(f"flings: {w['ghost']} of {w['moving']} frames drawn while the map moved had a picture over it")
+        fails += [f'motion console: {e[:160]}' for e in pg.errors()]
+    finally:
+        pg.close()
+    print(f"{'ok  ' if not fails else 'FAIL'} what comes after the map stops fades in over 0.2–0.4 s after a move by mouse, touch or a search result's flight, never from the keys, ended by a touch, no picture over a moving map (#1091)" + ''.join(f'\n     - {f}' for f in fails), flush=True)
     return not fails
 
 
@@ -9230,10 +9831,23 @@ def chart_fonts(chrome):
           for (let k = 0; k < 3; k++) { const box = document.body.appendChild(document.createElement('div')); new ProfileChart(box.appendChild(document.createElement('canvas')), null); box.remove(); }
           return added; })()""")
         fails = [f'three charts made and dropped left {len(added)} listeners on document.fonts ({", ".join(added)})'] if added else []
+        # a computer without Arial or Roboto, as GitHub's runners: the fallback face loads none of its fonts (#1142)
+        drawn = pg.js("""(async () => {
+          document.head.appendChild(document.createElement('style')).textContent = '@font-face { font-family: "Atkinson Fallback"; src: local("No Such Font 1142"); }';
+          const { ProfileChart } = await import(location.origin + '/js/chart.js');
+          let drawn = 0;
+          const draw = ProfileChart.prototype.draw;
+          ProfileChart.prototype.draw = function (...a) { drawn++; return draw.apply(this, a); };
+          const box = document.body.appendChild(document.createElement('div'));
+          new ProfileChart(box.appendChild(document.createElement('canvas')), null);
+          await new Promise((r) => setTimeout(r, 500));
+          ProfileChart.prototype.draw = draw; box.remove();
+          return drawn; })()""")
+        if not drawn: fails.append('without the fallback font\'s Arial or Roboto, the chart is never drawn')
         fails += [f'console: {e[:160]}' for e in pg.errors()]
     finally:
         pg.close()
-    print(f"{'ok  ' if not fails else 'FAIL'} a profile chart leaves no listener on document.fonts (#1066)" + ''.join(f'\n     - {f}' for f in fails), flush=True)
+    print(f"{'ok  ' if not fails else 'FAIL'} a profile chart leaves no listener on document.fonts (#1066), and draws without the fallback font (#1142)" + ''.join(f'\n     - {f}' for f in fails), flush=True)
     return not fails
 
 
@@ -23529,6 +24143,7 @@ def osm_data(chrome):
               'test_resume_partial_stage_verifies_prefix_and_sends_only_missing_suffix',
               'test_snapshot_retries_temporary_failure_and_requires_one_complete_date',
               'test_geofabrik_requests_retry_a_refused_connection',
+              'test_country_checksum_and_polygon_come_from_beside_the_file_served',
               'test_country_download_leaves_time_to_build',
               'test_reference_download_leaves_time_to_compile',
               'test_weekly_and_candidate_geometry_are_gated',
@@ -24034,10 +24649,11 @@ GROUPS = [
     ('changelog', [changelog], 'release notes, retry, safe rendering, keyboard, route preservation and real worker offline'),
     ('pacing', [pacing, paced_legs, net_fails], 'calls made together go out paced and counted (mocked services, a fake clock); legs refused for a slot follow at it (#78); the calls that failed, in Data sources (#687)'),
     ('loading', [loading, routing_edits], 'cancel obsolete routing, edits/Undo/Clear, shared subscribers, refusal/recovery, deadlines, terrain slots and LIPAS viewport/cache (mocked)'),
-    ('layers', [layers, cycleway_style, cycling_restrictions, waterway_style], 'the Layers panel in every sport'),
+    ('layers', [layers, cycleway_style, cycling_restrictions, waterway_style, property_lines, property_plots, wetland_style, reedbed_style, mml_bogs, mml_rock], 'the Layers panel in every sport'),
     ('raster', [raster_maps, aerial_fallback, aerial_labels], 'terrain and aerial detail, bounded high-density WMS symbols, depth boundaries and missing aerial detail (#649, #650, #653); the map\'s words on the aerial photos at 4.5:1 on their halo (#554)'),
     ('coarse', [coarse], 'a coarse map underneath (#1091): the base map\'s tile four zoom levels up stands in for one that hasn\'t come, at 1440 and 390'),
     ('together', [together], 'Polku\'s own layers come in together after the map stops, 500 ms at most (#1091)'),
+    ('fadein', [fadein], 'what comes after the map stops fades in, 0.2–0.4 s by how much it changes (#1091): after a move by mouse or touch and a search result\'s flight, never from the keys, ended by a touch, no picture over a moving map'),
     ('trails', [trails, uphill_late, mtb_grades], 'recorded trail details/card, late uphill colors, and consistent MTB 0−/S0 display (#435, #673)'),
     ('header', [header_fit, head_names], 'the planner header fitting its sheet; the route\'s name following the road names that come late with the map\'s tiles (the review of #1050)'),
     ('lipas', [lipas], 'LIPAS search and riding a LIPAS route (recorded answers), a place, coordinates or a trail from search gets its pin and card (#871, #875)'),
@@ -24079,7 +24695,7 @@ GROUPS = [
     ('effects', [fewer_effects, fewer_effects_very_slow, flat_offer], 'Fewer effects (#632): offered once when frames are slow (very slow too, #900), its action and Settings\' switch by touch, solid glass set before the first paint; flat hills offered first in 3D (#936)'),
     ('appearance', [appearance], 'Settings → Appearance (#323): Automatic, Light, Dark and Match the map on both devices, set before the first paint, the device and the base map changing, Settings by touch and a reload'),
     ('glass', [glass, glass_modes], 'B\'s glass over the map (#547): words at 4.5:1 and icons at 3:1 over the Trail map, Maastokartta and the aerial photos, light and dark, phone and desktop, the route\'s words too (#559); reduced transparency, more contrast and High contrast turn it solid (#382\'s §7)'),
-    ('tokens', [tokens, chart_fonts], 'the design system\'s values (#382): css/app.css types no more font sizes, weights or corners in place than it did; a profile chart leaves no listener on document.fonts (#1066)'),
+    ('tokens', [tokens, chart_fonts], 'the design system\'s values (#382): css/app.css types no more font sizes, weights or corners in place than it did; a profile chart leaves no listener on document.fonts (#1066) and draws without the fallback font (#1142)'),
     ('values', [design_colours, palette_css, contrast_sweep], 'the design system\'s values (#382): DESIGN.md\'s colours are css/app.css\'s in both themes, the route\'s colours and the colour scales come from the CSS and again when the theme changes, and text at 4.5:1 in a set of scenes, light and dark (#370)'),
     ('controls', [controls, sideways_row], 'the design system\'s controls (#382): one look per job (#356), one focus ring, in the menus too (#385), labels that wrap (#373), a point\'s card at 200 % (#384), the top bar and its search at 200 % (#375), words at 4.5:1 (#376), Plan in green, a press that answers; a row that scrolls sideways: › at its end, a key\'s focus clear of the fade (WCAG 2.4.11)'),
     ('settings', [settings_groups], 'Settings in folding groups (#321): eleven that fit a phone and stay as left over a reload, planned settings off, a kind hidden in Check shown again (#143), recent searches cleared, distance marks and 3D height in both places, another sport\'s tiles'),

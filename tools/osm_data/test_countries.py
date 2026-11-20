@@ -37,7 +37,7 @@ class CountryTests(unittest.TestCase):
             p=root/country;p.mkdir();paths.append(p)
             files={'ways.pmtiles':b'fixture archive', 'LICENSE.txt':b'OpenStreetMap ODbL',
                    'identities.jsonl.gz':gzip.compress(json.dumps(['way',10,('b' if conflict and i==1 else 'a')*64]).encode()+b'\n',mtime=0)}
-            zooms={'ways':14,'lit':13,'trails':13,'winter':12,'hazards':11,'places':12,'inspection':14}
+            zooms={'ways':14,'lit':13,'trails':13,'winter':12,'hazards':11,'places':12,'inspection':14,'wetlands':12}
             for name in zooms:
                 files.setdefault(name+'.pmtiles',('fixture '+name).encode())
             records=[]

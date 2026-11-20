@@ -10,7 +10,7 @@ Works in your browser, on your phone or computer. No installation or account nee
 
 ## Maps and trails
 
-The map has hillshade, 5 m contours and 3D terrain, which its **3D** button turns on and off; with **Raised hills** off, 3D only tilts the flat map. In 3D the buildings stand up at their heights from OpenStreetMap, about 5 m where it has none, unless **3D buildings** is off. The hillshade is lit by the sun at the timeline's hour, or by a fixed light while the sun is down or if you choose it, and can add the shadows that hills, and trees and buildings, cast (each a switch of its own, off at first), worked out on the device from the elevation data, Meta and WRI's canopy heights (from pictures taken up to 2020) and OpenStreetMap's buildings. Base maps include the trail map, the National Land Survey's terrain map and aerial photos. **Layers** opens a quick drawer with the base maps and five layers for your sport as tiles, which you can swap for any others; **More** has every layer and the map keys.
+The map has hillshade, 5 m contours and 3D terrain, which its **3D** button turns on and off; with **Raised hills** off, 3D only tilts the flat map. In 3D the buildings stand up at their heights from OpenStreetMap, about 5 m where it has none, unless **3D buildings** is off. The hillshade is lit by the sun at the timeline's hour, or by a fixed light while the sun is down or if you choose it, and can add the shadows that hills, and trees and buildings, cast (each a switch of its own, off at first), worked out on the device from the elevation data, Meta and WRI's canopy heights (from pictures taken up to 2020) and OpenStreetMap's buildings. Base maps include the trail map, the National Land Survey's terrain map and aerial photos; in Finland, the map draws the National Land Survey's bogs by kind, rock, stones, cliffs, reeds and power lines, and a layer adds its property boundaries. **Layers** opens a quick drawer with the base maps and five layers for your sport as tiles, which you can swap for any others; **More** has every layer and the map keys.
 
 Aerial detail depends on the imagery available at that place. When closer imagery is missing, **Aerial** keeps the available coarser image; further zoom enlarges that image.
 
@@ -86,6 +86,8 @@ Polku brings together open data and free public services. Each source keeps its 
 |---|---|
 | Map and trail data | [OpenStreetMap contributors](https://www.openstreetmap.org/copyright); [OpenFreeMap](https://openfreemap.org) vector tiles (© OpenMapTiles) |
 | Terrain and base maps | [Mapterhorn](https://mapterhorn.com); Maanmittauslaitos via [Kapsi ry](https://kartat.kapsi.fi) (CC BY 4.0); Esri World Imagery |
+| Property boundaries (Finland) | Maanmittauslaitos's property map, from its open vector tiles (CC BY 4.0) |
+| Bogs, rock, cliffs, reeds and power lines (Finland) | Maanmittauslaitos's topographic database, from its open vector tiles (CC BY 4.0) |
 | Routes and outdoor places | [LIPAS](https://lipas.fi), University of Jyväskylä (CC BY 4.0); [Waymarked Trails](https://waymarkedtrails.org) |
 | Routing on land | [BRouter](https://brouter.de); [Valhalla](https://valhalla.github.io/valhalla/) on [FOSSGIS](https://www.fossgis.de) servers as a fallback |
 | Search and detailed map features | [Photon](https://photon.komoot.io); hosted OSM extracts from [Geofabrik](https://download.geofabrik.de/) on ducksoft.fi; [Overpass API](https://overpass-api.de) fallback |
@@ -98,9 +100,9 @@ Polku brings together open data and free public services. Each source keeps its 
 Requests are paced, cached and counted, with those that failed; see **Settings → Data sources** (map tiles and terrain aren't counted there). Offline areas save only OpenFreeMap and Mapterhorn tiles, whose terms allow it.
 
 Road/path selections and their route memberships, trail details and barriers,
-mapped winter maintenance/access, OSM water hazards, overnight places and
-lighting use hosted OpenStreetMap snapshots for Finland, Sweden, Norway and
-Estonia, from Geofabrik and served by ducksoft.fi. Full-tag inspection uses the
+mapped winter maintenance/access, OSM water hazards, overnight places,
+lighting and the map's reedbeds use hosted OpenStreetMap snapshots for Finland,
+Sweden, Norway and Estonia, from Geofabrik and served by ducksoft.fi. Full-tag inspection uses the
 same original objects; selected-way tags reuse the already loaded ways. Releases
 with local area geometry also supply lake, park and protected-area selection.
 Large areas download only nearby original outlines; area details reuse their tags.
@@ -109,7 +111,8 @@ covered hosted tiles and bounded cached/public Overpass fallback. Actual extract
 polygons determine coverage, including their proven union at shared borders;
 genuine coverage gaps, unsupported objects,
 ambiguous nearby relations and lake/park area selection retain public fallback.
-Missing data remains unknown. Routing and map tiles keep their existing sources.
+Missing data remains unknown. Reedbeds have no fallback: where the hosted data
+is missing they're drawn as plain wetland. Routing and map tiles keep their existing sources.
 Weekly full rebuilds publish automatically after integrity, coverage and browser
 checks, with daily live checks and assigned GitHub failure alerts. Inbox and email
 delivery have been verified. The

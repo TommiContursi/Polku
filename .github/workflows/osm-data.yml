@@ -9,6 +9,7 @@ on:
       - 'js/osm-geometry.js'
       - 'tools/fixtures/osm-*'
       - '.github/workflows/osm-data.yml'
+      - '.github/workflows/osm-data-alerts.yml'
   schedule:
     - cron: '17 3 * * 1'
     - cron: '17 7 * * *'
@@ -157,9 +158,11 @@ jobs:
           mkdir -p osm-build
           df -h .
           python -c 'import shutil; assert shutil.disk_usage(".").free >= 25 * 1024**3, "Complete OSM country builds require 25 GiB free disk"'
-          curl --fail --location --retry 3 --retry-all-errors --retry-delay 30 --retry-max-time 300 --connect-timeout 30 --max-time 1800 "https://download.geofabrik.de/europe/$COUNTRY-$SNAPSHOT.osm.pbf" -o osm-build/source.osm.pbf
-          curl --fail --location --retry 3 --retry-all-errors --retry-delay 30 --max-time 60 "https://download.geofabrik.de/europe/$COUNTRY-$SNAPSHOT.osm.pbf.md5" -o osm-build/source.md5
-          curl --fail --location --retry 3 --retry-all-errors --retry-delay 30 --max-time 60 "https://download.geofabrik.de/europe/$COUNTRY.poly" -o osm-build/coverage.poly
+          # Geofabrik is moving countries into folders of their own: the checksum and polygon come from beside the file served (#1151)
+          source=$(curl --fail --location --retry 3 --retry-all-errors --retry-delay 30 --retry-max-time 300 --connect-timeout 30 --max-time 1800 --write-out '%{url_effective}' "https://download.geofabrik.de/europe/$COUNTRY-$SNAPSHOT.osm.pbf" -o osm-build/source.osm.pbf)
+          echo "Downloaded $source"
+          curl --fail --location --retry 3 --retry-all-errors --retry-delay 30 --max-time 60 "$source.md5" -o osm-build/source.md5
+          curl --fail --location --retry 3 --retry-all-errors --retry-delay 30 --max-time 60 "${source%/*}/$COUNTRY.poly" -o osm-build/coverage.poly
       - name: Transform, validate and measure
         env:
           COUNTRY: ${{ matrix.country }}
@@ -302,8 +305,9 @@ jobs:
         env:
           SOURCE_URL: https://download.geofabrik.de/europe-${{ steps.reference.outputs.stamp }}.osm.pbf
         run: |
-          curl --fail --location --retry 3 --retry-all-errors --retry-delay 30 --retry-max-time 300 --connect-timeout 30 --max-time 7200 "$SOURCE_URL" -o osm-build/europe.osm.pbf
-          curl --fail --location --retry 3 --retry-all-errors --retry-delay 30 --max-time 60 "$SOURCE_URL.md5" -o osm-build/europe.md5
+          source=$(curl --fail --location --retry 3 --retry-all-errors --retry-delay 30 --retry-max-time 300 --connect-timeout 30 --max-time 7200 --write-out '%{url_effective}' "$SOURCE_URL" -o osm-build/europe.osm.pbf)
+          echo "Downloaded $source"
+          curl --fail --location --retry 3 --retry-all-errors --retry-delay 30 --max-time 60 "$source.md5" -o osm-build/europe.md5
           df -h .
       - name: Complete original references and compile local geometry
         env:

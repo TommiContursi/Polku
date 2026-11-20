@@ -94,6 +94,7 @@ const P = {
   camera: '<rect x="3" y="7" width="13" height="10" rx="2"/><path d="m16 11 5-3v8l-5-3"/>',
   pin: '<path d="M12 21s-7-6.2-7-11.5a7 7 0 0 1 14 0C19 14.8 12 21 12 21Z"/><circle cx="12" cy="9.5" r="2.5"/>',
   flake: '<path d="M12 2v20M3.5 7l17 10M20.5 7l-17 10"/><path d="m9.5 3.8 2.5 2 2.5-2M9.5 20.2l2.5-2 2.5 2"/>',
+  parcels: '<path d="M4 5h16v14H4zM4 12h9M13 5v14M13 10h7"/>', // property boundaries
   zone: '<circle cx="12" cy="12" r="8.5" stroke-dasharray="3 2.4"/><path d="m8 8 8 8"/>',
   num: '<path d="M4 20c4-1 6-6 9-8s5-4 7-8" opacity=".5"/><rect x="11" y="4" width="10" height="7" rx="2"/><path d="M14 7.5h4"/>',
   contours: '<path d="M4 17c2-4 5-6 8-6s6 2 8 6"/><path d="M7.5 17c1.4-2.6 2.9-3.6 4.5-3.6s3.1 1 4.5 3.6" opacity=".7"/><path d="M3 20.5h18"/>',

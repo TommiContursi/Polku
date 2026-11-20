@@ -3,9 +3,10 @@
 import {
   ACTIVITIES, ACTIVITY_OVERLAYS, RASTER_OVERLAYS, DEM_URL, DEM_MAXZOOM,
   DIFF_COLORS, MTB_COLORS, MTB_GRADES, MTB_SCALE_TEXT, UPHILL_TEXT, LIPAS_TYPES, SAFETY_OVERLAYS, BROUTER, isWater, WINTER_LIPAS,
-  QUICK_TILES, QUICK_TILE, QUICK_MAX, QUICK_PLACES, ESRI_IMAGERY, CRAFT,
+  QUICK_TILES, QUICK_TILE, QUICK_MAX, QUICK_PLACES, ESRI_IMAGERY, CRAFT, OSM_DATA_MANIFEST,
 } from './config.js';
 import { LitWays, LIT_MIN_ZOOM } from './lit.js';
+import { Reedbeds } from './osm-data.js';
 import { WinterWays, measuredSnow, snowNear, isWinter, winterSetting, setWinterSetting, seaIceProtocol, WINTER_TEXT, WINTER_MIN_ZOOM, SNOW_ON } from './winter.js';
 import { pointForecasts, sampleAt, skyKind } from './weather.js';
 import { SafetyLayers, AADT_STEPS } from './safety.js';
@@ -79,6 +80,7 @@ const DEFAULTS = {
   quickTiles: {}, // the quick drawer's tiles you chose, per sport (#123); a sport you haven't edited has its own
   depthsBack: {}, // per sport: the depth layers the Depths tile brings back when it's turned on again
   litLook: 'lines', // how Lit ways looks: 'lines' or 'dark' (In the dark, #638)
+  plotHover: true, // Property boundaries: the plot under the mouse pointer tinted and named (#1148)
 };
 const state = { ...DEFAULTS, ...store.get('settings', {}) };
 if (!ACTIVITIES[state.activity]) state.activity = 'mtb'; // a sport this version doesn't know
@@ -267,7 +269,7 @@ map.on('webglcontextrestored', () => map.once('style.load', applyStyle));
 // comes after it, while any of them is still busy (an update to run, tiles on their way), for 500 ms at most; then it's
 // all drawn at once. What comes later is drawn as it comes, and nothing else waits: a route, a pick, loops, a layer you
 // switch or Try again (configureLayers and retryLit draw what's held first).
-const TOGETHER = new Set(['trailWays', 'trailPoints', 'trailCoverage', 'lipasRoutes', 'lipasPoints', 'litWays', 'litCover', 'winterWays', 'uphill', 'nmMarks', 'nmLines', 'nmAreas', 'nmSectors', 'nmLights']);
+const TOGETHER = new Set(['trailWays', 'trailPoints', 'trailCoverage', 'lipasRoutes', 'lipasPoints', 'litWays', 'litCover', 'winterWays', 'uphill', 'nmMarks', 'nmLines', 'nmAreas', 'nmSectors', 'nmLights', 'reedbeds']);
 const together = { loaders: [], armed: false, held: null, until: 0 };
 map.on('moveend', () => { together.armed = true; });
 function holdTogether(id) {
@@ -289,6 +291,71 @@ function drawTogether() {
   for (const id of held || []) id === 'trailCoverage' ? restyleTrails() : setData(id, data[id]);
 }
 
+// What comes after the map stops fades in (#1091). After a flight or a move once your last input was a touch, a click
+// or the wheel (not a key, nor no input yet: the first view and a link's jump come as before; not a follow-me move,
+// made at every position), each frame MapLibre draws is copied until the map is drawn and Polku's loaders aren't busy,
+// at most 3 s. When a frame shows a part that has come, the frame before is laid over the map, under its markers, and
+// faded out: 0.2 s, up to 0.4 s as the share of the map the part changes rises to a quarter (both frames shrunk to
+// 48 × 30, cell by cell). MapLibre has no fade for vector tiles. A picture never stays over a moving map, and a touch,
+// the wheel, a key or a highlight under the mouse on the map ends a fade.
+const fade = { by: null, on: false, came: false, until: 0, copy: null, spare: null, over: null };
+addEventListener('keydown', (e) => { if (!['Shift', 'Control', 'Alt', 'Meta'].includes(e.key)) fade.by = 'keys'; }, true);
+for (const ev of ['pointerdown', 'wheel']) addEventListener(ev, () => { fade.by = 'pointer'; }, { capture: true, passive: true });
+const grid = Object.assign(document.createElement('canvas'), { width: 48, height: 60 }).getContext('2d');
+// (the two copies give their memory back once nothing fades)
+const restFade = () => { if (!fade.on && !fade.over) for (const k of [fade.copy, fade.spare]) if (k) k.width = k.height = 0; };
+function dropFade() {
+  const o = fade.over;
+  fade.on = false;
+  if (o) { o.getAnimations().forEach((a) => a.cancel()); o.remove(); fade.over = null; fade.spare = o; }
+  restFade();
+}
+map.on('moveend', (e) => {
+  if (fade.by !== 'pointer' || e.polkuFollow || map.isMoving()) return;
+  Object.assign(fade, { on: true, came: false, until: performance.now() + 3000 });
+  map.triggerRepaint(); // (a first frame to start from)
+});
+map.on('sourcedata', (e) => {
+  if (!fade.on || !e.tile) return;
+  const type = map.getSource(e.sourceId)?.type;
+  // of the GeoJSON sources only Polku's own layers' (TOGETHER): never a hover's, a pick's or the route's; and no raster
+  // that fades in by itself (raster-fade-duration: the photo and terrain bases, the overlays), so it fades once
+  if (type === 'geojson' ? TOGETHER.has(e.sourceId)
+    : !(type === 'raster' && map.getLayersOrder().some((l) => { const s = map.getLayer(l); return s.source === e.sourceId && s.type === 'raster' && map.getPaintProperty(l, 'raster-fade-duration') !== 0; }))) fade.came = true;
+});
+for (const ev of ['pointerdown', 'wheel', 'keydown']) map.getContainer().addEventListener(ev, dropFade, { capture: true, passive: true });
+// any camera move drops the picture, as it starts: one made at once (heading up, following you, reduced motion) has
+// stopped before a frame is drawn
+map.on('movestart', dropFade);
+map.on('render', () => {
+  const f = fade, c = map.getCanvas();
+  if (!f.on) return;
+  if (f.came && f.copy && f.copy.width === c.width && f.copy.height === c.height) {
+    f.came = false;
+    // the frame before above, this one below, read at once: each reading waits for the GPU (5–12 ms measured)
+    grid.drawImage(f.copy, 0, 0, 48, 30);
+    grid.drawImage(c, 0, 30, 48, 30);
+    const px = grid.getImageData(0, 0, 48, 60).data, half = 48 * 30 * 4;
+    let n = 0;
+    for (let i = 0; i < half; i += 4) if (Math.abs(px[i] - px[half + i]) + Math.abs(px[i + 1] - px[half + i + 1]) + Math.abs(px[i + 2] - px[half + i + 2]) > 24) n++;
+    // the frame before is the picture, with the part before this one as far as it has faded in (and fading out no sooner
+    // than that part would have); a part too thin to change a cell, a path, still fades, over 0.2 s
+    const pic = f.copy, o = f.over, g = pic.getContext('2d'), was = o?.getAnimations()[0], left = was ? was.effect.getTiming().duration - was.currentTime : 0;
+    if (o) { g.globalAlpha = +getComputedStyle(o).opacity; g.drawImage(o, 0, 0); g.globalAlpha = 1; o.getAnimations().forEach((x) => x.cancel()); o.remove(); }
+    f.copy = o || f.spare || document.createElement('canvas');
+    f.spare = null;
+    f.over = pic;
+    pic.className = 'map-fade';
+    c.after(pic);
+    pic.animate([{ opacity: 1 }, { opacity: 0 }], { duration: Math.round(Math.max(left, 200 + 200 * Math.min(1, n / (48 * 30) / 0.25))), easing: 'linear', fill: 'forwards' })
+      .finished.then(() => { if (f.over === pic) { pic.remove(); f.over = null; f.spare = pic; restFade(); } }, () => {});
+  }
+  f.copy ||= document.createElement('canvas');
+  if (f.copy.width !== c.width || f.copy.height !== c.height) Object.assign(f.copy, { width: c.width, height: c.height });
+  f.copy.getContext('2d').drawImage(c, 0, 0);
+  if ((map.loaded() && !together.held && !together.loaders.some((l) => l.busy)) || performance.now() > f.until) { f.on = false; restFade(); }
+});
+
 function setData(id, fc) {
   data[id] = fc;
   if (id === 'route' && flow) flow.setData(fc);
@@ -307,6 +374,7 @@ function routeHoverLeg(leg) {
   if (ctx.hoverLeg != null) map.setFeatureState({ source: 'route', id: ctx.hoverLeg }, { hover: false });
   ctx.hoverLeg = v;
   if (v != null) map.setFeatureState({ source: 'route', id: v }, { hover: true });
+  dropFade(); // (it's drawn in the map's canvas, under a fading picture)
 }
 
 // The LIPAS route under the mouse is lit along all its parts: they share its LIPAS id, the feature state's
@@ -317,6 +385,7 @@ function routeHoverRoute(p) {
   if (hoveredRoute != null) map.setFeatureState({ source: 'lipasRoutes', id: hoveredRoute }, { hover: false });
   hoveredRoute = id;
   if (id != null) map.setFeatureState({ source: 'lipasRoutes', id }, { hover: true });
+  dropFade();
 }
 
 // Light or dark (#323): the device's (Automatic, also when it changes), the person's, or the map's (Match the map: dark
@@ -427,6 +496,7 @@ const details = new TrailDetails(map, {
 function restyleTrails() { if (state.trailDetails) map.setStyle(buildStyle(state, ctx), { diff: true }); } // only the trail filters change
 const lipas = new LipasLayer(map, (routes, points) => { setData('lipasRoutes', routes); setData('lipasPoints', points); });
 const winterWays = new WinterWays(map, (fc) => setData('winterWays', fc));
+const reedbeds = new Reedbeds(map, OSM_DATA_MANIFEST, (fc) => setData('reedbeds', fc)); // OSM's reedbeds on the vector base maps (#1144)
 // (a tile that comes in may end "No data now" on the Lit ways tile)
 const litWays = new LitWays(map, { onData: (fc, cover) => { setData('litWays', fc); setData('litCover', cover); }, onStatus: refreshLitStatus });
 const retryLit = () => { drawTogether(); litWays.retry(); }; // (Try again's answer is never held)
@@ -484,7 +554,7 @@ let mapTime = () => Date.now() / 1000;
 const safety = new SafetyLayers(map, { setData, time: () => mapTime() });
 const cameras = new CameraLayer(map, { setData });
 const nautical = new NauticalLayer(map, { setData });
-together.loaders = [details, lipas, litWays, winterWays, uphill, nautical];
+together.loaders = [details, lipas, litWays, winterWays, uphill, nautical, reedbeds];
 
 flow = new RouteFlow(map, {
   enabled: () => state.routeFlow,
@@ -497,8 +567,23 @@ if (data.route) flow.setData(data.route);
 map.on('mouseout', () => routeHoverLeg(null)); // off the map (onto the planner, say): no leg is under the pointer
 // each sport's icon (the planner's toolbox asks for it as it's built)
 const ACT_ICONS = { mtb: 'bike', gravel: 'gravel', road: 'roadbike', hike: 'hike', trailrun: 'trailrun', run: 'run', paddle: 'paddle', swim: 'swim' };
+// A property's plot tinted (#1148): 'hover' under the pointer, 'lit' while its card is open; one plot each, by its id
+const plotLit = {};
+function lightPlot(key, id) {
+  if (plotLit[key] === id) return;
+  const src = { source: 'ov-propertyLines', sourceLayer: 'PalstanSijaintitiedot' };
+  if (plotLit[key] != null && map.getSource(src.source)) map.setFeatureState({ ...src, id: plotLit[key] }, { [key]: false });
+  plotLit[key] = id;
+  if (id != null && map.getSource(src.source)) map.setFeatureState({ ...src, id }, { [key]: true });
+}
+// a new style makes the source anew (the layer switched off and on, another base map) without its states: the plots again
+map.on('styledata', () => {
+  if (!map.getSource('ov-propertyLines')) return;
+  for (const [key, id] of Object.entries(plotLit)) if (id != null) map.setFeatureState({ source: 'ov-propertyLines', sourceLayer: 'PalstanSijaintitiedot', id }, { [key]: true });
+});
 const planner = new Planner(map, {
   activity: () => state.activity,
+  lightPlot,
   listShowChanged: () => { if (!$('#settings-panel').hidden) renderSettingsPanel(); }, // (Route's list's menu, Settings open beside it)
   fitColumn: () => fitColumn(), // (the map's column, again: a folded toolbox lifted it, step 3 of #233)
   hoverLeg: routeHoverLeg,
@@ -614,8 +699,8 @@ const inspector = initInspector(map, {
   openShip: (mmsi) => safety.openShip(mmsi),
   openCamera: (id, name) => cameras.open(id, name),
 });
-const hover = initHover(map, { wayUnder: (ll, loaded) => wayUnder(ll, map.getZoom(), loaded), hoverPick: (coords) => planner.hoverPick(coords),
-  enabled: () => state.hoverInfo && hoverCapable() && !planner.edit, isPlanning: () => planner.active, isDrawing: () => planner.drawing(), activity: () => state.activity, difficulty: showsDifficulty, bike: isBike, hoverLeg: routeHoverLeg, hoverRoute: routeHoverRoute, headAt: (point, touch) => planner.headAt(point, touch ? 18 : 10) });
+const hover = initHover(map, { wayUnder: (ll, loaded) => wayUnder(ll, map.getZoom(), loaded), hoverPick: (coords) => { dropFade(); planner.hoverPick(coords); },
+  enabled: () => state.hoverInfo && hoverCapable() && !planner.edit, isPlanning: () => planner.active, isDrawing: () => planner.drawing(), activity: () => state.activity, difficulty: showsDifficulty, bike: isBike, hoverLeg: routeHoverLeg, hoverRoute: routeHoverRoute, plotHover: () => state.plotHover, hoverPlot: (id) => lightPlot('hover', id), headAt: (point, touch) => planner.headAt(point, touch ? 18 : 10) });
 
 initSearch(map, $('#search-input'), $('#search-results'), {
   sportTypes: () => ACTIVITIES[state.activity].lipas.routes,
@@ -1122,6 +1207,7 @@ const OVERLAY_LABEL = {
   lipasRoutes: 'Official routes (LIPAS)',
   lipasPoints: 'Lean-tos, huts, campfire & landing sites (LIPAS)',
   pois: 'OSM outdoor places',
+  propertyLines: 'Property boundaries',
   lit: 'Lit ways',
 };
 const OVERLAY_NOTE = {
@@ -1130,6 +1216,7 @@ const OVERLAY_NOTE = {
   lipasRoutes: 'LIPAS, Finland',
   lipasPoints: 'LIPAS, Finland',
   pois: 'OpenStreetMap',
+  propertyLines: 'National Land Survey · Finland · zoom 14+, property IDs at 16+',
 };
 const overlayLabel = (id) => OVERLAY_LABEL[id] || (RASTER_OVERLAYS[id] && RASTER_OVERLAYS[id].label) || (SAFETY_OVERLAYS[id] && SAFETY_OVERLAYS[id].label) || id;
 
@@ -1175,7 +1262,7 @@ const KEYS = {
       keyItem(keyLine('background:#feb13e;height:6px;opacity:.55'), 'Barely or not visible (colour only)'),
       keyItem(keyLine('border-top:3px dotted #2f9e44'), 'Overgrown (beside the line)'),
       keyItem(keyLine('border-top:3px dotted #1d6fd1'), 'Wet or muddy (beside the line)'),
-      keyItem(keyLine('border-top:2px dashed #8b4a2b'), 'Fence (hedge green, wall grey)'),
+      keyItem(keyLine('border-top:2px dashed #545454'), 'Fence (a wall solid, a hedge green)'),
       ...[['td-tree', 'Fallen tree or log across'], ['td-gate', 'Gate or barrier'], ['td-gate-no', 'Gate, no access'], ['td-stile', 'Stile or kissing gate'], ['td-cycle', 'Cycle barrier'], ['td-ford', 'Ford (no bridge)']]
         .map(([id, label]) => keyItem(h('img', { class: 'lg-icon', src: iconUrl(id), alt: '' }), label)),
     ] : []),
@@ -1184,9 +1271,9 @@ const KEYS = {
     keyItem(keyLine('border-top:2px dashed #6b4f2a;border-image:repeating-linear-gradient(90deg,#6b4f2a 0 12px,transparent 12px 15px) 1'), 'Forest road / track'),
     ...[[24, 6, 'paved'], [4, 2, 'unpaved'], [10, 6, 'surface unknown']].map(([dash, gap, surface]) =>
       keyItem(keyLine(`height:4px;background:repeating-linear-gradient(90deg,${state.highContrast ? '#001bc7' : '#3148d8'} 0 ${dash}px,transparent ${dash}px ${dash + gap}px),#fff;box-shadow:0 0 0 1px #fff`), `Cycling path (${surface})`)),
-    keyItem(keyLine('border-top:2px dashed #1f1f1f'), 'Footpath / pedestrian street (cycling permission not implied)'),
+    keyItem(keyLine('border-top:2px dashed #a2381f'), 'Footpath / pedestrian street (cycling permission not implied)'),
     h('p', { class: 'note' }, 'Blue dashes show cycleways and footpaths or pedestrian streets explicitly tagged for bicycles. The Trail map adds a white backing to separate them from the terrain. MTB-graded footpaths keep their difficulty colours. Signed cycling routes are a separate overlay.'),
-    keyItem(keyLine('border-top:3px dotted #ff003c'), 'No bikes (beside a path or forest track)'),
+    keyItem(keyLine('height:10px;background:repeating-linear-gradient(90deg,transparent 0 7px,#ff003c 7px 10px),linear-gradient(#1f1f1f,#1f1f1f) center/100% 2px no-repeat'), 'No bikes (red bars across a path or forest track)'),
     keyItem(keyLine('border-top:3px dotted #7c3aed'), 'Marked private or no access for your sport (beside the way): routes keep off it'),
     state.activity === 'gravel' || state.activity === 'road' ? keyItem(keyLine('background:#fde7c1;height:6px;box-shadow:0 0 0 2px #c4842d'), 'Unpaved road') : null,
     keyItem(keyLine('background:#3f8f3f;height:2px;opacity:.7'), 'Protected area boundary'),
@@ -1240,7 +1327,7 @@ const toggleInfo = (label, on, fn, note, name = label) => {
 };
 const seg = (options, value, fn) => h('div', { class: 'seg small full' },
   ...options.map(([v, label, disabled]) => h('button', { type: 'button', 'aria-pressed': String(value === v), disabled: !!disabled, onclick: () => fn(v) }, label)));
-// A raster layer's opacity, right under its switch while it's on; remembered per layer
+// A layer's opacity, right under its switch while it's on; remembered per layer
 // (overlays by id, the weather fields as wx:rain and wx:temp; style.js reads the same keys).
 const WX_OPACITY = {
   'wx:rain': { label: 'Rain', opacity: 0.55, layers: ['wx-rain', 'wx-radar-rv', 'wx-radar-fi'], on: () => state.weather.rain },
@@ -1250,6 +1337,7 @@ const WX_OPACITY = {
 const opacitySpec = (id) => (RASTER_OVERLAYS[id]
   ? { label: RASTER_OVERLAYS[id].label, opacity: RASTER_OVERLAYS[id].opacity, layers: [`ov-${id}`], on: () => !!state.overlays[id] }
   : id === 'lit' ? { label: 'Lit ways', opacity: 1, on: () => !!state.overlays.lit } // (no layers: style.js scales its look)
+  : id === 'propertyLines' ? { label: 'Property boundaries', opacity: 0.9, on: () => !!state.overlays.propertyLines } // (lines and names: style.js)
   : WX_OPACITY[id]);
 const opacityOf = (id) => (state.overlayOpacity[id] != null ? state.overlayOpacity[id] : opacitySpec(id).opacity);
 const opacityRow = (id) => {
@@ -1359,6 +1447,8 @@ const overlayToggle = (id) => {
     if (v && id === 'sfShips' && map.getZoom() < 8) toast('Zoom in to level 8+ to see ships');
     if (v && id === 'lit' && map.getZoom() < LIT_MIN_ZOOM) toast(`Zoom in to level ${LIT_MIN_ZOOM}+ to see the lit ways`);
   }), sf ? sf.note : o ? o.attribution.replace('© ', '') : OVERLAY_NOTE[id] || '');
+  if (id === 'propertyLines' && state.overlays.propertyLines && hoverCapable()) return h('div', { class: 'tg-group' }, tg,
+    toggle('Plot under the pointer', state.plotHover, (v) => { state.plotHover = v; if (!v) lightPlot('hover', null); saveSettings(); }), opacityRow(id));
   if (id !== 'lit' || !state.overlays.lit) return withOpacity(id, tg);
   return h('div', { class: 'tg-group' }, tg, seg(LIT_LOOKS, state.litLook, (v) => { state.litLook = v; applyStyle(); renderLayersPanel(); }), opacityRow(id));
 };
@@ -1410,7 +1500,7 @@ const DEPTHS = ['depthAreas', 'depthContours', 'soundings'];
 const onNowIds = () => [
   ...(state.trailColors !== 'off' ? ['trailColors'] : []),
   ...(state.trailDetails ? ['trailDetails'] : []),
-  ...[...LAYER_GROUPS.flatMap((g) => g.ids), 'maastoOverlay', 'mmlMaastoOverlay'].filter((id) => state.overlays[id]),
+  ...[...LAYER_GROUPS.flatMap((g) => g.ids), 'maastoOverlay', 'mmlMaastoOverlay', 'propertyLines'].filter((id) => state.overlays[id]),
   ...['wind', 'temp', 'rain', 'cloud', 'thunder', 'snow', 'towns'].filter((k) => state.weather[k]).map((k) => `wx:${k}`),
 ];
 
@@ -1434,7 +1524,7 @@ function renderLayersPanel() {
     h('button', { type: 'button', class: 'link', onclick: (e) => { openPanel(null); openActs(!e.detail); $('#activity-bar .act-menu .act[aria-selected="true"]')?.focus(); } }, 'Change')));
 
   // what is on right now, at a glance
-  const on = [...LAYER_GROUPS.flatMap((g) => g.ids), 'maastoOverlay', 'mmlMaastoOverlay'].filter((id) => state.overlays[id]);
+  const on = [...LAYER_GROUPS.flatMap((g) => g.ids), 'maastoOverlay', 'mmlMaastoOverlay', 'propertyLines'].filter((id) => state.overlays[id]);
   const wx = [['wind', 'Wind'], ['temp', 'Temperature'], ['rain', 'Rain'], ['cloud', 'Clouds'], ['thunder', 'Thunder'], ['snow', 'Snow depth'], ['towns', 'Weather at places']].filter(([k]) => state.weather[k]);
   const trailOn = state.trailColors !== 'off';
   const custom = Object.keys(state.overlaysByActivity[state.activity] || {}).length > 0 || Object.keys(state.trailsByActivity[state.activity] || {}).length > 0;
@@ -1472,11 +1562,12 @@ function renderLayersPanel() {
     ...terrain3dControls()));
 
   // terrain shading right after the base maps and 3D, open unless you close it
-  p.append(layerGroup('terrain', 'Terrain', state.overlays.maastoOverlay ? 1 : 0, true,
+  p.append(layerGroup('terrain', 'Terrain', ['maastoOverlay', 'propertyLines'].filter((id) => state.overlays[id]).length, true,
     hillshadeControls(),
     toggleInfo('Contour lines', state.contours, (v) => { state.contours = v; applyStyle(); }, '5 m, 2.5 m when zoomed in'),
     withOpacity('maastoOverlay', toggleInfo(RASTER_OVERLAYS.maastoOverlay.label, !!state.overlays.maastoOverlay, rerender((v) => setOverlay('maastoOverlay', v)), RASTER_OVERLAYS.maastoOverlay.attribution.replace('© ', ''))),
-    state.mmlKey ? withOpacity('mmlMaastoOverlay', toggle(RASTER_OVERLAYS.mmlMaastoOverlay.label, !!state.overlays.mmlMaastoOverlay, rerender((v) => setOverlay('mmlMaastoOverlay', v)))) : null));
+    state.mmlKey ? withOpacity('mmlMaastoOverlay', toggle(RASTER_OVERLAYS.mmlMaastoOverlay.label, !!state.overlays.mmlMaastoOverlay, rerender((v) => setOverlay('mmlMaastoOverlay', v)))) : null,
+    overlayToggle('propertyLines')));
 
   // trails & difficulty (and the map key for the base map's lines): in every sport
   p.append(layerGroup('trails', 'Trails & difficulty', (state.trailColors !== 'off' ? 1 : 0) + (state.trailDetails ? 1 : 0) + (state.labelsDown ? 1 : 0) + (state.labelsUp ? 1 : 0), ...trailControls()));
@@ -1587,7 +1678,7 @@ function tileZoom(id) {
 }
 function tileFailing(id) {
   // (the depths that show at this zoom: below its own zoom a layer asks for no tiles, so never fails, #399)
-  const raster = id === 'depths' ? DEPTHS.filter((d) => state.overlays[d] && map.getZoom() >= (RASTER_OVERLAYS[d].minzoom || 0)) : RASTER_OVERLAYS[id] ? [id] : [];
+  const raster = id === 'depths' ? DEPTHS.filter((d) => state.overlays[d] && map.getZoom() >= (RASTER_OVERLAYS[d].minzoom || 0)) : RASTER_OVERLAYS[id] || id === 'propertyLines' ? [id] : [];
   if (raster.length && raster.every((d) => rasterDown(`ov-${d}`))) return true;
   if (id === 'trailDetails') return Date.now() - detailsBusyAt < 120e3;
   if (id === 'lit') return litWays.progress.failed > 0; // Overpass deliberately has no global backoff status
@@ -1654,6 +1745,15 @@ map.on('data', (e) => {
   tileTrouble[e.sourceId].ok = Date.now();
   refreshQuickSoon();
 });
+// MML's terrain (#1147) has no tile of its own: where its tiles don't load, OSM's wetlands and rock show in their place
+// and cliffs and power lines are missing, and a message says so once, until one of its tiles comes again
+let mmlDown = false;
+map.on('error', (e) => {
+  if (e.sourceId !== 'mml' || mmlDown || (e.error && e.error.name === 'AbortError')) return;
+  mmlDown = true;
+  toast('The National Land Survey’s terrain didn’t load: the map shows OpenStreetMap’s wetlands and rock, without cliffs or power lines.', { ms: 6000 });
+});
+map.on('data', (e) => { if (e.sourceId === 'mml' && e.dataType === 'source' && e.tile) mmlDown = false; });
 onStatus(() => refreshQuickSoon());
 // LIPAS back after a pause: Marked routes lists the view again (A)
 onStatus((src, s) => { if (src === 'lipas' && (!s || s.retry)) planner.lipasBack(); });
@@ -2022,7 +2122,7 @@ function renderSettingsPanel() {
       planner.retryFailed();
     } }, 'Save')), routerNote,
     h('div', { class: 'tg-text' }, 'MML API key (optional)'),
-    h('p', { class: 'note' }, 'Maastokartta works without a key via Kapsi. A key adds the official MML WMTS service as an extra base and overlay. Keys are free from ',
+    h('p', { class: 'note' }, 'Maastokartta works without a key via Kapsi. A key adds the official MML WMTS service as an extra base and overlay, and is used in place of Polku’s own key for property boundaries. Keys are free from ',
       h('a', { href: 'https://www.maanmittauslaitos.fi/rajapinnat/api-avaimen-ohje', target: '_blank', rel: 'noopener' }, 'maanmittauslaitos.fi'),
       ' and is stored only in this browser.'),
     h('div', { class: 'key-row' }, keyInput, h('button', { type: 'button', class: 'btn', onclick: () => {

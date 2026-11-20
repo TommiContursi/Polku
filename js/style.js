@@ -4,7 +4,7 @@
 
 import {
   OFM_TILEJSON, OFM_SPRITE, OFM_GLYPHS, ESRI_IMAGERY, DEM_MAXZOOM, DEM_TILESIZE,
-  DIFF_COLORS, MTB_COLORS, MTB_GRADES, ROUTE_COLORS, RASTER_OVERLAYS, RASTER_RATIO, LIPAS_TYPES, mmlTiles, kapsiTiles, groupOf,
+  DIFF_COLORS, MTB_COLORS, MTB_GRADES, ROUTE_COLORS, RASTER_OVERLAYS, RASTER_RATIO, LIPAS_TYPES, mmlTiles, MML_KEY, MML_PROPERTY_TILES, MML_TERRAIN_TILES, FINLAND_BOUNDS, kapsiTiles, groupOf,
   isWater, isLipasRoute, WARN_COLORS,
 } from './config.js';
 import { warnMarkId } from './icons.js';
@@ -42,35 +42,35 @@ const BUILDING_HEIGHT = ['get', 'render_height'];
 const PALETTES = {
   trail: {
     bg: '#f5f3ee', wood: '#dbeacd', woodOpacity: 0.9, grass: '#e8f1d9', farmland: '#f7f0cf',
-    wetland: '#d9ebe3', sand: '#f3e7bb', rock: '#e2dfd8', ice: '#f4fbff',
+    wetland: '#dce5e3', wetlandDash: '#8fb0d3', bogWood: '#deebd0', reed: '#5f8a5a', sand: '#f3e7bb', rock: '#e2dfd8', cliff: '#5e574e', ice: '#f4fbff',
     residential: '#ece8e2', industrial: '#e8e2e8', cemetery: '#dde7d3', sport: '#dcefd3',
     park: '#3f8f3f', water: '#a8d1ef', waterLine: '#6fa9d6', waterText: '#24618f',
     building: '#d9d1c8', buildingLine: '#c4b9ad',
     motorway: '#f2a35e', trunk: '#f6c46b', primary: '#fbd77b', secondary: '#fde7a2', tertiary: '#fff3c9',
     road: '#ffffff', roadCase: '#b5ad9f', track: '#6b4f2a', path: '#1f1f1f', cycleway: '#5b7fa8',
-    rail: '#7b7b7b', text: '#2c2721', halo: '#ffffff', contour: '#b38b5d', contourText: '#8a6640',
+    rail: '#7b7b7b', power: '#8a8a8a', text: '#2c2721', halo: '#ffffff', contour: '#b38b5d', contourText: '#8a6640',
     boundary: '#8f72ad', hillshade: true,
   },
   plain: {
     bg: '#f7f7f5', wood: '#eef3ea', woodOpacity: 0.7, grass: '#f1f4ed', farmland: '#f7f6ef',
-    wetland: '#eef4f2', sand: '#f4f1e6', rock: '#efeeec', ice: '#fafdff',
+    wetland: '#eef4f2', wetlandDash: '#b4c9de', bogWood: '#f1f4ed', reed: '#9bb796', sand: '#f4f1e6', rock: '#efeeec', cliff: '#948d83', ice: '#fafdff',
     residential: '#f0efed', industrial: '#efedf0', cemetery: '#eaefe6', sport: '#eaf1e6',
     park: '#7aa27a', water: '#c3dcef', waterLine: '#9bbfdc', waterText: '#4a7ca3',
     building: '#e6e3df', buildingLine: '#d6d1cb',
     motorway: '#e9c8a5', trunk: '#eed6ad', primary: '#f3e2b8', secondary: '#f6eccb', tertiary: '#faf5e4',
     road: '#ffffff', roadCase: '#cdc8c0', track: '#7f6a4c', path: '#3a3a3a', cycleway: '#7d96b3',
-    rail: '#9a9a9a', text: '#45403a', halo: '#ffffff', contour: '#c9ad8c', contourText: '#9a8264',
+    rail: '#9a9a9a', power: '#acacac', text: '#45403a', halo: '#ffffff', contour: '#c9ad8c', contourText: '#9a8264',
     boundary: '#a895bd', hillshade: false,
   },
   night: {
     bg: '#161a1f', wood: '#1b2620', woodOpacity: 1, grass: '#1d241f', farmland: '#23231d',
-    wetland: '#18232a', sand: '#2a271f', rock: '#22221f', ice: '#20262b',
+    wetland: '#18232a', wetlandDash: '#2f5679', bogWood: '#1b2620', reed: '#4f7a55', sand: '#2a271f', rock: '#22221f', cliff: '#a39a8c', ice: '#20262b',
     residential: '#1e2126', industrial: '#211f25', cemetery: '#1c231d', sport: '#1b241d',
     park: '#4e8f5b', water: '#10304a', waterLine: '#1f5a85', waterText: '#7fb6e3',
     building: '#272b31', buildingLine: '#30353c',
     motorway: '#8a5a2f', trunk: '#80633a', primary: '#6f6040', secondary: '#5b5443', tertiary: '#4a4740',
     road: '#3b3f46', roadCase: '#22252a', track: '#c9a874', path: '#e9e6df', cycleway: '#7ea4cf',
-    rail: '#5d5d5d', text: '#d8dde3', halo: '#0f1215', contour: '#6a5845', contourText: '#a08a70',
+    rail: '#5d5d5d', power: '#73777d', text: '#d8dde3', halo: '#0f1215', contour: '#6a5845', contourText: '#a08a70',
     boundary: '#9b84c4', hillshade: true,
   },
 };
@@ -105,6 +105,8 @@ export function buildStyle(s, ctx) {
   const aerialBase = isAerial(s.base);
   const topoBase = isTopo(s.base);
   const raised = s.terrain3d && s.raiseHills; // the hills raised in 3D, or 3D flat, only tilted
+  // MML's tiles (#1147, #1148): your own key, or Polku's unscrambled (config.js)
+  const mmlKey = s.mmlKey || [...atob(MML_KEY)].map((c, i) => String.fromCharCode(c.charCodeAt(0) ^ 'polku'.charCodeAt(i % 5))).join('');
   const sources = {
     ofm: { type: 'vector', url: OFM_TILEJSON },
     // the same tiles again (from the HTTP cache), for the trail lines alone: with trail details on,
@@ -140,6 +142,7 @@ export function buildStyle(s, ctx) {
     trailPoints: { type: 'geojson', data: ctx.data.trailPoints || EMPTY },
     lipasRoutes: { type: 'geojson', data: ctx.data.lipasRoutes || EMPTY, attribution: '© LIPAS', promoteId: 'lipasId' }, // the LIPAS id as the feature id: the route under the mouse is lit by its feature state
     winterWays: { type: 'geojson', data: ctx.data.winterWays || EMPTY }, // OSM's winter tags (js/winter.js)
+    reedbeds: { type: 'geojson', data: ctx.data.reedbeds || EMPTY }, // OSM's reedbeds (Reedbeds in js/osm-data.js)
     litWays: { type: 'geojson', data: ctx.data.litWays || EMPTY }, // OSM's lit and unlit ways (js/lit.js)
     litCover: { type: 'geojson', data: ctx.data.litCover || EMPTY }, // the lit tiles that came in: In the dark's veil
     lipasPoints: { type: 'geojson', data: ctx.data.lipasPoints || EMPTY },
@@ -191,10 +194,32 @@ export function buildStyle(s, ctx) {
     lc('lc-farmland', ['farmland'], P.farmland);
     lc('lc-grass', ['grass'], P.grass);
     lc('lc-wood', ['wood'], P.wood, { 'fill-opacity': P.woodOpacity });
+    // MML's terrain in Finland (#1147): its background map's tiles, from zoom 11
+    sources.mml = { type: 'vector', tiles: [`${MML_TERRAIN_TILES}?api-key=${encodeURIComponent(mmlKey)}`], minzoom: 11, maxzoom: 14, bounds: FINLAND_BOUNDS, attribution: '© Maanmittauslaitos, Maastotietokanta, CC BY 4.0' };
+    const hex = (c) => c.slice(1), dashes = (ground) => `wetland-${hex(ground)}-${hex(P.wetlandDash)}`, hard = (ground) => `bog-hard-${hex(ground)}-${hex(P.wetlandDash)}`;
+    const cls = ['get', 'kohdeluokka'];
+    // paludified land from zoom 13: sparse dashes on a clear ground, so the land shows; under OSM's wetlands, as it isn't a bog
+    add({ id: 'mml-paludified', type: 'fill', source: 'mml', 'source-layer': 'maasto_alue', minzoom: 13, filter: ['==', cls, 35300], paint: { 'fill-pattern': `bog-paludified-${hex(P.wetlandDash)}` } });
     lc('lc-wetland', ['wetland'], P.wetland);
-    add({ id: 'lc-wetland-pattern', type: 'fill', source: 'ofm', 'source-layer': 'landcover', minzoom: 12, filter: ['==', ['get', 'class'], 'wetland'], paint: { 'fill-pattern': 'wetland_bg_11', 'fill-opacity': s.base === 'night' ? 0.25 : 0.55 } });
+    // blue dashes from zoom 11 (js/icons.js): the tiles' wetlands are all one kind, so nothing about trees or footing (#1144)
+    add({ id: 'lc-wetland-pattern', type: 'fill', source: 'ofm', 'source-layer': 'landcover', minzoom: 11, filter: ['==', ['get', 'class'], 'wetland'], paint: { 'fill-pattern': `wetland-${P.wetland.slice(1)}-${P.wetlandDash.slice(1)}` } });
+    // MML's bogs in Finland (#1147), over OSM's wetlands: where MML has a bog its class shows, and OSM's wetland stays
+    // where MML has none, abroad and wherever MML's tiles don't come. Their grounds are opaque, so no dashes show through.
+    // Zoom 11's tiles only say open or wooded (35401/35402); a bog MML's survey classes hard to cross (35421/35422) gets
+    // unbroken lines where the tiles carry the class, large ones from zoom 12 and the rest from 13.
+    add({
+      id: 'mml-bog', type: 'fill', source: 'mml', 'source-layer': 'maasto_alue', minzoom: 11,
+      filter: ['in', cls, ['literal', [35401, 35402, 35411, 35412, 35421, 35422, 38300]]],
+      paint: { 'fill-pattern': ['match', cls, [35401, 35411], dashes(P.wetland), [35402, 35412], dashes(P.bogWood), 35421, hard(P.wetland), 35422, hard(P.bogWood), dashes(P.water)] },
+    });
+    // reedbeds over it, from Polku's own OSM data (js/osm-data.js): reed stems on the same ground, covering the dashes
+    add({ id: 'lc-reedbed', type: 'fill', source: 'reedbeds', minzoom: 12, paint: { 'fill-pattern': `reedbed-${P.wetland.slice(1)}-${P.reed.slice(1)}` } });
     lc('lc-sand', ['sand'], P.sand);
     lc('lc-rock', ['rock'], P.rock);
+    // MML's rock in Finland (#1147), from zoom 13, over OSM's in the same grey, so the two read as one: OSM's stays where
+    // MML has none, abroad and wherever MML's tiles don't come. Boulder fields are dotted. (Its points are over the water.)
+    add({ id: 'mml-rock', type: 'fill', source: 'mml', 'source-layer': 'maasto_alue', minzoom: 13, filter: ['==', cls, 34100], paint: { 'fill-color': P.rock, 'fill-antialias': false } });
+    add({ id: 'mml-boulders', type: 'fill', source: 'mml', 'source-layer': 'maasto_alue', minzoom: 13, filter: ['==', cls, 34700], paint: { 'fill-pattern': `boulders-${hex(P.rock)}-${hex(P.cliff)}` } });
     lc('lc-ice', ['ice'], P.ice);
 
     const lu = (id, cls, color, minzoom = 8) =>
@@ -299,6 +324,26 @@ export function buildStyle(s, ctx) {
 
   // ---- Buildings ----------------------------------------------------------
   if (vectorFills) {
+    // MML's cliffs, power lines and points in Finland (#1147), over the water, so a shore's cliff, a line across a lake
+    // and the reeds show.
+    // A cliff is a line with ticks on its lower side: MML draws its cliffs with the lower side on the right (37 of 37 by
+    // the elevations either side, 2026-11-20), and a positive line-offset is the right. The ticks are dashes of a wider
+    // line beside it. MML has no cliffs in Finland's neighbours, and OSM's aren't drawn.
+    const cls = ['get', 'kohdeluokka'], cliff = ['==', cls, 34400], tick = zi(13, 2, 16, 3.5, 18, 5), edge = zi(13, 0.8, 16, 1.3, 18, 1.8);
+    add({ id: 'mml-cliff', type: 'line', source: 'mml', 'source-layer': 'maasto_viiva', minzoom: 13, filter: cliff, paint: { 'line-color': P.cliff, 'line-width': edge } });
+    add({ id: 'mml-cliff-ticks', type: 'line', source: 'mml', 'source-layer': 'maasto_viiva', minzoom: 13, filter: cliff, paint: { 'line-color': P.cliff, 'line-width': tick, 'line-offset': zi(13, 1.4, 16, 2.4, 18, 3.4), 'line-dasharray': [0.4, 1.4] } });
+    // power lines as thin grey lines from zoom 13 (110 kV and up, and under 110 kV)
+    add({ id: 'mml-power', type: 'line', source: 'mml', 'source-layer': 'rakennelma', minzoom: 13, filter: ['in', cls, ['literal', [22311, 22312]]], paint: { 'line-color': P.power, 'line-width': zi(13, 0.6, 16, 1, 18, 1.4) } });
+    // MML's points, side by side (each symbol layer splits 3D's draped layers): from zoom 14, as only zoom 14's tiles have
+    // them, flat on the ground and never hiding a label or a place. Rocks too small for an area, stones and sparse
+    // boulders; reeds, one tuft each (MML's reed points lie in the water, so a tuft under it wouldn't show); pylons from 15.
+    const flat = { 'icon-allow-overlap': true, 'icon-ignore-placement': true, 'icon-pitch-alignment': 'map', 'icon-rotation-alignment': 'map' }, hex = (c) => c.slice(1);
+    add({
+      id: 'mml-rock-point', type: 'symbol', source: 'mml', 'source-layer': 'maasto_piste', minzoom: 14, filter: ['in', cls, ['literal', [34100, 34200, 34600]]],
+      layout: { 'icon-image': ['match', cls, 34100, `rock-spot-${hex(P.rock)}-${hex(P.cliff)}`, 34200, `rock-rocks-${hex(P.cliff)}`, `rock-stone-${hex(P.cliff)}`], 'icon-size': zi(14, 0.75, 17, 1.2), ...flat },
+    });
+    add({ id: 'mml-reed', type: 'symbol', source: 'mml', 'source-layer': 'maasto_piste', minzoom: 14, filter: ['==', cls, 38100], layout: { 'icon-image': `reed-${hex(P.reed)}`, 'icon-size': zi(14, 1, 17, 1.5), ...flat } });
+    add({ id: 'mml-pylon', type: 'symbol', source: 'mml', 'source-layer': 'rakennelma', minzoom: 15, filter: ['==', cls, 22392], layout: { 'icon-image': `pylon-${hex(P.power)}`, 'icon-size': zi(15, 1, 18, 1.5), ...flat } });
     add({ id: 'building', type: 'fill', source: 'ofm', 'source-layer': 'building', minzoom: 13, paint: { 'fill-color': s.base === 'trail' ? '#bdb8b0' : P.building, 'fill-outline-color': s.base === 'trail' ? '#918b81' : P.buildingLine, 'fill-opacity': zi(13, 0.5, 15, 1) } });
     add({ id: 'aeroway', type: 'line', source: 'ofm', 'source-layer': 'aeroway', minzoom: 11, filter: ['in', ['get', 'class'], ['literal', ['runway', 'taxiway']]], paint: { 'line-color': '#c9c6c0', 'line-width': ze(1.5, 11, 1, 16, 30) } });
   }
@@ -332,6 +377,22 @@ export function buildStyle(s, ctx) {
   if (!topoBase) add({ id: 'boundary', type: 'line', source: 'ofm', 'source-layer': 'boundary', filter: ['all', ['<=', ['get', 'admin_level'], 2], ['!=', ['get', 'maritime'], 1]], paint: { 'line-color': P.boundary, 'line-width': zi(3, 0.8, 10, 2), 'line-dasharray': [3, 1.5, 1, 1.5] } });
 
   addRasterOverlays(s, sources, layers, 'overlay');
+
+  // Property boundaries in Finland (#1148): MML's property map from zoom 14, the property IDs from 16. In their own
+  // orange, apart from the route's magenta, danger's red and the trails' colours. (ov-: its failures show as a layer's.)
+  if (s.overlays.propertyLines) {
+    const dark = s.base === 'night' || aerialBase;
+    const color = dark ? '#fdba74' : '#c2410c', op = s.overlayOpacity && s.overlayOpacity.propertyLines != null ? s.overlayOpacity.propertyLines : 0.9;
+    sources['ov-propertyLines'] = { type: 'vector', tiles: [`${MML_PROPERTY_TILES}?api-key=${encodeURIComponent(mmlKey)}`], promoteId: { PalstanSijaintitiedot: 'id' }, minzoom: 14, maxzoom: 14, bounds: FINLAND_BOUNDS, attribution: '© Maanmittauslaitos, kiinteistörekisteri, CC BY 4.0' };
+    // a plot under the pointer, or picked with its card open, tinted (#1148): by feature state, so its pieces in every tile;
+    // otherwise clear, there for a tap to find
+    const plot = (k) => ['boolean', ['feature-state', k], false];
+    add({ id: 'property-plot', type: 'fill', source: 'ov-propertyLines', 'source-layer': 'PalstanSijaintitiedot', minzoom: 14, paint: { 'fill-color': color, 'fill-opacity': ['case', plot('lit'), 0.24, plot('hover'), 0.12, 0] } });
+    add({ id: 'property-line', type: 'line', source: 'ov-propertyLines', 'source-layer': 'KiinteistorajanSijaintitiedot', minzoom: 14, paint: { 'line-color': color, 'line-width': zi(14, 0.8, 17, 1.6, 19, 2.5), 'line-opacity': op } });
+    add({ id: 'property-id', type: 'symbol', source: 'ov-propertyLines', 'source-layer': 'KiinteistotunnuksenSijaintitiedot', minzoom: 16,
+      layout: { 'text-field': ['get', 'kiinteistotunnuksenEsitysmuoto'], 'text-font': FONT, 'text-size': 11, 'text-optional': true },
+      paint: { 'text-opacity': op, 'text-color': color, 'text-halo-color': dark ? 'rgba(0,0,0,0.8)' : 'rgba(255,255,255,0.9)', 'text-halo-width': 1.4 } });
+  }
 
   // In 3D the buildings stand up (#643), over the roads and trails, under the routes, the names and your route.
   // Their heights are OpenFreeMap's from OSM's height or floors, about 5 m where it has neither; they rise from zoom 14.
@@ -788,18 +849,19 @@ function addRoads(s, P, hc, layers, ctx) {
     ['in', ['get', 'subclass'], ['literal', ['footway', 'pedestrian']]],
     ['in', ['get', 'bicycle'], ['literal', ['yes', 'designated']]], ['!', ['has', 'mtb_scale']]]];
   const noBike = ['==', ['get', 'bicycle'], 'no'];
-  const noBikeTicks = (id, source, filter) => {
-    const category = source === 'trailWays' ? ['get', 'w'] : ['literal', 1];
-    const offset = (narrow, usual, wide) => ['*', hc ? -1.5 : -1, ['match', category, 0, narrow, [2, 3], wide, usual]];
+  // No bikes (#1137): short red bars across the line, the trail's halo wide plus 2 px a side,
+  // drawn over the centre line, so the marks beside the line (overgrown, wet, private) keep their sides.
+  const noBikeBars = (id, source, filter) => {
+    const bar = (halo) => (source === 'trailWays' ? ['+', ['*', halo, ['get', 'wf']], 4] : halo + 4);
     add({
       id, type: 'line', source, ...(source === 'trailWays' ? {} : { 'source-layer': 'transportation' }), minzoom: 13.3,
       filter: ['all', filter, ['!=', ['get', 'subclass'], 'footway'],
         ['any', ['!', ['in', ['get', 'access'], ['literal', ['no', 'private']]]], ['==', ['get', 'foot'], 'yes']]],
       paint: {
         'line-color': '#ff003c',
-        'line-width': hc ? zi(12, 2, 14, 3, 16, 6, 18, 9) : zi(14, 2, 16, 3, 18, 6),
-        'line-offset': zi(14, offset(1, 2.5, 3), 16, offset(3, 5, 8), 18, offset(4, 10, 14)),
-        'line-dasharray': hc ? [0.4, 0.5] : [0.2, 0.5],
+        'line-width': zi(14, bar(4 * k), 16, bar(7 * k), 18, bar(12 * k)),
+        // in bar lengths: a quarter of one thick, two apart (thicker in high contrast)
+        'line-dasharray': hc ? [0.35, 2] : [0.25, 2],
         'line-opacity': zi(13.3, 0, 14, ['case', ['==', ['get', 'brunnel'], 'tunnel'], 0.3, 1]),
       },
     });
@@ -871,7 +933,7 @@ function addRoads(s, P, hc, layers, ctx) {
         'line-opacity': zi(10, 0, 10.5, 0.8 * roadsDim, 14, roadsDim),
       },
     });
-    if (bikeAct) noBikeTicks(`track-${brunnel}-nobike`, 'ofm', ['all', ['==', ['get', 'class'], 'track'], bf, noBike]);
+    if (bikeAct) noBikeBars(`track-${brunnel}-nobike`, 'ofm', ['all', ['==', ['get', 'class'], 'track'], bf, noBike]);
 
     // Paths: a difficulty-coloured halo (MTB) under a black dashed centre line.
     // With trail details on, the trails inside the loaded detail tiles are
@@ -885,7 +947,6 @@ function addRoads(s, P, hc, layers, ctx) {
     const haloOpacity0 = [
       'case',
       bikeAct ? noBike : noFoot, 0.25,
-      act === 'mtb' ? sidewalkish : ['literal', false], 0.35,
       isWater(act) || roadBike ? 0.5 : 0.95,
     ];
     // difficulty colours fade with their slider; the plain halo doesn't
@@ -895,21 +956,28 @@ function addRoads(s, P, hc, layers, ctx) {
     const haloW = (f) => zi(12, times(2.2, f), 14, times(4 * k, f), 16, times(7 * k, f), 18, times(12 * k, f));
     const centreW = (f) => zi(12, times(0.6 * k, f), 14, times(1.15 * k, f), 16, times(1.8 * k, f), 18, times(3 * k, f));
     const centreColor = footAct && !aerial ? '#b42318' : P.path;
-    const centreOpacity = [
-      'case',
-      act === 'mtb' ? sidewalkish : ['literal', false], 0.5,
-      isWater(act) || roadBike ? 0.6 : 1,
-    ];
+    const centreOpacity = isWater(act) || roadBike ? 0.6 : 1;
+    // Footways and pedestrian streets (#1163): a thin brown dashed line without the band, apart from trails.
+    add({
+      id: `path-${brunnel}-foot`, type: 'line', source: 'ofmTrails', 'source-layer': 'transportation', minzoom: 12,
+      filter: ['all', trailFilter, sidewalkish],
+      paint: {
+        'line-color': darkBase ? '#d6725c' : '#a2381f',
+        'line-width': hc ? ze(1.2, 12, 0.9, 14, 2.5, 16, 4, 18, 6) : ze(1.2, 12, 0.8, 14, 1.5, 16, 2.5, 18, 4),
+        'line-dasharray': [1.5, 0.7],
+        'line-opacity': centreOpacity,
+      },
+    });
+    const pathFilter = ['all', trailFilter, ['!', sidewalkish]];
     add({
       id: `path-${brunnel}-halo`, type: 'line', source: 'ofmTrails', 'source-layer': 'transportation', minzoom: 12,
-      filter: trailFilter,
+      filter: pathFilter,
       layout: { 'line-cap': 'round', 'line-join': 'round' },
       paint: { 'line-color': haloOf(MTB_IDX), 'line-width': haloW(1), 'line-opacity': haloOpacity },
     });
-    if (bikeAct) noBikeTicks(`path-${brunnel}-nobike`, 'ofmTrails', ['all', trailFilter, noBike]);
     add({
       id: `path-${brunnel}`, type: 'line', source: 'ofmTrails', 'source-layer': 'transportation', minzoom: 12,
-      filter: trailFilter,
+      filter: pathFilter,
       paint: {
         'line-color': centreColor,
         'line-width': centreW(1),
@@ -917,6 +985,7 @@ function addRoads(s, P, hc, layers, ctx) {
         'line-opacity': centreOpacity,
       },
     });
+    if (bikeAct) noBikeBars(`path-${brunnel}-nobike`, 'ofmTrails', ['all', trailFilter, noBike]);
     // The same trails from OSM, in the Trailmap / JOSM language: the band is as
     // wide as the trail, faint trails get a dotted centre line, and the barely
     // visible ones only their colour.
@@ -933,7 +1002,6 @@ function addRoads(s, P, hc, layers, ctx) {
           'line-opacity': ['*', haloOpacity, ['match', vis, 1, 0.9, 2, 0.75, 3, 0.55, 1]],
         },
       });
-      if (bikeAct) noBikeTicks(`path-osm-${brunnel}-nobike`, 'trailWays', ['all', osmFilter, noBike]);
       add({
         id: `path-osm-${brunnel}`, type: 'line', source: 'trailWays', minzoom: 12,
         filter: osmFilter,
@@ -944,6 +1012,7 @@ function addRoads(s, P, hc, layers, ctx) {
           'line-opacity': ['case', ['>=', vis, 3], 0, centreOpacity],
         },
       });
+      if (bikeAct) noBikeBars(`path-osm-${brunnel}-nobike`, 'trailWays', ['all', osmFilter, noBike]);
     }
     // Cycling infrastructure: surface patterns use only the tiles' known coarse class.
     const surfaceWidth = (paved, rough) => ['case', unpaved, rough, paved];
@@ -976,11 +1045,10 @@ function addRoads(s, P, hc, layers, ctx) {
         'line-opacity': (trail ? (brunnel === 'tunnel' ? 0.5 : 1) : 0.85) * roadsDim,
       },
     });
-    if (bikeAct) noBikeTicks(`cycleway-${brunnel}-nobike`, 'ofm', ['all', isPathClass, cyclingPath, bf, noBike]);
+    if (bikeAct) noBikeBars(`cycleway-${brunnel}-nobike`, 'ofm', ['all', isPathClass, cyclingPath, bf, noBike]);
   }
 
-  // Ways marked private or closed for your sport (#104): purple dots beside the line, on the
-  // other side from no-bike's red ones. The tiles fold access=private into access=no; the
+  // Ways marked private or closed for your sport (#104): purple dots beside the line. The tiles fold access=private into access=no; the
   // sport's own yes wins (a footway closed to cars is open on foot), and on foot, foot=no.
   // Routes keep off them, so this is why a route goes round. It says what the map says, not
   // the law: Finnish private roads and apartment-block yards are open on foot and by bike.
@@ -1004,7 +1072,7 @@ function addRoads(s, P, hc, layers, ctx) {
     add({
       id: 'td-fence', type: 'line', source: 'trailWays', minzoom: 15, filter: ['has', 'fence'],
       paint: {
-        'line-color': ['match', ['get', 'fence'], 'hedge', darkBase ? '#6fbf6f' : '#4d8a3a', 'wall', darkBase ? '#9ca3af' : '#6b7280', darkBase ? '#c08a6a' : '#8b4a2b'],
+        'line-color': ['match', ['get', 'fence'], 'hedge', darkBase ? '#6fbf6f' : '#4d8a3a', 'wall', darkBase ? '#9ca3af' : '#6b7280', darkBase ? '#b0b0b0' : '#545454'],
         'line-width': zi(15, 1, 18, 2.4),
         'line-dasharray': ['match', ['get', 'fence'], 'fence', ['literal', [2.4, 1.2]], ['literal', [1, 0]]],
       },
