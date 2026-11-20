@@ -1107,6 +1107,8 @@ def reedbed_style(chrome):
       for(const base of ['trail','plain','night']) {
         polku.set({base});
         await settle();
+        // the seeded reedbed drawn, 10 s at most more: with MML's terrain the first base can take longer than settle's 8 s (#1180)
+        for(let t=0;t<40&&!here();t++)await new Promise(r=>setTimeout(r,250));
         const layers=m.getStyle().layers, i=layers.findIndex(l=>l.id==='lc-reedbed'), l=layers[i];
         if(!l){errs.push(`${base}: no reedbed layer`);continue;}
         if(i<layers.findIndex(l=>l.id==='lc-wetland-pattern'))errs.push(`${base}: reedbeds under the wetland dashes`);
@@ -1276,7 +1278,8 @@ def mml_rock(chrome):
         if(!boulders.startsWith(`boulders-${rock.slice(1)}-`))errs.push(`${base}: boulder fields drawn as ${boulders}, not on the rock's grey`);
         const icons=[boulders,m.getLayoutProperty('mml-reed','icon-image'),m.getLayoutProperty('mml-pylon','icon-image')];
         const pts=m.getLayoutProperty('mml-rock-point','icon-image'); for(let i=3;i<pts.length;i+=2)icons.push(pts[i]); icons.push(pts[pts.length-1]);
-        for(const id of new Set(icons)){const img=makeIcon(id); if(!img||!img.data.some((v,i)=>i%4===3&&v>0))errs.push(`${base}: ${id} isn't drawn`); else if(!m.hasImage(id))errs.push(`${base}: ${id} isn't on the map`);}
+        // (the stones in the water aren't in these tiles: mml_water has them on the map, at Kotka)
+        for(const id of new Set(icons)){const img=makeIcon(id); if(!img||!img.data.some((v,i)=>i%4===3&&v>0))errs.push(`${base}: ${id} isn't drawn`); else if(!m.hasImage(id)&&!/^rock-(under|awash|above)-/.test(id))errs.push(`${base}: ${id} isn't on the map`);}
         // the ticks: a wider dashed line beside the cliff, touching it, on its right (a positive offset)
         for(const z of [13,16,18]) {
           const off=value('mml-cliff-ticks','line-offset',z), w=value('mml-cliff-ticks','line-width',z), e=value('mml-cliff','line-width',z);
@@ -1296,7 +1299,8 @@ def mml_rock(chrome):
 
 
 # #1175: a tap or a click on MML's terrain opens its card (the map's other things'), from the recorded tiles, never live MML:
-# a bog hard to cross with the survey's caveat (Seitseminen) and reeds in the water (Porvoo), by touch at 390 × 844 and by mouse
+# a bog hard to cross with the survey's caveat (Seitseminen), reeds in the water (Porvoo) and a stone above the surface (Kotka, #1170),
+# by touch at 390 × 844 and by mouse
 # at 1440 × 900, where the pointer's tooltip says the same first. A bog's crossing class only from zoom 13's tiles, and a name
 # for every class the inspected layers draw.
 def mml_cards(chrome):
@@ -1312,7 +1316,7 @@ def mml_cards(chrome):
       const at=pt&&m.project(pt.geometry.coordinates);
       for(let y=at?at.y:140;y<(at?at.y+1:innerHeight-180);y+=9)for(let x=at?at.x:24;x<(at?at.x+1:innerWidth-100);x+=9){
         const fs=featuresAt(m,{x,y},hitBox({x,y},touch),inspectLayers(m)), f=pickFeature(fs);
-        if(f&&f.layer.id===layer&&classes.includes(f.properties.kohdeluokka)&&fs.every((g)=>g.layer.id===layer||g.layer.id==='water'))return [R.left+x,R.top+y];
+        if(f&&f.layer.id===layer&&classes.includes(f.properties.kohdeluokka)&&fs.every((g)=>g.layer.id===layer||/^(water|mml-shoal)$/.test(g.layer.id)))return [R.left+x,R.top+y];
       }
       return null;
     })"""
@@ -1323,10 +1327,11 @@ def mml_cards(chrome):
         pg = chrome.page(w, h_, phone)
         # (zoom 10: under the source's zoom 11, so MML is asked for nothing before the test answers it)
         pg.open_app({'activity': 'mtb', 'base': 'trail'}, hash_='#10/61.92/23.478')
-        pg.js("""(async () => { const m=polku.map, FX=['14/9260/4578','14/9352/4721'];""" + MML_FIXTURES + """ return true; })()""")
+        pg.js("""(async () => { const m=polku.map, FX=['14/9260/4578','14/9352/4721','14/9416/4714'];""" + MML_FIXTURES + """ return true; })()""")
         for what, center, layer, classes, title, words, src in (
                 ('a bog hard to cross', mid(9260, 4578), 'mml-bog', [35421], 'Open bog', ['Survey class', 'Hard to cross', 'not a promise about the ground today', 'From the National Land Survey'], None),
-                ('reeds', mid(9352, 4721), 'mml-reed', [38100], 'Reeds', ['From the National Land Survey'], 'maasto_piste')):
+                ('reeds', mid(9352, 4721), 'mml-reed', [38100], 'Reeds', ['From the National Land Survey'], 'maasto_piste'),
+                ('a stone above the surface', mid(9416, 4714), 'mml-rock-point', [38513], 'Stone above the surface', ['From the National Land Survey'], 'maasto_piste')):
             pg.js(f"(async () => {{ const m=polku.map; m.jumpTo({{center:{json.dumps(center)},zoom:14.6}}); await new Promise(r=>setTimeout(r,300)); "
                   "await Promise.race([new Promise(r=>{m.once('idle',r);m.triggerRepaint();}),new Promise(r=>setTimeout(r,10000))]); return true; })()")
             at = pg.js(f"({spot})('{layer}', {json.dumps(classes)}, {json.dumps(phone)}, {json.dumps(src)})")
@@ -1349,8 +1354,8 @@ def mml_cards(chrome):
                 if c['title'] != title:
                     fails.append(f'{name}: a {"tap" if phone else "click"} on {what} opened {c["title"]!r}')
                 fails += [f'{name}: the card for {what} doesn’t say {w_!r}' for w_ in words if w_ not in c['text']]
-                # a bog's piece in one tile would stop at the tile's edge: the card's pin alone; reeds, a ring (in both tiles near their edge)
-                if c['drawn'] or not c['pin'] or (layer == 'mml-reed') != bool(c['ring']):
+                # a bog's piece in one tile would stop at the tile's edge: the card's pin alone; a point (reeds, a stone), a ring
+                if c['drawn'] or not c['pin'] or bool(src) != bool(c['ring']):
                     fails.append(f"{name}: {what} marked by {c['drawn']} lines or areas, {c['ring']} rings and {'a' if c['pin'] else 'no'} pin")
             pg.js("polku.planner.cards.close(); true")
         if not phone:
@@ -1413,6 +1418,101 @@ def mml_cards(chrome):
         fails += [f'{name} console: {e[:160]}' for e in pg.errors()]
         pg.close()
     print(f"{'ok  ' if not fails else 'FAIL'} a tap on MML's terrain says what it is (#1175)" + ''.join(f'\n     - {f}' for f in fails), flush=True)
+# #1170: MML's water from five recorded tiles, never live MML: Kotka (tools/fixtures/mml-taustakartta-14-9416-4714.pbf:
+# stones at and above the surface, a shoal, stone fields, jetties), the Porvoo archipelago (…-14-9363-4735.pbf: stones under
+# the surface), Kitkajoki (…-14-9531-4125.pbf: rapids, a wide river's
+# arrow), Porvoo (…-14-9352-4721.pbf: two narrow rivers' arrows) and Tuomiojärvi (…-14-9362-4544.pbf: depth contours and
+# points, under the Depths switches). Each drawn from its tile on every vector base and in
+# a land sport too, over the water and Traficom's depths and under the buildings; the three stones apart by shape, the
+# shoals' ground clear, the rapids' ovals clear of the river's edges (never bars across: a ladder); each arrow turned to its `suunta` (Porvoo's flows south-west, downhill), and OSM's piers in the
+# jetties' look.
+def mml_water(chrome):
+    pg = chrome.page(1440, 900, False)
+    pg.open_app({'activity': 'paddle', 'base': 'trail'}, hash_='#10/60.4/26.0')
+    fails = pg.js("""(async () => {
+      const errs=[], m=polku.map, {makeIcon}=await import('/js/icons.js'), FX=['14/9416/4714','14/9363/4735','14/9531/4125','14/9352/4721','14/9362/4544'];
+      const settle=async()=>{await new Promise(r=>setTimeout(r,300));await Promise.race([new Promise(r=>{m.once('idle',r);m.triggerRepaint();}),new Promise(r=>setTimeout(r,10000))]);};
+      if(m.style.tileManagers.mml.getIds().length)return ['MML was asked for tiles at zoom 10'];""" + MML_FIXTURES + """
+      const feats=(layer)=>m.queryRenderedFeatures({layers:[layer]}), drawn=(layer)=>new Set(feats(layer).map(f=>f.properties.kohdeluokka));
+      let at; const want=(layer,classes)=>{const got=drawn(layer); for(const k of classes)if(!got.has(k))errs.push(`${at}: ${layer} drew nothing of class ${k} from the recorded tile`);};
+      for(const [activity,base] of [['paddle','trail'],['paddle','plain'],['paddle','night'],['mtb','trail']]) {
+        at=`${activity}, ${base}`; polku.set({activity,base});
+        m.jumpTo({center:tileMid(14,9416,4714),zoom:14.6}); await settle();
+        want('mml-shoal',[38600,38700]); want('mml-rock-point',[38512,38513]); want('mml-jetty',[45111]);
+        if(!feats('pier').length&&!feats('pier-area').length)errs.push(`${at}: OSM's pier at Kotka not drawn`);
+        m.jumpTo({center:tileMid(14,9363,4735),zoom:14.6}); await settle();
+        want('mml-rock-point',[38511]);
+        m.jumpTo({center:tileMid(14,9531,4125),zoom:14.6}); await settle();
+        want('mml-rapids',[38200]); want('mml-flow',[36393]);
+        m.jumpTo({center:tileMid(14,9352,4721),zoom:14.6}); await settle();
+        want('mml-flow',[36392]);
+        const order=m.getStyle().layers.map(l=>l.id), i=(id)=>order.indexOf(id), before=(a,b,what)=>{if(!(i(a)>=0&&i(a)<i(b)))errs.push(`${at}: ${what} (${a} at ${i(a)}, ${b} at ${i(b)})`);};
+        for(const l of ['mml-shoal','mml-rapids','pier-area','pier','mml-jetty','mml-flow']){before('water',l,`${l} under the water`); before(l,'building',`${l} over the buildings`);}
+        if(activity==='paddle')for(const l of ['mml-shoal','mml-rapids','mml-flow'])before('ov-depthAreas',l,`${l} under Traficom's depths`);
+        // the jetties one look: OSM's piers in MML's jetties' colour
+        const jetty=m.getPaintProperty('mml-jetty','line-color');
+        if(m.getPaintProperty('pier','line-color')!==jetty||m.getPaintProperty('pier-area','fill-outline-color')!==jetty)errs.push(`${at}: OSM's piers not in the jetties' colour ${jetty}`);
+        // the images: the stones apart by shape, the shoals' ground clear, the stone fields' triangles, the rapids' ovals
+        const pts=m.getLayoutProperty('mml-rock-point','icon-image'), img=(k)=>pts[pts.indexOf(k)+1];
+        const stones=[38511,38512,38513].map(k=>makeIcon(img(k)));
+        if(!stones.every(Boolean))errs.push(`${at}: the stones' images aren't drawn (${[38511,38512,38513].map(img)})`);
+        else for(const [a,b] of [[0,1],[0,2],[1,2]])if(stones[a].data.every((v,k)=>v===stones[b].data[k]))errs.push(`${at}: the stones ${['under','at','above'][a]} and ${['under','at','above'][b]} the surface look the same`);
+        const rp=makeIcon(m.getPaintProperty('mml-rapids','line-pattern')), row=(y)=>rp.data.slice(y*rp.width*4,(y+1)*rp.width*4).every((v,k)=>k%4!==3||v===0);
+        if(!rp)errs.push(`${at}: no rapids image`); else if(!row(0)||!row(rp.height-1))errs.push(`${at}: the rapids' marks reach the river's edges, as bars across would`);
+        const sh=m.getPaintProperty('mml-shoal','fill-pattern'), shoal=makeIcon(sh[sh.indexOf(38600)+2]), field=makeIcon(sh[sh.indexOf(38600)+1]);
+        for(const [what,d] of [['shoal',shoal],['stone field',field]]){if(!d)errs.push(`${at}: no ${what} image`); else if(!d.data.some((v,k)=>k%4===3&&v===0))errs.push(`${at}: the ${what}'s ground covers the water and its depths`);}
+        if(shoal&&field&&field.data.every((v,k)=>v===shoal.data[k]))errs.push(`${at}: stone fields look like shoals`);
+        for(const id of [img(38511),img(38512),img(38513),sh[sh.indexOf(38600)+1],sh[sh.indexOf(38600)+2],m.getLayoutProperty('mml-flow','icon-image')])if(!m.hasImage(id))errs.push(`${at}: ${id} isn't on the map`);
+      }
+      // the arrows: MML's suunta is 1/10,000 radian counter-clockwise from east; the image points east, icon-rotate turns
+      // it clockwise. Porvoo's arrow (suunta -21374, at Mustijoki) points south-west, downhill (2026-11-20).
+      const flow=feats('mml-flow'), rot=(f)=>m.style.getLayer('mml-flow').layout.get('icon-rotate').evaluate(f,{});
+      if(!flow.length)errs.push('no arrows at Porvoo');
+      for(const f of flow){const want=-f.properties.suunta*180/Math.PI/10000; if(Math.abs(rot(f)-want)>0.01)errs.push(`the arrow with suunta ${f.properties.suunta} turned ${rot(f)}°, not ${want}°`);}
+      const sw=flow.find(f=>f.properties.suunta===-21374), bearing=sw&&(90+rot(sw)+360)%360;
+      if(!sw)errs.push("Porvoo's south-west arrow (suunta -21374) not drawn"); else if(!(bearing>180&&bearing<270))errs.push(`Porvoo's arrow points ${bearing}° from north, not south-west`);
+      const head=makeIcon(m.getLayoutProperty('mml-flow','icon-image')), alpha=(x,y)=>head.data[(y*head.width+x)*4+3];
+      // (the image is drawn at 2 px a pixel: its head's upper arm at 9.5, 2 and nothing at 3, 2 on its tail)
+      if(!(alpha(head.width-4,head.height/2)>0&&alpha(19,4)>0&&!alpha(6,4)))errs.push("the arrow's head isn't on its east end");
+      for(const [cls,layers] of [[38512,['mml-shoal','mml-rapids','mml-jetty']],[38200,['mml-shoal','mml-rock-point','mml-flow']],[36311,['mml-rapids']],[34400,['mml-jetty']],[22311,['mml-jetty']]])
+        for(const l of layers)if(m.style.getLayer(l)._featureFilter.filter({zoom:15},{type:2,properties:{kohdeluokka:cls}}))errs.push(`${l} draws class ${cls}`);
+      if(m.style.getLayer('mml-rapids')._featureFilter.filter({zoom:12},{type:1,properties:{kohdeluokka:38200}}))errs.push('rapids points drawn as lines');
+      if(m.getLayer('mml-rapids').minzoom!==11)errs.push(`rapids from zoom ${m.getLayer('mml-rapids').minzoom}, not 11`);
+      // depths: MML's lake contours with Depth contours, their depths and its depth points, in metres (syvyysarvo is in mm);
+      // with the switches, in the order over the water and Traficom's depths, and gone when they're off
+      at='paddle, trail, depths'; polku.set({activity:'paddle',base:'trail'});
+      m.jumpTo({center:tileMid(14,9362,4544),zoom:14.6}); await settle();
+      want('mml-depth',[54100]); want('mml-depth-label',[54100]); want('mml-sounding',[54210]);
+      const label=feats('mml-depth-label').find(f=>f.properties.syvyysarvo===1500), point=feats('mml-sounding').find(f=>f.properties.syvyysarvo===1100);
+      const text=(id,f)=>m.style.getLayer(id).layout.get('text-field').evaluate(f,{}).toString();
+      if(!label||text('mml-depth-label',label)!=='1.5')errs.push(`a 1.5 m contour labelled ${label&&text('mml-depth-label',label)}`);
+      if(!point||text('mml-sounding',point)!=='1.1')errs.push(`a 1.1 m depth point labelled ${point&&text('mml-sounding',point)}`);
+      // in Traficom's look, so the two sources read as one: its contours' colour and black soundings
+      if(m.getPaintProperty('mml-depth','line-color')!=='#1f4d6b'||m.getPaintProperty('mml-sounding','text-color')!=='#000000')errs.push(`MML's depths not in Traficom's colours (${m.getPaintProperty('mml-depth','line-color')}, ${m.getPaintProperty('mml-sounding','text-color')})`);
+      // a lake's surface height, in the basemap: in metres above the sea, also with the depths off
+      const lakeHeight=()=>{const f=feats('mml-lake-height')[0]; return f&&[text('mml-lake-height',f),f.properties.keskikorkeus];};
+      {const h=lakeHeight(); if(!h||h[0]!==`${+(h[1]/1000).toFixed(1)} m a.s.l.`)errs.push(`a lake's height labelled ${h&&h[0]} (keskikorkeus ${h&&h[1]})`);}
+      {const order=m.getStyle().layers.map(l=>l.id), i=(id)=>order.indexOf(id);
+        if(!(i('ov-depthContours')<i('mml-depth')&&i('mml-depth')<i('mml-shoal')))errs.push(`MML's depth contours not over Traficom's and under the shoals (${i('ov-depthContours')}, ${i('mml-depth')}, ${i('mml-shoal')})`);}
+      // the depth rows' Opacity reaches MML's depths too: saved, and while its slider moves in Layers
+      polku.set({overlayOpacity:{...polku.state.overlayOpacity,depthContours:0.3,soundings:0.4}}); await settle();
+      const opacities=()=>[m.getPaintProperty('mml-depth','line-opacity'),m.getPaintProperty('mml-depth-label','text-opacity'),m.getPaintProperty('mml-sounding','text-opacity')].join();
+      if(opacities()!=='0.3,0.3,0.4')errs.push(`saved depth opacities 0.3 and 0.4, MML's depths at ${opacities()}`);
+      document.querySelector('#btn-layers').click(); document.querySelector('#quick-layers .qt-more').click(); await new Promise(r=>setTimeout(r,400));
+      const slider=document.querySelector('#layers-body input[aria-label="Depth contours opacity"]');
+      if(!slider)errs.push('(the test) no Depth contours opacity slider in Layers');
+      else { slider.value='60'; slider.dispatchEvent(new Event('input',{bubbles:true})); await settle();
+        if(m.getPaintProperty('mml-depth','line-opacity')!==0.6||m.getPaintProperty('ov-depthContours','raster-opacity')!==0.6)errs.push(`Depth contours' slider at 60 %: MML's at ${m.getPaintProperty('mml-depth','line-opacity')}, Traficom's at ${m.getPaintProperty('ov-depthContours','raster-opacity')}`); }
+      polku.set({overlayOpacity:{...polku.state.overlayOpacity,depthContours:null,soundings:null}});
+      polku.set({overlays:{...polku.state.overlays,depthContours:false,soundings:false}}); await settle();
+      for(const l of ['mml-depth','mml-depth-label','mml-sounding'])if(m.getLayer(l))errs.push(`${l} drawn with the depths off`);
+      if(!lakeHeight())errs.push("no lake's height with the depths off");
+      for(const base of ['maasto','aerial']){polku.set({base}); await settle(); for(const l of ['mml-shoal','mml-rapids','mml-flow','mml-jetty','pier'])if(m.getLayer(l))errs.push(`${l} on the ${base} base`);}
+      return errs;
+    })()""", timeout=180000)
+    fails += [f'console: {e[:160]}' for e in pg.errors()]
+    pg.close()
+    print(f"{'ok  ' if not fails else 'FAIL'} MML's stones, shoals, rapids, flow and jetties in the water (#1170)" + ''.join(f'\n     - {f}' for f in fails), flush=True)
     return not fails
 
 
@@ -25103,7 +25203,7 @@ GROUPS = [
     ('changelog', [changelog], 'release notes, retry, safe rendering, keyboard, route preservation and real worker offline'),
     ('pacing', [pacing, paced_legs, net_fails], 'calls made together go out paced and counted (mocked services, a fake clock); legs refused for a slot follow at it (#78); the calls that failed, in Data sources (#687)'),
     ('loading', [loading, routing_edits], 'cancel obsolete routing, edits/Undo/Clear, shared subscribers, refusal/recovery, deadlines, terrain slots and LIPAS viewport/cache (mocked)'),
-    ('layers', [layers, cycleway_style, cycling_restrictions, waterway_style, property_lines, property_plots, wetland_style, reedbed_style, mml_bogs, mml_rock, osm_cliffs, saddles, mml_cards], 'the Layers panel in every sport'),
+    ('layers', [layers, cycleway_style, cycling_restrictions, waterway_style, property_lines, property_plots, wetland_style, reedbed_style, mml_bogs, mml_rock, mml_water, osm_cliffs, saddles, mml_cards], 'the Layers panel in every sport'),
     ('raster', [raster_maps, aerial_fallback, aerial_labels], 'terrain and aerial detail, bounded high-density WMS symbols, depth boundaries and missing aerial detail (#649, #650, #653); the map\'s words on the aerial photos at 4.5:1 on their halo (#554)'),
     ('coarse', [coarse], 'a coarse map underneath (#1091): the base map\'s tile four zoom levels up stands in for one that hasn\'t come, at 1440 and 390'),
     ('together', [together], 'Polku\'s own layers come in together after the map stops, 500 ms at most (#1091)'),

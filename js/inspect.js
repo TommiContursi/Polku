@@ -32,20 +32,20 @@ export const isHttp = (u) => /^https?:\/\//i.test(u) ? u : /^www\./i.test(u) ? `
 // Layers a click can inspect, and the order it picks from when several are
 // under the pointer. The hover tooltip uses the same order, so it previews
 // exactly what a click opens.
-const INSPECTABLE = /^(cameras$|td-points$|td-way-tree$|td-way-ford$|winter-way$|winter-ski$|winter-closed$|nm-marks|nm-navline$|nm-sector|nm-restrict-fill|nm-fairway|sf-ships|sf-points|sf-lines|sf-aadt|military-fill|lipas-point|poi-outdoor|poi-minor|label-peak|lipas-route$|uphill-line|path-|track-|cycleway-|road-|water$|property-plot$|mml-(bog|paludified|overgrowing|rock|boulders|cliff|power|rock-point|reed|pylon)$)/;
+const INSPECTABLE = /^(cameras$|td-points$|td-way-tree$|td-way-ford$|winter-way$|winter-ski$|winter-closed$|nm-marks|nm-navline$|nm-sector|nm-restrict-fill|nm-fairway|sf-ships|sf-points|sf-lines|sf-aadt|military-fill|lipas-point|poi-outdoor|poi-minor|label-peak|lipas-route$|uphill-line|path-|track-|cycleway-|road-|water$|property-plot$|mml-(bog|paludified|overgrowing|shoal|rock|boulders|cliff|power|rock-point|reed|pylon|rapids)$)/;
 // An official (LIPAS) route drawn over a trail is what a click there means: its card
 // links to the trail under it, and the trail's card back to the route.
-// MML's terrain (#1175): its marks and lines, after the ways, and its overgrowing water, before the water they're drawn over;
+// MML's terrain (#1175): its marks and lines, after the ways, and its overgrowing water and shoals, before the water they're drawn over;
 // its areas under the water last, after a property's plot (whose tint shows what a click picks), and before a park (inspector below).
 const PRIORITY = [/^cameras$/, /^sf-ships/, /^nm-marks/, /^sf-points/, /^td-/, /^lipas-point/, /^poi-|^label-peak/, /^sf-lines/, /^lipas-route/, /^uphill-line/, /^(path|track|cycleway)-/, /^winter-/,
-  /^sf-aadt/, /^road-/, /^mml-(cliff|power|rock-point|reed|pylon)$/, /^nm-sector/, /^nm-navline/, /^nm-restrict/, /^military/, /^nm-fairway/, /^mml-overgrowing$/, /^water$/, /^property-plot$/, /^mml-/];
+  /^sf-aadt/, /^road-/, /^mml-(cliff|power|rock-point|reed|pylon|rapids)$/, /^nm-sector/, /^nm-navline/, /^nm-restrict/, /^military/, /^nm-fairway/, /^mml-(overgrowing|shoal)$/, /^water$/, /^property-plot$/, /^mml-/];
 
 // a finger covers more than a mouse pointer: a wider box to find what's under it
 export const hitBox = (pt, touch) => { const r = touch ? 14 : 7; return [[pt.x - r, pt.y - r], [pt.x + r, pt.y + r]]; };
 // The features of `layers` a tap, a click or the pointer at `pt` finds: within the box, but MML's areas only where one is the
 // ground drawn at the point itself, so neither the forest beside a bog nor a lake, a town, a building or OSM's own rock or
 // wetland drawn over one is it (#1175). (The parks' tint is see-through.)
-const MML_AREA = /^mml-(bog|paludified|overgrowing|rock|boulders)$/;
+const MML_AREA = /^mml-(bog|paludified|overgrowing|shoal|rock|boulders)$/;
 const ground = (map) => map.getLayersOrder().filter((id) => { const l = map.getLayer(id); return /^fill/.test(l.type) && ['ofm', 'mml', 'reedbeds'].includes(l.source) && id !== 'park-fill'; });
 export function featuresAt(map, pt, box, layers) {
   const areas = layers.filter((id) => MML_AREA.test(id)), top = areas.length && map.queryRenderedFeatures([pt.x, pt.y], { layers: ground(map) })[0];
@@ -341,6 +341,9 @@ export const MML_TERRAIN = {
   35300: ['Paludified land', 'Ground turning into bog'], 38300: ['Overgrowing water', 'Water turning into bog'], 38100: ['Reeds'],
   34100: ['Bare rock'], 34700: ['Boulder field'], 34200: ['Sparse boulders'], 34600: ['Boulder'], 34400: ['Cliff'],
   22311: ['Power line', '110 kV or more'], 22312: ['Power line', 'Under 110 kV'], 22392: ['Power line pylon'],
+  // the water's (#1170): a stone under the surface is 0.3–1.5 m down
+  38511: ['Stone under the surface', '0.3–1.5 m deep'], 38512: ['Stone at the surface'], 38513: ['Stone above the surface'],
+  38700: ['Shoal'], 38600: ['Stone field'], 38200: ['Rapids'],
 };
 // { title, line, survey }: survey is a bog's crossing class, 3541x easier and 3542x hard, as MML's survey has it. Only zoom
 // 13's and 14's tiles have it right: zoom 12's are generalised (a bog hard to cross at 13 can be easier at 12) and 11's have
