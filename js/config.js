@@ -297,6 +297,9 @@ export const RASTER_OVERLAYS = {
   depthContours: {
     label: 'Depth contours',
     attribution: '© Traficom nautical chart data (not for navigation)',
+    // with the National Land Survey's on the lakes Traficom doesn't chart (#1170, js/style.js), whose tiles have them from
+    // zoom 13 only: Layers says both
+    note: 'Traficom nautical chart data, and the National Land Survey on other lakes from zoom 13 (not for navigation)',
     keepNote: true, // (Layers shows its note as words, not behind an ⓘ: it keeps you safe, #382)
     tiles: [wmsTiles(TRAFICOM_WMS, 'DepthContour_L', 'syvyyskayra')],
     tileSize: 512,
@@ -307,6 +310,7 @@ export const RASTER_OVERLAYS = {
   soundings: {
     label: 'Depth soundings',
     attribution: '© Traficom nautical chart data (not for navigation)',
+    note: 'Traficom nautical chart data, and the National Land Survey on other lakes (not for navigation)',
     keepNote: true, // (Layers shows its note as words, not behind an ⓘ: it keeps you safe, #382)
     tiles: [wmsTiles(TRAFICOM_WMS, 'Sounding_P', 'Syvyyspiste_point')],
     tileSize: 512,
