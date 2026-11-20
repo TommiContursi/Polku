@@ -223,8 +223,10 @@ Plain and Night maps, in MTB and paddle; its PR lists what else it covered.
   Open bogs keep OSM's blue dashes; wooded bogs have them on the forest's
   green; hard-to-cross bogs have unbroken lines. Paludified land gets
   sparse short dashes from zoom 13, under OSM's wetlands, and overgrowing
-  water the dashes on the water's blue. The patterns are `bog()` and
-  `wetland()` in `js/icons.js`.
+  water the dashes on the water's blue, over OSM's lakes (#1177). MML's
+  lakes are drawn over OSM's wetlands, so a marsh OSM cuts out of a lake
+  reads as water (#1177). The patterns are `bog()` and `wetland()` in
+  `js/icons.js`.
 - **Rock** (#1168) from zoom 13, over OSM's rock in the same grey (decided
   on #1147), boulder fields dotted; from zoom 14, small rocks, stones and
   sparse boulders as marks. Rock fissures aren't drawn: none were in the
@@ -248,10 +250,11 @@ Plain and Night maps, in MTB and paddle; its PR lists what else it covered.
   tooltip says the same. A bog's card has its survey class, easier or hard
   to cross, from zoom 13's tiles, with the survey's caveat; zoom 12's
   classes are generalised and zoom 11's have none, so further out it says
-  to zoom in. The areas (bogs, paludified land, rock, boulder fields) count
-  under the point only, after the water and a property's plot and before a
-  park; the lines and marks come after the ways and before the water,
-  which they're drawn over. Nothing is outlined, as a tile's piece of a bog
+  to zoom in. The areas (bogs, paludified land, overgrowing water, rock, boulder
+  fields) count under the point only, after the water and a property's plot
+  and before a park; the lines and marks, and overgrowing water, come
+  before the water they're drawn over. MML's lake is the water's, where it
+  fills a marsh OSM's lake leaves a hole for. Nothing is outlined, as a tile's piece of a bog
   would stop at the tile's edge: the card's pin marks the spot, a point its
   ring. Nothing new is drawn, so there's no basemap or layer to weigh.
 

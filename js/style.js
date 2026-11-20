@@ -187,6 +187,8 @@ export function buildStyle(s, ctx) {
     add({ id: 'mml-base', type: 'raster', source: 'mmlBase' });
   }
 
+  const waterColor = isWater(act) ? (s.base === 'night' ? '#0d3b5e' : '#93c6ec') : P.water;
+
   // ---- Land ---------------------------------------------------------------
   if (vectorFills) {
     const lc = (id, cls, color, extra = {}) =>
@@ -203,14 +205,17 @@ export function buildStyle(s, ctx) {
     lc('lc-wetland', ['wetland'], P.wetland);
     // blue dashes from zoom 11 (js/icons.js): the tiles' wetlands are all one kind, so nothing about trees or footing (#1144)
     add({ id: 'lc-wetland-pattern', type: 'fill', source: 'ofm', 'source-layer': 'landcover', minzoom: 11, filter: ['==', ['get', 'class'], 'wetland'], paint: { 'fill-pattern': `wetland-${P.wetland.slice(1)}-${P.wetlandDash.slice(1)}` } });
+    // MML's lakes in Finland over OSM's wetlands: OSM's lakes leave a hole for each marsh in them, and MML's lake covers it,
+    // so the lake doesn't show land-coloured patches where MML has no overgrowing water (Rautpohja, Jyväskylä)
+    add({ id: 'mml-lake', type: 'fill', source: 'mml', 'source-layer': 'vesisto_alue', filter: ['in', cls, ['literal', [36200, 36211, 36313]]], paint: { 'fill-color': waterColor } });
     // MML's bogs in Finland (#1147), over OSM's wetlands: where MML has a bog its class shows, and OSM's wetland stays
     // where MML has none, abroad and wherever MML's tiles don't come. Their grounds are opaque, so no dashes show through.
     // Zoom 11's tiles only say open or wooded (35401/35402); a bog MML's survey classes hard to cross (35421/35422) gets
     // unbroken lines where the tiles carry the class, large ones from zoom 12 and the rest from 13.
     add({
       id: 'mml-bog', type: 'fill', source: 'mml', 'source-layer': 'maasto_alue', minzoom: 11,
-      filter: ['in', cls, ['literal', [35401, 35402, 35411, 35412, 35421, 35422, 38300]]],
-      paint: { 'fill-pattern': ['match', cls, [35401, 35411], dashes(P.wetland), [35402, 35412], dashes(P.bogWood), 35421, hard(P.wetland), 35422, hard(P.bogWood), dashes(P.water)] },
+      filter: ['in', cls, ['literal', [35401, 35402, 35411, 35412, 35421, 35422]]],
+      paint: { 'fill-pattern': ['match', cls, [35401, 35411], dashes(P.wetland), [35402, 35412], dashes(P.bogWood), 35421, hard(P.wetland), hard(P.bogWood)] },
     });
     // reedbeds over it, from Polku's own OSM data (js/osm-data.js): reed stems on the same ground, covering the dashes
     add({ id: 'lc-reedbed', type: 'fill', source: 'reedbeds', minzoom: 12, paint: { 'fill-pattern': `reedbed-${P.wetland.slice(1)}-${P.reed.slice(1)}` } });
@@ -283,7 +288,6 @@ export function buildStyle(s, ctx) {
 
   // ---- Water --------------------------------------------------------------
   if (!aerialBase && !topoBase) {
-    const waterColor = isWater(act) ? (s.base === 'night' ? '#0d3b5e' : '#93c6ec') : P.water;
     // a stream wider than a ditch or drain, so the two read apart (#1138); the tiles have them from zoom 13.
     // Under the water's fill, so a river's line doesn't show through a lake or strait it runs across.
     const ww = (river, stream, ditch) => ['match', ['get', 'class'], ['river', 'canal'], river, ['ditch', 'drain'], ditch, stream];
@@ -297,6 +301,8 @@ export function buildStyle(s, ctx) {
       },
     });
     add({ id: 'water', type: 'fill', source: 'ofm', 'source-layer': 'water', filter: ['!=', ['get', 'class'], 'swimming_pool'], paint: { 'fill-color': waterColor, 'fill-antialias': true } });
+    // MML's overgrowing water in Finland (#1147): dashes on the water's blue, over OSM's lake, which covers most of it
+    if (sources.mml) add({ id: 'mml-overgrowing', type: 'fill', source: 'mml', 'source-layer': 'maasto_alue', minzoom: 11, filter: ['==', ['get', 'kohdeluokka'], 38300], paint: { 'fill-pattern': `wetland-${waterColor.slice(1)}-${P.wetlandDash.slice(1)}` } });
     add({ id: 'water-shore', type: 'line', source: 'ofm', 'source-layer': 'water', minzoom: 11, filter: ['!=', ['get', 'class'], 'swimming_pool'], paint: { 'line-color': P.waterLine, 'line-width': zi(11, 0.3, 15, act === 'paddle' ? 1.4 : 0.8), 'line-opacity': 0.8 } });
   }
 
@@ -938,7 +944,7 @@ function addRoads(s, P, hc, layers, ctx) {
     // Paths: a difficulty-coloured halo (MTB) under a black dashed centre line.
     // With trail details on, the trails inside the loaded detail tiles are
     // drawn from OSM instead (below), so they're hidden from the tiles there.
-    const trailSet = ['any', ['in', ['coalesce', ['get', 'subclass'], 'path'], ['literal', ['path', 'bridleway', 'steps']]], ['all', ['==', ['get', 'subclass'], 'footway'], ['has', 'mtb_scale']]];
+    const trailSet = ['any', ['in', ['coalesce', ['get', 'subclass'], 'path'], ['literal', ['path', 'bridleway']]], ['all', ['in', ['get', 'subclass'], ['literal', ['footway', 'steps']]], ['has', 'mtb_scale']]];
     const trailFilter = ['all', isPathClass, ['in', ['coalesce', ['get', 'subclass'], 'path'], ['literal', TRAIL_SUB]], ['!', cyclingPath], bf,
       ...(covered ? [['!', ['all', trailSet, ['within', ctx.trailCoverage]]]] : [])];
     const noFoot = ['==', ['get', 'foot'], 'no'];
@@ -957,18 +963,40 @@ function addRoads(s, P, hc, layers, ctx) {
     const centreW = (f) => zi(12, times(0.6 * k, f), 14, times(1.15 * k, f), 16, times(1.8 * k, f), 18, times(3 * k, f));
     const centreColor = footAct && !aerial ? '#b42318' : P.path;
     const centreOpacity = isWater(act) || roadBike ? 0.6 : 1;
-    // Footways and pedestrian streets (#1163): a thin brown dashed line without the band, apart from trails.
+    // Footways and pedestrian streets (#1163): a thin brown dashed line, on the Trail map on a white band 1 px wider a side, apart from trails.
+    const footColor = darkBase ? '#d6725c' : '#a2381f';
+    if (trail && brunnel !== 'tunnel') add({
+      id: `path-${brunnel}-foot-casing`, type: 'line', source: 'ofmTrails', 'source-layer': 'transportation', minzoom: 12,
+      filter: ['all', trailFilter, sidewalkish],
+      paint: {
+        'line-color': '#ffffff',
+        'line-width': hc ? ze(1.2, 14, 4.5, 16, 6, 18, 8) : ze(1.2, 14, 3.5, 16, 4.5, 18, 6),
+        'line-opacity': brunnel === 'ground' ? zi(13, 0, 14, centreOpacity) : centreOpacity,
+      },
+    });
     add({
       id: `path-${brunnel}-foot`, type: 'line', source: 'ofmTrails', 'source-layer': 'transportation', minzoom: 12,
       filter: ['all', trailFilter, sidewalkish],
       paint: {
-        'line-color': darkBase ? '#d6725c' : '#a2381f',
+        'line-color': footColor,
         'line-width': hc ? ze(1.2, 12, 0.9, 14, 2.5, 16, 4, 18, 6) : ze(1.2, 12, 0.8, 14, 1.5, 16, 2.5, 18, 4),
         'line-dasharray': [1.5, 0.7],
         'line-opacity': centreOpacity,
       },
     });
-    const pathFilter = ['all', trailFilter, ['!', sidewalkish]];
+    // Steps without an MTB grade: a wide brown ladder, so they stand out from the footways.
+    const steps = ['all', ['==', ['get', 'subclass'], 'steps'], ['!', ['has', 'mtb_scale']]];
+    add({
+      id: `path-${brunnel}-steps`, type: 'line', source: 'ofmTrails', 'source-layer': 'transportation', minzoom: 13,
+      filter: ['all', trailFilter, steps],
+      paint: {
+        'line-color': footColor,
+        'line-width': hc ? ze(1.2, 14, 4, 16, 9) : ze(1.2, 14, 3, 17, 9),
+        'line-dasharray': hc ? [0.4, 0.4] : [0.2, 0.2],
+        'line-opacity': centreOpacity,
+      },
+    });
+    const pathFilter = ['all', trailFilter, ['!', sidewalkish], ['!', steps]];
     add({
       id: `path-${brunnel}-halo`, type: 'line', source: 'ofmTrails', 'source-layer': 'transportation', minzoom: 12,
       filter: pathFilter,

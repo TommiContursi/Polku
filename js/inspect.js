@@ -32,19 +32,19 @@ export const isHttp = (u) => /^https?:\/\//i.test(u) ? u : /^www\./i.test(u) ? `
 // Layers a click can inspect, and the order it picks from when several are
 // under the pointer. The hover tooltip uses the same order, so it previews
 // exactly what a click opens.
-const INSPECTABLE = /^(cameras$|td-points$|td-way-tree$|td-way-ford$|winter-way$|winter-ski$|winter-closed$|nm-marks|nm-navline$|nm-sector|nm-restrict-fill|nm-fairway|sf-ships|sf-points|sf-lines|sf-aadt|military-fill|lipas-point|poi-outdoor|poi-minor|label-peak|lipas-route$|uphill-line|path-|track-|cycleway-|road-|water$|property-plot$|mml-(bog|paludified|rock|boulders|cliff|power|rock-point|reed|pylon)$)/;
+const INSPECTABLE = /^(cameras$|td-points$|td-way-tree$|td-way-ford$|winter-way$|winter-ski$|winter-closed$|nm-marks|nm-navline$|nm-sector|nm-restrict-fill|nm-fairway|sf-ships|sf-points|sf-lines|sf-aadt|military-fill|lipas-point|poi-outdoor|poi-minor|label-peak|lipas-route$|uphill-line|path-|track-|cycleway-|road-|water$|property-plot$|mml-(bog|paludified|overgrowing|rock|boulders|cliff|power|rock-point|reed|pylon)$)/;
 // An official (LIPAS) route drawn over a trail is what a click there means: its card
 // links to the trail under it, and the trail's card back to the route.
-// MML's terrain (#1175): its marks and lines, drawn over the water, after the ways; its areas, drawn under the water, last,
-// after a property's plot (whose tint shows what a click picks), and before a park (inspector below).
+// MML's terrain (#1175): its marks and lines, after the ways, and its overgrowing water, before the water they're drawn over;
+// its areas under the water last, after a property's plot (whose tint shows what a click picks), and before a park (inspector below).
 const PRIORITY = [/^cameras$/, /^sf-ships/, /^nm-marks/, /^sf-points/, /^td-/, /^lipas-point/, /^poi-|^label-peak/, /^sf-lines/, /^lipas-route/, /^uphill-line/, /^(path|track|cycleway)-/, /^winter-/,
-  /^sf-aadt/, /^road-/, /^mml-(cliff|power|rock-point|reed|pylon)$/, /^nm-sector/, /^nm-navline/, /^nm-restrict/, /^military/, /^nm-fairway/, /^water$/, /^property-plot$/, /^mml-/];
+  /^sf-aadt/, /^road-/, /^mml-(cliff|power|rock-point|reed|pylon)$/, /^nm-sector/, /^nm-navline/, /^nm-restrict/, /^military/, /^nm-fairway/, /^mml-overgrowing$/, /^water$/, /^property-plot$/, /^mml-/];
 
 // a finger covers more than a mouse pointer: a wider box to find what's under it
 export const hitBox = (pt, touch) => { const r = touch ? 14 : 7; return [[pt.x - r, pt.y - r], [pt.x + r, pt.y + r]]; };
 // The features of `layers` a tap, a click or the pointer at `pt` finds: within the box, but MML's areas only under the point
 // itself, so the forest beside a bog isn't the bog (#1175)
-const MML_AREA = /^mml-(bog|paludified|rock|boulders)$/;
+const MML_AREA = /^mml-(bog|paludified|overgrowing|rock|boulders)$/;
 export function featuresAt(map, pt, box, layers) {
   const areas = layers.filter((id) => MML_AREA.test(id));
   return [...map.queryRenderedFeatures(box, { layers: layers.filter((id) => !MML_AREA.test(id)) }), ...(areas.length ? map.queryRenderedFeatures([pt.x, pt.y], { layers: areas }) : [])];
@@ -73,11 +73,11 @@ export function winterAt(feats, ll) {
   return best && WINTER_TEXT[best.cls] ? { cls: best.cls, beside: best.cls === 'ski' } : null;
 }
 
-// The area the map draws at a spot, where a pick asks OpenStreetMap what it is (#574): 'water', 'park' (a park, a nature
-// reserve, a national park) or null
+// The area the map draws at a spot, where a pick asks OpenStreetMap what it is (#574): 'water' (MML's lake too, where OSM's
+// leaves a hole for a marsh, #1177), 'park' (a park, a nature reserve, a national park) or null
 export function areaUnder(map, pt) {
   const at = (ids, ok = () => true) => { const layers = ids.filter((id) => map.getLayer(id)); return layers.length > 0 && map.queryRenderedFeatures(pt, { layers }).some(ok); };
-  return at(['water']) ? 'water' : at(['park-fill']) || at(['lc-grass'], (f) => ['park', 'recreation_ground'].includes(f.properties.subclass)) ? 'park' : null;
+  return at(['water', 'mml-lake']) ? 'water' : at(['park-fill']) || at(['lc-grass'], (f) => ['park', 'recreation_ground'].includes(f.properties.subclass)) ? 'park' : null;
 }
 
 export function pickFeature(feats) {
