@@ -3,7 +3,7 @@
 import {
   ACTIVITIES, ACTIVITY_OVERLAYS, RASTER_OVERLAYS, DEM_URL, DEM_MAXZOOM,
   DIFF_COLORS, MTB_COLORS, MTB_GRADES, MTB_SCALE_TEXT, UPHILL_TEXT, LIPAS_TYPES, SAFETY_OVERLAYS, BROUTER, isWater, WINTER_LIPAS,
-  QUICK_TILES, QUICK_TILE, QUICK_MAX, QUICK_PLACES, ESRI_IMAGERY, CRAFT, OSM_DATA_MANIFEST,
+  QUICK_TILES, QUICK_TILE, QUICK_MAX, QUICK_PLACES, ESRI_IMAGERY, CRAFT, OSM_DATA_MANIFEST, GLIDE,
 } from './config.js';
 import { LitWays, LIT_MIN_ZOOM } from './lit.js';
 import { Reedbeds } from './osm-data.js';
@@ -163,6 +163,7 @@ const map = new maplibregl.Map({
   maxPitch: 80,
   attributionControl: false,
   cooperativeGestures: false,
+  dragPan: GLIDE,
 });
 // A coarse map underneath (#1091): while a base map tile in view hasn't come, the tile four zoom levels up (and for the
 // vector base, zoom 6's too) is kept among MapLibre's own tiles, so its place shows that one (masked to the missing tile's square), never plain paper. Once the
@@ -485,6 +486,7 @@ const details = new TrailDetails(map, {
     ctx.trailCoverage = area;
     if (!holdTogether('trailCoverage')) restyleTrails(); // (with the trails it hides the map's own under)
   },
+  onView: () => syncZoomHint(),
   onBusy: () => {
     detailsBusyAt = Date.now();
     refreshQuickSoon();
@@ -2311,9 +2313,9 @@ window.addEventListener('keydown', (e) => {
   }
 });
 
-// The free vector tiles only carry the full trail network from zoom 14.
+// The free vector tiles only carry the full trail network from zoom 14; the trail details, from 13 (#1128).
 const zoomHint = $('#zoom-hint');
-const syncZoomHint = () => { const z = map.getZoom(); zoomHint.hidden = !(z >= 10.5 && z < 13.8); };
+const syncZoomHint = () => { const z = map.getZoom(); zoomHint.hidden = !(z >= 10.5 && z < 14) || details.covers; };
 map.on('zoomend', syncZoomHint);
 zoomHint.addEventListener('click', () => map.easeTo({ zoom: 14.2, duration: 600 }));
 

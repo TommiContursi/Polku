@@ -20,7 +20,7 @@
 //   tabs, a shared connection): a back-off that grows if it happens again.
 
 export const SOURCES = {
-  polku: { label: 'Polku', what: 'release notes and routing profiles' },
+  polku: { label: 'Polku', what: 'release notes, routing profiles and lake depths' },
   osmdata: { label: 'Polku OSM data', what: 'OSM selections, trail details, lighting, winter ways, hazards, overnight places and reedbeds' },
   openmeteo: { label: 'Open-Meteo', what: 'weather', limits: [[60e3, 600, 'minute'], [3600e3, 5000, 'hour'], [864e5, 10000, 'day']] },
   overpass: { label: 'Overpass', what: 'OSM fallback and full-tag/area queries', limits: [[864e5, 10000, 'day']] },

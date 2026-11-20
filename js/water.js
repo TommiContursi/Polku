@@ -11,8 +11,10 @@
 // marked dangers and OSM's rocks and shoals, and places you avoid. With a wind,
 // each water cell's fetch (open water upwind) gives a wave height, and rough
 // water costs more for the craft. String-pulling keeps to the costs too, so a
-// straightened line can't cut through a rock's clear zone. See js/waterdata.js
-// for the sources (and why depths aren't one of them).
+// straightened line can't cut through a rock's clear zone. #1184: in the lakes
+// Syke surveyed, water near a sounding under 0.5 m costs more too, and the leg
+// says how much of its water Syke surveyed. See js/waterdata.js for the sources
+// (and why Traficom's depths aren't one of them).
 
 import { OFM_TILEJSON } from './config.js';
 import { dist } from './geo.js';
@@ -41,6 +43,7 @@ function waterStyle() {
 
 // clear zones (m): isolated danger marks, cardinal marks (centred this far to their danger side), OSM points, reef edges
 const CLEAR = { danger: 45, cardinal: 55, shift: 35, point: 25, edge: 15 };
+const SHALLOW_M = 20; // round a sounding under 0.5 m (#1184)
 const EMPTY_FC = { type: 'FeatureCollection', features: [] };
 
 function ensureHidden() {
@@ -120,9 +123,10 @@ async function rasteriseNow(bounds) {
   // Web Mercator, north up: the view's corners pin it down
   const nw = h.map.unproject([0, 0]), se = h.map.unproject([cw, ch]);
   const x0 = mercX(nw.lng), x1 = mercX(se.lng), y0 = mercY(nw.lat), y1 = mercY(se.lat);
+  const projectMerc = (X, Y) => ({ x: ((X - x0) / (x1 - x0)) * cw, y: ((Y - y0) / (y1 - y0)) * ch });
   return {
-    W: cw, H: ch, type, waterCells, res,
-    project: ([lon, lat]) => ({ x: ((mercX(lon) - x0) / (x1 - x0)) * cw, y: ((mercY(lat) - y0) / (y1 - y0)) * ch }),
+    W: cw, H: ch, type, waterCells, res, projectMerc,
+    project: ([lon, lat]) => projectMerc(mercX(lon), mercY(lat)),
     unproject: (x, y) => {
       const X = x0 + (x / cw) * (x1 - x0), Y = y0 + (y / ch) * (y1 - y0);
       return [X * 360 - 180, (Math.atan(Math.sinh(Math.PI * (1 - 2 * Y))) * 180) / Math.PI];
@@ -132,10 +136,11 @@ async function rasteriseNow(bounds) {
 
 // The costs, drawn straight onto canvases in the same view (no tiling, no waiting
 // for the map): fairways by class into one (red small-boat route, green harbour,
-// blue shipping lane), keep-clear zones (red) and avoided places (green) into
-// another. Read back as grid.fair (0 none, 1 small, 2 harbour, 3 ship), grid.haz
-// and grid.nogo.
-function rasteriseCosts(grid, { fairways, hazards, nogos }) {
+// blue shipping lane), keep-clear zones (red), avoided places (green) and water
+// near a shallow sounding (blue) into another, and where Syke surveyed into a
+// third. Read back as grid.fair (0 none, 1 small, 2 harbour, 3 ship), grid.haz,
+// grid.nogo, grid.shallow and grid.surveyed (the last two with depths only).
+function rasteriseCosts(grid, { fairways, hazards, nogos, depths }) {
   const { W, H, res } = grid;
   const px = (metres) => Math.max(1.5, metres / res);
   const xy = (ll) => { const p = grid.project(ll); return [p.x, p.y]; };
@@ -171,15 +176,35 @@ function rasteriseCosts(grid, { fairways, hazards, nogos }) {
   }
   hc.fillStyle = '#00ff00';
   for (const n of nogos || []) { const [x, y] = xy(n.ll); disc(hc, x, y, Math.max(1.5, n.r / res)); }
-  const fd = fc.getImageData(0, 0, W, H).data, hd = hc.getImageData(0, 0, W, H).data;
+  // lake depths: a tile's cells are squares in Web Mercator, as the grid is (half a cell more each side, so the
+  // shore's water isn't left out where Syke's shoreline and the map's differ)
+  const sc = depths && depths.length && canvas();
+  if (sc) {
+    hc.fillStyle = '#0000ff';
+    sc.fillStyle = '#ff0000';
+    for (const t of depths) {
+      for (const [lon, lat] of t.shallow) { const [x, y] = xy([lon, lat]); disc(hc, x, y, px(SHALLOW_M)); }
+      const k = 1 / (1024 * 256); // a z10 tile's cell, as a fraction of the world
+      for (const [r, ...runs] of t.surveyed) {
+        for (let q = 0; q < runs.length; q += 2) {
+          const a = grid.projectMerc((t.x * 256 + runs[q] - 0.5) * k, (t.y * 256 + r - 0.5) * k);
+          const b = grid.projectMerc((t.x * 256 + runs[q + 1] + 0.5) * k, (t.y * 256 + r + 1.5) * k);
+          sc.fillRect(a.x, a.y, b.x - a.x, b.y - a.y);
+        }
+      }
+    }
+  }
+  const fd = fc.getImageData(0, 0, W, H).data, hd = hc.getImageData(0, 0, W, H).data, sd = sc && sc.getImageData(0, 0, W, H).data;
   const n = W * H;
   grid.fair = new Uint8Array(n);
   grid.haz = new Uint8Array(n);
   grid.nogo = new Uint8Array(n);
+  if (sd) { grid.shallow = new Uint8Array(n); grid.surveyed = new Uint8Array(n); }
   for (let i = 0, j = 0; i < n; i++, j += 4) {
     grid.haz[i] = hd[j] > 128 ? 1 : 0;
     grid.nogo[i] = hd[j + 1] > 128 ? 1 : 0;
     grid.fair[i] = grid.haz[i] ? 0 : fd[j + 2] > 128 ? 3 : fd[j + 1] > 128 ? 2 : fd[j] > 128 ? 1 : 0;
+    if (sd) { grid.shallow[i] = hd[j + 2] > 128 ? 1 : 0; grid.surveyed[i] = sd[j] > 128 ? 1 : 0; }
   }
 }
 
@@ -319,7 +344,7 @@ function astar(grid, sx, sy, tx, ty, landCost, near = false, comfort = 0, fairCo
     const dx = Math.abs((i % W) - tx), dy = Math.abs(((i / W) | 0) - ty);
     return Math.max(dx, dy) + 0.41421356 * Math.min(dx, dy);
   };
-  const { fair, haz, nogo, wave } = grid;
+  const { fair, haz, nogo, wave, shallow } = grid;
   const base = (i) => {
     const t = type[i];
     if (t === 1) {
@@ -335,6 +360,7 @@ function astar(grid, sx, sy, tx, ty, landCost, near = false, comfort = 0, fairCo
     if (nogo && nogo[i]) c *= 60;
     if (type[i] === 0) return c;
     if (haz && haz[i]) c *= 10;
+    if (shallow && shallow[i]) c *= 4; // shallow water Syke surveyed: crossed where there's no short way round
     if (fair && fair[i]) c *= fairCost[fair[i]];
     // rough water: from half the craft's comfortable wave height up
     if (wave && comfort && wave[i] > comfort / 2) c *= 1 + 0.8 * Math.min(2.5, wave[i] / comfort - 0.5);
@@ -454,7 +480,7 @@ async function attempt(from, to, padFactor, allowPortage, style = {}, inputs = n
   lap('render+data');
   if (!grid.waterCells) throw new Error('No water found here — zoom to a lake, river or the sea.');
   if (got) {
-    if (got.fairways.features.length || got.hazards.features.length || (style.nogos && style.nogos.length)) rasteriseCosts(grid, { fairways: got.fairways, hazards: got.hazards, nogos: style.nogos });
+    if (got.fairways.features.length || got.hazards.features.length || (style.nogos && style.nogos.length) || (got.depths && got.depths.length)) rasteriseCosts(grid, { fairways: got.fairways, hazards: got.hazards, nogos: style.nogos, depths: got.depths });
     lap('costs');
     if (got.wind && style.wind === 'shelter' && got.wind.speed >= 3) exposure(grid, got.wind);
     lap('wind');
@@ -490,21 +516,23 @@ async function attempt(from, to, padFactor, allowPortage, style = {}, inputs = n
     tags.push(onLand && seg > grid.res * 1.5 ? { portage: 'yes', surface: 'ground' } : { route: 'water', surface: 'water' });
     coords.push(ll);
   }
-  const { events, wave } = eventsAlong(grid, coords, comfort, got);
+  const { events, wave, depth } = eventsAlong(grid, coords, comfort, got);
   lap('events');
   const reach = reachAlong(grid, coords);
   lap('reach');
   delete T.t;
-  return { coords, tags, portage, portageM, resolution: grid.res, cells: grid.W * grid.H, events, wave, reach, wind: got && got.wind, missing: got ? got.missing : [], skipped: got ? got.skipped : [], times: T };
+  return { coords, tags, portage, portageM, resolution: grid.res, cells: grid.W * grid.H, events, wave, depth, reach, wind: got && got.wind, missing: got ? got.missing : [], skipped: got ? got.skipped : [], times: T };
 }
 
 // Where the finished line meets what costs: shipping lanes and harbours it
-// crosses or follows, keep-clear zones it passes through, rough water. In
-// metres from the leg's start, for Heads-up; and the highest wave along it (m, null without the wind), for the weather card.
+// crosses or follows, keep-clear zones and shallow water it passes through, rough water. In
+// metres from the leg's start, for Heads-up; the highest wave along it (m, null without the wind), for the weather card;
+// and with the lake depths, how much of its water Syke surveyed ({ water, surveyed } in metres, else null).
 function eventsAlong(grid, coords, comfort, got) {
-  if (!grid.fair && !grid.wave) return { events: [], wave: null };
+  const depths = !!(got && got.depths);
+  if (!grid.fair && !grid.wave && !depths) return { events: [], wave: null, depth: null };
   const out = [];
-  let wave = 0;
+  let wave = 0, wet = 0, surveyed = 0;
   const runs = {}; // kind -> open run { at, len, max }
   let m = 0;
   const close = (kind) => { const r = runs[kind]; if (r) { out.push({ kind, ...r }); runs[kind] = null; } };
@@ -519,10 +547,12 @@ function eventsAlong(grid, coords, comfort, got) {
       const i = x >= 0 && y >= 0 && x < grid.W && y < grid.H ? y * grid.W + x : -1;
       const water = i >= 0 && grid.type[i] === 1;
       if (water && grid.wave) wave = Math.max(wave, grid.wave[i]);
+      if (water) { wet += len; if (grid.surveyed && grid.surveyed[i]) surveyed += len; }
       const on = {
         ship: water && grid.fair && grid.fair[i] === 3,
         harbour: water && grid.fair && grid.fair[i] === 2,
         hazard: water && grid.haz && grid.haz[i] === 1,
+        shallow: water && grid.shallow && grid.shallow[i] === 1,
         rough: water && comfort && grid.wave && grid.wave[i] > comfort,
       };
       for (const kind of Object.keys(on)) {
@@ -539,7 +569,7 @@ function eventsAlong(grid, coords, comfort, got) {
   // names: the shipping lane under each crossing
   const names = got && got.fairways ? got.fairways.features : [];
   for (const e of out) e.name = e.kind === 'ship' ? nameAt(names, coords, e.at + e.len / 2) : '';
-  return { events: out.filter((e) => e.len >= 2 * grid.res || e.kind === 'hazard'), wave: grid.wave ? wave : null };
+  return { events: out.filter((e) => e.len >= 2 * grid.res || e.kind === 'hazard'), wave: grid.wave ? wave : null, depth: depths ? { water: wet, surveyed } : null };
 }
 
 function nameAt(fairways, coords, at) {
@@ -574,13 +604,14 @@ const memo = new Map(); // same leg, same costs, same wind class: the same route
  * within reach of land; carry is the cost of a cell of land (22 = carry when
  * it's shorter, higher = avoid carrying); fairways 'cross' crosses shipping
  * lanes straight (else 'ignore'); hazards 'clear' keeps clear of marked rocks
- * and shoals; wind 'shelter' keeps out of rough water for `craft` at `at`
- * (epoch seconds); nogos are places you avoid.
+ * and shoals, and of shallow water Syke surveyed, but for a swimmer; wind
+ * 'shelter' keeps out of rough water for `craft` at `at` (epoch seconds); nogos
+ * are places you avoid.
  */
 export async function routeWater(from, to, { allowPortage = true, shore, carry, fairways = 'cross', hazards = 'clear', wind = 'shelter', craft = 'kayak', at = 0, nogos = [] } = {}) {
   const t0 = performance.now();
   const style = { shore, carry, wind, craft, nogos, fairways };
-  const want = { fairways: fairways !== 'ignore', hazards: hazards !== 'ignore', wind: wind === 'shelter' };
+  const want = { fairways: fairways !== 'ignore', hazards: hazards !== 'ignore', depths: hazards !== 'ignore' && craft !== 'swim', wind: wind === 'shelter' };
   let inputsOf = null;
   if (want.fairways || want.hazards || want.wind) {
     // one fetch per window; a wider retry asks again for its own box
@@ -628,7 +659,7 @@ export async function routeWater(from, to, { allowPortage = true, shore, carry, 
   const out = {
     coords: best.coords, tags: best.tags, portage: best.portage, note,
     // (at: the departure its wind is for)
-    water: { events: best.events, wave: best.wave, reach: best.reach, wind: want.wind ? best.wind : null, at: want.wind ? at : null, craft, missing: best.missing, skipped: best.skipped, checked: want, ms: Math.round(performance.now() - t0), cells: best.cells, times: best.times },
+    water: { events: best.events, wave: best.wave, depth: best.depth, reach: best.reach, wind: want.wind ? best.wind : null, at: want.wind ? at : null, craft, missing: best.missing, skipped: best.skipped, checked: want, ms: Math.round(performance.now() - t0), cells: best.cells, times: best.times },
   };
   if (!best.missing.length) memo.set(key, out); // a leg routed without a source is routed again when it answers
   if (memo.size > 60) memo.delete(memo.keys().next().value);

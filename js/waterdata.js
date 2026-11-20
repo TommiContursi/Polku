@@ -4,17 +4,18 @@
 //   from small-boat routes and harbour basins (nautical.js waterwaysIn);
 // - marked dangers: Väylävirasto's isolated-danger and cardinal marks, and the
 //   rocks, reefs, shoals and wrecks mapped in OpenStreetMap (ODbL, Overpass);
+// - lake depths: Syke's soundings under 0.5 m, and where Syke surveyed (CC BY 4.0), from Polku's own
+//   files made by tools/syke_depths.py (#1184): about 1,900 lakes, none of the sea;
 // - the wind at the leg, from the forecast Polku already uses (Open-Meteo).
 //
-// Depths are not used. Traficom's depth data is licensed for "other than
-// navigational purposes", and its licence counts route planning as
-// navigation; SYKE's lake depths (CC BY 4.0) cover small lakes only and start
-// at a 0–1.5 m class, too coarse for a kayak. See ROADMAP, phase 13.
+// Traficom's depths are not used: they are licensed for "other than navigational
+// purposes", and the licence counts route planning as navigation.
 //
 // Each source is optional: if one doesn't answer, the leg is routed without
 // it and Heads-up says so.
 
 import { waterwaysIn } from './nautical.js';
+import { request } from './net.js';
 import { cachedOverpass } from './osm.js';
 import { hostedTile, forgetHostedFailures } from './osm-data.js';
 import { OSM_DATA_MANIFEST } from './config.js';
@@ -77,11 +78,52 @@ way["seamark:type"~"^(rock|obstruction)$"](${bb});
   hazTiles.set(id, p);
   return p;
 }
+// Lake depths: one file per z10 tile where Syke surveyed, listed in index.json (tools/syke_depths.py)
+const DEPTHS = new URL('../data/depths/', import.meta.url);
+const DZ = 10;
+const depthFiles = new Map(); // "index" or "x-y" -> Promise<json>
+const failedDepth = new Set();
+function depthFile(name) {
+  if (depthFiles.has(name)) return depthFiles.get(name);
+  // Polku's own files: one that fails pauses nothing else of Polku's (no back-off), and one that hangs fails in time,
+  // so Retry and AGAIN_MS ask again
+  const p = request('polku', new URL(`${name}.json`, DEPTHS), { credentials: 'omit', backoff: false, timeoutMs: 10000 }).then((r) => {
+    if (!r.ok) throw new Error(`${name}.json: ${r.status}`);
+    return r.json();
+  });
+  p.catch(() => { failedDepth.add(name); setTimeout(() => { if (depthFiles.get(name) === p) { depthFiles.delete(name); tell(); } failedDepth.delete(name); }, AGAIN_MS); });
+  depthFiles.set(name, p);
+  return p;
+}
+// the tiles over the box Syke surveyed: [{ x, y, shallow, surveyed }], none over the sea; null: too many tiles to ask for
+function depthsIn([w, s, e, n], max) {
+  const [x0, y0] = lonLatToTile(w, n, DZ).map(Math.floor);
+  const [x1, y1] = lonLatToTile(e, s, DZ).map(Math.floor);
+  if ((x1 - x0 + 1) * (y1 - y0 + 1) > max) return null;
+  return depthFile('index').then((ix) => {
+    const have = new Set(ix.tiles.map(([x, y]) => `${x}-${y}`)), list = [];
+    for (let x = x0; x <= x1; x++) for (let y = y0; y <= y1; y++) if (have.has(`${x}-${y}`)) list.push(depthFile(`${x}-${y}`).then((t) => ({ x, y, ...t })));
+    return Promise.all(list);
+  });
+}
+async function lakeDepths(box) {
+  const all = depthsIn(box, 24); // as many tiles as Väylävirasto's
+  if (!all) return null;
+  try {
+    return await waitFor('depths', all);
+  } catch (err) {
+    all.then(lateArrived, () => {});
+    throw err;
+  }
+}
+
 /** Retry: ask again now for what didn't answer, and wait for it as long as the first time. */
 export function forgetWaterFailures() {
   forgetHostedFailures(OSM_DATA_MANIFEST);
   for (const id of failedHaz) hazTiles.delete(id);
   failedHaz.clear();
+  for (const name of failedDepth) depthFiles.delete(name);
+  failedDepth.clear();
   for (const k of Object.keys(slowUntil)) delete slowUntil[k];
 }
 function hazTilesIn([w, s, e, n], max) {
@@ -107,11 +149,12 @@ async function osmHazards(box) {
 
 /**
  * Fetch what the router will want for the map's view ahead of time (paddling,
- * zoomed in): OSM's hazards and Väylävirasto's fairways and marks.
+ * zoomed in): OSM's hazards, Väylävirasto's fairways and marks, and the lake depths.
  */
 export function prefetchWater(view) {
   hazTilesIn(view, 6);
   waterwaysIn(view, 8).catch(() => {});
+  depthsIn(view, 8)?.catch(() => {});
 }
 
 // the wind at `at`: from the 10-day forecast more than two days ahead; past its last hour none, so no wave is judged
@@ -126,9 +169,10 @@ async function windAt(mid, at) {
 
 /**
  * What to draw into the router's grid for a leg's box. `want`: { fairways, hazards,
- * wind } (booleans) and `at` (epoch seconds, for the wind). Returns GeoJSON for
- * the grid plus the wind, `missing`: sources that didn't answer, and `skipped`:
- * sources not asked, the box being too big for them (#490).
+ * depths, wind } (booleans) and `at` (epoch seconds, for the wind). Returns GeoJSON for
+ * the grid plus the lake depths' tiles (`depths`, null when not asked or not answered),
+ * the wind, `missing`: sources that didn't answer, and `skipped`: sources not asked,
+ * the box being too big for them (#490).
  */
 // Tests answer from recorded files: fn(box, want, at) → what waterInputs returns, or null to ask the services.
 let seeded = null;
@@ -141,9 +185,10 @@ export async function waterInputs(box, want, at) {
   const mid = [(w + e) / 2, (s + n) / 2];
   const missing = [], skipped = [];
   const skip = (src) => (got) => { if (!got) skipped.push(src); return got; };
-  const [ways, osm, wind] = await Promise.all([
+  const [ways, osm, depths, wind] = await Promise.all([
     want.fairways || want.hazards ? (() => { const p = waterwaysIn(box); return waitFor('vayla', p).then(skip('Väylävirasto'), () => { missing.push('Väylävirasto'); p.then(lateArrived, () => setTimeout(tell, AGAIN_MS)); return null; }); })() : null,
     want.hazards ? osmHazards(box).then(skip('OpenStreetMap'), () => { missing.push('OpenStreetMap'); return null; }) : null,
+    want.depths ? lakeDepths(box).then(skip('Syke'), () => { missing.push('Syke'); return null; }) : null,
     want.wind ? waitFor('wind', windAt(mid, at)).catch(() => { missing.push('the wind forecast'); return null; }) : null,
   ]);
   const fc = (features) => ({ type: 'FeatureCollection', features });
@@ -158,7 +203,7 @@ export async function waterInputs(box, want, at) {
       hazards.push({ type: 'Feature', properties: { kind: a.kind, src: 'osm' }, geometry: closed ? { type: 'Polygon', coordinates: [c] } : { type: 'LineString', coordinates: c } });
     }
   }
-  return { fairways, hazards: fc(hazards), wind, missing, skipped };
+  return { fairways, hazards: fc(hazards), depths, wind, missing, skipped };
 }
 
 // Waves a craft is comfortable in (significant height, m), from the wind over open water
