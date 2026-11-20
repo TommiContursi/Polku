@@ -4,6 +4,12 @@ What's new in [Polku](https://polku.si), from the latest updates back to the fir
 
 ## 2026-11-20
 
+### Layers say where they have data ([#1200](https://github.com/TommiContursi/Polku/issues/1200))
+
+- About half of the layers come from Finnish sources: the National Land Survey's maps and property boundaries, LIPAS's routes and places, Väylävirasto's and Traficom's nautical marks, depths and shipping lanes, and Fintraffic's and Digiroad's road layers. Where none of Finland is in view, their tiles and their switches in Layers now say **Finland only**, instead of looking like layers with nothing to show.
+- **Ships** say **Northern Baltic only** beyond the reach of Finland's AIS stations, which also see the Gulf of Finland, the Åland Sea and the Gulf of Bothnia. **Sea ice** says **Baltic Sea only** beyond the Baltic.
+- There, a sport's layers from those sources aren't counted as on in **On now** or in the count on **More**. Their switches stay on, so the layers show again when the map is back in their area. A view that reaches into Finland counts as in it.
+
 ### Mountain passes and ridges ([#1178](https://github.com/TommiContursi/Polku/issues/1178))
 
 - Passes between fells, mapped as saddles in OpenStreetMap, are marked with OpenStreetMap's usual saddle mark, a small brown block with a notch in its top, and their name and height, like the peaks, from zoom 11 to 13. Taivaskeronsatula at Pallas is one. The map's data has them only up to zoom 13, so they aren't shown when you zoom in further. Tapping one opens its card as a pass.
