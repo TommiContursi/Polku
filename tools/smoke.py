@@ -23789,6 +23789,7 @@ def osm_data(chrome):
               'test_resume_partial_stage_verifies_prefix_and_sends_only_missing_suffix',
               'test_snapshot_retries_temporary_failure_and_requires_one_complete_date',
               'test_geofabrik_requests_retry_a_refused_connection',
+              'test_country_checksum_and_polygon_come_from_beside_the_file_served',
               'test_country_download_leaves_time_to_build',
               'test_reference_download_leaves_time_to_compile',
               'test_weekly_and_candidate_geometry_are_gated',
