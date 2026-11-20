@@ -931,6 +931,8 @@ def property_plots(chrome):
       if(st(spot.f.id).lit)errs.push('the plot stays tinted after its card closes');
       // a park picks the park first, as without the layer (#574)
       const {areaUnder}=await import(location.origin+'/js/inspect.js');
+      const t1=performance.now();  // (the layer's source is new: its tiles again)
+      while(performance.now()-t1<30000&&!(m.isSourceLoaded('ov-propertyLines')&&m.queryRenderedFeatures({layers:['property-plot']}).length))await wait(250);
       let park=null;
       for(let y=150;y<850&&!park;y+=17)for(let x=100;x<1300&&!park;x+=23){const f=pickFeature(m.queryRenderedFeatures(hitBox({x,y},false),{layers:inspectLayers(m)}));if(f&&f.layer.id==='property-plot'&&areaUnder(m,{x,y})==='park')park={x,y};}
       if(!park)errs.push('no spot in a park at Jyväskylä to click');
