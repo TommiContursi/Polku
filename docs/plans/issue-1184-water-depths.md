@@ -90,5 +90,6 @@ Water routes are for planning, not navigation (PRODUCT.md). The words never say 
 - **The depths are a source of their own** (`Syke` in `missing` and `skipped`), with Not checked's "Lake depths didn’t load" and Retry, like the rocks.
 - **What Polku looked at:** "Lake depths" is ✓ only when all the route's water was surveyed; partly surveyed or not surveyed shows the ? of a source not checked, with how much.
 - **Measured on Matikanjärvi** (Kainuu, its shoal of soundings under 0.5 m): a leg drawn straight through a row of the shoal's soundings goes round them, 15 m or more away (the zone is 20 m), where `main` passes 0 m from them (smoke's `water_depths`).
+- **From the review on #1187** (2026-11-20): the depth files are asked with no back-off and a 10 s deadline, so one that fails pauses nothing else of Polku's and one that hangs is asked again; a leg routed before the depths is routed again when a saved route loads online; legs on the water drawn freehand or imported count as water not surveyed; a graze of a shallow zone's edge shorter than two cells isn't an item.
 - **Not done:** an item for each leg, as the rocks have, so a waypoint put in a shoal gives one item for the leg into it and one for the leg out.
 

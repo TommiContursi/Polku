@@ -2132,13 +2132,15 @@ def water(chrome):
 # no other source. A leg past a shoal keeps 20 m off its soundings under 0.5 m, and says all its water was surveyed;
 # a swimmer's doesn't use them; a leg into the shoal crosses it, and Check says so under Good to know; What Polku
 # looked at says how much of the water Syke surveyed, none where it has no tile, and Not checked when they didn't load;
-# then the files themselves fail, Retry asks again, and an answer that comes late routes the leg again.
+# a route saved before the depths is routed again, and a freehand leg's water isn't surveyed; then the files themselves
+# fail (pausing nothing else of Polku's), hang until their deadline, Retry asks again, and a late answer routes the leg again.
 WATER_DEPTHS = """(async () => {
   const wait = (ms) => new Promise((r) => setTimeout(r, ms)), errs = [];
   const tile = await (await fetch(location.origin + '/tools/fixtures/depths-593-271.json')).json();
   const D = await import(location.origin + '/js/waterdata.js');
   const W = await import(location.origin + '/js/water.js');
   const G = await import(location.origin + '/js/geo.js');
+  const N = await import(location.origin + '/js/net.js');
   const fc = { type: 'FeatureCollection', features: [] };
   let depths = [tile], missing = [];
   D.seedWater((box, want) => ({ fairways: fc, hazards: fc, depths: want.depths ? depths : null, wind: null, missing: want.depths ? missing : [], skipped: [] }));
@@ -2168,7 +2170,7 @@ WATER_DEPTHS = """(async () => {
   p.setActive(true);
   await routed(shoal);
   const look = p.headsUp().look.map((w) => w.text);
-  if (!look.includes('Shallow water, under 0.5 m when surveyed')) errs.push(`Good to know: ${look.join(' / ') || 'nothing'}`);
+  if (look.filter((t) => t === 'Shallow water, under 0.5 m when surveyed').length !== 1) errs.push(`Good to know, one item for the leg into the shoal (a graze of its edge isn't one): ${look.join(' / ') || 'nothing'}`);
   if (!row() || row().state !== 'ok' || row().by !== 'Syke’s soundings') errs.push(`What Polku looked at, lake depths: ${row() ? `${row().state} · ${row().by}` : 'no row'}`);
   if (!p.lookedAt(p.analysis).some((r) => r.what === 'Sea depths' && /never used for routes/.test(r.by))) errs.push('What Polku looked at has no row for the sea’s depths');
   { // a leg with no open water on it (all carried, or a stream) isn't surveyed water
@@ -2176,6 +2178,28 @@ WATER_DEPTHS = """(async () => {
     w.depth = { water: 0, surveyed: 0 };
     if (row() && row().state === 'ok') errs.push('a leg with no open water counts as surveyed');
     w.depth = keep;
+  }
+  { // a freehand leg on the water after the routed one: its water isn't surveyed
+    p.setMode('line');
+    p.addPoint([shoal[0] + 0.004, shoal[1]]);
+    for (let k = 0; k < 40 && !(p.legs.length === 2 && p.legs[1].status === 'ok' && p.analysis && p.analysis.waterWarn); k++) await wait(250);
+    await wait(500);
+    if (!row() || row().state === 'ok') errs.push(`a freehand leg on the water counts as surveyed: ${row() ? `${row().state} · ${row().by}` : 'no row'}`);
+    p.undo(); // back to the one leg
+    for (let k = 0; k < 40 && !(p.legs.length === 1 && p.analysis && p.analysis.waterWarn); k++) await wait(250);
+  }
+  { // a route saved before the router used lake depths: its leg on the water is routed again when it loads
+    const saved = JSON.parse(localStorage.getItem('polku:route'));
+    const k = saved && saved.routed && saved.routed[0];
+    if (!k || !k.water) errs.push('(the test) no saved water leg');
+    else {
+      delete k.water.depth; delete k.water.checked.depths; k.water.events = [];
+      localStorage.setItem('polku:route', JSON.stringify(saved));
+      p.loadSaved();
+      for (let k2 = 0; k2 < 60 && !(p.legs[0] && p.legs[0].result && p.legs[0].result.water && p.legs[0].result.water.depth && p.analysis && p.analysis.waterWarn); k2++) await wait(250);
+      await wait(500);
+      if (!row() || row().state !== 'ok' || !p.headsUp().look.some((x) => /^Shallow water/.test(x.text))) errs.push(`a route saved before the depths, loaded: ${row() ? `${row().state} · ${row().by}` : 'no row'}, Good to know ${p.headsUp().look.map((x) => x.text).join(' / ') || 'nothing'}`);
+    }
   }
   depths = [];
   await routed([to[0], to[1] + 0.0001]);
@@ -2195,6 +2219,7 @@ WATER_DEPTHS = """(async () => {
     const u = String(url);
     if (u.includes('/data/depths/')) {
       if (mode === 'fail') return Promise.reject(new TypeError('Failed to fetch'));
+      if (mode === 'hang') return new Promise((_, no) => init.signal && init.signal.addEventListener('abort', () => no(init.signal.reason)));
       const answer = () => (u.endsWith('/593-271.json') ? new Response(JSON.stringify(tile)) : realFetch(url, init));
       return mode === 'late' ? new Promise((ok) => held.push(ok)).then(answer) : Promise.resolve(answer());
     }
@@ -2208,10 +2233,16 @@ WATER_DEPTHS = """(async () => {
     await routed([to[0], to[1] + 0.0003]);
     if (!syke()) errs.push(`the depth files failing: ${p.headsUp().not.map((x) => `${x.text} (${x.by})`).join(' / ') || 'nothing in Not checked'}`);
     else {
+      if (N.sourceStatus('polku')) errs.push('a depth file that failed paused Polku’s own files (release notes, routing profiles)');
+      // one that hangs: routed without it after 2.5 s, and asked again on Retry once its 10 s are up
+      mode = 'hang';
+      syke().retry();
+      await wait(11000);
+      if (!syke()) errs.push('the depth files hanging: Not checked doesn’t say so');
       mode = 'late';
       syke().retry();
       for (let k = 0; k < 40 && !held.length; k++) await wait(100);
-      if (!held.length) errs.push('Retry didn’t ask for the depth files again');
+      if (!held.length) errs.push('Retry didn’t ask again for the depth files that hung');
       await wait(3500); // past the 2.5 s a leg waits for a source
       if (!syke()) errs.push('the depth files answering late: Not checked doesn’t say so while they’re late');
       mode = 'ok';
@@ -2233,7 +2264,7 @@ def water_depths(chrome):
     pg = chrome.page(1440, 900, False)
     pg.open_app({'activity': 'mtb'}, {'polku:plannerDock': '"left"'}, '#14/64.2396/28.614')
     pg.js("import(location.origin + '/js/trails.js').then((T) => { T.holdFetches(); return true; })")
-    fails = pg.js(WATER_DEPTHS, timeout=120000)
+    fails = pg.js(WATER_DEPTHS, timeout=150000)
     fails += [f'console: {e[:160]}' for e in pg.errors()]
     pg.close()
     print(f"{'ok  ' if not fails else 'FAIL'} lake depths on the water" + ''.join(f'\n     - {f}' for f in fails), flush=True)

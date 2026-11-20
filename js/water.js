@@ -569,7 +569,7 @@ function eventsAlong(grid, coords, comfort, got) {
   // names: the shipping lane under each crossing
   const names = got && got.fairways ? got.fairways.features : [];
   for (const e of out) e.name = e.kind === 'ship' ? nameAt(names, coords, e.at + e.len / 2) : '';
-  return { events: out.filter((e) => e.len >= 2 * grid.res || e.kind === 'hazard' || e.kind === 'shallow'), wave: grid.wave ? wave : null, depth: depths ? { water: wet, surveyed } : null };
+  return { events: out.filter((e) => e.len >= 2 * grid.res || e.kind === 'hazard'), wave: grid.wave ? wave : null, depth: depths ? { water: wet, surveyed } : null };
 }
 
 function nameAt(fairways, coords, at) {

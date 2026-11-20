@@ -9,7 +9,7 @@ What's new in [Polku](https://polku.si), from the latest updates back to the fir
 - In the lakes the Finnish Environment Institute (Syke) has surveyed, a paddling route keeps off water its soundings found under half a metre deep, where the way round is short. Where a route still crosses it, Check says so under **Good to know**.
 - **What Polku looked at** says how much of the route's water Syke surveyed. Syke surveyed about 1,900 lakes, and none of the sea or most of the large lakes with fairways, so most routes know the depth only in part or not at all.
 - **The depths are at each lake's survey level, so the water may be lower now, and stones can lie nearer the surface between the soundings: keep a lookout.** Water routes are for planning, not navigation. Traficom's charted depths are still shown on the map and never used for routes.
-- It's part of **Rocks & shoals: Keep clear** in the route style, and **Ignore** turns it off. A swim doesn't use it.
+- Keeping off shallow water is part of **Rocks & shoals: Keep clear** in the route style, and **Ignore** turns it off. A swim doesn't use it.
 
 ### Access restrictions in Layers ([#1162](https://github.com/TommiContursi/Polku/issues/1162))
 

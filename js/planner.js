@@ -4450,7 +4450,9 @@ export class Planner {
       if (k && r.tags) {
         const c = decodePolyline(k.line);
         c[0] = r.points[i]; c[c.length - 1] = r.points[i + 1]; // exact ends, so the leg's key still matches
-        return { mode: r.modes[i], key: k.key, status: 'ok', result: { coords: c, tags: k.tags.map((t) => r.tags[t] || {}), portage: k.portage || [], provider: k.provider, water: k.water } };
+        // a leg on the water routed before the router used lake depths (#1184: no `checked.depths`) is routed again online
+        const old = k.water && !('depths' in (k.water.checked || {})) && navigator.onLine;
+        return { mode: r.modes[i], key: old ? null : k.key, status: 'ok', result: { coords: c, tags: k.tags.map((t) => r.tags[t] || {}), portage: k.portage || [], provider: k.provider, water: k.water } };
       }
       return { mode: r.modes[i] === 'fixed' ? 'auto' : r.modes[i] || 'auto' };
     });
@@ -7059,7 +7061,9 @@ export class Planner {
     row('Daylight', sun.set ? `sunset ${clock(sun.set * 1000)}` : sun.day === 'polar-day' ? 'the sun doesn’t set' : 'the sun doesn’t rise', 'ok');
     if (water) {
       // Syke's lake depths (#1184): how much of the route's water it surveyed; none of the sea
-      const dep = wr.filter((w) => w.depth), wet = dep.reduce((t, w) => t + w.depth.water, 0), got = dep.reduce((t, w) => t + w.depth.surveyed, 0);
+      // legs on the water the router didn't draw (freehand, imported) count as water not surveyed; a swim's don't count
+      const free = this.legs.reduce((t, l, i) => t + (onWater(l, i) && this.legSport(i) !== 'swim' && !(l.mode === 'water' && l.result && l.result.water) ? this.lengthTo(i + 1) - this.lengthTo(i) : 0), 0);
+      const dep = wr.filter((w) => w.depth), wet = dep.reduce((t, w) => t + w.depth.water, free), got = dep.reduce((t, w) => t + w.depth.surveyed, 0);
       if (!asked('depths')) row('Lake depths', 'not used for this route', 'na');
       else if (missing('Syke') || skipped('Syke')) row('Lake depths', missing('Syke') ? 'didn’t load' : 'not checked: a leg too long to ask for', 'bad');
       else if (wet > 0 && got >= wet - 25) row('Lake depths', 'Syke’s soundings', 'ok');
