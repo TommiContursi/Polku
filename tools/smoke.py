@@ -934,6 +934,8 @@ def layer_coverage(chrome):
           const off=FI.filter(n=>!chips().includes(n));
           if(off.length)errs.push(`Helsinki: On now leaves out ${off.join(', ')}`);
           if(note('Official routes (LIPAS)'))errs.push(`Helsinki: the Official routes switch says “${note('Official routes (LIPAS)')}”`);
+          await polku.planner.listMarked();
+          if(polku.planner.marked.state==='far')errs.push('Helsinki: Marked routes asks you to zoom in on Finland');
           // Haparanda, Sweden, with Tornio across the river in view: a view partly in Finland counts as in it
           const {inFinland}=await import('/js/geo.js');
           if(!inFinland||inFinland([24.12,65.83])||!inFinland([24.2,65.85]))errs.push('(the test) Haparanda is in Finland, or Tornio isn\\'t');
@@ -947,7 +949,7 @@ def layer_coverage(chrome):
           const water=document.querySelector('#layers-panel [data-group="water"]');
           if(water&&!water.open)water.querySelector('summary').click();
           if(!await until(()=>note('Ships (live AIS)')==='Northern Baltic only'))errs.push(`Lofoten: the Ships switch says “${note('Ships (live AIS)')}”`);
-          await pause(1500);
+          await pause(21000); // (past a tick of the ships' 20 s timer)
           for(const [host,path] of [['lipas.fi',''],['avoinapi.vaylapilvi.fi',''],['meri.digitraffic.fi','/ais/v1/locations']])if(asked(host,path).length)errs.push(`Lofoten: asked ${host}${path}`);
           if(!note('Sea ice').startsWith('Baltic Sea only'))errs.push(`Lofoten: the Sea ice switch says “${note('Sea ice')}”`);
           // back in the drawer, which keeps its tiles' words as the map moves
