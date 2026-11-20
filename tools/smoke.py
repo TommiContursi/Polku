@@ -2177,6 +2177,8 @@ WATER_DEPTHS = """(async () => {
     const w = p.legs[0].result.water, keep = w.depth;
     w.depth = { water: 0, surveyed: 0 };
     if (row() && row().state === 'ok') errs.push('a leg with no open water counts as surveyed');
+    w.depth = { water: 20, surveyed: 0 }; // a short stretch of water Syke never surveyed
+    if (!row() || row().by !== 'not surveyed where this route goes') errs.push(`20 m of water not surveyed: ${row() ? `${row().state} · ${row().by}` : 'no row'}`);
     w.depth = keep;
   }
   { // a freehand leg on the water after the routed one: its water isn't surveyed
