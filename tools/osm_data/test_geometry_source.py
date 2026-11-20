@@ -35,7 +35,7 @@ class GeometrySourceTests(unittest.TestCase):
             self.assertTrue(all(r[4]==identities[r[0],r[1]] for r in rows),'digests are original source identities, not clipped/derived geometry')
             record=next(f for f in manifest['files'] if f['path']==catalog.name)
             self.assertEqual(record['sha256'],hashlib.sha256(catalog.read_bytes()).hexdigest())
-            self.assertEqual(set(manifest['datasets']),{'ways','trails','winter','hazards','places','inspection'},'a root catalog is build evidence, not another country product')
+            self.assertEqual(set(manifest['datasets']),{'ways','trails','winter','hazards','places','inspection','wetlands'},'a root catalog is build evidence, not another country product')
             second=root/'second';builder.build_dataset(src,second,stamp)
             self.assertEqual(catalog.read_bytes(),(second/catalog.name).read_bytes())
 
@@ -131,7 +131,7 @@ class GeometrySourceTests(unittest.TestCase):
                     self.assertEqual(src.exists(),not remove,'only an explicitly selected temporary input is removed')
                     from tools.osm_data.bundle import bundle
                     combined=bundle(paths,root/'combined',geometry=out)
-                    self.assertEqual(len(combined['datasets']),29)
+                    self.assertEqual(len(combined['datasets']),33)
                     self.assertEqual(combined['datasets']['geometry']['source'],source_info)
                     self.assertIs(combined['datasets']['geometry']['nearby_complete'],False)
                     self.assertFalse(any(f['path'].endswith('jsonl.gz') for f in combined['files']))
