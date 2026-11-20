@@ -70,7 +70,8 @@ export function initHover(map, app) {
     if (enrich) detailTimer = 0; else timer = 0;
     if (!at || !app.enabled() || map.isMoving() || map.getContainer().querySelector('.polku-popup')) return;
     const planning = app.isPlanning();
-    const layers = inspectLayers(map).filter((id) => id !== 'water' && !id.endsWith('-halo') && !id.startsWith('road-tunnel') && (id !== 'property-plot' || plots()));
+    // (the water says nothing, but it's asked, so what a click picks after it, a plot or MML's area under a lake, isn't read)
+    const layers = inspectLayers(map).filter((id) => !id.endsWith('-halo') && !id.startsWith('road-tunnel') && (id !== 'property-plot' || plots()));
     if (planning) layers.push(...['route-casing', 'nogo-fill', ...ALT_LAYERS].filter((id) => map.getLayer(id)));
     const [x, y] = at;
     const feats = featuresAt(map, { x, y }, [[x - RADIUS, y - RADIUS], [x + RADIUS, y + RADIUS]], layers);
