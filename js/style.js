@@ -331,6 +331,9 @@ export function buildStyle(s, ctx) {
     // line beside it. MML has no cliffs in Finland's neighbours, and OSM's aren't drawn.
     const cls = ['get', 'kohdeluokka'], cliff = ['==', cls, 34400], tick = zi(13, 2, 16, 3.5, 18, 5), edge = zi(13, 0.8, 16, 1.3, 18, 1.8);
     const hex = (c) => c.slice(1);
+    // MML's lake and river depths (#1170) with Traficom's, under the same switches, from zoom 13 (its tiles have none at sea):
+    // the contours with Depth contours, their depths and the depth points with Depth soundings (below)
+    if (s.overlays.depthContours) add({ id: 'mml-depth', type: 'line', source: 'mml', 'source-layer': 'korkeus', minzoom: 13, filter: ['==', cls, 54100], paint: { 'line-color': P.waterText, 'line-width': zi(13, 0.5, 16, 0.9, 18, 1.3), 'line-opacity': 0.55 } });
     // MML's water (#1170), over Traficom's depths too. Shoals and stone fields from zoom 13, as light lines on a clear
     // ground, so the water's colour and the depths show; stone fields with MML's triangles.
     add({ id: 'mml-shoal', type: 'fill', source: 'mml', 'source-layer': 'maasto_alue', minzoom: 13, filter: ['in', cls, ['literal', [38600, 38700]]], paint: { 'fill-pattern': ['match', cls, 38600, `stonefield-${hex(P.shoal)}-${hex(P.cliff)}`, `shoal-${hex(P.shoal)}`] } });
@@ -357,6 +360,10 @@ export function buildStyle(s, ctx) {
     });
     // which way a river flows, from zoom 14: MML's `suunta` is in 1/10,000 radian, counter-clockwise from east (it
     // pointed downhill at 8 of 8 arrows where the elevations differ, 2026-11-20); icon-rotate is clockwise degrees
+    // depths in metres (syvyysarvo is in millimetres): along the contours from zoom 14, and MML's depth points from 13
+    const depthText = { 'text-font': FONT, 'text-size': 10, 'text-optional': true }, depthPaint = { 'text-color': P.waterText, 'text-halo-color': P.halo, 'text-halo-width': 1 };
+    if (s.overlays.depthContours) add({ id: 'mml-depth-label', type: 'symbol', source: 'mml', 'source-layer': 'korkeus', minzoom: 14, filter: ['==', cls, 54100], layout: { ...depthText, 'symbol-placement': 'line', 'symbol-spacing': 300, 'text-field': ['number-format', ['/', ['get', 'syvyysarvo'], 1000], { 'max-fraction-digits': 1, locale: 'en' }] }, paint: depthPaint });
+    if (s.overlays.soundings) add({ id: 'mml-sounding', type: 'symbol', source: 'mml', 'source-layer': 'korkeus', minzoom: 13, filter: ['==', cls, 54210], layout: { ...depthText, 'text-field': ['number-format', ['/', ['get', 'syvyysarvo'], 1000], { 'max-fraction-digits': 1, locale: 'en' }] }, paint: depthPaint });
     add({ id: 'mml-flow', type: 'symbol', source: 'mml', 'source-layer': 'symboli', minzoom: 14, filter: ['in', cls, ['literal', [36392, 36393]]], layout: { 'icon-image': `flow-${hex(P.waterText)}-${hex(P.halo)}`, 'icon-rotate': ['*', ['get', 'suunta'], -180 / Math.PI / 10000], 'icon-size': zi(14, 1, 17, 1.5), ...flat } });
     add({ id: 'mml-reed', type: 'symbol', source: 'mml', 'source-layer': 'maasto_piste', minzoom: 14, filter: ['==', cls, 38100], layout: { 'icon-image': `reed-${hex(P.reed)}`, 'icon-size': zi(14, 1, 17, 1.5), ...flat } });
     add({ id: 'mml-pylon', type: 'symbol', source: 'mml', 'source-layer': 'rakennelma', minzoom: 15, filter: ['==', cls, 22392], layout: { 'icon-image': `pylon-${hex(P.power)}`, 'icon-size': zi(15, 1, 18, 1.5), ...flat } });
