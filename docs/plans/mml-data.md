@@ -222,8 +222,10 @@ Plain and Night maps, in MTB and paddle; its PR lists what else it covered.
   Open bogs keep OSM's blue dashes; wooded bogs have them on the forest's
   green; hard-to-cross bogs have unbroken lines. Paludified land gets
   sparse short dashes from zoom 13, under OSM's wetlands, and overgrowing
-  water the dashes on the water's blue. The patterns are `bog()` and
-  `wetland()` in `js/icons.js`.
+  water the dashes on the water's blue, over OSM's lakes (#1177). MML's
+  lakes are drawn over OSM's wetlands, so a marsh OSM cuts out of a lake
+  reads as water (#1177). The patterns are `bog()` and `wetland()` in
+  `js/icons.js`.
 - **Rock** (#1168) from zoom 13, over OSM's rock in the same grey (decided
   on #1147), boulder fields dotted; from zoom 14, small rocks, stones and
   sparse boulders as marks. Rock fissures aren't drawn: none were in the
