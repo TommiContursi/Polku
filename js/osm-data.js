@@ -346,8 +346,8 @@ export class Reedbeds {
       const [x0, y0] = lonLatToTile(b.getWest(), b.getNorth(), REED_Z).map(Math.floor), [x1, y1] = lonLatToTile(b.getEast(), b.getSouth(), REED_Z).map(Math.floor);
       for (let x = x0; x <= x1; x++) for (let y = y0; y <= y1; y++) this.want.push(`${x}/${y}`);
     }
-    // more than 16 in view (a big screen, 3D tilted): no new reads, the loaded ones still drawn
-    for (const key of this.want.length <= 16 ? this.want : []) {
+    // more than 36 in view (3D tilted to the horizon): no new reads, the loaded ones still drawn; 2560 × 1440 at zoom 12 is 35
+    for (const key of this.want.length <= 36 ? this.want : []) {
       const have = reedTiles.get(key);
       if (reedsHeld || have && (!have.failedAt || Date.now() - have.failedAt < 120e3)) continue;
       const entry = { data: null };
