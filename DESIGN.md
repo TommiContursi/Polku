@@ -198,6 +198,8 @@ Cycling restriction marks focus on paths and forest tracks, including cycling pa
 
 Small waterways come from zoom 13 and read by size: streams 1.5/4/8 px at zoom 14/16/18, ditches and drains 0.7/1.6/3 px; rivers and canals 3/5.5/9 px. All use the palette's `waterLine`. Intermittent ones are dashed `[4, 3]` (a multiple of the line's width); culverts are not drawn. They're drawn under the water's fill, so a river's centre line doesn't show where it crosses a lake or strait.
 
+Property boundaries (Finland, a layer under Terrain, off at first) are thin orange lines over the roads and under the routes: `#c2410c` on the light maps and `#fdba74` on the night map and the aerial photos, 0.8/1.6/2.5 px at zoom 14/17/19 at 90 % opacity, from zoom 14. Each property's ID is 11 px regular text in the same orange on a white halo (dark on the night map and photos) from zoom 16. Orange keeps them apart from the route's magenta, danger's red, water's blue and the trails' colours.
+
 Downhill MTB difficulty has turquoise S0− (`--mtb-s0-minus`) for very easy paths and neon-green S0 (`--mtb-s0`); S1–S6 retain the indexed scale's colors. The map, cards, keys and route/profile use the same class and words. Uphill, hiking, speed and smoothness keep the original indexed palette, including its darker green S0.
 
 ### Primary
