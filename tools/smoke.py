@@ -1052,6 +1052,42 @@ def osm_cliffs(chrome):
     return not fails
 
 
+# #1178: OSM's saddles, a pass's mark with its name and height, at Pallas, from the live tiles (they carry them to zoom 13),
+# and its ridges, a band of dots, from zoom 14.
+def saddles(chrome):
+    pg = chrome.page(1440, 900, False)
+    pg.open_app({'activity': 'hike', 'base': 'trail'}, hash_='#13/68.07/24.055')
+    fails = pg.js("""(async () => {
+      const errs=[], m=polku.map, {makeIcon}=await import('/js/icons.js');
+      const settle=()=>Promise.race([new Promise(r=>{m.once('idle',r);m.triggerRepaint();}),new Promise(r=>setTimeout(r,10000))]);
+      for(const base of ['trail','plain','night']) {
+        polku.set({base}); await settle();
+        const f=m.queryRenderedFeatures({layers:['label-peak']}), got=f.filter(x=>x.properties.class==='saddle');
+        if(!got.length){errs.push(`${base}: no saddle drawn at Pallas`);continue;}
+        if(!f.some(x=>x.properties.class==='peak'))errs.push(`${base}: the fells' peaks are gone`);
+        const id=got[0].layer.layout['icon-image'].name||String(got[0].layer.layout['icon-image']);
+        if(!/^saddle-[0-9a-f]{6}$/.test(id))errs.push(`${base}: a saddle's mark is ${id}`);
+        else{const img=makeIcon(id); if(!img||!img.data.some((v,i)=>i%4===3&&v>0))errs.push(`${base}: ${id} isn't drawn`); else if(!m.hasImage(id))errs.push(`${base}: ${id} isn't on the map`);}
+        if(!got.some(x=>x.properties.name==='Taivaskeronsatula'))errs.push(`${base}: Taivaskeronsatula isn't among the saddles drawn`);
+        if(base==='trail'){polku.planner.openPlaceCard(got[0],got[0].geometry.coordinates);const t=polku.planner.cards.box.textContent;
+          if(!/Pass/.test(t)||/Peak/.test(t))errs.push(`a pass's card reads ${JSON.stringify(t.slice(0,80))}`);polku.planner.cards.close();}
+      }
+      m.jumpTo({center:[24.1066,68.0419],zoom:15});
+      for(const base of ['trail','plain','night']) {
+        polku.set({base}); await settle();
+        if(!m.queryRenderedFeatures({layers:['osm-ridge']}).length){errs.push(`${base}: no ridge drawn at Pallas`);continue;}
+        const id=m.getPaintProperty('osm-ridge','line-pattern'), img=makeIcon(id);
+        if(!/^ridge-[0-9a-f]{6}$/.test(id)||!img||!img.data.some((v,i)=>i%4===3&&v>0))errs.push(`${base}: the ridge's pattern ${id} isn't drawn`);
+        else if(!m.hasImage(id))errs.push(`${base}: ${id} isn't on the map`);
+      }
+      return errs;
+    })()""", timeout=120000)
+    fails += [f'console: {e[:160]}' for e in pg.errors()]
+    pg.close()
+    print(f"{'ok  ' if not fails else 'FAIL'} OSM's saddles and ridges (#1178)" + ''.join(f'\n     - {f}' for f in fails), flush=True)
+    return not fails
+
+
 # #1144: reedbeds from Polku's own OSM data, as reed tufts over the wetland dashes, on the vector bases only.
 def reedbed_style(chrome):
     pg = chrome.page(1440, 900, False)
@@ -25047,7 +25083,7 @@ GROUPS = [
     ('changelog', [changelog], 'release notes, retry, safe rendering, keyboard, route preservation and real worker offline'),
     ('pacing', [pacing, paced_legs, net_fails], 'calls made together go out paced and counted (mocked services, a fake clock); legs refused for a slot follow at it (#78); the calls that failed, in Data sources (#687)'),
     ('loading', [loading, routing_edits], 'cancel obsolete routing, edits/Undo/Clear, shared subscribers, refusal/recovery, deadlines, terrain slots and LIPAS viewport/cache (mocked)'),
-    ('layers', [layers, cycleway_style, cycling_restrictions, waterway_style, property_lines, property_plots, wetland_style, reedbed_style, mml_bogs, mml_rock, mml_water, osm_cliffs], 'the Layers panel in every sport'),
+    ('layers', [layers, cycleway_style, cycling_restrictions, waterway_style, property_lines, property_plots, wetland_style, reedbed_style, mml_bogs, mml_rock, mml_water, osm_cliffs, saddles], 'the Layers panel in every sport'),
     ('raster', [raster_maps, aerial_fallback, aerial_labels], 'terrain and aerial detail, bounded high-density WMS symbols, depth boundaries and missing aerial detail (#649, #650, #653); the map\'s words on the aerial photos at 4.5:1 on their halo (#554)'),
     ('coarse', [coarse], 'a coarse map underneath (#1091): the base map\'s tile four zoom levels up stands in for one that hasn\'t come, at 1440 and 390'),
     ('together', [together], 'Polku\'s own layers come in together after the map stops, 500 ms at most (#1091)'),

@@ -550,7 +550,7 @@ function itemBody(pl, card, body) {
 // [p-spot, p-place, p-none, r-near, d-spot]: what's there and its line, three numbers, What's here ›, Your route (Start
 // here, End here, Round trip from here, Avoid this spot, each with its line), and the pill: + Add to my route where it
 // fits, + Add a point here by the line, + Start a route here with no route. `spot`: { ll, title, line, tags, place } from the planner (openSpotCard()).
-const PLACE_ICON = { campsite: 'hut', shelter: 'hut', lodging: 'hut', picnic_site: 'hut', drinking_water: 'drop', toilets: 'pin', information: 'info', parking: 'car', harbor: 'buoy', ranger_station: 'hut', swimming: 'water', peak: 'mountain' };
+const PLACE_ICON = { campsite: 'hut', shelter: 'hut', lodging: 'hut', picnic_site: 'hut', drinking_water: 'drop', toilets: 'pin', information: 'info', parking: 'car', harbor: 'buoy', ranger_station: 'hut', swimming: 'water', peak: 'mountain', pass: 'mountain' };
 // the place's own icon as the map draws it, where Polku draws it (LIPAS's, the trail details'); else the app's
 function placeMark(spot) {
   const url = spot.image ? iconUrl(spot.image) : '';
