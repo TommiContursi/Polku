@@ -4,6 +4,11 @@ What's new in [Polku](https://polku.si), from the latest updates back to the fir
 
 ## 2026-11-20
 
+### Footways in brown ([#1163](https://github.com/TommiContursi/Polku/issues/1163))
+
+- Footways and pedestrian streets are drawn as a thin brown dashed line without a white band, on every map and in every sport, so a trail in the woods stands out from the footways between buildings. Brown doesn't mean bikes aren't allowed: the red bars still say that. Footways open to bikes stay blue, and footways with an MTB grade keep their difficulty colour.
+- Fences on the trail details are now grey instead of brown, so they aren't mistaken for footways.
+
 ### Reedbeds on the map ([#1144](https://github.com/TommiContursi/Polku/issues/1144))
 
 - Reedbeds that OpenStreetMap marks as such are drawn with small reed tufts from zoom 12 on the Trail, Plain and Night maps, so a shore's reeds no longer look like a bog. Where Polku's own map data can't be read, or doesn't cover the place, they're drawn as ordinary wetland.
