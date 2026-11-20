@@ -17,7 +17,7 @@ Read the section the task needs, not the whole file. The files after a section a
   - [In-app release notes](#in-app-release-notes): `js/changelog.js`
   - [The map: style, grades, terrain and trails](#the-map-style-grades-terrain-and-trails): `js/style.js`, `js/uphill.js`, `js/dem.js`, `js/analysis.js`, `js/trails.js`, `js/osm.js`
   - [Routing on land](#routing-on-land): `js/router.js`, `js/net.js`, `js/valhalla.js`, `js/planner.js`, `js/styles.js`
-  - [Water routing](#water-routing): `js/water.js`, `js/waterdata.js`
+  - [Water routing](#water-routing): `js/water.js`, `js/waterdata.js`, `js/vectortile.js`
   - [Marked routes from LIPAS](#marked-routes-from-lipas): `js/lipas.js`, `js/search.js`
   - [Check's warnings](#checks-warnings): `js/planner.js`
   - [Along the route: marks, departure and colour breakdowns](#along-the-route-marks-departure-and-colour-breakdowns): `js/planner.js`, `js/when.js`, `js/main.js`, `js/cards.js`, `js/trip.js`, `js/style.js`
@@ -149,7 +149,7 @@ The `otherways` quick-point check schedules its edit in the same turn as the fir
 - **Water routing** (`js/water.js`, `js/waterdata.js`):
   - **The grid:** a hidden MapLibre map renders only water, white on black, for the leg's area, and the pixels become a grid. A second drawing on a canvas, in the same projection, marks the costs:
     - Väylävirasto's fairways, by class (shipping lanes are crossed straight);
-    - keep-clear zones round danger and cardinal marks and OSM rocks and shoals;
+    - keep-clear zones round danger and cardinal marks, OSM rocks and shoals, and MML's stones, stone fields and shoals;
     - water within 20 m of a sounding under 0.5 m, in the lakes Syke surveyed (×4; not for a swimmer), and where Syke surveyed, measured along the leg (`water.depth`: `{ water, surveyed }` in metres) for What Polku looked at;
     - places you avoid.
   - **Wind:** each water cell's open-water fetch upwind gives a wave height (JONSWAP), and rough water costs more for the craft.
@@ -158,6 +158,7 @@ The `otherways` quick-point check schedules its edit in the same turn as the fir
   - **Legs too long to ask for:** a box over 16 of OSM's z11 tiles isn't asked for rocks, nor one over 24 of Väylävirasto's z10 tiles for fairways and marks. `waterInputs()` returns those as `skipped`, apart from `missing`: the leg is kept, nothing asks again, and Check says "not checked, the leg is too long" (`WATER_LONG`, key `waterlong`), and What Polku looked at says so too (#490).
   - **The hidden map's tiles:** a tile that fails (not a 404) asks for a frame, as on the main map (#393), or `load` never came and no water leg was routed (#400). A water tile that doesn't load is drawn as land: the leg may carry where there's water.
   - **Lake depths** (#1184, [plans/issue-1184-water-depths.md](plans/issue-1184-water-depths.md)): Polku's own files in `data/depths/`, one per z10 tile where Syke surveyed and `index.json` listing them, made from Syke's bulk download by `tools/syke_depths.py` (run by hand when Syke updates its data; it last changed on 2017-03-20). Each holds the soundings under 0.5 m at the lake's survey level, one per 10 m square, and where Syke surveyed (its depth areas, islands left out) as runs of the tile's 256 × 256 cells; `rasteriseCosts()` draws the cells half a cell larger, so the shore's water isn't left out where Syke's shoreline and the map's differ. They're read through `request()` (`polku`), wait 2.5 s like the other sources, and are a source of their own in `missing` and `skipped` (`Syke`). They're asked with `backoff: false` and a 10 s deadline: one that fails pauses nothing else of Polku's, and one that hangs fails in time, so Retry (`forgetWaterFailures()`) and the two-minute retry ask again. A leg routed before the router used depths (no `checked.depths`) is routed again when a saved route loads online. Legs on the water the router didn't draw (freehand, imported) count as water Syke didn't survey. A tile with no file is water Syke didn't survey: What Polku looked at says how much of the route's water it surveyed, and "not surveyed" counts as not checked.
+  - **MML's stones** (#153, [plans/issue-153-water-stones.md](plans/issue-153-water-stones.md)): MML's background-map tiles (`taustakartta` v21) at zoom 14, the only zoom with its stones, over the leg's box where it overlaps `FINLAND_BOUNDS`, at most 64 tiles (legs to about 5 km; more is `skipped`). They're read through `request('mml')` at the address and key of the map's own `mml` source (`useMmlKey()`, from `applyStyle()`), so the browser's cache has the tiles the map has shown, with no back-off and a 10 s deadline as the depth files, and read by hand with `decodeTile()` (`js/vectortile.js`, shared with the shadows' buildings). Each tile is kept for the session; one that failed is asked again in two minutes and on Retry. Stones at the surface (38512) get 25 m as OSM's rocks, stones above it (38513, MML places them within 7.5 m) 15 m (`CLEAR.above`), stone fields (38600) and shoals (38700) the area and 15 m round its edge, all at the rocks' ×10. OSM's rocks stay beside them everywhere, the fallback beyond Finland. A tile with no features at all is outside MML's map (MML answers empty tiles outside Finland, and `FINLAND_BOUNDS` takes in Tallinn): `rasteriseCosts()` draws the tiles that have features, and `water.mml` (`{ water, covered }` in metres) says how much of the leg's water they cover, for What Polku looked at's Rocks and shoals row. The source is `the National Land Survey` in `missing` and `skipped`. A leg routed before (no `checked.mml`) is routed again when a saved route loads online. A hazard event under two cells is a graze of a zone's edge, not an item of Check. Offline saves don't keep MML's tiles.
   - **Traficom's depths aren't used:** its licence excludes route planning. See phase 13 in [plans/done.md](plans/done.md).
 
 ### Marked routes from LIPAS
@@ -378,7 +379,8 @@ js/valhalla.js      Valhalla (FOSSGIS) client: routes and way attributes as OSM-
 js/styles.js        route styles: presets and controls per sport, as router parameters
 js/roundtrip.js     round trips: loop shapes, water-aware directions, loops on the water (out and back on rivers), scoring
 js/water.js         open-water router (grid, costs, wind, A*, string-pulling)
-js/waterdata.js     what the water router avoids: fairways, marks, OSM hazards, lake depths, wind
+js/waterdata.js     what the water router avoids: fairways, marks, OSM hazards, MML's stones, lake depths, wind
+js/vectortile.js    a vector tile read by hand: OFM's buildings for the shadows, MML's stones for the water router
 js/analysis.js      profile, grades, climbs, warnings, timing, wind exposure, trail details
 js/chart.js         elevation chart and route readout
 js/uphill.js        uphill-difficulty overlay

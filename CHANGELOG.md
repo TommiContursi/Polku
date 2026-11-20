@@ -4,6 +4,13 @@ What's new in [Polku](https://polku.si), from the latest updates back to the fir
 
 ## 2026-11-20
 
+### Stones and shoals on paddling routes ([#153](https://github.com/TommiContursi/Polku/issues/153))
+
+- In Finland, a paddling route keeps clear of the stones in the water, stone fields and shoals on the National Land Survey's map, at sea and on lakes, as well as OpenStreetMap's rocks: 25 m from a stone at the surface, 15 m from one above it, and 15 m from the edge of a stone field or a shoal, where the way round is short. Outside Finland it keeps clear of OpenStreetMap's rocks, as before.
+- **What Polku looked at** says whether the National Land Survey's map covered the route's water. The stones are read for legs up to about 5 km: on a longer leg, Check says they weren't checked, and adding a point splits the leg.
+- A route that only touches the edge of a rock's or a shoal's zone is no longer listed in Check as close to it.
+- **The map has stones at and above the surface, not those just under it, and no map has every stone: keep a lookout.** Water routes are for planning, not navigation. Keeping clear of stones is part of **Rocks & shoals: Keep clear** in the route style, and **Ignore** turns it off.
+
 ### Mountain passes and ridges ([#1178](https://github.com/TommiContursi/Polku/issues/1178))
 
 - Passes between fells, mapped as saddles in OpenStreetMap, are marked with OpenStreetMap's usual saddle mark, a small brown block with a notch in its top, and their name and height, like the peaks, from zoom 11 to 13. Taivaskeronsatula at Pallas is one. The map's data has them only up to zoom 13, so they aren't shown when you zoom in further. Tapping one opens its card as a pass.

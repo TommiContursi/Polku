@@ -90,3 +90,10 @@ Nothing in the router or Check reads rapids today, so a river route goes through
 ## Not in this part
 
 - Stones under the surface (38511); weirs, dams and locks (#856); OSM's rapids; MML's tiles in offline saves.
+
+## As built
+
+- **Stones, stone fields and shoals,** as sections 1, 2 and 4 recommend, in [#1202](https://github.com/TommiContursi/Polku/pull/1202). The tiles are read by `decodeTile()` in `js/vectortile.js`, which the shadows' buildings now share.
+- **Measured off Kotka** with live tiles: legs between the islands go 1–5 % farther than on `main`, with **Near the shore** and without. A straight leg over a recorded stone at the surface passes 27 m from it, where `main` passes 0 m (smoke's `water_mml`).
+- **Grazes aren't items:** the first build gave a leg through Kotka's archipelago up to seven "Close to a marked rock or shoal" items of 2–6 m each, every one the edge of a zone. A rock's or shoal's event shorter than two cells is no longer an item, as for shallow water (#1187).
+- **Not done:** rapids (the question in section 3); MML's tiles in offline saves.
