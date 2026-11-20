@@ -1204,7 +1204,8 @@ def mml_rock(chrome):
         if(!boulders.startsWith(`boulders-${rock.slice(1)}-`))errs.push(`${base}: boulder fields drawn as ${boulders}, not on the rock's grey`);
         const icons=[boulders,m.getLayoutProperty('mml-reed','icon-image'),m.getLayoutProperty('mml-pylon','icon-image')];
         const pts=m.getLayoutProperty('mml-rock-point','icon-image'); for(let i=3;i<pts.length;i+=2)icons.push(pts[i]); icons.push(pts[pts.length-1]);
-        for(const id of new Set(icons)){const img=makeIcon(id); if(!img||!img.data.some((v,i)=>i%4===3&&v>0))errs.push(`${base}: ${id} isn't drawn`); else if(!m.hasImage(id))errs.push(`${base}: ${id} isn't on the map`);}
+        // (the stones in the water aren't in these tiles: mml_water has them on the map, at Kotka)
+        for(const id of new Set(icons)){const img=makeIcon(id); if(!img||!img.data.some((v,i)=>i%4===3&&v>0))errs.push(`${base}: ${id} isn't drawn`); else if(!m.hasImage(id)&&!/^rock-(awash|above)-/.test(id))errs.push(`${base}: ${id} isn't on the map`);}
         // the ticks: a wider dashed line beside the cliff, touching it, on its right (a positive offset)
         for(const z of [13,16,18]) {
           const off=value('mml-cliff-ticks','line-offset',z), w=value('mml-cliff-ticks','line-width',z), e=value('mml-cliff','line-width',z);
