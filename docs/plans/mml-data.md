@@ -250,7 +250,8 @@ Plain and Night maps, in MTB and paddle; its PR lists what else it covered.
   **Depth soundings** switches (decided on #1170: one layer with
   Traficom's): MML's depth contours with their depths, and its depth points,
   from zoom 13. MML's tiles have none at sea or on charted lakes, so the two
-  sources don't overlap. They're Syke's soundings (#1184). Lakes' surface
+  sources don't overlap. Syke's dataset record says Syke makes the lake
+  depth contours and delivers them to MML (#1184). Lakes' surface
   heights aren't drawn.
 - **Property boundaries** (#1157) on every base, in orange (lighter on
   Night and the aerial maps), from zoom 14, property IDs from zoom 16, in

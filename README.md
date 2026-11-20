@@ -87,7 +87,7 @@ Polku brings together open data and free public services. Each source keeps its 
 | Map and trail data | [OpenStreetMap contributors](https://www.openstreetmap.org/copyright); [OpenFreeMap](https://openfreemap.org) vector tiles (© OpenMapTiles) |
 | Terrain and base maps | [Mapterhorn](https://mapterhorn.com); Maanmittauslaitos via [Kapsi ry](https://kartat.kapsi.fi) (CC BY 4.0); Esri World Imagery |
 | Property boundaries (Finland) | Maanmittauslaitos's property map, from its open vector tiles (CC BY 4.0) |
-| Bogs, rock, cliffs, reeds, power lines, stones, shoals and rapids in the water, and lake depths (Finland) | Maanmittauslaitos's topographic database, from its open vector tiles (CC BY 4.0); its lake depths are Syke's soundings |
+| Bogs, rock, cliffs, reeds, power lines, stones, shoals and rapids in the water, and lake depths (Finland) | Maanmittauslaitos's topographic database, from its open vector tiles (CC BY 4.0); Syke makes its lake depth contours and delivers them to it |
 | Routes and outdoor places | [LIPAS](https://lipas.fi), University of Jyväskylä (CC BY 4.0); [Waymarked Trails](https://waymarkedtrails.org) |
 | Routing on land | [BRouter](https://brouter.de); [Valhalla](https://valhalla.github.io/valhalla/) on [FOSSGIS](https://www.fossgis.de) servers as a fallback |
 | Search and detailed map features | [Photon](https://photon.komoot.io); hosted OSM extracts from [Geofabrik](https://download.geofabrik.de/) on ducksoft.fi; [Overpass API](https://overpass-api.de) fallback |
