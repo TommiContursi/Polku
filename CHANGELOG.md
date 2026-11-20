@@ -2,6 +2,12 @@
 
 What's new in [Polku](https://polku.si), from the latest updates back to the first release. These notes describe features available in the app, not work still in progress. For upcoming changes, see the [issues](https://github.com/TommiContursi/Polku/issues) and [roadmap](docs/ROADMAP.md).
 
+## 2026-11-21
+
+### The sport pill's name on phones ([#1214](https://github.com/TommiContursi/Polku/issues/1214))
+
+- On a phone, where the sport pill shows only its icon, a screen reader names it by its sport again, as on a desktop.
+
 ## 2026-11-20
 
 ### Heath, clear-cuts and open ground ([#1169](https://github.com/TommiContursi/Polku/issues/1169))
