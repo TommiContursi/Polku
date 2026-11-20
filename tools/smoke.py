@@ -2792,14 +2792,16 @@ def water_offline(chrome):
     chrome.send('Network.setBypassServiceWorker', {'bypass': False}, pg.s)
     pg.js("(async () => { for (const r of await navigator.serviceWorker.getRegistrations()) await r.unregister(); await caches.delete('polku-shell-v1'); await navigator.serviceWorker.register('./sw.js'); await navigator.serviceWorker.ready; return true })()")
     pg.reload()
-    worker = next((t for t in chrome.send('Target.getTargets')['targetInfos'] if t['type'] == 'service_worker' and t['url'] == BASE + 'sw.js'), None)
-    if not pg.js('!!navigator.serviceWorker.controller') or not worker:
+    # every worker of Polku's: one unregistered by an earlier check may still be listed beside the one that controls the page
+    workers = [t for t in chrome.send('Target.getTargets')['targetInfos'] if t['type'] == 'service_worker' and t['url'] == BASE + 'sw.js']
+    if not pg.js('!!navigator.serviceWorker.controller') or not workers:
         raise RuntimeError('a water leg offline: the page has no service worker')
-    ws = chrome.send('Target.attachToTarget', {'targetId': worker['targetId'], 'flatten': True})['sessionId']
-    chrome.send('Network.enable', {}, ws)
+    ws = [chrome.send('Target.attachToTarget', {'targetId': t['targetId'], 'flatten': True})['sessionId'] for t in workers]
+    for s in ws:
+        chrome.send('Network.enable', {}, s)
 
     def offline(on):  # the network off, and no copy from the browser's cache either: only what the worker keeps
-        for s in (pg.s, ws):
+        for s in (pg.s, *ws):
             chrome.send('Network.emulateNetworkConditions', {'offline': on, 'latency': 0, 'downloadThroughput': -1, 'uploadThroughput': -1}, s)
             chrome.send('Network.setCacheDisabled', {'cacheDisabled': on}, s)
 
@@ -2825,7 +2827,8 @@ def water_offline(chrome):
     finally:
         offline(False)
         pg.js("(async () => { for (const r of await navigator.serviceWorker.getRegistrations()) await r.unregister(); return true })()")
-        chrome.send('Target.detachFromTarget', {'sessionId': ws})
+        for s in ws:
+            chrome.send('Target.detachFromTarget', {'sessionId': s})
     fails += [f'console: {e[:160]}' for e in pg.errors()]
     pg.close()
     print(f"{'ok  ' if not fails else 'FAIL'} a new leg on the water offline says routing needs a connection; back online, Retry routes it (#1195)" + ''.join(f'\n     - {f}' for f in fails), flush=True)
