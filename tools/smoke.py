@@ -867,6 +867,78 @@ def waterway_style(chrome):
     return not fails
 
 
+# #1200: a layer from a Finnish source says "Finland only" on its tile and its switch where none of Finland is in view (Luleå's
+# archipelago, inside the box the code once tested), and Paddle's defaults don't count it as on there; with Tornio in view, or in
+# Finland, nothing changes. Ships and Sea ice reach farther: they say so only beyond the northern Baltic and the Baltic.
+def layer_coverage(chrome):
+    pg = chrome.page(1440, 900, False)
+    try:
+        pg.c.send('Page.addScriptToEvaluateOnNewDocument', {'source': EMPTY_DEPTHS}, pg.s)
+        pg.open_app({'activity': 'paddle'}, None, '#11/65.45/22.4')
+        fails = pg.js("""(async () => {
+          const errs=[], m=polku.map, frame=()=>new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)));
+          const until=async(ok,ms=5000)=>{const t0=performance.now();while(!ok()&&performance.now()-t0<ms)await frame();return ok();};
+          const go=async(center,zoom)=>{m.jumpTo({center,zoom});await frame();await new Promise(r=>setTimeout(r,400));};
+          const small=(id)=>{const s=document.querySelector(`#quick-layers .qt[data-id="${id}"] .qt-l small`);return s&&!s.hidden?s.textContent:'';};
+          const more=()=>document.querySelector('#quick-layers .qt-more')?.getAttribute('aria-label');
+          const row=(name)=>[...document.querySelectorAll('#layers-panel label.tg')].find(l=>l.querySelector('.tg-text').firstChild.textContent.trim()===name);
+          const note=(name)=>row(name)?.querySelector('.tg-text small')?.textContent||'';
+          const chips=()=>[...document.querySelectorAll('#layers-panel .on-chip span')].map(s=>s.textContent);
+          const count=(g)=>document.querySelector(`#layers-panel [data-group="${g}"] .lg-count`)?.textContent||'';
+          const FI=['Official routes (LIPAS)','Shipping lanes','Depth areas','Nautical marks & fairways'];
+          // Luleå's archipelago, Sweden: the drawer's tiles
+          document.querySelector('#btn-layers').click();
+          if(!await until(()=>document.querySelector('#quick-layers .qt[data-id="nautical"]')))return ['Layers opened no Paddle tiles'];
+          for(const id of ['nautical','lipasPoints'])if(small(id)!=='Finland only')errs.push(`Luleå: the ${id} tile says “${small(id)}”, not Finland only`);
+          if(small('depths')!=='Finland only · not for navigation')errs.push(`Luleå: the Depths tile says “${small('depths')}”`);
+          if(small('sfShips')==='Northern Baltic only')errs.push('Luleå: the Ships tile says Northern Baltic only, inside the area Digitraffic sees');
+          // (Paddle's other layers on: Official routes and Shipping lanes, from Finland; Outdoor places and Military areas, everywhere)
+          if(more()!=='More: all layers, 2 more on')errs.push(`Luleå: ${more()}, not 2 more on`);
+          if(!polku.state.overlays.fairways||!polku.state.overlays.lipasRoutes)errs.push('Luleå: Paddle\\'s Finnish layers were switched off, not just not counted');
+          // the full panel: not counted as on, and each switch says so in words
+          document.querySelector('#quick-layers .qt-more').click();
+          if(!await until(()=>row('Shipping lanes')))return [...errs,'More opened no Shipping lanes switch'];
+          const on=FI.filter(n=>chips().includes(n));
+          if(on.length)errs.push(`Luleå: On now lists ${on.join(', ')}`);
+          if(!chips().includes('Ships (live AIS)'))errs.push('Luleå: On now leaves out Ships');
+          if(count('water')!=='1 on')errs.push(`Luleå: Water & nautical says “${count('water')}”, not 1 on`);
+          if(!note('Shipping lanes').startsWith('Finland only'))errs.push(`Luleå: the Shipping lanes switch says “${note('Shipping lanes')}”`);
+          if(note('Official routes (LIPAS)')!=='Finland only')errs.push(`Luleå: the Official routes switch says “${note('Official routes (LIPAS)')}”`);
+          if(!row('Shipping lanes').querySelector('input').checked)errs.push('Luleå: the Shipping lanes switch is off');
+          // Helsinki, with the panel open: as in Finland always
+          await go([24.95,60.15],11);
+          if(!await until(()=>!note('Shipping lanes').startsWith('Finland only')))errs.push('Helsinki: the Shipping lanes switch still says Finland only');
+          if(count('water')!=='6 on')errs.push(`Helsinki: Water & nautical says “${count('water')}”, not 6 on`);
+          const off=FI.filter(n=>!chips().includes(n));
+          if(off.length)errs.push(`Helsinki: On now leaves out ${off.join(', ')}`);
+          if(note('Official routes (LIPAS)'))errs.push(`Helsinki: the Official routes switch says “${note('Official routes (LIPAS)')}”`);
+          // Haparanda, Sweden, with Tornio across the river in view: a view partly in Finland counts as in it
+          const {inFinland}=await import('/js/geo.js');
+          if(!inFinland||inFinland([24.12,65.83])||!inFinland([24.2,65.85]))errs.push('(the test) Haparanda is in Finland, or Tornio isn\\'t');
+          await go([24.12,65.83],12);
+          if(!await until(()=>count('water')==='6 on'))errs.push(`Haparanda with Tornio in view: Water & nautical says “${count('water')}”, not 6 on`);
+          // Lofoten, Norway: Ships and Sea ice say where they reach
+          await go([14.5,68.2],10);
+          if(!await until(()=>note('Ships (live AIS)')==='Northern Baltic only'))errs.push(`Lofoten: the Ships switch says “${note('Ships (live AIS)')}”`);
+          if(!note('Sea ice').startsWith('Baltic Sea only'))errs.push(`Lofoten: the Sea ice switch says “${note('Sea ice')}”`);
+          // back in the drawer, which keeps its tiles' words as the map moves
+          document.querySelector('#layers-panel .panel-back').click();
+          if(!await until(()=>small('sfShips')==='Northern Baltic only'))errs.push(`Lofoten: the Ships tile says “${small('sfShips')}”`);
+          await go([22.4,65.45],11);
+          if(!await until(()=>small('nautical')==='Finland only'))errs.push(`back in Luleå with the drawer open: Nautical marks says “${small('nautical')}”`);
+          await go([24.95,60.15],11);
+          if(!await until(()=>small('nautical')!=='Finland only'))errs.push('Helsinki with the drawer open: Nautical marks still says Finland only');
+          if(small('depths')!=='Not for navigation')errs.push(`Helsinki: the Depths tile says “${small('depths')}”`);
+          if(more()!=='More: all layers, 4 more on')errs.push(`Helsinki: ${more()}, not 4 more on`);
+          return errs;
+        })()""", timeout=120000)
+        fails += [f'console: {e[:160]}' for e in pg.errors()]
+    finally:
+        pg.close()
+    print(f"{'ok  ' if not fails else 'FAIL'} Finland-only layers say so beyond Finland, and aren't counted as on there (#1200)" + ''.join(f'\n     - {f}' for f in fails), flush=True)
+    return not fails
+
+
 # #1148: Property boundaries, a switch in Layers' Terrain with its opacity, off in every sport: MML's property map from zoom 14 in Finland, with
 # Polku's key (not plain text in the source) or a person's own, drawn and named at Jyväskylä's centre.
 def property_lines(chrome):
@@ -24982,7 +25054,7 @@ GROUPS = [
     ('changelog', [changelog], 'release notes, retry, safe rendering, keyboard, route preservation and real worker offline'),
     ('pacing', [pacing, paced_legs, net_fails], 'calls made together go out paced and counted (mocked services, a fake clock); legs refused for a slot follow at it (#78); the calls that failed, in Data sources (#687)'),
     ('loading', [loading, routing_edits], 'cancel obsolete routing, edits/Undo/Clear, shared subscribers, refusal/recovery, deadlines, terrain slots and LIPAS viewport/cache (mocked)'),
-    ('layers', [layers, cycleway_style, cycling_restrictions, waterway_style, property_lines, property_plots, wetland_style, reedbed_style, mml_bogs, mml_rock, osm_cliffs, saddles], 'the Layers panel in every sport'),
+    ('layers', [layers, layer_coverage, cycleway_style, cycling_restrictions, waterway_style, property_lines, property_plots, wetland_style, reedbed_style, mml_bogs, mml_rock, osm_cliffs, saddles], 'the Layers panel in every sport'),
     ('raster', [raster_maps, aerial_fallback, aerial_labels], 'terrain and aerial detail, bounded high-density WMS symbols, depth boundaries and missing aerial detail (#649, #650, #653); the map\'s words on the aerial photos at 4.5:1 on their halo (#554)'),
     ('coarse', [coarse], 'a coarse map underneath (#1091): the base map\'s tile four zoom levels up stands in for one that hasn\'t come, at 1440 and 390'),
     ('together', [together], 'Polku\'s own layers come in together after the map stops, 500 ms at most (#1091)'),

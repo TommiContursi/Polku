@@ -10,7 +10,7 @@ import { detailsAlong, forgetFailures as forgetTrailFailures, obstacleText } fro
 import { iconUrl, warnMarkId } from './icons.js';
 import { speedsFor, speedSummary, renderSpeedEditor, pace, pace100 } from './speeds.js';
 import { ProfileChart, COLOR_MODES, COLOR_GROUPS, PICK_MODES, colorAt, routeReadout, breakdownKey, breakdownRows, sampleRows, skyIcon, noTerrain, downClass } from './chart.js';
-import { dist, encodePolyline, decodePolyline, fmtDist, fmtDuration, compass, bbox, nearestOnLine, simplify, lineLength, pointSegment, bearing } from './geo.js';
+import { dist, encodePolyline, decodePolyline, fmtDist, fmtDuration, compass, bbox, nearestOnLine, simplify, lineLength, pointSegment, bearing, inFinland } from './geo.js';
 import { lipasPlace, stitch, clipAlong } from './lipas.js';
 import { onWaterData, prefetchWater, forgetWaterFailures } from './waterdata.js';
 import { sunTimes, darkness, nightAt, sunPosition } from './sun.js';
@@ -34,7 +34,6 @@ import { FIX_THE_MAP } from './valhalla.js';
 import { initNames } from './names.js';
 import { STYLES, routerOf, valuesOf, styleName, defaultStyle, encodeStyle, decodeStyle, hasWet, isCustom, keepOff, shortCuts } from './styles.js';
 import { swipeSheet, SWIPE, dvh } from './sheet.js';
-import { inFinland } from './safety.js';
 
 const EMPTY = { type: 'FeatureCollection', features: [] };
 const MODE_LABEL = { auto: 'Follow paths', line: 'Freehand', water: 'Over water' };

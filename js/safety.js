@@ -9,7 +9,7 @@
 //
 // The same data is checked against planned routes (see `hazardsAlong`).
 
-import { lonLatToTile, tileBounds, pointSegment, dist } from './geo.js';
+import { lonLatToTile, tileBounds, pointSegment, dist, inFinland, finlandInView } from './geo.js';
 import { DIGIROAD_WMS, isWater } from './config.js';
 import { openModal } from './modal.js';
 import { h, icon } from './ui.js';
@@ -130,20 +130,16 @@ export class SafetyLayers {
     this.timer = setTimeout(() => this.update(), delay);
   }
 
-  inFinland(ll = this.map.getCenter().toArray()) {
-    return inFinland(ll);
-  }
-
   update() {
-    if (!this.inFinland()) return;
     const z = this.map.getZoom();
     const b = this.map.getBounds();
     const view = [b.getWest(), b.getSouth(), b.getEast(), b.getNorth()];
+    if (this.on.ships && z >= 8) this.loadShips(); // (Digitraffic's AIS sees beyond Finland: its timer asks anywhere too)
+    if (!finlandInView(view)) return; // Fintraffic's roads and Digiroad are Finland's (#1200)
     if (this.on.traffic && z >= 10) this.loadAadt(view);
     if (this.on.roadworks && z >= 7) this.loadRoadworks(view);
     if (this.on.incidents) this.loadIncidents();
     if (this.on.roadcond) this.loadRoadcond();
-    if (this.on.ships && z >= 8) this.loadShips();
   }
 
   // ---------------------------------------------------------------- busy roads
@@ -457,7 +453,7 @@ export class SafetyLayers {
    */
   async hazardsAlong(a, { activity }) {
     // the route's own place and each stretch's own sport, whatever the map shows (#71)
-    if (!a || !a.pts.some((p) => this.inFinland(p))) return [];
+    if (!a || !a.pts.some(inFinland)) return [];
     const box = [Infinity, Infinity, -Infinity, -Infinity];
     for (const p of a.pts) { box[0] = Math.min(box[0], p[0]); box[1] = Math.min(box[1], p[1]); box[2] = Math.max(box[2], p[0]); box[3] = Math.max(box[3], p[1]); }
     const landAt = (i) => !isWater((a.attr[i] && a.attr[i].sport) || activity);
@@ -541,9 +537,6 @@ export class SafetyLayers {
     return out.sort((x, y) => x.at - y.at);
   }
 }
-
-/** Fintraffic's data covers Finland (roughly: the box around it). */
-export const inFinland = ([lng, lat]) => lng > 19 && lng < 32 && lat > 59.4 && lat < 70.3;
 
 const shortTitle = (t) => (t || '').replace(/\.\s*$/, '').replace(/\s+/g, ' ').slice(0, 90);
 export const fmtAadt = (v) => (Math.round(v / 100) * 100).toLocaleString('fi-FI');
