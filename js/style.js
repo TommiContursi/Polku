@@ -194,17 +194,19 @@ export function buildStyle(s, ctx) {
     lc('lc-farmland', ['farmland'], P.farmland);
     lc('lc-grass', ['grass'], P.grass);
     lc('lc-wood', ['wood'], P.wood, { 'fill-opacity': P.woodOpacity });
+    // MML's terrain in Finland (#1147): its background map's tiles, from zoom 11
+    sources.mml = { type: 'vector', tiles: [`${MML_TERRAIN_TILES}?api-key=${encodeURIComponent(mmlKey)}`], minzoom: 11, maxzoom: 14, bounds: FINLAND_BOUNDS, attribution: '© Maanmittauslaitos, Maastotietokanta, CC BY 4.0' };
+    const hex = (c) => c.slice(1), dashes = (ground) => `wetland-${hex(ground)}-${hex(P.wetlandDash)}`, hard = (ground) => `bog-hard-${hex(ground)}-${hex(P.wetlandDash)}`;
+    const cls = ['get', 'kohdeluokka'];
+    // paludified land from zoom 13: sparse dashes on a clear ground, so the land shows; under OSM's wetlands, as it isn't a bog
+    add({ id: 'mml-paludified', type: 'fill', source: 'mml', 'source-layer': 'maasto_alue', minzoom: 13, filter: ['==', cls, 35300], paint: { 'fill-pattern': `bog-paludified-${hex(P.wetlandDash)}` } });
     lc('lc-wetland', ['wetland'], P.wetland);
     // blue dashes from zoom 11 (js/icons.js): the tiles' wetlands are all one kind, so nothing about trees or footing (#1144)
     add({ id: 'lc-wetland-pattern', type: 'fill', source: 'ofm', 'source-layer': 'landcover', minzoom: 11, filter: ['==', ['get', 'class'], 'wetland'], paint: { 'fill-pattern': `wetland-${P.wetland.slice(1)}-${P.wetlandDash.slice(1)}` } });
     // MML's bogs in Finland (#1147), over OSM's wetlands: where MML has a bog its class shows, and OSM's wetland stays
-    // where MML has none, abroad and wherever MML's tiles don't come. Every ground is opaque, so no dashes show through.
-    // Below zoom 13 the tiles only say open or wooded (35401/35402, then 35411/35412 with the hard ones folded in);
-    // from 13 a bog MML's survey classes hard to cross gets unbroken lines.
-    sources.mml = { type: 'vector', tiles: [`${MML_TERRAIN_TILES}?api-key=${encodeURIComponent(mmlKey)}`], minzoom: 11, maxzoom: 14, bounds: FINLAND_BOUNDS, attribution: '© Maanmittauslaitos, Maastotietokanta, CC BY 4.0' };
-    const hex = (c) => c.slice(1), dashes = (ground) => `wetland-${hex(ground)}-${hex(P.wetlandDash)}`, hard = (ground) => `bog-hard-${hex(ground)}-${hex(P.wetlandDash)}`;
-    const cls = ['get', 'kohdeluokka'];
-    add({ id: 'mml-paludified', type: 'fill', source: 'mml', 'source-layer': 'maasto_alue', minzoom: 13, filter: ['==', cls, 35300], paint: { 'fill-pattern': `bog-paludified-${hex(P.wetlandDash)}` } });
+    // where MML has none, abroad and wherever MML's tiles don't come. Their grounds are opaque, so no dashes show through.
+    // Zoom 11's tiles only say open or wooded (35401/35402); a bog MML's survey classes hard to cross (35421/35422) gets
+    // unbroken lines where the tiles carry the class, large ones from zoom 12 and the rest from 13.
     add({
       id: 'mml-bog', type: 'fill', source: 'mml', 'source-layer': 'maasto_alue', minzoom: 11,
       filter: ['in', cls, ['literal', [35401, 35402, 35411, 35412, 35421, 35422, 38300]]],

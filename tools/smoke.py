@@ -977,7 +977,7 @@ def reedbed_style(chrome):
 
 
 # #1147: MML's bogs from a recorded tile (tools/fixtures/mml-taustakartta-14-9260-4578.pbf, Seitseminen), never live MML:
-# each class's pattern on every vector base, opaque over OSM's wetlands, under the reedbeds; heath and open forest left
+# each class's pattern on every vector base, bogs opaque over OSM's wetlands and paludified land under them; heath and open forest left
 # out. Where MML's tiles don't load, OSM's wetlands stay and a message says so once, and again after a tile has come.
 def mml_bogs(chrome):
     pg = chrome.page(1440, 900, False)
@@ -987,7 +987,7 @@ def mml_bogs(chrome):
       const errs=[], m=polku.map, {makeIcon}=await import('/js/icons.js');
       const hex=(d,i)=>'#'+[d[i],d[i+1],d[i+2]].map(v=>v.toString(16).padStart(2,'0')).join('');
       const settle=async()=>{await new Promise(r=>setTimeout(r,300));await Promise.race([new Promise(r=>{m.once('idle',r);m.triggerRepaint();}),new Promise(r=>setTimeout(r,10000))]);};
-      if(Object.keys(m.style.tileManagers.mml._tiles).length)return ['MML was asked for tiles at zoom 10'];
+      if(m.style.tileManagers.mml.getIds().length)return ['MML was asked for tiles at zoom 10'];
       const fx=await (await fetch('/tools/fixtures/mml-taustakartta-14-9260-4578.pbf')).arrayBuffer();
       let fail=false; const asked=[];
       maplibregl.addProtocol('mmltest', async ({url}) => {
@@ -1013,7 +1013,8 @@ def mml_bogs(chrome):
       for(const base of ['trail','plain','night']) {
         polku.set({base}); await settle();
         const order=m.getStyle().layers.map(l=>l.id), at=(id)=>order.indexOf(id);
-        if(!(at('lc-wetland-pattern')<at('mml-paludified')&&at('mml-paludified')<at('mml-bog')&&at('mml-bog')<at('lc-reedbed')))errs.push(`${base}: not drawn over OSM's wetlands and under the reedbeds`);
+        if(!(at('lc-wetland-pattern')<at('mml-bog')&&at('mml-bog')<at('lc-reedbed')))errs.push(`${base}: bogs not drawn over OSM's wetlands and under the reedbeds`);
+        if(!(at('lc-wood')<at('mml-paludified')&&at('mml-paludified')<at('lc-wetland')))errs.push(`${base}: paludified land not drawn over the forest and under OSM's wetlands`);
         const osm=m.getPaintProperty('lc-wetland-pattern','fill-pattern'), [,ground,dash]=/^wetland-(\\w{6})-(\\w{6})$/.exec(osm);
         const wood=blend(m.getPaintProperty('background','background-color'),m.getPaintProperty('lc-wood','fill-color'),m.getPaintProperty('lc-wood','fill-opacity')).slice(1);
         const water=m.getPaintProperty('water','fill-color').slice(1);
