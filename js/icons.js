@@ -111,7 +111,8 @@ function reed(id) {
 
 // MML's rock and stone (#1147). `boulders-<ground>-<dots>`, a boulder field's fill: dots on the rock's grey, set unevenly
 // so they don't read as a grid; `rock-<kind>-<colour>`, a point: `spot-<colour>-<edge>`, a rock too small for an area,
-// a speck in the rock's grey with an edge; `stone`, one dot; `rocks`, sparse boulders, three dots
+// a speck in the rock's grey with an edge; `stone`, one dot; `rocks`, sparse boulders, three dots; and stones in the
+// water (#1170) as MML's own map draws them: `awash`, at the surface, a cross; `above`, above it, an upside-down T
 function rock(id) {
   const [what, kind, colour, edge] = id.split('-');
   const dot = (ctx, x, y, r) => { ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fill(); };
@@ -129,7 +130,34 @@ function rock(id) {
     ctx.beginPath(); ctx.ellipse(4, 4, 2.6, 2, -0.4, 0, Math.PI * 2);
     ctx.fill(); ctx.strokeStyle = `#${edge}`; ctx.lineWidth = 0.8; ctx.stroke();
   } else if (kind === 'stone') dot(ctx, 4, 4, 1.3);
-  else for (const [x, y] of [[2.2, 5.2], [5.8, 5.2], [4, 2.4]]) dot(ctx, x, y, 1);
+  else if (kind === 'awash' || kind === 'above') {
+    ctx.strokeStyle = `#${colour}`; ctx.lineWidth = 1.1; ctx.beginPath();
+    if (kind === 'awash') { ctx.moveTo(1, 4); ctx.lineTo(7, 4); ctx.moveTo(4, 1); ctx.lineTo(4, 7); } else { ctx.moveTo(1, 6.5); ctx.lineTo(7, 6.5); ctx.moveTo(4, 1); ctx.lineTo(4, 6.5); }
+    ctx.stroke();
+  } else for (const [x, y] of [[2.2, 5.2], [5.8, 5.2], [4, 2.4]]) dot(ctx, x, y, 1);
+  return ctx.getImageData(0, 0, c.width, c.height);
+}
+
+// MML's shoals and stone fields in the water (#1170), on a clear ground so the water and its depths show:
+// `shoal-<lines>`, light lines across; `stonefield-<lines>-<marks>`, the same with MML's small triangles
+function shoal(id) {
+  const [what, lines, marks] = id.split('-');
+  const [c, ctx] = canvas(12, 12);
+  ctx.fillStyle = `#${lines}`;
+  for (const y of [1, 5, 9]) ctx.fillRect(0, y, 12, 1);
+  if (what === 'stonefield') {
+    ctx.fillStyle = `#${marks}`;
+    for (const [x, y] of [[3, 4], [9, 10]]) { ctx.beginPath(); ctx.moveTo(x - 1.4, y); ctx.lineTo(x + 1.4, y); ctx.lineTo(x, y - 2.4); ctx.fill(); }
+  }
+  return ctx.getImageData(0, 0, c.width, c.height);
+}
+
+// which way a river flows (#1170): an arrow pointing east, turned by the layer. `flow-<colour>`
+function flow(id) {
+  const [c, ctx] = canvas(12, 8);
+  ctx.strokeStyle = `#${id.slice(5)}`; ctx.lineWidth = 1.2; ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+  ctx.beginPath(); ctx.moveTo(1, 4); ctx.lineTo(10.5, 4); ctx.moveTo(7.5, 1.5); ctx.lineTo(10.5, 4); ctx.lineTo(7.5, 6.5);
+  ctx.stroke();
   return ctx.getImageData(0, 0, c.width, c.height);
 }
 
@@ -472,7 +500,9 @@ export function makeIcon(id) {
   if (/^reedbed-[0-9a-f]{6}-[0-9a-f]{6}$/.test(id)) return reedbed(id);
   if (/^bog-(hard-[0-9a-f]{6}|paludified)-[0-9a-f]{6}$/.test(id)) return bog(id);
   if (/^reed-[0-9a-f]{6}$/.test(id)) return reed(id);
-  if (/^(boulders-[0-9a-f]{6}|rock-spot-[0-9a-f]{6}|rock-(stone|rocks))-[0-9a-f]{6}$/.test(id)) return rock(id);
+  if (/^(boulders-[0-9a-f]{6}|rock-spot-[0-9a-f]{6}|rock-(stone|rocks|awash|above))-[0-9a-f]{6}$/.test(id)) return rock(id);
+  if (/^(shoal|stonefield-[0-9a-f]{6})-[0-9a-f]{6}$/.test(id)) return shoal(id);
+  if (/^flow-[0-9a-f]{6}$/.test(id)) return flow(id);
   if (/^pylon-[0-9a-f]{6}$/.test(id)) return pylon(id);
   if (id === 'wind-arrow') return windArrow();
   if (id === 'ship') return ship();

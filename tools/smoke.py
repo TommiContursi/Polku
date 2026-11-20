@@ -1203,6 +1203,68 @@ def mml_rock(chrome):
     return not fails
 
 
+# #1170: MML's water from three recorded tiles, never live MML: Kotka (tools/fixtures/mml-taustakartta-14-9416-4714.pbf:
+# stones at and above the surface, a shoal, stone fields, jetties), Kitkajoki (…-14-9531-4125.pbf: rapids, a wide river's
+# arrow) and Porvoo (…-14-9352-4721.pbf: two narrow rivers' arrows). Each drawn from its tile on every vector base and in
+# a land sport too, over the water and Traficom's depths and under the buildings; the two stones apart by shape, the
+# shoals' ground clear; each arrow turned to its `suunta` (Porvoo's flows south-west, downhill), and OSM's piers in the
+# jetties' look.
+def mml_water(chrome):
+    pg = chrome.page(1440, 900, False)
+    pg.open_app({'activity': 'paddle', 'base': 'trail'}, hash_='#10/60.4/26.0')
+    fails = pg.js("""(async () => {
+      const errs=[], m=polku.map, {makeIcon}=await import('/js/icons.js'), FX=['14/9416/4714','14/9531/4125','14/9352/4721'];
+      const settle=async()=>{await new Promise(r=>setTimeout(r,300));await Promise.race([new Promise(r=>{m.once('idle',r);m.triggerRepaint();}),new Promise(r=>setTimeout(r,10000))]);};
+      if(m.style.tileManagers.mml.getIds().length)return ['MML was asked for tiles at zoom 10'];""" + MML_FIXTURES + """
+      const feats=(layer)=>m.queryRenderedFeatures({layers:[layer]}), drawn=(layer)=>new Set(feats(layer).map(f=>f.properties.kohdeluokka));
+      let at; const want=(layer,classes)=>{const got=drawn(layer); for(const k of classes)if(!got.has(k))errs.push(`${at}: ${layer} drew nothing of class ${k} from the recorded tile`);};
+      for(const [activity,base] of [['paddle','trail'],['paddle','plain'],['paddle','night'],['mtb','trail']]) {
+        at=`${activity}, ${base}`; polku.set({activity,base});
+        m.jumpTo({center:tileMid(14,9416,4714),zoom:14.6}); await settle();
+        want('mml-shoal',[38600,38700]); want('mml-rock-point',[38512,38513]); want('mml-jetty',[45111]);
+        if(!feats('pier').length&&!feats('pier-area').length)errs.push(`${at}: OSM's pier at Kotka not drawn`);
+        m.jumpTo({center:tileMid(14,9531,4125),zoom:14.6}); await settle();
+        want('mml-rapids',[38200]); want('mml-flow',[36393]);
+        m.jumpTo({center:tileMid(14,9352,4721),zoom:14.6}); await settle();
+        want('mml-flow',[36392]);
+        const order=m.getStyle().layers.map(l=>l.id), i=(id)=>order.indexOf(id), before=(a,b,what)=>{if(!(i(a)>=0&&i(a)<i(b)))errs.push(`${at}: ${what} (${a} at ${i(a)}, ${b} at ${i(b)})`);};
+        for(const l of ['mml-shoal','mml-rapids','pier-area','pier','mml-jetty','mml-flow']){before('water',l,`${l} under the water`); before(l,'building',`${l} over the buildings`);}
+        if(activity==='paddle')for(const l of ['mml-shoal','mml-rapids','mml-flow'])before('ov-depthAreas',l,`${l} under Traficom's depths`);
+        // the jetties one look: OSM's piers in MML's jetties' colour
+        const jetty=m.getPaintProperty('mml-jetty','line-color');
+        if(m.getPaintProperty('pier','line-color')!==jetty||m.getPaintProperty('pier-area','fill-outline-color')!==jetty)errs.push(`${at}: OSM's piers not in the jetties' colour ${jetty}`);
+        // the images: the stones apart by shape, the shoals' ground clear, the stone fields' triangles
+        const pts=m.getLayoutProperty('mml-rock-point','icon-image'), img=(k)=>pts[pts.indexOf(k)+1];
+        const awash=makeIcon(img(38512)), above=makeIcon(img(38513));
+        if(!awash||!above)errs.push(`${at}: the stones' images aren't drawn (${img(38512)}, ${img(38513)})`);
+        else if(awash.data.every((v,k)=>v===above.data[k]))errs.push(`${at}: the stones at and above the surface look the same`);
+        const sh=m.getPaintProperty('mml-shoal','fill-pattern'), shoal=makeIcon(sh[sh.indexOf(38600)+2]), field=makeIcon(sh[sh.indexOf(38600)+1]);
+        for(const [what,d] of [['shoal',shoal],['stone field',field]]){if(!d)errs.push(`${at}: no ${what} image`); else if(!d.data.some((v,k)=>k%4===3&&v===0))errs.push(`${at}: the ${what}'s ground covers the water and its depths`);}
+        if(shoal&&field&&field.data.every((v,k)=>v===shoal.data[k]))errs.push(`${at}: stone fields look like shoals`);
+        for(const id of [img(38512),img(38513),sh[sh.indexOf(38600)+1],sh[sh.indexOf(38600)+2],m.getLayoutProperty('mml-flow','icon-image')])if(!m.hasImage(id))errs.push(`${at}: ${id} isn't on the map`);
+      }
+      // the arrows: MML's suunta is 1/10,000 radian counter-clockwise from east; the image points east, icon-rotate turns
+      // it clockwise. Porvoo's arrow (suunta -21374, at Mustijoki) points south-west, downhill (2026-11-20).
+      const flow=feats('mml-flow'), rot=(f)=>m.style.getLayer('mml-flow').layout.get('icon-rotate').evaluate(f,{});
+      if(!flow.length)errs.push('no arrows at Porvoo');
+      for(const f of flow){const want=-f.properties.suunta*180/Math.PI/10000; if(Math.abs(rot(f)-want)>0.01)errs.push(`the arrow with suunta ${f.properties.suunta} turned ${rot(f)}°, not ${want}°`);}
+      const sw=flow.find(f=>f.properties.suunta===-21374), bearing=sw&&(90+rot(sw)+360)%360;
+      if(!sw)errs.push("Porvoo's south-west arrow (suunta -21374) not drawn"); else if(!(bearing>180&&bearing<270))errs.push(`Porvoo's arrow points ${bearing}° from north, not south-west`);
+      const head=makeIcon(m.getLayoutProperty('mml-flow','icon-image')), alpha=(x,y)=>head.data[(y*head.width+x)*4+3];
+      if(!(alpha(head.width-4,head.height/2)>0&&alpha(head.width-6,2)>0&&!alpha(4,2)))errs.push("the arrow's head isn't on its east end");
+      for(const [cls,layers] of [[38512,['mml-shoal','mml-rapids','mml-jetty']],[38200,['mml-shoal','mml-rock-point','mml-flow']],[36311,['mml-rapids']],[34400,['mml-jetty']],[22311,['mml-jetty']]])
+        for(const l of layers)if(m.style.getLayer(l)._featureFilter.filter({zoom:15},{type:2,properties:{kohdeluokka:cls}}))errs.push(`${l} draws class ${cls}`);
+      if(m.style.getLayer('mml-rapids')._featureFilter.filter({zoom:12},{type:1,properties:{kohdeluokka:38200}}))errs.push('rapids points drawn as lines');
+      if(m.getLayer('mml-rapids').minzoom!==11)errs.push(`rapids from zoom ${m.getLayer('mml-rapids').minzoom}, not 11`);
+      for(const base of ['maasto','aerial']){polku.set({base}); await settle(); for(const l of ['mml-shoal','mml-rapids','mml-flow','mml-jetty','pier'])if(m.getLayer(l))errs.push(`${l} on the ${base} base`);}
+      return errs;
+    })()""", timeout=180000)
+    fails += [f'console: {e[:160]}' for e in pg.errors()]
+    pg.close()
+    print(f"{'ok  ' if not fails else 'FAIL'} MML's stones, shoals, rapids, flow and jetties in the water (#1170)" + ''.join(f'\n     - {f}' for f in fails), flush=True)
+    return not fails
+
+
 # #1130, #1137: no-bike bars stay on paths/tracks, across the line, as wide as its halo.
 def cycling_restrictions(chrome):
     pg = chrome.page(1440, 900, False)
@@ -24649,7 +24711,7 @@ GROUPS = [
     ('changelog', [changelog], 'release notes, retry, safe rendering, keyboard, route preservation and real worker offline'),
     ('pacing', [pacing, paced_legs, net_fails], 'calls made together go out paced and counted (mocked services, a fake clock); legs refused for a slot follow at it (#78); the calls that failed, in Data sources (#687)'),
     ('loading', [loading, routing_edits], 'cancel obsolete routing, edits/Undo/Clear, shared subscribers, refusal/recovery, deadlines, terrain slots and LIPAS viewport/cache (mocked)'),
-    ('layers', [layers, cycleway_style, cycling_restrictions, waterway_style, property_lines, property_plots, wetland_style, reedbed_style, mml_bogs, mml_rock], 'the Layers panel in every sport'),
+    ('layers', [layers, cycleway_style, cycling_restrictions, waterway_style, property_lines, property_plots, wetland_style, reedbed_style, mml_bogs, mml_rock, mml_water], 'the Layers panel in every sport'),
     ('raster', [raster_maps, aerial_fallback, aerial_labels], 'terrain and aerial detail, bounded high-density WMS symbols, depth boundaries and missing aerial detail (#649, #650, #653); the map\'s words on the aerial photos at 4.5:1 on their halo (#554)'),
     ('coarse', [coarse], 'a coarse map underneath (#1091): the base map\'s tile four zoom levels up stands in for one that hasn\'t come, at 1440 and 390'),
     ('together', [together], 'Polku\'s own layers come in together after the map stops, 500 ms at most (#1091)'),
