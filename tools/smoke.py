@@ -1243,7 +1243,7 @@ def mml_rock(chrome):
         const icons=[boulders,m.getLayoutProperty('mml-reed','icon-image'),m.getLayoutProperty('mml-pylon','icon-image')];
         const pts=m.getLayoutProperty('mml-rock-point','icon-image'); for(let i=3;i<pts.length;i+=2)icons.push(pts[i]); icons.push(pts[pts.length-1]);
         // (the stones in the water aren't in these tiles: mml_water has them on the map, at Kotka)
-        for(const id of new Set(icons)){const img=makeIcon(id); if(!img||!img.data.some((v,i)=>i%4===3&&v>0))errs.push(`${base}: ${id} isn't drawn`); else if(!m.hasImage(id)&&!/^rock-(awash|above)-/.test(id))errs.push(`${base}: ${id} isn't on the map`);}
+        for(const id of new Set(icons)){const img=makeIcon(id); if(!img||!img.data.some((v,i)=>i%4===3&&v>0))errs.push(`${base}: ${id} isn't drawn`); else if(!m.hasImage(id)&&!/^rock-(under|awash|above)-/.test(id))errs.push(`${base}: ${id} isn't on the map`);}
         // the ticks: a wider dashed line beside the cliff, touching it, on its right (a positive offset)
         for(const z of [13,16,18]) {
           const off=value('mml-cliff-ticks','line-offset',z), w=value('mml-cliff-ticks','line-width',z), e=value('mml-cliff','line-width',z);
@@ -1262,18 +1262,19 @@ def mml_rock(chrome):
     return not fails
 
 
-# #1170: MML's water from four recorded tiles, never live MML: Kotka (tools/fixtures/mml-taustakartta-14-9416-4714.pbf:
-# stones at and above the surface, a shoal, stone fields, jetties), Kitkajoki (…-14-9531-4125.pbf: rapids, a wide river's
+# #1170: MML's water from five recorded tiles, never live MML: Kotka (tools/fixtures/mml-taustakartta-14-9416-4714.pbf:
+# stones at and above the surface, a shoal, stone fields, jetties), the Porvoo archipelago (…-14-9363-4735.pbf: stones under
+# the surface), Kitkajoki (…-14-9531-4125.pbf: rapids, a wide river's
 # arrow), Porvoo (…-14-9352-4721.pbf: two narrow rivers' arrows) and Tuomiojärvi (…-14-9362-4544.pbf: depth contours and
 # points, under the Depths switches). Each drawn from its tile on every vector base and in
-# a land sport too, over the water and Traficom's depths and under the buildings; the two stones apart by shape, the
-# shoals' ground clear; each arrow turned to its `suunta` (Porvoo's flows south-west, downhill), and OSM's piers in the
+# a land sport too, over the water and Traficom's depths and under the buildings; the three stones apart by shape, the
+# shoals' ground clear, the rapids' ovals clear of the river's edges (never bars across: a ladder); each arrow turned to its `suunta` (Porvoo's flows south-west, downhill), and OSM's piers in the
 # jetties' look.
 def mml_water(chrome):
     pg = chrome.page(1440, 900, False)
     pg.open_app({'activity': 'paddle', 'base': 'trail'}, hash_='#10/60.4/26.0')
     fails = pg.js("""(async () => {
-      const errs=[], m=polku.map, {makeIcon}=await import('/js/icons.js'), FX=['14/9416/4714','14/9531/4125','14/9352/4721','14/9362/4544'];
+      const errs=[], m=polku.map, {makeIcon}=await import('/js/icons.js'), FX=['14/9416/4714','14/9363/4735','14/9531/4125','14/9352/4721','14/9362/4544'];
       const settle=async()=>{await new Promise(r=>setTimeout(r,300));await Promise.race([new Promise(r=>{m.once('idle',r);m.triggerRepaint();}),new Promise(r=>setTimeout(r,10000))]);};
       if(m.style.tileManagers.mml.getIds().length)return ['MML was asked for tiles at zoom 10'];""" + MML_FIXTURES + """
       const feats=(layer)=>m.queryRenderedFeatures({layers:[layer]}), drawn=(layer)=>new Set(feats(layer).map(f=>f.properties.kohdeluokka));
@@ -1283,6 +1284,8 @@ def mml_water(chrome):
         m.jumpTo({center:tileMid(14,9416,4714),zoom:14.6}); await settle();
         want('mml-shoal',[38600,38700]); want('mml-rock-point',[38512,38513]); want('mml-jetty',[45111]);
         if(!feats('pier').length&&!feats('pier-area').length)errs.push(`${at}: OSM's pier at Kotka not drawn`);
+        m.jumpTo({center:tileMid(14,9363,4735),zoom:14.6}); await settle();
+        want('mml-rock-point',[38511]);
         m.jumpTo({center:tileMid(14,9531,4125),zoom:14.6}); await settle();
         want('mml-rapids',[38200]); want('mml-flow',[36393]);
         m.jumpTo({center:tileMid(14,9352,4721),zoom:14.6}); await settle();
@@ -1293,15 +1296,17 @@ def mml_water(chrome):
         // the jetties one look: OSM's piers in MML's jetties' colour
         const jetty=m.getPaintProperty('mml-jetty','line-color');
         if(m.getPaintProperty('pier','line-color')!==jetty||m.getPaintProperty('pier-area','fill-outline-color')!==jetty)errs.push(`${at}: OSM's piers not in the jetties' colour ${jetty}`);
-        // the images: the stones apart by shape, the shoals' ground clear, the stone fields' triangles
+        // the images: the stones apart by shape, the shoals' ground clear, the stone fields' triangles, the rapids' ovals
         const pts=m.getLayoutProperty('mml-rock-point','icon-image'), img=(k)=>pts[pts.indexOf(k)+1];
-        const awash=makeIcon(img(38512)), above=makeIcon(img(38513));
-        if(!awash||!above)errs.push(`${at}: the stones' images aren't drawn (${img(38512)}, ${img(38513)})`);
-        else if(awash.data.every((v,k)=>v===above.data[k]))errs.push(`${at}: the stones at and above the surface look the same`);
+        const stones=[38511,38512,38513].map(k=>makeIcon(img(k)));
+        if(!stones.every(Boolean))errs.push(`${at}: the stones' images aren't drawn (${[38511,38512,38513].map(img)})`);
+        else for(const [a,b] of [[0,1],[0,2],[1,2]])if(stones[a].data.every((v,k)=>v===stones[b].data[k]))errs.push(`${at}: the stones ${['under','at','above'][a]} and ${['under','at','above'][b]} the surface look the same`);
+        const rp=makeIcon(m.getPaintProperty('mml-rapids','line-pattern')), row=(y)=>rp.data.slice(y*rp.width*4,(y+1)*rp.width*4).every((v,k)=>k%4!==3||v===0);
+        if(!rp)errs.push(`${at}: no rapids image`); else if(!row(0)||!row(rp.height-1))errs.push(`${at}: the rapids' marks reach the river's edges, as bars across would`);
         const sh=m.getPaintProperty('mml-shoal','fill-pattern'), shoal=makeIcon(sh[sh.indexOf(38600)+2]), field=makeIcon(sh[sh.indexOf(38600)+1]);
         for(const [what,d] of [['shoal',shoal],['stone field',field]]){if(!d)errs.push(`${at}: no ${what} image`); else if(!d.data.some((v,k)=>k%4===3&&v===0))errs.push(`${at}: the ${what}'s ground covers the water and its depths`);}
         if(shoal&&field&&field.data.every((v,k)=>v===shoal.data[k]))errs.push(`${at}: stone fields look like shoals`);
-        for(const id of [img(38512),img(38513),sh[sh.indexOf(38600)+1],sh[sh.indexOf(38600)+2],m.getLayoutProperty('mml-flow','icon-image')])if(!m.hasImage(id))errs.push(`${at}: ${id} isn't on the map`);
+        for(const id of [img(38511),img(38512),img(38513),sh[sh.indexOf(38600)+1],sh[sh.indexOf(38600)+2],m.getLayoutProperty('mml-flow','icon-image')])if(!m.hasImage(id))errs.push(`${at}: ${id} isn't on the map`);
       }
       // the arrows: MML's suunta is 1/10,000 radian counter-clockwise from east; the image points east, icon-rotate turns
       // it clockwise. Porvoo's arrow (suunta -21374, at Mustijoki) points south-west, downhill (2026-11-20).

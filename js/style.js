@@ -347,7 +347,7 @@ export function buildStyle(s, ctx) {
     add({ id: 'mml-shoal', type: 'fill', source: 'mml', 'source-layer': 'maasto_alue', minzoom: 13, filter: ['in', cls, ['literal', [38600, 38700]]], paint: { 'fill-pattern': ['match', cls, 38600, `stonefield-${hex(P.shoal)}-${hex(P.cliff)}`, `shoal-${hex(P.shoal)}`] } });
     // rapids along the river from zoom 11, as white bars across it (zoom 12's tiles also have some as points, which 13 and
     // 14's lack: not drawn)
-    add({ id: 'mml-rapids', type: 'line', source: 'mml', 'source-layer': 'vesisto_viiva', minzoom: 11, filter: ['all', ['==', cls, 38200], ['==', ['geometry-type'], 'LineString']], paint: { 'line-pattern': `rapids-${hex(P.shoal)}-${hex(P.waterText)}`, 'line-width': zi(11, 4, 14, 8, 16, 12, 18, 18) } });
+    add({ id: 'mml-rapids', type: 'line', source: 'mml', 'source-layer': 'vesisto_viiva', minzoom: 11, filter: ['all', ['==', cls, 38200], ['==', ['geometry-type'], 'LineString']], paint: { 'line-pattern': `rapids-${hex(P.shoal)}-${hex(P.waterText)}`, 'line-width': zi(11, 3, 14, 6, 16, 9, 18, 13) } });
     // jetties from zoom 14: MML's in Finland, OSM's piers everywhere, in one look, so where both have one they read as one
     const pier = ['==', ['get', 'class'], 'pier'], wide = (w) => ['match', cls, 45112, w * 1.6, w];
     add({ id: 'pier-area', type: 'fill', source: 'ofm', 'source-layer': 'transportation', minzoom: 14, filter: ['all', pier, ['==', ['geometry-type'], 'Polygon']], paint: { 'fill-color': P.bg, 'fill-outline-color': P.cliff } });
@@ -368,11 +368,11 @@ export function buildStyle(s, ctx) {
     // MML's points, side by side (each symbol layer splits 3D's draped layers): from zoom 14, as only zoom 14's tiles have
     // them, flat on the ground and never hiding a label or a place. Rocks too small for an area, stones and sparse
     // boulders; reeds, one tuft each (MML's reed points lie in the water, so a tuft under it wouldn't show); pylons from 15.
-    // Stones in the water (#1170) too, at the surface and above it, as MML's own map draws them; none under it are in the tiles.
+    // Stones in the water (#1170) too, under the surface, at it and above it, as MML's and Traficom's maps draw them.
     const flat = { 'icon-allow-overlap': true, 'icon-ignore-placement': true, 'icon-pitch-alignment': 'map', 'icon-rotation-alignment': 'map' };
     add({
-      id: 'mml-rock-point', type: 'symbol', source: 'mml', 'source-layer': 'maasto_piste', minzoom: 14, filter: ['in', cls, ['literal', [34100, 34200, 34600, 38512, 38513]]],
-      layout: { 'icon-image': ['match', cls, 34100, `rock-spot-${hex(P.rock)}-${hex(P.cliff)}`, 34200, `rock-rocks-${hex(P.cliff)}`, 38512, `rock-awash-${hex(P.cliff)}`, 38513, `rock-above-${hex(P.cliff)}`, `rock-stone-${hex(P.cliff)}`], 'icon-size': zi(14, 0.75, 17, 1.2), ...flat },
+      id: 'mml-rock-point', type: 'symbol', source: 'mml', 'source-layer': 'maasto_piste', minzoom: 14, filter: ['in', cls, ['literal', [34100, 34200, 34600, 38511, 38512, 38513]]],
+      layout: { 'icon-image': ['match', cls, 34100, `rock-spot-${hex(P.rock)}-${hex(P.cliff)}`, 34200, `rock-rocks-${hex(P.cliff)}`, 38511, `rock-under-${hex(P.cliff)}`, 38512, `rock-awash-${hex(P.cliff)}`, 38513, `rock-above-${hex(P.cliff)}`, `rock-stone-${hex(P.cliff)}`], 'icon-size': zi(14, 0.75, 17, 1.2), ...flat },
     });
     // which way a river flows, from zoom 14: MML's `suunta` is in 1/10,000 radian, counter-clockwise from east (it
     // pointed downhill at 8 of 8 arrows where the elevations differ, 2026-11-20); icon-rotate is clockwise degrees

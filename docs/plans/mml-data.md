@@ -239,11 +239,12 @@ Plain and Night maps, in MTB and paddle; its PR lists what else it covered.
 - **Reeds** as one tuft each from zoom 14, over the water, not under OSM's
   reedbeds as first planned (decided on #1147: MML's reed points lie in the
   water).
-- **The water** (#1170), marks in the basemap (decided on #1170): stones at
-  the surface (+) and above it (⊥) from zoom 14, as MML's own map draws
-  them; shoals and stone fields as light lines across the water from zoom
-  13, stone fields with triangles; rapids as white bars across the river
-  from zoom 11; which way a river flows as an arrow from zoom 14; jetties
+- **The water** (#1170), marks in the basemap (decided on #1170): stones under
+  the surface (T), at it (+) and above it (⊥) from zoom 14, as MML's own
+  map and Traficom's charts draw them; shoals and stone fields as light lines across the water from zoom
+  13, stone fields with triangles; rapids as a row of white ovals along the
+  river from zoom 11, as MML's own map draws them (bars across read as a
+  ladder, decided on #1170 by #181's rule on standard symbols); which way a river flows as an arrow from zoom 14; jetties
   as dark lines from zoom 14, with OSM's piers everywhere in the same look.
   Over the water and Traficom's depths, under the buildings.
 - **Lake depths** (#1170), under the existing **Depth contours** and
