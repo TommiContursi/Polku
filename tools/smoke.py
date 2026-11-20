@@ -24447,7 +24447,9 @@ def osm_data(chrome):
                              *(f'tools.osm_data.test_publish.PublishTests.{name}' for name in checks),
                              'tools.osm_data.test_builder.BuilderTests.test_sample_validation_reads_locations_without_overwriting_them',
                              'tools.osm_data.test_builder.BuilderTests.test_full_country_rejects_missing_required_sample_roads',
-                             'tools.osm_data.test_preview.PreviewTests.test_preview_overrides_an_already_configured_live_source_in_response_only'],
+                             'tools.osm_data.test_preview.PreviewTests.test_preview_overrides_an_already_configured_live_source_in_response_only',
+                             'tools.osm_data.test_alerts.AlertTests.test_retry_runs_only_for_a_failed_main_build_below_the_attempt_cap',
+                             'tools.osm_data.test_alerts.AlertTests.test_retry_reruns_the_build_only_when_geofabrik_refused_every_failed_job'],
                             cwd=Path(__file__).resolve().parent.parent, capture_output=True, text=True, timeout=30)
     if result.returncode:
         print('FAIL osmdata: builder/publishing regressions\n' + result.stderr, flush=True)
