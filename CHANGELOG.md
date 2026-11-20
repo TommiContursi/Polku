@@ -4,6 +4,15 @@ What's new in [Polku](https://polku.si), from the latest updates back to the fir
 
 ## 2026-11-20
 
+### Stones, shoals and rapids in the water from the National Land Survey ([#1170](https://github.com/TommiContursi/Polku/issues/1170))
+
+- In Finland, the Trail, Plain and Night maps mark the National Land Survey's stones in the water from zoom 14, as its own maps do: a cross for a stone at the surface and an upside-down T for one above it. **Stones under the surface aren't on the map, so water without a mark isn't clear water.** Water routes are for planning, not navigation.
+- Shoals have light lines across the water from zoom 13, and stone fields the same lines with small triangles. The depths still show through them.
+- Rapids are white bars across the river from zoom 11, and a small arrow beside a river shows which way it flows from zoom 14.
+- Jetties are dark lines from zoom 14: the National Land Survey's in Finland, and OpenStreetMap's piers everywhere.
+- With **Depth contours** and **Depth soundings** on, as they are at first when paddling, lakes that Traficom doesn't chart get the National Land Survey's depth contours, with their depths, and its depth points from zoom 13. Traficom's depths stay at sea and on charted lakes. No depth lines on a lake means it hasn't been surveyed, not that it's deep.
+- Where the National Land Survey's map data doesn't load, these are missing and the message says so. Outside Finland only the piers are drawn.
+
 ### Rock, cliffs and power lines from the National Land Survey ([#1147](https://github.com/TommiContursi/Polku/issues/1147))
 
 - In Finland, the Trail, Plain and Night maps draw the National Land Survey's rock from zoom 13, in the same grey as OpenStreetMap's rock, and its boulder fields dotted. From zoom 14, rocks too small for an area, single stones and sparse boulders are small marks of their own.

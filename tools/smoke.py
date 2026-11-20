@@ -1203,9 +1203,10 @@ def mml_rock(chrome):
     return not fails
 
 
-# #1170: MML's water from three recorded tiles, never live MML: Kotka (tools/fixtures/mml-taustakartta-14-9416-4714.pbf:
+# #1170: MML's water from four recorded tiles, never live MML: Kotka (tools/fixtures/mml-taustakartta-14-9416-4714.pbf:
 # stones at and above the surface, a shoal, stone fields, jetties), Kitkajoki (…-14-9531-4125.pbf: rapids, a wide river's
-# arrow) and Porvoo (…-14-9352-4721.pbf: two narrow rivers' arrows). Each drawn from its tile on every vector base and in
+# arrow), Porvoo (…-14-9352-4721.pbf: two narrow rivers' arrows) and Tuomiojärvi (…-14-9362-4544.pbf: depth contours and
+# points, under the Depths switches). Each drawn from its tile on every vector base and in
 # a land sport too, over the water and Traficom's depths and under the buildings; the two stones apart by shape, the
 # shoals' ground clear; each arrow turned to its `suunta` (Porvoo's flows south-west, downhill), and OSM's piers in the
 # jetties' look.
@@ -1213,7 +1214,7 @@ def mml_water(chrome):
     pg = chrome.page(1440, 900, False)
     pg.open_app({'activity': 'paddle', 'base': 'trail'}, hash_='#10/60.4/26.0')
     fails = pg.js("""(async () => {
-      const errs=[], m=polku.map, {makeIcon}=await import('/js/icons.js'), FX=['14/9416/4714','14/9531/4125','14/9352/4721'];
+      const errs=[], m=polku.map, {makeIcon}=await import('/js/icons.js'), FX=['14/9416/4714','14/9531/4125','14/9352/4721','14/9362/4544'];
       const settle=async()=>{await new Promise(r=>setTimeout(r,300));await Promise.race([new Promise(r=>{m.once('idle',r);m.triggerRepaint();}),new Promise(r=>setTimeout(r,10000))]);};
       if(m.style.tileManagers.mml.getIds().length)return ['MML was asked for tiles at zoom 10'];""" + MML_FIXTURES + """
       const feats=(layer)=>m.queryRenderedFeatures({layers:[layer]}), drawn=(layer)=>new Set(feats(layer).map(f=>f.properties.kohdeluokka));
@@ -1257,6 +1258,19 @@ def mml_water(chrome):
         for(const l of layers)if(m.style.getLayer(l)._featureFilter.filter({zoom:15},{type:2,properties:{kohdeluokka:cls}}))errs.push(`${l} draws class ${cls}`);
       if(m.style.getLayer('mml-rapids')._featureFilter.filter({zoom:12},{type:1,properties:{kohdeluokka:38200}}))errs.push('rapids points drawn as lines');
       if(m.getLayer('mml-rapids').minzoom!==11)errs.push(`rapids from zoom ${m.getLayer('mml-rapids').minzoom}, not 11`);
+      // depths: MML's lake contours with Depth contours, their depths and its depth points, in metres (syvyysarvo is in mm);
+      // with the switches, in the order over the water and Traficom's depths, and gone when they're off
+      at='paddle, trail, depths'; polku.set({activity:'paddle',base:'trail'});
+      m.jumpTo({center:tileMid(14,9362,4544),zoom:14.6}); await settle();
+      want('mml-depth',[54100]); want('mml-depth-label',[54100]); want('mml-sounding',[54210]);
+      const label=feats('mml-depth-label').find(f=>f.properties.syvyysarvo===1500), point=feats('mml-sounding').find(f=>f.properties.syvyysarvo===1100);
+      const text=(id,f)=>m.style.getLayer(id).layout.get('text-field').evaluate(f,{}).toString();
+      if(!label||text('mml-depth-label',label)!=='1.5')errs.push(`a 1.5 m contour labelled ${label&&text('mml-depth-label',label)}`);
+      if(!point||text('mml-sounding',point)!=='1.1')errs.push(`a 1.1 m depth point labelled ${point&&text('mml-sounding',point)}`);
+      {const order=m.getStyle().layers.map(l=>l.id), i=(id)=>order.indexOf(id);
+        if(!(i('ov-depthContours')<i('mml-depth')&&i('mml-depth')<i('mml-shoal')))errs.push(`MML's depth contours not over Traficom's and under the shoals (${i('ov-depthContours')}, ${i('mml-depth')}, ${i('mml-shoal')})`);}
+      polku.set({overlays:{...polku.state.overlays,depthContours:false,soundings:false}}); await settle();
+      for(const l of ['mml-depth','mml-depth-label','mml-sounding'])if(m.getLayer(l))errs.push(`${l} drawn with the depths off`);
       for(const base of ['maasto','aerial']){polku.set({base}); await settle(); for(const l of ['mml-shoal','mml-rapids','mml-flow','mml-jetty','pier'])if(m.getLayer(l))errs.push(`${l} on the ${base} base`);}
       return errs;
     })()""", timeout=180000)

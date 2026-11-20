@@ -1446,7 +1446,7 @@ const overlayToggle = (id) => {
     if (v && id === 'sfTraffic' && map.getZoom() < 10) toast('Zoom in to level 10+ to see traffic volumes');
     if (v && id === 'sfShips' && map.getZoom() < 8) toast('Zoom in to level 8+ to see ships');
     if (v && id === 'lit' && map.getZoom() < LIT_MIN_ZOOM) toast(`Zoom in to level ${LIT_MIN_ZOOM}+ to see the lit ways`);
-  }), sf ? sf.note : o ? o.attribution.replace('© ', '') : OVERLAY_NOTE[id] || '');
+  }), sf ? sf.note : o ? o.note || o.attribution.replace('© ', '') : OVERLAY_NOTE[id] || '');
   if (id === 'propertyLines' && state.overlays.propertyLines && hoverCapable()) return h('div', { class: 'tg-group' }, tg,
     toggle('Plot under the pointer', state.plotHover, (v) => { state.plotHover = v; if (!v) lightPlot('hover', null); saveSettings(); }), opacityRow(id));
   if (id !== 'lit' || !state.overlays.lit) return withOpacity(id, tg);
@@ -1746,12 +1746,13 @@ map.on('data', (e) => {
   refreshQuickSoon();
 });
 // MML's terrain (#1147) has no tile of its own: where its tiles don't load, OSM's wetlands and rock show in their place
-// and cliffs and power lines are missing, and a message says so once, until one of its tiles comes again
+// and cliffs, power lines, the water's marks and the lakes' depths (#1170) are missing, and a message says so once, until
+// one of its tiles comes again
 let mmlDown = false;
 map.on('error', (e) => {
   if (e.sourceId !== 'mml' || mmlDown || (e.error && e.error.name === 'AbortError')) return;
   mmlDown = true;
-  toast('The National Land Survey’s terrain didn’t load: the map shows OpenStreetMap’s wetlands and rock, without cliffs or power lines.', { ms: 6000 });
+  toast('The National Land Survey’s terrain didn’t load: the map shows OpenStreetMap’s wetlands and rock, without cliffs, power lines, stones and rapids in the water, or lake depths.', { ms: 6000 });
 });
 map.on('data', (e) => { if (e.sourceId === 'mml' && e.dataType === 'source' && e.tile) mmlDown = false; });
 onStatus(() => refreshQuickSoon());
