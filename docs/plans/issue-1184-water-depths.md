@@ -28,7 +28,7 @@ The water router keeps clear of marked rocks, shipping lanes and rough water, bu
 |---|---|---|---|---|
 | **A. Syke's WFS at route time** | Per tile: the shallow soundings, and Syke's depth areas to know where it surveyed | Shallow soundings 1–3 kB a tile in 0.1 s; the depth areas 300–800 kB a tile where Syke surveyed. A long leg's first route could load several MB | Not checked with Retry, as Väylävirasto and OpenStreetMap today | An identifier from Syke first (the user asks; Syke keeps the contact details). Every person's routes load Syke's server |
 | **B. Polku's own depth files, made once from Syke's download** (recommended) | A script in `tools/` turns Syke's bulk files into one small file per tile: the shallow soundings, and where Syke surveyed (its depth areas, at about 50 m) | A few kB a tile, about 1–3 MB in all (an estimate: the build measures it), from polku.si itself | Not checked with Retry, as above; Syke being down doesn't matter | The script, run again only when Syke updates the data; the files in this repository |
-| C. MML's background map tiles | The depth contours in the tiles Polku already loads | Already loaded on the map, at zoom 13–14 only | Not in offline areas; Polku's shared MML key (#1148) | Contour lines at 1.5, 3 and 6 m only, and the tiles mark them as MML's own (`aineistolahde` 1) even where Syke made them, so nothing tells surveyed water from water nobody surveyed |
+| C. MML's background map tiles | The depth contours in the tiles Polku already loads | Already loaded on the map, from zoom 13 only | Not in offline areas; Polku's shared MML key (#1148) | They are Syke's lake contours and depth points (none in the tiles at sea or on charted lakes, #1170), marked as MML's own (`aineistolahde` 1), but as lines at 1.5, 3 and 6 m: nothing shallower than 1.5 m, and lines don't say which water was surveyed |
 | D. A product in `tools/osm_data` | As B, in the OSM build's release on its own host | As B | As B | The OSM build's protected publication for data that isn't OSM's |
 
 **Recommended: B.** It is the only way that can say, along each leg, where Syke surveyed and where it didn't, without loading hundreds of kilobytes a tile on a phone; it puts no load on Syke and needs no identifier. Syke's data hasn't changed since 2017, so the files rarely need making again. It needs your OK under AGENTS.md's rule on build steps: the script runs by hand, the app stays a static site and reads plain files.
@@ -78,4 +78,4 @@ Water routes are for planning, not navigation (PRODUCT.md). The words never say 
 
 - Traficom's depths at sea: an agreement with Traficom, the user's to ask for (#1184's comment of 2026-11-20).
 - MML's stones in the water for the router (#153), and rapids (#856).
-- Syke's soundings as a layer on the map.
+- Lake depths on the map: #1170 draws MML's depth contours and points (Syke's lakes) under Depth contours and Depth soundings.
