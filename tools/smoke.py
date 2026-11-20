@@ -1330,7 +1330,7 @@ def cycling_restrictions(chrome):
       for(const [tags,one,both] of [[{access:'no'},true,true],[{access:'private',bicycle:'no'},true,true],[{foot:'no'},true,false],[{access:'no',bicycle:'yes'},true,false],[{access:'no',foot:'yes'},false,false],[{bicycle:'no'},false,false],[{},false,false]])
         if(dot('way-noaccess',tags)!==one||dot('way-noaccess-2',tags)!==both)errs.push(`dots for ${JSON.stringify(tags)}: one side ${dot('way-noaccess',tags)}, other ${dot('way-noaccess-2',tags)}`);
       if(Math.sign(value('way-noaccess','line-offset',16,{}))===Math.sign(value('way-noaccess-2','line-offset',16,{})))errs.push('no entry dots on one side only');
-      if(!m.getStyle().layers.some(l=>l.id==='path-ground-nobike'))errs.push('hike: no-bike bars missing');
+      for(const id of ['path-ground-nobike','track-osm-ground-nobike'])if(!m.getStyle().layers.some(l=>l.id===id))errs.push(`hike: ${id} missing`);
       polku.set({overlays:{...polku.state.overlays,access:false}});
       if(marks()||keyShown())errs.push('restriction marks or key rows with the choice off');
       if(!document.querySelector('#layers-body').textContent.includes('Access restrictions'))errs.push('the Layers switch is missing');
