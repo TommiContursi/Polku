@@ -896,6 +896,8 @@ def property_lines(chrome):
     fails += [f'console: {e[:160]}' for e in pg.errors()]
     pg.close()
     print(f"{'ok  ' if not fails else 'FAIL'} property boundaries from MML (#1148)" + ''.join(f'\n     - {f}' for f in fails), flush=True)
+    return not fails
+
 
 # #1144: wetlands are Polku's own blue dashes on each map's wetland colour, never the tufted sprite.
 def wetland_style(chrome):
