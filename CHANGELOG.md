@@ -7,6 +7,7 @@ What's new in [Polku](https://polku.si), from the latest updates back to the fir
 ### One switch for picking plots ([#1199](https://github.com/TommiContursi/Polku/issues/1199))
 
 - **Plot selection**, under **Property boundaries** in **Layers → More → Terrain**, turns off both the plot tinted and named under the mouse pointer and the plot's card on a click or a tap. It's there on phones too. With it off, a click or a tap on a plot opens what's under it, such as a park or the water, or nothing, and a long press opens the spot's card, as without the layer. The boundaries and property IDs stay on the map.
+
 ### Stones, shoals and rapids in the water from the National Land Survey ([#1170](https://github.com/TommiContursi/Polku/issues/1170))
 
 - In Finland, the Trail, Plain and Night maps mark the National Land Survey's stones in the water from zoom 14, as its own maps and Traficom's charts do: a T for a stone under the surface (0.3–1.5 m deep), a cross for one at the surface and an upside-down T for one above it. **Stones the survey couldn't see aren't on the map, so water without a mark isn't clear water.** Water routes are for planning, not navigation.
