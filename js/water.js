@@ -178,7 +178,7 @@ function rasteriseCosts(grid, { fairways, hazards, nogos, depths }) {
   for (const n of nogos || []) { const [x, y] = xy(n.ll); disc(hc, x, y, Math.max(1.5, n.r / res)); }
   // lake depths: a tile's cells are squares in Web Mercator, as the grid is (half a cell more each side, so the
   // shore's water isn't left out where Syke's shoreline and the map's differ)
-  const sc = depths && canvas();
+  const sc = depths && depths.length && canvas();
   if (sc) {
     hc.fillStyle = '#0000ff';
     sc.fillStyle = '#ff0000';
@@ -480,7 +480,7 @@ async function attempt(from, to, padFactor, allowPortage, style = {}, inputs = n
   lap('render+data');
   if (!grid.waterCells) throw new Error('No water found here — zoom to a lake, river or the sea.');
   if (got) {
-    if (got.fairways.features.length || got.hazards.features.length || (style.nogos && style.nogos.length) || got.depths) rasteriseCosts(grid, { fairways: got.fairways, hazards: got.hazards, nogos: style.nogos, depths: got.depths });
+    if (got.fairways.features.length || got.hazards.features.length || (style.nogos && style.nogos.length) || (got.depths && got.depths.length)) rasteriseCosts(grid, { fairways: got.fairways, hazards: got.hazards, nogos: style.nogos, depths: got.depths });
     lap('costs');
     if (got.wind && style.wind === 'shelter' && got.wind.speed >= 3) exposure(grid, got.wind);
     lap('wind');
