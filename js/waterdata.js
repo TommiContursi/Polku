@@ -82,10 +82,10 @@ way["seamark:type"~"^(rock|obstruction)$"](${bb});
 const DEPTHS = new URL('../data/depths/', import.meta.url);
 const DZ = 10;
 const depthFiles = new Map(); // "index" or "x-y" -> Promise<json>
-const failedDepth = new Set();
+const failedDepth = new Set(), retryDepth = new Set(); // (Retry: asked once past the pause a failure puts on `polku`)
 function depthFile(name) {
   if (depthFiles.has(name)) return depthFiles.get(name);
-  const p = request('polku', new URL(`${name}.json`, DEPTHS), { credentials: 'omit' }).then((r) => {
+  const p = request('polku', new URL(`${name}.json`, DEPTHS), { credentials: 'omit', retryDown: retryDepth.delete(name) }).then((r) => {
     if (!r.ok) throw new Error(`${name}.json: ${r.status}`);
     return r.json();
   });
@@ -120,7 +120,7 @@ export function forgetWaterFailures() {
   forgetHostedFailures(OSM_DATA_MANIFEST);
   for (const id of failedHaz) hazTiles.delete(id);
   failedHaz.clear();
-  for (const name of failedDepth) depthFiles.delete(name);
+  for (const name of failedDepth) { depthFiles.delete(name); retryDepth.add(name); }
   failedDepth.clear();
   for (const k of Object.keys(slowUntil)) delete slowUntil[k];
 }

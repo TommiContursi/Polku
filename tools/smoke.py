@@ -2066,7 +2066,8 @@ def water(chrome):
 # Lake depths (#1184): Matikanjärvi's tile of Polku's depth files, recorded (tools/fixtures/depths-593-271.json), with
 # no other source. A leg past a shoal keeps 20 m off its soundings under 0.5 m, and says all its water was surveyed;
 # a swimmer's doesn't use them; a leg into the shoal crosses it, and Check says so under Good to know; What Polku
-# looked at says how much of the water Syke surveyed, none where it has no tile, and Not checked when they didn't load.
+# looked at says how much of the water Syke surveyed, none where it has no tile, and Not checked when they didn't load;
+# then the files themselves fail, Retry asks again, and an answer that comes late routes the leg again.
 WATER_DEPTHS = """(async () => {
   const wait = (ms) => new Promise((r) => setTimeout(r, ms)), errs = [];
   const tile = await (await fetch(location.origin + '/tools/fixtures/depths-593-271.json')).json();
@@ -2105,6 +2106,12 @@ WATER_DEPTHS = """(async () => {
   if (!look.includes('Shallow water, under 0.5 m when surveyed')) errs.push(`Good to know: ${look.join(' / ') || 'nothing'}`);
   if (!row() || row().state !== 'ok' || row().by !== 'Syke’s soundings') errs.push(`What Polku looked at, lake depths: ${row() ? `${row().state} · ${row().by}` : 'no row'}`);
   if (!p.lookedAt(p.analysis).some((r) => r.what === 'Sea depths' && /never used for routes/.test(r.by))) errs.push('What Polku looked at has no row for the sea’s depths');
+  { // a leg with no open water on it (all carried, or a stream) isn't surveyed water
+    const w = p.legs[0].result.water, keep = w.depth;
+    w.depth = { water: 0, surveyed: 0 };
+    if (row() && row().state === 'ok') errs.push('a leg with no open water counts as surveyed');
+    w.depth = keep;
+  }
   depths = [];
   await routed([to[0], to[1] + 0.0001]);
   if (!row() || row().state !== 'bad' || row().by !== 'not surveyed where this route goes') errs.push(`no tile here, lake depths: ${row() ? `${row().state} · ${row().by}` : 'no row'}`);
@@ -2113,8 +2120,45 @@ WATER_DEPTHS = """(async () => {
   const lost = p.headsUp().not.find((x) => x.key === 'water' && x.by === 'Syke');
   if (!lost || lost.text !== 'Lake depths didn’t load' || typeof lost.retry !== 'function') errs.push(`Not checked: ${p.headsUp().not.map((x) => `${x.text} (${x.by})`).join(' / ') || 'nothing'}`);
   if (!row() || row().state !== 'bad' || row().by !== 'didn’t load') errs.push(`lake depths that didn't load: ${row() ? `${row().state} · ${row().by}` : 'no row'}`);
-  p.clear();
+  // the depth files themselves, not seeded: they don't load, Retry asks again, the answer comes after the leg stopped
+  // waiting, and the leg is routed again with it. The other sources answer nothing (or fail: the forecast).
   D.seedWater(null);
+  const { OVERPASS, OSM_DATA_MANIFEST, OPEN_METEO } = await import(location.origin + '/js/config.js');
+  let mode = 'fail', held = [];
+  const realFetch = window.fetch;
+  window.fetch = (url, init = {}) => {
+    const u = String(url);
+    if (u.includes('/data/depths/')) {
+      if (mode === 'fail') return Promise.reject(new TypeError('Failed to fetch'));
+      const answer = () => (u.endsWith('/593-271.json') ? new Response(JSON.stringify(tile)) : realFetch(url, init));
+      return mode === 'late' ? new Promise((ok) => held.push(ok)).then(answer) : Promise.resolve(answer());
+    }
+    if (u.startsWith(new URL(OSM_DATA_MANIFEST).origin) || u.startsWith(OPEN_METEO)) return Promise.reject(new TypeError('Failed to fetch'));
+    if (OVERPASS.some((m) => u.startsWith(m))) return Promise.resolve(new Response('{"elements":[]}'));
+    if (u.startsWith('https://avoinapi.vaylapilvi.fi/')) return Promise.resolve(new Response('{"type":"FeatureCollection","features":[]}'));
+    return realFetch(url, init);
+  };
+  const syke = () => p.headsUp().not.find((x) => x.key === 'water' && x.by === 'Syke');
+  try {
+    await routed([to[0], to[1] + 0.0003]);
+    if (!syke()) errs.push(`the depth files failing: ${p.headsUp().not.map((x) => `${x.text} (${x.by})`).join(' / ') || 'nothing in Not checked'}`);
+    else {
+      mode = 'late';
+      syke().retry();
+      for (let k = 0; k < 40 && !held.length; k++) await wait(100);
+      if (!held.length) errs.push('Retry didn’t ask for the depth files again');
+      await wait(3500); // past the 2.5 s a leg waits for a source
+      if (!syke()) errs.push('the depth files answering late: Not checked doesn’t say so while they’re late');
+      mode = 'ok';
+      for (const ok of held) ok();
+      held = [];
+      for (let k = 0; k < 80 && (syke() || !row() || row().state !== 'ok'); k++) await wait(250);
+      if (syke() || !row() || row().state !== 'ok') errs.push(`the depth files answered late: ${syke() ? 'still in Not checked' : ''} ${row() ? `${row().state} · ${row().by}` : 'no row'}`);
+    }
+  } finally {
+    window.fetch = realFetch;
+  }
+  p.clear();
   polku.set({ activity: 'mtb' });
   return errs;
 })()"""
