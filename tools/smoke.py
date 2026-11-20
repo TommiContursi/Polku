@@ -915,8 +915,8 @@ def property_plots(chrome):
       if(!spot)return ['no spot at Jyväskylä where a click picks a plot'];
       const st=(id)=>m.getFeatureState({source:'ov-propertyLines',sourceLayer:'PalstanSijaintitiedot',id});
       const cv=m.getCanvas(), R=cv.getBoundingClientRect();
-      const ev=(type)=>cv.dispatchEvent(new MouseEvent(type,{bubbles:true,cancelable:true,clientX:R.left+spot.x,clientY:R.top+spot.y,button:0,buttons:type==='mouseup'||type==='mousemove'?0:1}));
-      ev('mousemove'); await frame(); await frame();
+      const ev=(type)=>cv.dispatchEvent(new MouseEvent(type,{bubbles:true,cancelable:true,clientX:R.left+spot.x,clientY:R.top+spot.y,button:0,buttons:type==='mouseup'?0:1}));
+      cv.dispatchEvent(new PointerEvent('pointermove',{bubbles:true,pointerType:'mouse',clientX:R.left+spot.x,clientY:R.top+spot.y,buttons:0})); await frame(); await frame();
       if(!st(spot.f.id).hover)errs.push('the plot under the pointer is not tinted');
       ev('mousedown'); ev('mouseup'); ev('click'); await wait(600);
       const card=polku.planner.cards.current;
