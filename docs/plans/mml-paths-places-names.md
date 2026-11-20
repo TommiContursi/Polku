@@ -15,8 +15,11 @@ ways to avoid it, and asks seven questions, each with one recommendation.
 
 ## Where it stands
 
-- **Plan, 2026-11-21.** Nothing is decided. The questions are below and on
-  each issue; nothing is built.
+- **Plan, 2026-11-21.** The questions are below and on each issue; nothing
+  is built.
+- **Decided, 2026-11-21: the points are icons** in the map's style for
+  places, not dots (on #1173 and #1179): [the look](#question-4-which-points).
+  The seven questions are still open.
 
 ## The questions
 
@@ -25,7 +28,7 @@ ways to avoid it, and asks seven questions, each with one recommendation.
 | 1 | MML's winter roads (#1171) | In the **Winter ways** layer, in the look OSM's winter-only ways already have, only while it's winter, with a note on the ice | Style layers and a card's words; no new data |
 | 2 | MML's paths, forest tracks and drives where OSM has none (#1171) | The app's own distance test: only MML's pieces with no OSM way within 15 m, from zoom 14 | A new module of about 200 lines, no new requests |
 | 3 | Where those paths are drawn (#1171) | In the basemap, in every sport, in a look of their own that isn't OSM's, with a card that says routes don't follow them | Part of question 2 |
-| 4 | Points (#1173, #1179) | OSM's fire places, springs, caves and bunkers from Polku's own OSM data; MML's springs and tar pits in Finland under them; guideposts with a mark of their own; MML's fire places, water holes, monuments, ancient monuments and protected areas left out | A new product in Polku's OSM data, then style layers |
+| 4 | Points (#1173, #1179) | OSM's fire places, springs, caves and bunkers from Polku's own OSM data; MML's springs and tar pits in Finland under them; guideposts with an icon of their own (all of them icons, decided); MML's fire places, water holes, monuments, ancient monuments and protected areas left out | A new product in Polku's OSM data, then style layers |
 | 5 | Which kinds of MML's names (#1174) | First the kinds OpenFreeMap's tiles don't name (bogs, forests, capes, fields…); lakes, islands, hills and bays later, with a test by name | Style layers; the later stage a small module |
 | 6 | The names' language (#1174) | Finnish, else Swedish; a Sámi name on a second line where MML has one | Part of question 5 |
 | 7 | The order | Guideposts and winter roads; names; the OSM points; the paths | Four PRs or more, each on its own |
@@ -221,19 +224,19 @@ catalogue's words translated):
 | Bunker | | Not measured (Polku's `inspection` product doesn't keep `military`) | | None |
 | Protected area | 72202 national park, 72201 strict nature reserve, 72200 nature reserve (not 62200, as #1173 says: that's a restricted area) | OpenFreeMap's `park` | MML's areas outside OSM's: 0–1 % of each block | OSM's, from `park` |
 
-### Ways to avoid a mark twice
+### Ways to avoid an icon twice
 
-Points are simpler than lines: the map's label collision already hides a
-mark that would overlap one placed before it. A layer drawn above is placed
+Points are simpler than lines: the map's label collision already hides an
+icon that would overlap one placed before it. A layer drawn above is placed
 first, so OSM's points above MML's win where both have one. The springs'
 pairs are within 15 m (11 of 11): about 25 pixels at zoom 16, close enough
-for two marks to collide up to about zoom 16; from 17 a pair 15 m apart can
-show as two marks.
+for two icons to collide up to about zoom 16; from 17 a pair 15 m apart can
+show as two icons.
 
 | Way | For points | Cost |
 |---|---|---|
 | One source wins in Finland | MML's springs only, OSM's hidden inside Finland's outline | A filter. Loses OSM's drinking water and every spring where MML's tiles don't load |
-| **Collision** (recommended to start) | OSM's above MML's, in the same mark | None beyond the layers. Pairs show as two marks from about zoom 17 |
+| **Collision** (recommended to start) | OSM's above MML's, with the same icon | None beyond the layers. Pairs show as two icons from about zoom 17 |
 | The app's own test | An MML point with an OSM one of its kind within 30 m isn't drawn | A small module, as way C. Only if doubles show from 17 |
 | Matching in the build | As way D | Needs #1155 |
 
@@ -245,16 +248,16 @@ show as two marks.
   data,** a small product beside the reedbeds (#1154), for Finland, Sweden,
   Norway and Estonia: `leisure=firepit`, `amenity=bbq`, `fireplace=yes`,
   `natural=spring` with `drinking_water`, `natural=cave_entrance`,
-  `military=bunker` and `historic=tar_kiln`. The fire mark is drawn for the
+  `military=bunker` and `historic=tar_kiln`. The fire icon is drawn for the
   standalone fire places only; a shelter or picnic site with
-  `fireplace=yes` keeps its own mark, and its card says it has a fire place,
+  `fireplace=yes` keeps its own icon, and its card says it has a fire place,
   so nothing is marked twice. The standalone fire places are the biggest
   gain here: as many as MML's (26 against 25), and the map draws none today.
-- **MML's springs and tar pits in Finland, under OSM's,** in the same marks.
+- **MML's springs and tar pits in Finland, under OSM's,** with the same icons.
   MML has three times OSM's springs, and the tar pits are landmarks in the
   forest that only MML has. OSM's are drawn above, so where both have a
   spring, OSM's (with its drinking water, when it says) is the one shown.
-- **Guideposts get a mark of their own** from zoom 15, from OpenFreeMap's
+- **Guideposts get an icon of their own** from zoom 15, from OpenFreeMap's
   tiles, everywhere: a junction's signpost isn't an information board.
 - **Left out:** MML's fire places (only 3 of 25 have no OSM fire place or
   shelter with one within 60 m, and OSM's come with this part), water holes (small ponds, not water
@@ -262,14 +265,21 @@ show as two marks.
   wanted, with the Finnish Heritage Agency's register for the ancient ones),
   and MML's protected areas (OSM's already cover them).
 
-**The look**, from the standards (#181's rule): a fire place with the
-campfire mark the map already uses for LIPAS's (`lipas-fire`); a spring with
-the Maastokartta's mark (a small U over a dot), in the water's blue; a tar
-pit as the Maastokartta's small ring; a guidepost and a cave entrance
-from OSM's standard style (a post with two signs; an arch), as neither the
-Maastokartta nor ISOM has a guidepost. All in the basemap with the outdoor
-points (`poi-outdoor`), from zoom 15 (fire places with the outdoor points,
-from 13), and LIPAS's places above them all, as now.
+**The look** (decided 2026-11-21, on #1173 and #1179): every point is an
+icon, as the map's other places are, never a dot or a bare mark: a white
+pictogram on a coloured disc with a white edge, as LIPAS's places are drawn
+(`lipasIcon()` and its `GLYPHS` in `js/icons.js`). A fire place uses the
+campfire icon the map already has (`lipas-fire`, which OSM's firepits would
+use today too). A spring, a tar pit, a guidepost, a cave entrance and a
+bunker get pictograms of their own, their shapes from the standards (#181's
+rule): the Maastokartta's spring and tar pit, and OSM's standard style's
+guidepost (a post with two signs) and cave entrance (an arch), as neither
+the Maastokartta nor ISOM has a guidepost. Each kind has its disc's colour
+(a spring's in the water's blue), and the pictogram, not the colour, says
+what it is. All in the basemap with the outdoor points (`poi-outdoor`), from
+zoom 15 (fire places with the outdoor points, from 13), and LIPAS's places
+above them all, as now. The rings and dots in the screenshots are study
+colours only.
 
 **Beyond Finland:** OSM's points come from Polku's own data in all four
 countries. Beyond them the map draws none, as with the reedbeds (a known
@@ -375,7 +385,7 @@ countries, is filed as an issue once this is chosen.
 
 Recommended, each its own PR in Map style, the strongest model at high:
 
-1. **Guideposts' mark and the winter roads:** styles only, small.
+1. **Guideposts' icon and the winter roads:** styles only, small.
 2. **Names, first stage.**
 3. **OSM's points in Polku's own OSM data,** published, then the map's
    points: OSM's fire places, springs, caves and bunkers, MML's springs and
