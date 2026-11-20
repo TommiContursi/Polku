@@ -1745,6 +1745,15 @@ map.on('data', (e) => {
   tileTrouble[e.sourceId].ok = Date.now();
   refreshQuickSoon();
 });
+// MML's bogs (#1147) have no tile of their own: where their tiles don't load, OSM's wetlands show in their place, and a
+// message says so once, until one of their tiles comes again
+let mmlDown = false;
+map.on('error', (e) => {
+  if (e.sourceId !== 'mml' || mmlDown || (e.error && e.error.name === 'AbortError')) return;
+  mmlDown = true;
+  toast('The National Land Survey’s bogs didn’t load: the map shows OpenStreetMap’s wetlands in their place.', { ms: 6000 });
+});
+map.on('data', (e) => { if (e.sourceId === 'mml' && e.dataType === 'source' && e.tile) mmlDown = false; });
 onStatus(() => refreshQuickSoon());
 // LIPAS back after a pause: Marked routes lists the view again (A)
 onStatus((src, s) => { if (src === 'lipas' && (!s || s.retry)) planner.lipasBack(); });

@@ -58,6 +58,25 @@ function wetland(id) {
   return ctx.getImageData(0, 0, c.width, c.height);
 }
 
+// MML's bogs (#1147) beside wetland(): `bog-hard-<fill>-<lines>`, a bog MML's survey classes hard to cross, in unbroken
+// lines every 3 px; `bog-paludified-<dashes>`, paludified land, short dashes far apart on a clear ground, so the land
+// under it shows
+function bog(id) {
+  const [, kind, a, b] = id.split('-');
+  if (kind === 'hard') {
+    const [c, ctx] = canvas(8, 6);
+    ctx.fillStyle = `#${a}`;
+    ctx.fillRect(0, 0, 8, 6);
+    ctx.fillStyle = `#${b}`;
+    ctx.fillRect(0, 1, 8, 1); ctx.fillRect(0, 4, 8, 1);
+    return ctx.getImageData(0, 0, c.width, c.height);
+  }
+  const [c, ctx] = canvas(16, 8);
+  ctx.fillStyle = `#${a}`;
+  ctx.fillRect(2, 3, 4, 1); ctx.fillRect(10, 7, 4, 1);
+  return ctx.getImageData(0, 0, c.width, c.height);
+}
+
 // a reedbed's fill: tufts of three strokes, as Finnish maps draw reeds, on the wetland colour, so it covers the
 // dashes under it (#1144). `reedbed-<fill>-<reeds>`, both hex without '#'
 function reedbed(id) {
@@ -405,6 +424,7 @@ export function makeIcon(id) {
   if (id.startsWith('wm-') && MARK[id.slice(3).split('~')[0]]) return warnMark(id.slice(3).split('~')[0]);
   if (/^wetland-[0-9a-f]{6}-[0-9a-f]{6}$/.test(id)) return wetland(id);
   if (/^reedbed-[0-9a-f]{6}-[0-9a-f]{6}$/.test(id)) return reedbed(id);
+  if (/^bog-(hard-[0-9a-f]{6}|paludified)-[0-9a-f]{6}$/.test(id)) return bog(id);
   if (id === 'wind-arrow') return windArrow();
   if (id === 'ship') return ship();
   if (id === 'sf-incident') return sign('triangle', '#ef4444', '!');

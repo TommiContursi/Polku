@@ -36,6 +36,8 @@ export const OPEN_METEO = 'https://api.open-meteo.com/v1/forecast';
 export const MML_KEY = 'SAoIWBFIWFhGQxQLVUZBFFlbRk1DDV9GExNXD1pHQV9UXBYT';
 // MML's property map as vector tiles, zooms 0–14 (#1148); the key goes after it
 export const MML_PROPERTY_TILES = 'https://avoin-karttakuva.maanmittauslaitos.fi/kiinteisto-avoin/tiles/wmts/1.0.0/kiinteistojaotus/default/v3/WGS84_Pseudo-Mercator/{z}/{y}/{x}.pbf';
+// MML's background map as vector tiles, zooms 0–14: the terrain in Finland, bogs first (#1147); the key goes after it
+export const MML_TERRAIN_TILES = 'https://avoin-karttakuva.maanmittauslaitos.fi/vectortiles/taustakartta/wmts/1.0.0/taustakartta/default/v21/WGS84_Pseudo-Mercator/{z}/{y}/{x}.pbf';
 export const FINLAND_BOUNDS = [19.0, 59.3, 31.6, 70.1];
 
 export const mmlTiles = (layer, key) =>
