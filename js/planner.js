@@ -1366,6 +1366,7 @@ export class Planner {
     previous?.abort();
     await work;
     if (gen !== this.gen) return;
+    if (this.waterAgain) { this.waterAgain = false; this.retryWater({ ask: false }); if (gen !== this.gen) return; }
     this.setBusy(false);
     if (this.refit && this.legs.every((l) => l.result && l.status !== 'waiting')) { this.refit = false; this.fitRoute(); }
     if (this.snapPoints()) { this.renderMarkers(); this.drawRoute(); }
@@ -2075,6 +2076,8 @@ export class Planner {
     let n = 0;
     for (const l of this.legs) if (l.mode === 'water' && l.result && l.result.water && l.result.water.missing.length) { l.key = null; n++; }
     if (n) this.routeAll();
+    // a leg on the water still being routed may yet go without what answered: once routed, again (#905)
+    else if (this.legs.some((l) => l.mode === 'water' && !l.result)) this.waterAgain = true;
   }
 
   mergedLine() {

@@ -2357,7 +2357,7 @@ WATER_DEPTHS = """(async () => {
   const N = await import(location.origin + '/js/net.js');
   const fc = { type: 'FeatureCollection', features: [] };
   let depths = [tile], missing = [];
-  // MML's map covers the lake as well (#153): where Syke surveyed and where MML covers overlap in the router's grid
+  // MML's map covers the lake as well (#153): where Syke surveyed and MML's coverage both count
   const covered = ([w, s, e, n]) => { const t = [], [x0, y0] = G.lonLatToTile(w, n, 14).map(Math.floor), [x1, y1] = G.lonLatToTile(e, s, 14).map(Math.floor); for (let x = x0; x <= x1; x++) for (let y = y0; y <= y1; y++) t.push({ x, y, covered: true }); return t; };
   D.seedWater((box, want) => ({ fairways: fc, hazards: fc, mml: want.rapids ? covered(box) : null, depths: want.depths ? depths : null, wind: null, missing: want.depths ? missing : [], skipped: [] }));
   // from and to straight through a row of the shoal's soundings; the shoal's end on one of them

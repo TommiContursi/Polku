@@ -19,7 +19,7 @@
 // of them).
 
 import { OFM_TILEJSON } from './config.js';
-import { dist } from './geo.js';
+import { dist, lonLatToTile } from './geo.js';
 import { waterInputs, lateAnswers, waveHeight, waveWind, COMFORT_WAVE } from './waterdata.js';
 
 const MAX_PX = 1400;
@@ -143,10 +143,9 @@ async function rasteriseNow(bounds) {
 // for the map): fairways by class into one (red small-boat route, green harbour,
 // blue shipping lane), keep-clear zones (red), avoided places (green) and water
 // near a shallow sounding (blue) into another, and where Syke surveyed into a
-// third, with the tiles MML's map covers and the rapids. Read back as grid.fair (0 none, 1 small, 2 harbour, 3 ship),
-// grid.haz, grid.nogo, grid.shallow and grid.surveyed (the last two with depths only), grid.mml (with MML's tiles only)
-// and grid.rapids (with rapids only).
-function rasteriseCosts(grid, { fairways, hazards, nogos, depths, mml, rapids }) {
+// third, with the rapids. Read back as grid.fair (0 none, 1 small, 2 harbour, 3 ship), grid.haz, grid.nogo,
+// grid.shallow and grid.surveyed (the last two with depths only) and grid.rapids (with rapids only).
+function rasteriseCosts(grid, { fairways, hazards, nogos, depths, rapids }) {
   const { W, H, res } = grid;
   const px = (metres) => Math.max(1.5, metres / res);
   const xy = (ll) => { const p = grid.project(ll); return [p.x, p.y]; };
@@ -185,8 +184,8 @@ function rasteriseCosts(grid, { fairways, hazards, nogos, depths, mml, rapids })
   // lake depths: a tile's cells are squares in Web Mercator, as the grid is (half a cell more each side, so the
   // shore's water isn't left out where Syke's shoreline and the map's differ)
   const rapid = rapids && rapids.features.length;
-  const sc = ((depths && depths.length) || (mml && mml.length) || rapid) && canvas();
-  if (sc) sc.globalCompositeOperation = 'lighter'; // where Syke surveyed (red), MML's map (green) and the rapids (blue) add up
+  const sc = ((depths && depths.length) || rapid) && canvas();
+  if (sc) sc.globalCompositeOperation = 'lighter'; // where Syke surveyed (red) and the rapids (blue) add up
   if (depths && depths.length) {
     hc.fillStyle = '#0000ff';
     sc.fillStyle = '#ff0000';
@@ -200,15 +199,6 @@ function rasteriseCosts(grid, { fairways, hazards, nogos, depths, mml, rapids })
           sc.fillRect(a.x, a.y, b.x - a.x, b.y - a.y);
         }
       }
-    }
-  }
-  // MML's tiles with anything in them: its map covers them (zoom 14's, squares in Web Mercator as the grid is)
-  if (mml && mml.length) {
-    sc.fillStyle = '#00ff00';
-    for (const t of mml) {
-      if (!t.covered) continue;
-      const a = grid.projectMerc(t.x / 2 ** 14, t.y / 2 ** 14), b = grid.projectMerc((t.x + 1) / 2 ** 14, (t.y + 1) / 2 ** 14);
-      sc.fillRect(a.x, a.y, b.x - a.x, b.y - a.y);
     }
   }
   if (rapid) {
@@ -229,14 +219,12 @@ function rasteriseCosts(grid, { fairways, hazards, nogos, depths, mml, rapids })
   // anything that costs (MML's coverage alone doesn't): string-pulling then weighs the costs, which takes longer
   grid.costly = !!((fairways && fairways.features.length) || (hazards && hazards.features.length) || (nogos && nogos.length) || (depths && depths.length));
   if (depths && depths.length) { grid.shallow = new Uint8Array(n); grid.surveyed = new Uint8Array(n); }
-  if (mml) grid.mml = new Uint8Array(n);
   if (rapid) grid.rapids = new Uint8Array(n);
   for (let i = 0, j = 0; i < n; i++, j += 4) {
     grid.haz[i] = hd[j] > 128 ? 1 : 0;
     grid.nogo[i] = hd[j + 1] > 128 ? 1 : 0;
     grid.fair[i] = grid.haz[i] ? 0 : fd[j + 2] > 128 ? 3 : fd[j + 1] > 128 ? 2 : fd[j] > 128 ? 1 : 0;
     if (grid.shallow) { grid.shallow[i] = hd[j + 2] > 128 ? 1 : 0; grid.surveyed[i] = sd[j] > 128 ? 1 : 0; }
-    if (grid.mml) grid.mml[i] = sd && sd[j + 1] > 128 ? 1 : 0;
     if (grid.rapids) grid.rapids[i] = sd[j + 2] > 128 ? 1 : 0;
   }
 }
@@ -513,7 +501,7 @@ async function attempt(from, to, padFactor, allowPortage, style = {}, inputs = n
   lap('render+data');
   if (!grid.waterCells) throw new Error('No water found here — zoom to a lake, river or the sea.');
   if (got) {
-    if (got.fairways.features.length || got.hazards.features.length || (style.nogos && style.nogos.length) || (got.depths && got.depths.length) || (got.mml && got.mml.length) || (got.rapids && got.rapids.features.length)) rasteriseCosts(grid, { fairways: got.fairways, hazards: got.hazards, nogos: style.nogos, depths: got.depths, mml: got.mml, rapids: got.rapids });
+    if (got.fairways.features.length || got.hazards.features.length || (style.nogos && style.nogos.length) || (got.depths && got.depths.length) || (got.rapids && got.rapids.features.length)) rasteriseCosts(grid, { fairways: got.fairways, hazards: got.hazards, nogos: style.nogos, depths: got.depths, rapids: got.rapids });
     lap('costs');
     if (got.wind && style.wind === 'shelter' && got.wind.speed >= 3) exposure(grid, got.wind);
     lap('wind');
@@ -564,6 +552,8 @@ async function attempt(from, to, padFactor, allowPortage, style = {}, inputs = n
 // tiles, how much of it MML's map covers ({ water, covered }, else null).
 function eventsAlong(grid, coords, comfort, got) {
   const depths = !!(got && got.depths), mml = !!(got && got.mml);
+  // the zoom-14 tiles MML's map covers (those with anything in them), looked up for each piece of the line
+  const covers = mml && new Set(got.mml.filter((t) => t.covered).map((t) => `${t.x}/${t.y}`));
   if (!grid.fair && !grid.wave && !grid.rapids && !depths && !mml) return { events: [], wave: null, depth: null, mml: null };
   const out = [];
   let wave = 0, wet = 0, surveyed = 0, covered = 0;
@@ -574,14 +564,18 @@ function eventsAlong(grid, coords, comfort, got) {
     const a = coords[k - 1], b = coords[k], d = dist(a, b);
     const n = Math.max(1, Math.ceil(d / grid.res));
     for (let j = 0; j < n; j++) {
-      const t = (j + 0.5) / n;
-      const p = grid.project([a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t]);
+      const t = (j + 0.5) / n, ll = [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t];
+      const p = grid.project(ll);
       const x = Math.floor(p.x), y = Math.floor(p.y);
       const at = m + d * t, len = d / n;
       const i = x >= 0 && y >= 0 && x < grid.W && y < grid.H ? y * grid.W + x : -1;
       const water = i >= 0 && grid.type[i] === 1;
       if (water && grid.wave) wave = Math.max(wave, grid.wave[i]);
-      if (water) { wet += len; if (grid.surveyed && grid.surveyed[i]) surveyed += len; if (grid.mml && grid.mml[i]) covered += len; }
+      if (water) {
+        wet += len;
+        if (grid.surveyed && grid.surveyed[i]) surveyed += len;
+        if (covers && covers.size && covers.has(lonLatToTile(ll[0], ll[1], 14).map(Math.floor).join('/'))) covered += len;
+      }
       const on = {
         ship: water && grid.fair && grid.fair[i] === 3,
         harbour: water && grid.fair && grid.fair[i] === 2,

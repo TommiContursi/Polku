@@ -45,7 +45,9 @@ const late = new Set();
 let lateCount = 0; // late answers so far: water.js routes a leg again if one came while it was being routed
 export function onWaterData(fn) { late.add(fn); return () => late.delete(fn); }
 export const lateAnswers = () => lateCount;
-// (also when a source that failed may be asked again: the planner routes the legs that went without it, which asks)
+// (also when a source that failed may be asked again: the planner routes the legs that went without it, which asks, and
+// a leg being routed then, which the planner can't route again yet, is routed once more in water.js: else it kept the
+// failure for good, #905)
 const tell = () => { for (const fn of late) fn(); };
 const lateArrived = () => { lateCount++; tell(); };
 const AGAIN_MS = 120e3; // a source that failed is asked again after this (#129)
@@ -83,7 +85,7 @@ way["waterway"="rapids"](${bb});
   };
   const p = hostedTile(OSM_DATA_MANIFEST, 'hazards', HZ, [x, y],
     () => cachedOverpass(`waterhaz/${HZ}/${id}`, q, slim, { race: true, oneRound: true, timeoutMs: 15000 }), { slim });
-  p.catch(() => { failedHaz.add(id); setTimeout(() => { if (hazTiles.get(id) === p) { hazTiles.delete(id); tell(); } failedHaz.delete(id); }, AGAIN_MS); }); // ask again in a couple of minutes
+  p.catch(() => { failedHaz.add(id); setTimeout(() => { if (hazTiles.get(id) === p) { hazTiles.delete(id); lateArrived(); } failedHaz.delete(id); }, AGAIN_MS); }); // ask again in a couple of minutes
   hazTiles.set(id, p);
   return p;
 }
@@ -100,7 +102,7 @@ function depthFile(name) {
     if (!r.ok) throw new Error(`${name}.json: ${r.status}`);
     return r.json();
   });
-  p.catch(() => { failedDepth.add(name); setTimeout(() => { if (depthFiles.get(name) === p) { depthFiles.delete(name); tell(); } failedDepth.delete(name); }, AGAIN_MS); });
+  p.catch(() => { failedDepth.add(name); setTimeout(() => { if (depthFiles.get(name) === p) { depthFiles.delete(name); lateArrived(); } failedDepth.delete(name); }, AGAIN_MS); });
   depthFiles.set(name, p);
   return p;
 }
@@ -153,7 +155,7 @@ function mmlTile(x, y) {
     const rapids = (t.layers.vesisto_viiva || []).filter((f) => f.props.kohdeluokka === MML_RAPIDS).flatMap((f) => f.rings.map(line));
     return { x, y, covered: t.n > 0, points, areas, rapids };
   });
-  p.catch(() => { failedMml.add(id); setTimeout(() => { if (mmlTiles.get(id) === p) { mmlTiles.delete(id); tell(); } failedMml.delete(id); }, AGAIN_MS); });
+  p.catch(() => { failedMml.add(id); setTimeout(() => { if (mmlTiles.get(id) === p) { mmlTiles.delete(id); lateArrived(); } failedMml.delete(id); }, AGAIN_MS); });
   mmlTiles.set(id, p);
   return p;
 }
@@ -254,7 +256,7 @@ export async function waterInputs(box, want, at) {
   const missing = [], skipped = [];
   const skip = (src) => (got) => { if (!got) skipped.push(src); return got; };
   const [ways, osm, mml, depths, wind] = await Promise.all([
-    want.fairways || want.hazards ? (() => { const p = waterwaysIn(box); return waitFor('vayla', p).then(skip('Väylävirasto'), () => { missing.push('Väylävirasto'); p.then(lateArrived, () => setTimeout(tell, AGAIN_MS)); return null; }); })() : null,
+    want.fairways || want.hazards ? (() => { const p = waterwaysIn(box); return waitFor('vayla', p).then(skip('Väylävirasto'), () => { missing.push('Väylävirasto'); p.then(lateArrived, () => setTimeout(lateArrived, AGAIN_MS)); return null; }); })() : null,
     want.hazards || want.rapids ? osmHazards(box).then(skip('OpenStreetMap'), () => { missing.push('OpenStreetMap'); return null; }) : null,
     want.hazards || want.rapids ? mmlStones(box).then(skip('the National Land Survey'), () => { missing.push('the National Land Survey'); return null; }) : null,
     want.depths ? lakeDepths(box).then(skip('Syke'), () => { missing.push('Syke'); return null; }) : null,
