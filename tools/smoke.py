@@ -1310,7 +1310,7 @@ def mml_open(chrome):
       const drawn=(layer)=>new Set(m.queryRenderedFeatures({layers:[layer]}).map(f=>f.properties.kohdeluokka));
       let base; const want=(layer,classes)=>{const got=drawn(layer); for(const k of classes)if(!got.has(k))errs.push(`${base}: ${layer} drew nothing of class ${k} from the recorded tile`);};
       // a class's value in a layer's ['match', ['get', …], keys, value, …, fallback]
-      const pick=(id,prop,k)=>{const e=m.getPaintProperty(id,prop)||m.getLayoutProperty(id,prop); for(let i=2;i<e.length-1;i+=2)if([].concat(e[i]).includes(k))return e[i+1]; return e[e.length-1];};
+      const pick=(id,prop,k)=>{const e=prop==='icon-image'?m.getLayoutProperty(id,prop):m.getPaintProperty(id,prop); for(let i=2;i<e.length-1;i+=2)if([].concat(e[i]).includes(k))return e[i+1]; return e[e.length-1];};
       const draws=(id,k)=>m.style.getLayer(id)._featureFilter.filter({zoom:14},{type:3,properties:{kohdeluokka:k}});
       const osm=(id,cls,subclass)=>m.style.getLayer(id)._featureFilter.filter({zoom:14},{type:3,properties:{class:cls,subclass}});
       for(base of ['trail','plain','night']) {
