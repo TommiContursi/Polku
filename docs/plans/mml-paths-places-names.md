@@ -23,7 +23,7 @@ ways to avoid it, and asks seven questions, each with one recommendation.
 | # | Question | Recommended | Cost |
 |---|---|---|---|
 | 1 | MML's winter roads (#1171) | In the **Winter ways** layer, in the look OSM's winter-only ways already have, only while it's winter, with a note on the ice | Style layers and a card's words; no new data |
-| 2 | MML's paths and forest tracks where OSM has none (#1171) | The app's own distance test: only MML's pieces with no OSM way within 15 m, from zoom 14 | A new module of about 200 lines, no new requests |
+| 2 | MML's paths, forest tracks and drives where OSM has none (#1171) | The app's own distance test: only MML's pieces with no OSM way within 15 m, from zoom 14 | A new module of about 200 lines, no new requests |
 | 3 | Where those paths are drawn (#1171) | In the basemap, in every sport, in a look of their own that isn't OSM's, with a card that says routes don't follow them | Part of question 2 |
 | 4 | Points (#1173, #1179) | OSM's fire places, springs, caves and bunkers from Polku's own OSM data; MML's springs and tar pits in Finland under them; guideposts with a mark of their own; MML's fire places, water holes, monuments, ancient monuments and protected areas left out | A new product in Polku's OSM data, then style layers |
 | 5 | Which kinds of MML's names (#1174) | First the kinds OpenFreeMap's tiles don't name (bogs, forests, capes, fields…); lakes, islands, hills and bays later, with a test by name | Style layers; the later stage a small module |
@@ -66,13 +66,18 @@ names were also read at **Kuhmo** (64.160, 29.360), **Nauvo** (60.190,
 
 MML's classes in `liikenne`, from zoom 13: path (polku, 12313), forest track
 (ajopolku, 12316), winter road (talvitie, 12312), and footway and cycleway
-(12314). The catalogue's words: a path is "a narrow trodden track, clearly
-visible in summer"; a forest track is a way mainly for tractors and other
-off-road vehicles; a winter road is "a cleared track, usually wider than
-2 m, driven in winter by off-road vehicles and snowmobiles", and marked
-snowmobile routes over 2 m wide are winter roads too. Roads (12111–12141)
-and footways are all in OSM already (98–100 % within 15 m), so they're left
-out.
+(12314). In the catalogue's words (translated): a path is a narrow trodden
+track, clearly visible in summer; a forest track is a way mainly for
+tractors and other off-road vehicles; a winter road is a cleared track,
+usually wider than 2 m, driven in winter by off-road vehicles and
+snowmobiles, and marked snowmobile routes over 2 m wide count as winter
+roads too.
+
+Footways and the numbered roads are in OSM already (98–100 % within 15 m).
+The smallest roads, drives (ajotie, 12141: private and forest roads), mostly
+are, but not everywhere: 64 % of Sodankylä's 28.4 km and 62 % of
+Suomussalmi's 14.4 km have an OSM way within 15 m (9.4 and 5.2 km of pieces
+missing), and 90–100 % at the other places. So drives join question 2.
 
 | Place | MML's paths | with OSM within 15 m | MML's forest tracks | with OSM within 15 m | OSM's paths | with MML within 15 m |
 |---|---|---|---|---|---|---|
@@ -86,9 +91,10 @@ out.
 | Sodankylä | 9.6 km | 52 % | 16.7 km | 68 % | 18.3 km | 96 % |
 
 - **In the parks, OSM already has nearly all of MML's paths,** and more of
-  its own: Nuuksio has 128 km of OSM path against MML's 87. OSM's mappers
-  have long used MML's data, and the two lines lie on each other: the median
-  gap is 0.8–2.0 m and nine in ten are within 3.4–7.3 m. On Polku's map
+  its own: Nuuksio has 128 km of OSM path against MML's 87. The two lines
+  lie on each other, likely because OSM's mappers have drawn from MML's maps
+  (not checked): the median gap is 0.8–2.0 m and nine in ten are within
+  3.4–7.3 m. On Polku's map
   (2.4 m a pixel at zoom 14 at Nuuksio, 0.6 m at 16, 0.15 m at 18), a
   1.6 m gap is under a pixel at 14, about 3 pixels at 16 and 11 at 18: two
   lines side by side from about zoom 16.
@@ -99,17 +105,18 @@ out.
   6.0 km, Seitseminen 6.2, Koli 8.3, Pallas 2.3, Keuruu 9.5, Ylöjärvi 20.0,
   Suomussalmi 7.7, Sodankylä 9.3.
 - **By whole pieces** (one MML line in one tile), most are either all in
-  OSM or not in it at all: in the parks 74–90 % of the length is in pieces
-  that are wholly in OSM, 1–11 % in pieces wholly missing, and 4–15 % in
-  pieces partly in it. At Sodankylä 23 % of the path length is partly in
-  it. So a rule that keeps or drops whole pieces would leave stubs and gaps;
+  OSM or not in it at all: in the four parks 78–87 % of the paths' length is
+  in pieces wholly in OSM, 1–11 % in pieces wholly missing, and 5–13 % in
+  pieces partly in it. At Keuruu 15 % and at Sodankylä 23 % of the path
+  length is partly in it. So a rule that keeps or drops whole pieces would leave stubs and gaps;
   cutting each piece where OSM's way begins (below, way C) doesn't.
 
 **Winter roads are almost all MML's alone.** Within 15 m of an OSM way:
 Koli 8 % of 10.9 km, Pallas 24 % of 12.2 km, Suomussalmi 14 % of 11.7 km;
 at Sodankylä 74 % of 18.1 km, where they run along OSM's paths. OSM's
 `seasonal=winter`, the tag Polku's **Winter ways** draws as "There only in
-winter (over ice or bog)", is on one way in the eight places' zoom-12 tiles.
+winter (over ice or bog)", is on one way in the zoom-12 tile around each of
+the eight places.
 LIPAS's snowmobile routes run along 36 % of Sodankylä's winter roads and
 none of the others. **At Koli, 58 % of the winter roads' length is over the
 ice of Pielinen;** at Pallas, Suomussalmi and Sodankylä 30–48 % crosses bogs.
@@ -130,22 +137,34 @@ another layer's features (not checked further).
 
 ### Question 1: winter roads
 
+A winter road is a track for snowmobiles and off-road vehicles. Polku
+already has two looks for winter's ways: OSM's `seasonal=winter` ways, cyan
+dots in **Winter ways** with the words "There only in winter (over ice or
+bog)", and LIPAS's snowmobile routes, an orange line in LIPAS's routes, both
+drawn only while it's winter.
+
 **Recommended: in the Winter ways layer, in the look of OSM's winter-only
-ways, only while it's winter.** That layer already draws OSM's
-`seasonal=winter` ways as cyan dots with the words "There only in winter
-(over ice or bog)", and only while winter is on; MML's are the same thing.
-Where both have one, they share the look, and there's almost nowhere both do.
-In summer a winter road over a bog isn't a way at all, so it isn't drawn
-then. Because Koli's go over a lake's ice, its card says: "Over the ice it's
-open only when its keeper says so. Polku can't see whether the ice holds:
-check the ice yourself." (words to settle). The cost: two style layers in the
-Winter ways group, from zoom 13, and the card's rows (#1175). The
-alternatives: all year round in the basemap (a summer route would seem to
-cross a bog or a lake), or left out.
+ways, only while it's winter.** MML's winter roads are that kind of way: a
+track that is there only in winter. Most of them aren't marked snowmobile
+routes (LIPAS has one along 36 % of Sodankylä's and none at the other
+places), so the snowmobile route's look would claim too much; where LIPAS
+has a route on one, its orange line is drawn over it, as now. In summer a
+winter road over a bog isn't a way at all, so it isn't drawn then. Its card
+says, in words to settle: "Winter road, for snowmobiles and off-road
+vehicles. There only in winter." and, as Koli's go over a lake's ice: "Over
+the ice it's open only when its keeper says so. Polku can't see whether the
+ice holds: check the ice yourself." The cost: two style layers in the Winter
+ways group, from zoom 13, and the card's rows (#1175). The alternatives: the
+snowmobile route's look, all year round in the basemap (a summer route would
+seem to cross a bog or a lake), or left out.
+
+**Beyond Finland:** OSM's winter-only ways, which the Winter ways layer
+already draws, are the fallback and share the look.
 
 ### Question 2: paths and forest tracks where OSM has none
 
-**Recommended: way C, from zoom 14.** It draws only what OSM lacks, so the
+**Recommended: way C, from zoom 14,** for paths, forest tracks and drives.
+It draws only what OSM lacks, so the
 parks look as they do now ([Nuuksio, only the missing
 pieces](#screenshots)), and the everyday forests gain what was missing
 ([Ylöjärvi](#screenshots)). It needs no new service, request or data, and
@@ -186,16 +205,17 @@ topographic data of Sweden (Lantmäteriet), Norway (Kartverket) and Estonia
 
 ### What the tiles carry
 
-In the eight blocks (MML's tiles at zoom 14; OSM from Polku's own data):
+In the eight blocks (MML's tiles at zoom 14; OSM from Polku's own data; the
+catalogue's words translated):
 
 | Kind | MML | OSM | Near each other | On the map today |
 |---|---|---|---|---|
-| Fire place | 25 (45710: "a permitted fire place in a hiking area or a similar area in public use") | 26 `leisure=firepit`, and 22 shelters or picnic sites with `fireplace=yes` | 17 of MML's 25 within 15 m of an OSM one, 22 within 60 m; 23 of OSM's 45 within 15 m of an MML one | **None of OSM's:** OpenFreeMap's tiles carry no firepits at these places, so `poi-outdoor`'s firepit filter matches nothing. LIPAS's campfire sites (2) and lean-tos (9), in its layer |
-| Spring | 32 (36100: "clearly visible, gives water all year round") | 12, one with `drinking_water=yes` | 11 of OSM's 12 within 15 m of an MML one (mapped from MML's) | None: not in OpenFreeMap's tiles |
-| Water hole | 77 (36400: "a small area always under water, 100–1000 m², not part of the waters"): a pond, not a well | | None near an OSM spring or well | None |
+| Fire place | 25 (45710: a permitted fire place in a hiking area or a similar area in public use) | 26 standalone (`leisure=firepit`, `amenity=bbq`), and 19 shelters or picnic sites with `fireplace=yes` | Of MML's 25: 11 within 15 m of a standalone OSM fire place (13 within 60 m), 9 within 15 m of a shelter with one (13 within 60 m), 22 within 60 m of either | **No standalone ones:** OpenFreeMap's tiles carry no firepits at these places, so `poi-outdoor`'s firepit filter matches nothing. The shelters and picnic sites are drawn, without saying they have a fire place. LIPAS's campfire sites (2) and lean-tos (9), in its layer |
+| Spring | 32 (36100: clearly visible, gives water all year round) | 12, one with `drinking_water=yes` | 11 of OSM's 12 within 15 m of an MML one, at the same spots | None: not in OpenFreeMap's tiles |
+| Water hole | 77 (36400: a small area always under water, 100–1000 m², not part of the waters): a pond, not a well | | None near an OSM spring or well | None |
 | Tar pit | 9 here, 37 in all the tiles read (45400: a pit for tar, charcoal or lime) | 1 | | None |
 | Monument | 7 | 7 | 5 within 15 m | None (OpenFreeMap has them; no layer draws them) |
-| Ancient monument | 5 (72330) | | None near | None |
+| Ancient monument | 5 (72330, the catalogue's point class for an ancient monument) | | None near | None |
 | Guidepost | | 55 | | **From zoom 15.5, with the information icon** of boards and maps (`poi-minor`, checked at Nuuksio at 16.5) |
 | Cave entrance | | 5 (Nuuksio) | | None: not in OpenFreeMap's tiles |
 | Bunker | | Not measured (Polku's `inspection` product doesn't keep `military`) | | None |
@@ -205,11 +225,17 @@ In the eight blocks (MML's tiles at zoom 14; OSM from Polku's own data):
 
 Points are simpler than lines: the map's label collision already hides a
 mark that would overlap one placed before it. A layer drawn above is placed
-first, so OSM's points above MML's win where both have one. The pairs above
-are within 15 m (11 of 11 springs, 17 of 25 fire places): about 25 pixels
-at zoom 16, close enough for two marks to collide up to about zoom 16; from
-17 a pair 15 m apart can show as two marks. The app's own test (as way C)
-could drop those too; it isn't needed to start.
+first, so OSM's points above MML's win where both have one. The springs'
+pairs are within 15 m (11 of 11): about 25 pixels at zoom 16, close enough
+for two marks to collide up to about zoom 16; from 17 a pair 15 m apart can
+show as two marks.
+
+| Way | For points | Cost |
+|---|---|---|
+| One source wins in Finland | MML's springs only, OSM's hidden inside Finland's outline | A filter. Loses OSM's drinking water and every spring where MML's tiles don't load |
+| **Collision** (recommended to start) | OSM's above MML's, in the same mark | None beyond the layers. Pairs show as two marks from about zoom 17 |
+| The app's own test | An MML point with an OSM one of its kind within 30 m isn't drawn | A small module, as way C. Only if doubles show from 17 |
+| Matching in the build | As way D | Needs #1155 |
 
 ### Question 4: which points
 
@@ -219,17 +245,19 @@ could drop those too; it isn't needed to start.
   data,** a small product beside the reedbeds (#1154), for Finland, Sweden,
   Norway and Estonia: `leisure=firepit`, `amenity=bbq`, `fireplace=yes`,
   `natural=spring` with `drinking_water`, `natural=cave_entrance`,
-  `military=bunker` and `historic=tar_kiln`. OSM's fire places are the
-  biggest gain here: there are more of them than MML's, and the map draws
-  none today.
+  `military=bunker` and `historic=tar_kiln`. The fire mark is drawn for the
+  standalone fire places only; a shelter or picnic site with
+  `fireplace=yes` keeps its own mark, and its card says it has a fire place,
+  so nothing is marked twice. The standalone fire places are the biggest
+  gain here: as many as MML's (26 against 25), and the map draws none today.
 - **MML's springs and tar pits in Finland, under OSM's,** in the same marks.
   MML has three times OSM's springs, and the tar pits are landmarks in the
   forest that only MML has. OSM's are drawn above, so where both have a
   spring, OSM's (with its drinking water, when it says) is the one shown.
 - **Guideposts get a mark of their own** from zoom 15, from OpenFreeMap's
   tiles, everywhere: a junction's signpost isn't an information board.
-- **Left out:** MML's fire places (only 3 of 25 have no OSM one within
-  60 m, and OSM's come with this part), water holes (small ponds, not water
+- **Left out:** MML's fire places (only 3 of 25 have no OSM fire place or
+  shelter with one within 60 m, and OSM's come with this part), water holes (small ponds, not water
   to drink), monuments and ancient monuments (7 and 5 here; for later if
   wanted, with the Finnish Heritage Agency's register for the ancient ones),
   and MML's protected areas (OSM's already cover them).
@@ -281,8 +309,8 @@ of their layers:
 | Hollows, meadows, isthmuses, shores, stones and shoals in water, lost dwelling places, other terrain places | 41 | 0 % |
 
 So OpenFreeMap's tiles name the settlements and most lakes, and almost
-none of the terrain: they carry no bog, forest or cape names at all (OSM
-itself has some, on areas the tiles don't name). Where both have a name,
+none of the terrain: no bogs or forests, and 8 % of the capes (OSM itself
+has some more, on areas the tiles don't name). Where both have a name,
 it's close by: lakes 44 m apart at the median (77 % within 100 m), islands
 39 m, hills 75 m, villages 181 m. At zoom 13 (4.7 m a pixel) 100 m is
 21 pixels, so the labels collide and only one shows; from about 15 both
@@ -305,9 +333,13 @@ show ([Seitseminen](#screenshots)).
    changed filter lays out only them. A small module (about 60 lines). Left
    to collision alone, they'd show twice from about zoom 15.
 
-The alternative is MML's names for everything in Finland, with OSM's place
-and water labels hidden inside Finland: one source, no doubles, but no names
-at all where MML's tiles don't load, and peaks without OSM's heights.
+| Way | For names | Cost |
+|---|---|---|
+| **By kind** (recommended, stage 1) | MML's names only of the kinds OpenFreeMap's tiles don't name | A style layer. No doubles, as the kinds hardly overlap |
+| Collision alone | Every kind, OSM's placed first | A style layer. Lakes, islands and hills twice from about zoom 15 |
+| **A test by name** (stage 2) | Lakes, islands, hills, bays and houses only where OpenFreeMap's tiles lack the name within 1 km | About 60 lines, a source of its own |
+| One source wins in Finland | MML's names for everything, OSM's place and water labels hidden inside Finland | A filter. No names at all where MML's tiles don't load, and peaks without OSM's heights |
+| Matching in the build | | Needs MML's names in the build, #1155 |
 
 ### Question 6: the language
 
@@ -320,9 +352,10 @@ on 3, Skolt Sámi on 2).
 
 **Recommended:** the Finnish name, else the Swedish one, and a Sámi name on
 a second line where MML has one, as MML's own maps print every name of a
-place. Where MML gives two forms in one name ("Sunnanslätts bergen eller
-Sunnanslättsbergen"), both show, as MML wrote it. The alternative: one name
-only, Sámi names left out. A bilingual village would read wrongly with
+place. Where MML gives two spellings in one name ("Käldöfjärden eller Käldö
+fjärden"), only the first shows: 34 of Nauvo's 344 names have two, and they
+make long labels ([Nauvo](#screenshots)); Nuuksio has one, Koli none. The
+alternative: one name only, Sámi names left out. A bilingual village would read wrongly with
 Finnish first ("Nauvo" where the place says Nagu, [Nauvo](#screenshots)), but
 under question 5 the villages stay OSM's.
 
@@ -358,6 +391,10 @@ and it has a smoke check with a recorded MML tile.
 
 Map-only, MTB, with the trail map; the study colours are drawn by a script
 over `main` 1e8f70b4 and are not a proposed look, except the winter roads'.
+The study's names are placed before the map's own labels, so where one of
+today's labels is missing, the study's took its place: the plan places
+MML's names after OSM's. Nuuksio is at zoom 14, where pieces OSM lacks are
+in view; at 15.2 there were none.
 
 | | 1440 × 900 | 390 × 844 |
 |---|---|---|
@@ -377,6 +414,8 @@ over `main` 1e8f70b4 and are not a proposed look, except the winter roads'.
   places; OSM's mappers may have left some out on purpose).
 - MapLibre's `distance` against another layer's lines or points, and
   `within` for points.
+- That OSM's springs, drawn above MML's, win the collision in practice: the
+  placement order was read from MapLibre's rules, not tried.
 - Bunkers (not in the product read), and Overpass's live data (it didn't
   answer on the day).
 - Swedish, Norwegian and Estonian topographic data for the wider versions.
