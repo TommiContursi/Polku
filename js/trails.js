@@ -80,12 +80,15 @@ export const onTile = (fn) => listeners.add(fn);
 export function trailTile(x, y, { hostedOnly = false } = {}) {
   const key = `${x}/${y}`;
   const have = tiles.get(key);
-  if (have && (have.data || fetching)) return have.promise; // (held, one on its way counts as held)
+  if (have && (have.data || fetching)) { // (held, one on its way counts as held)
+    // one on its way from the hosted data alone, asked for at 14: Overpass once the hosted data misses
+    return have.hostedOnly && !hostedOnly ? have.promise.catch((err) => (err.hostedOnly ? trailTile(x, y) : Promise.reject(err))) : have.promise;
+  }
   if (!fetching) return Promise.reject(failing ? new Error('Overpass didn’t answer') : Object.assign(new Error('held'), { held: true })); // (held: whatever it did before, as a test asks)
   // a tile the hosted data didn't have is still asked of Overpass once you're zoomed in to its zoom
   const f = failed.get(key);
   if (f && f.until > Date.now() && (hostedOnly || !f.hostedOnly)) return Promise.reject(new Error('Overpass busy'));
-  const entry = { data: null };
+  const entry = { data: null, hostedOnly };
   entry.promise = hostedTile(OSM_DATA_MANIFEST, 'trails', TILE_Z, [x, y], hostedOnly
     ? (err) => { throw Object.assign(new Error(err.message), { hostedOnly }); }
     : () => cachedOverpass(`trails3/${TILE_Z}/${key}`, tileQuery(x, y), slimTile, { oneRound: true, timeoutMs: 30000 }), { slim: slimTile })
