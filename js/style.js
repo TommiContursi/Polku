@@ -4,7 +4,7 @@
 
 import {
   OFM_TILEJSON, OFM_SPRITE, OFM_GLYPHS, ESRI_IMAGERY, DEM_MAXZOOM, DEM_TILESIZE,
-  DIFF_COLORS, MTB_COLORS, MTB_GRADES, ROUTE_COLORS, RASTER_OVERLAYS, RASTER_RATIO, LIPAS_TYPES, mmlTiles, mmlKey, mmlPropertyTiles, mmlTerrainTiles, FINLAND_BOUNDS, kapsiTiles, groupOf,
+  DIFF_COLORS, MTB_COLORS, MTB_GRADES, ROUTE_COLORS, RASTER_OVERLAYS, RASTER_RATIO, LIPAS_TYPES, mmlTiles, MML_KEY, MML_PROPERTY_TILES, MML_TERRAIN_TILES, FINLAND_BOUNDS, kapsiTiles, groupOf,
   isWater, isLipasRoute, WARN_COLORS,
 } from './config.js';
 import { warnMarkId } from './icons.js';
@@ -105,6 +105,8 @@ export function buildStyle(s, ctx) {
   const aerialBase = isAerial(s.base);
   const topoBase = isTopo(s.base);
   const raised = s.terrain3d && s.raiseHills; // the hills raised in 3D, or 3D flat, only tilted
+  // MML's tiles (#1147, #1148): your own key, or Polku's unscrambled (config.js)
+  const mmlKey = s.mmlKey || [...atob(MML_KEY)].map((c, i) => String.fromCharCode(c.charCodeAt(0) ^ 'polku'.charCodeAt(i % 5))).join('');
   const sources = {
     ofm: { type: 'vector', url: OFM_TILEJSON },
     // the same tiles again (from the HTTP cache), for the trail lines alone: with trail details on,
@@ -199,7 +201,7 @@ export function buildStyle(s, ctx) {
     // where MML has none, abroad and wherever MML's tiles don't come. Every ground is opaque, so no dashes show through.
     // Below zoom 13 the tiles only say open or wooded (35401/35402, then 35411/35412 with the hard ones folded in);
     // from 13 a bog MML's survey classes hard to cross gets unbroken lines.
-    sources.mml = { type: 'vector', tiles: [mmlTerrainTiles(mmlKey(s.mmlKey))], minzoom: 11, maxzoom: 14, bounds: FINLAND_BOUNDS, attribution: '© Maanmittauslaitos, Maastotietokanta, CC BY 4.0' };
+    sources.mml = { type: 'vector', tiles: [`${MML_TERRAIN_TILES}?api-key=${encodeURIComponent(mmlKey)}`], minzoom: 11, maxzoom: 14, bounds: FINLAND_BOUNDS, attribution: '© Maanmittauslaitos, Maastotietokanta, CC BY 4.0' };
     const hex = (c) => c.slice(1), dashes = (ground) => `wetland-${hex(ground)}-${hex(P.wetlandDash)}`, hard = (ground) => `bog-hard-${hex(ground)}-${hex(P.wetlandDash)}`;
     const cls = ['get', 'kohdeluokka'];
     add({ id: 'mml-paludified', type: 'fill', source: 'mml', 'source-layer': 'maasto_alue', minzoom: 13, filter: ['==', cls, 35300], paint: { 'fill-pattern': `bog-paludified-${hex(P.wetlandDash)}` } });
@@ -355,7 +357,7 @@ export function buildStyle(s, ctx) {
   if (s.overlays.propertyLines) {
     const dark = s.base === 'night' || aerialBase;
     const color = dark ? '#fdba74' : '#c2410c', op = s.overlayOpacity && s.overlayOpacity.propertyLines != null ? s.overlayOpacity.propertyLines : 0.9;
-    sources['ov-propertyLines'] = { type: 'vector', tiles: [mmlPropertyTiles(mmlKey(s.mmlKey))], minzoom: 14, maxzoom: 14, bounds: FINLAND_BOUNDS, attribution: '© Maanmittauslaitos, kiinteistörekisteri, CC BY 4.0' };
+    sources['ov-propertyLines'] = { type: 'vector', tiles: [`${MML_PROPERTY_TILES}?api-key=${encodeURIComponent(mmlKey)}`], minzoom: 14, maxzoom: 14, bounds: FINLAND_BOUNDS, attribution: '© Maanmittauslaitos, kiinteistörekisteri, CC BY 4.0' };
     add({ id: 'property-line', type: 'line', source: 'ov-propertyLines', 'source-layer': 'KiinteistorajanSijaintitiedot', minzoom: 14, paint: { 'line-color': color, 'line-width': zi(14, 0.8, 17, 1.6, 19, 2.5), 'line-opacity': op } });
     add({ id: 'property-id', type: 'symbol', source: 'ov-propertyLines', 'source-layer': 'KiinteistotunnuksenSijaintitiedot', minzoom: 16,
       layout: { 'text-field': ['get', 'kiinteistotunnuksenEsitysmuoto'], 'text-font': FONT, 'text-size': 11, 'text-optional': true },
