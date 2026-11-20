@@ -334,8 +334,9 @@ export function buildStyle(s, ctx) {
     // MML's water (#1170), over Traficom's depths too. Shoals and stone fields from zoom 13, as light lines on a clear
     // ground, so the water's colour and the depths show; stone fields with MML's triangles.
     add({ id: 'mml-shoal', type: 'fill', source: 'mml', 'source-layer': 'maasto_alue', minzoom: 13, filter: ['in', cls, ['literal', [38600, 38700]]], paint: { 'fill-pattern': ['match', cls, 38600, `stonefield-${hex(P.shoal)}-${hex(P.cliff)}`, `shoal-${hex(P.shoal)}`] } });
-    // rapids along the river from zoom 11, as bars across it (zoom 12's tiles also have some as points, which 13 and 14's lack: not drawn)
-    add({ id: 'mml-rapids', type: 'line', source: 'mml', 'source-layer': 'vesisto_viiva', minzoom: 11, filter: ['all', ['==', cls, 38200], ['==', ['geometry-type'], 'LineString']], paint: { 'line-color': P.waterText, 'line-width': zi(11, 3, 14, 7, 16, 11, 18, 16), 'line-dasharray': [0.25, 0.9] } });
+    // rapids along the river from zoom 11, as white bars across it (zoom 12's tiles also have some as points, which 13 and
+    // 14's lack: not drawn)
+    add({ id: 'mml-rapids', type: 'line', source: 'mml', 'source-layer': 'vesisto_viiva', minzoom: 11, filter: ['all', ['==', cls, 38200], ['==', ['geometry-type'], 'LineString']], paint: { 'line-pattern': `rapids-${hex(P.shoal)}-${hex(P.waterText)}`, 'line-width': zi(11, 4, 14, 8, 16, 12, 18, 18) } });
     // jetties from zoom 14: MML's in Finland, OSM's piers everywhere, in one look, so where both have one they read as one
     const pier = ['==', ['get', 'class'], 'pier'], wide = (w) => ['match', cls, 45112, w * 1.6, w];
     add({ id: 'pier-area', type: 'fill', source: 'ofm', 'source-layer': 'transportation', minzoom: 14, filter: ['all', pier, ['==', ['geometry-type'], 'Polygon']], paint: { 'fill-color': P.bg, 'fill-outline-color': P.cliff } });
@@ -356,7 +357,7 @@ export function buildStyle(s, ctx) {
     });
     // which way a river flows, from zoom 14: MML's `suunta` is in 1/10,000 radian, counter-clockwise from east (it
     // pointed downhill at 8 of 8 arrows where the elevations differ, 2026-11-20); icon-rotate is clockwise degrees
-    add({ id: 'mml-flow', type: 'symbol', source: 'mml', 'source-layer': 'symboli', minzoom: 14, filter: ['in', cls, ['literal', [36392, 36393]]], layout: { 'icon-image': `flow-${hex(P.waterText)}`, 'icon-rotate': ['*', ['get', 'suunta'], -180 / Math.PI / 10000], 'icon-size': zi(14, 1, 17, 1.5), ...flat } });
+    add({ id: 'mml-flow', type: 'symbol', source: 'mml', 'source-layer': 'symboli', minzoom: 14, filter: ['in', cls, ['literal', [36392, 36393]]], layout: { 'icon-image': `flow-${hex(P.waterText)}-${hex(P.halo)}`, 'icon-rotate': ['*', ['get', 'suunta'], -180 / Math.PI / 10000], 'icon-size': zi(14, 1, 17, 1.5), ...flat } });
     add({ id: 'mml-reed', type: 'symbol', source: 'mml', 'source-layer': 'maasto_piste', minzoom: 14, filter: ['==', cls, 38100], layout: { 'icon-image': `reed-${hex(P.reed)}`, 'icon-size': zi(14, 1, 17, 1.5), ...flat } });
     add({ id: 'mml-pylon', type: 'symbol', source: 'mml', 'source-layer': 'rakennelma', minzoom: 15, filter: ['==', cls, 22392], layout: { 'icon-image': `pylon-${hex(P.power)}`, 'icon-size': zi(15, 1, 18, 1.5), ...flat } });
     add({ id: 'building', type: 'fill', source: 'ofm', 'source-layer': 'building', minzoom: 13, paint: { 'fill-color': s.base === 'trail' ? '#bdb8b0' : P.building, 'fill-outline-color': s.base === 'trail' ? '#918b81' : P.buildingLine, 'fill-opacity': zi(13, 0.5, 15, 1) } });

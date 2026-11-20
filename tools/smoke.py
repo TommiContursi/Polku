@@ -1251,7 +1251,8 @@ def mml_water(chrome):
       const sw=flow.find(f=>f.properties.suunta===-21374), bearing=sw&&(90+rot(sw)+360)%360;
       if(!sw)errs.push("Porvoo's south-west arrow (suunta -21374) not drawn"); else if(!(bearing>180&&bearing<270))errs.push(`Porvoo's arrow points ${bearing}° from north, not south-west`);
       const head=makeIcon(m.getLayoutProperty('mml-flow','icon-image')), alpha=(x,y)=>head.data[(y*head.width+x)*4+3];
-      if(!(alpha(head.width-4,head.height/2)>0&&alpha(head.width-6,2)>0&&!alpha(4,2)))errs.push("the arrow's head isn't on its east end");
+      // (the image is drawn at 2 px a pixel: its head's upper arm at 9.5, 2 and nothing at 3, 2 on its tail)
+      if(!(alpha(head.width-4,head.height/2)>0&&alpha(19,4)>0&&!alpha(6,4)))errs.push("the arrow's head isn't on its east end");
       for(const [cls,layers] of [[38512,['mml-shoal','mml-rapids','mml-jetty']],[38200,['mml-shoal','mml-rock-point','mml-flow']],[36311,['mml-rapids']],[34400,['mml-jetty']],[22311,['mml-jetty']]])
         for(const l of layers)if(m.style.getLayer(l)._featureFilter.filter({zoom:15},{type:2,properties:{kohdeluokka:cls}}))errs.push(`${l} draws class ${cls}`);
       if(m.style.getLayer('mml-rapids')._featureFilter.filter({zoom:12},{type:1,properties:{kohdeluokka:38200}}))errs.push('rapids points drawn as lines');
