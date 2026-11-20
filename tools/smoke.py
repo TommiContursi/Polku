@@ -2585,14 +2585,14 @@ WATER_MML = """(async () => {
     // beyond MML's map, OSM's rocks the same way (#153): one charted always dry as clear as MML's stones above the surface,
     // the rest as a stone at the surface
     await forget();
-    const osm = await D.waterInputs([18.04, 59.31, 18.06, 59.33], { hazards: true, mml: true }, 0);
+    const osm = await D.waterInputs([18.04, 59.31, 18.06, 59.33], { hazards: true }, 0);
     const kinds = osm.hazards.features.filter((f) => f.properties.src === 'osm').map((f) => f.properties.kind).sort().join(', ');
     if (kinds !== 'above, rock, rock') errs.push(`OSM's rocks in Stockholm: ${kinds || 'none'} (missing ${osm.missing.join(', ')}), not above, rock, rock`);
     // too many tiles: not asked; outside Finland: nothing asked, nothing covered
     const n0 = asked;
-    const big = await D.waterInputs([26.80, 60.40, 26.95, 60.50], { mml: true }, 0);
+    const big = await D.waterInputs([26.80, 60.40, 26.95, 60.50], { rapids: true }, 0);
     if (!big.skipped.includes('the National Land Survey') || big.mml !== null) errs.push(`a box of 100 tiles: skipped ${big.skipped.join(', ') || 'nothing'}, ${JSON.stringify(big.mml)}`);
-    const sweden = await D.waterInputs([18.0, 59.3, 18.1, 59.35], { mml: true }, 0);
+    const sweden = await D.waterInputs([18.0, 59.3, 18.1, 59.35], { rapids: true }, 0);
     if (!Array.isArray(sweden.mml) || sweden.mml.length || sweden.missing.length || sweden.skipped.length) errs.push(`Stockholm: ${JSON.stringify(sweden.mml)}, missing ${sweden.missing.join(', ')}, skipped ${sweden.skipped.join(', ')}`);
     if (asked !== n0) errs.push(`${asked - n0} tiles asked of MML for a box too big or outside Finland`);
     // a route saved before the router read MML: its leg on the water is routed again when it loads
