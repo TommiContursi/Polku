@@ -225,6 +225,8 @@ export function buildStyle(s, ctx) {
     // MML has none, abroad and wherever MML's tiles don't come. Boulder fields are dotted. (Its points are over the water.)
     add({ id: 'mml-rock', type: 'fill', source: 'mml', 'source-layer': 'maasto_alue', minzoom: 13, filter: ['==', cls, 34100], paint: { 'fill-color': P.rock, 'fill-antialias': false } });
     add({ id: 'mml-boulders', type: 'fill', source: 'mml', 'source-layer': 'maasto_alue', minzoom: 13, filter: ['==', cls, 34700], paint: { 'fill-pattern': `boulders-${hex(P.rock)}-${hex(P.cliff)}` } });
+    // OSM's scree (#1178) dotted the same, over MML's rock so it shows where MML calls it rock
+    add({ id: 'lc-scree', type: 'fill', source: 'ofm', 'source-layer': 'landcover', minzoom: 13, filter: ['==', ['get', 'subclass'], 'scree'], paint: { 'fill-pattern': `boulders-${hex(P.rock)}-${hex(P.cliff)}` } });
     lc('lc-ice', ['ice'], P.ice);
 
     const lu = (id, cls, color, minzoom = 8) =>
@@ -330,12 +332,7 @@ export function buildStyle(s, ctx) {
 
   // ---- Buildings ----------------------------------------------------------
   if (vectorFills) {
-    // MML's cliffs, power lines and points in Finland (#1147), over the water, so a shore's cliff, a line across a lake
-    // and the reeds show.
-    // A cliff is a line with ticks on its lower side: MML draws its cliffs with the lower side on the right (37 of 37 by
-    // the elevations either side, 2026-11-20), and a positive line-offset is the right. The ticks are dashes of a wider
-    // line beside it. MML has no cliffs in Finland's neighbours, and OSM's aren't drawn.
-    const cls = ['get', 'kohdeluokka'], cliff = ['==', cls, 34400], tick = zi(13, 2, 16, 3.5, 18, 5), edge = zi(13, 0.8, 16, 1.3, 18, 1.8);
+    const cls = ['get', 'kohdeluokka'], tick = zi(13, 2, 16, 3.5, 18, 5), edge = zi(13, 0.8, 16, 1.3, 18, 1.8);
     const hex = (c) => c.slice(1);
     // MML's lake and river depths (#1170) with Traficom's, under the same switches, from zoom 13 (its tiles have none at sea):
     // the contours with Depth contours, their depths and the depth points with Depth soundings (below)
@@ -351,8 +348,16 @@ export function buildStyle(s, ctx) {
     add({ id: 'pier-area', type: 'fill', source: 'ofm', 'source-layer': 'transportation', minzoom: 14, filter: ['all', pier, ['==', ['geometry-type'], 'Polygon']], paint: { 'fill-color': P.bg, 'fill-outline-color': P.cliff } });
     add({ id: 'pier', type: 'line', source: 'ofm', 'source-layer': 'transportation', minzoom: 14, filter: ['all', pier, ['==', ['geometry-type'], 'LineString']], paint: { 'line-color': P.cliff, 'line-width': zi(14, 1, 16, 2, 18, 4) } });
     add({ id: 'mml-jetty', type: 'line', source: 'mml', 'source-layer': 'rakennelma', minzoom: 14, filter: ['in', cls, ['literal', [45111, 45112]]], paint: { 'line-color': P.cliff, 'line-width': zi(14, wide(1), 16, wide(2), 18, wide(4)) } });
-    add({ id: 'mml-cliff', type: 'line', source: 'mml', 'source-layer': 'maasto_viiva', minzoom: 13, filter: cliff, paint: { 'line-color': P.cliff, 'line-width': edge } });
-    add({ id: 'mml-cliff-ticks', type: 'line', source: 'mml', 'source-layer': 'maasto_viiva', minzoom: 13, filter: cliff, paint: { 'line-color': P.cliff, 'line-width': tick, 'line-offset': zi(13, 1.4, 16, 2.4, 18, 3.4), 'line-dasharray': [0.4, 1.4] } });
+    // MML's cliffs, power lines and points in Finland (#1147), over the water, so a shore's cliff, a line across a lake
+    // and the reeds show.
+    // A cliff is a line with ticks on its lower side: MML draws its cliffs with the lower side on the right (37 of 37 by
+    // the elevations either side, 2026-11-20), and a positive line-offset is the right. The ticks are dashes of a wider
+    // line beside it. OSM's cliffs (#1178) have their lower side on the right too, and are drawn the same, everywhere:
+    // OSM and MML each have cliffs the other lacks, so where both have one it's drawn twice, close together.
+    for (const [id, source, layer, filter] of [['osm-cliff', 'ofm', 'mountain_peak', ['==', ['get', 'class'], 'cliff']], ['mml-cliff', 'mml', 'maasto_viiva', ['==', cls, 34400]]]) {
+      add({ id, type: 'line', source, 'source-layer': layer, minzoom: 13, filter, paint: { 'line-color': P.cliff, 'line-width': edge } });
+      add({ id: `${id}-ticks`, type: 'line', source, 'source-layer': layer, minzoom: 13, filter, paint: { 'line-color': P.cliff, 'line-width': tick, 'line-offset': zi(13, 1.4, 16, 2.4, 18, 3.4), 'line-dasharray': [0.4, 1.4] } });
+    }
     // power lines as thin grey lines from zoom 13 (110 kV and up, and under 110 kV)
     add({ id: 'mml-power', type: 'line', source: 'mml', 'source-layer': 'rakennelma', minzoom: 13, filter: ['in', cls, ['literal', [22311, 22312]]], paint: { 'line-color': P.power, 'line-width': zi(13, 0.6, 16, 1, 18, 1.4) } });
     // MML's points, side by side (each symbol layer splits 3D's draped layers): from zoom 14, as only zoom 14's tiles have
@@ -878,14 +883,20 @@ function addRoads(s, P, hc, layers, ctx) {
     ['in', ['get', 'subclass'], ['literal', ['footway', 'pedestrian']]],
     ['in', ['get', 'bicycle'], ['literal', ['yes', 'designated']]], ['!', ['has', 'mtb_scale']]]];
   const noBike = ['==', ['get', 'bicycle'], 'no'];
+  // Access restrictions (#1162): everyone's, in any sport, while the Layers choice is on; each mark's shape says whose.
+  const accessOn = !!s.overlays.access;
+  const allows = (mode) => ['in', ['coalesce', ['get', mode], ''], ['literal', ['yes', 'designated', 'permissive']]];
+  const closed = ['in', ['get', 'access'], ['literal', ['no', 'private']]];
+  // no bikes: bicycle=no, or closed to all but people on foot; a way closed to people on foot too is No entry instead
+  const noBikeMark = ['any', ['all', noBike, ['any', ['!', closed], allows('foot')]], ['all', closed, allows('foot'), ['!', allows('bicycle')]]];
   // No bikes (#1137): short red bars across the line, the trail's halo wide plus 2 px a side,
   // drawn over the centre line, so the marks beside the line (overgrown, wet, private) keep their sides.
   const noBikeBars = (id, source, filter) => {
+    if (!accessOn) return;
     const bar = (halo) => (source === 'trailWays' ? ['+', ['*', halo, ['get', 'wf']], 4] : halo + 4);
     add({
       id, type: 'line', source, ...(source === 'trailWays' ? {} : { 'source-layer': 'transportation' }), minzoom: 13.3,
-      filter: ['all', filter, ['!=', ['get', 'subclass'], 'footway'],
-        ['any', ['!', ['in', ['get', 'access'], ['literal', ['no', 'private']]]], ['==', ['get', 'foot'], 'yes']]],
+      filter: ['all', filter, ['!=', ['get', 'subclass'], 'footway']],
       paint: {
         'line-color': '#ff003c',
         'line-width': zi(14, bar(4 * k), 16, bar(7 * k), 18, bar(12 * k)),
@@ -962,7 +973,7 @@ function addRoads(s, P, hc, layers, ctx) {
         'line-opacity': zi(10, 0, 10.5, 0.8 * roadsDim, 14, roadsDim),
       },
     });
-    if (bikeAct) noBikeBars(`track-${brunnel}-nobike`, 'ofm', ['all', ['==', ['get', 'class'], 'track'], bf, noBike]);
+    noBikeBars(`track-${brunnel}-nobike`, 'ofm', ['all', ['==', ['get', 'class'], 'track'], bf, noBikeMark]);
 
     // Paths: a difficulty-coloured halo (MTB) under a black dashed centre line.
     // With trail details on, the trails inside the loaded detail tiles are
@@ -1036,7 +1047,7 @@ function addRoads(s, P, hc, layers, ctx) {
         'line-opacity': centreOpacity,
       },
     });
-    if (bikeAct) noBikeBars(`path-${brunnel}-nobike`, 'ofmTrails', ['all', trailFilter, noBike]);
+    noBikeBars(`path-${brunnel}-nobike`, 'ofmTrails', ['all', trailFilter, noBikeMark]);
     // The same trails from OSM, in the Trailmap / JOSM language: the band is as
     // wide as the trail, faint trails get a dotted centre line, and the barely
     // visible ones only their colour.
@@ -1063,7 +1074,7 @@ function addRoads(s, P, hc, layers, ctx) {
           'line-opacity': ['case', ['>=', vis, 3], 0, centreOpacity],
         },
       });
-      if (bikeAct) noBikeBars(`path-osm-${brunnel}-nobike`, 'trailWays', ['all', osmFilter, noBike]);
+      noBikeBars(`path-osm-${brunnel}-nobike`, 'trailWays', ['all', osmFilter, noBikeMark]);
     }
     // Cycling infrastructure: surface patterns use only the tiles' known coarse class.
     const surfaceWidth = (paved, rough) => ['case', unpaved, rough, paved];
@@ -1096,23 +1107,24 @@ function addRoads(s, P, hc, layers, ctx) {
         'line-opacity': (trail ? (brunnel === 'tunnel' ? 0.5 : 1) : 0.85) * roadsDim,
       },
     });
-    if (bikeAct) noBikeBars(`cycleway-${brunnel}-nobike`, 'ofm', ['all', isPathClass, cyclingPath, bf, noBike]);
+    noBikeBars(`cycleway-${brunnel}-nobike`, 'ofm', ['all', isPathClass, cyclingPath, bf, noBikeMark]);
   }
 
   // Ways marked private or closed for your sport (#104): purple dots beside the line. The tiles fold access=private into access=no; the
   // sport's own yes wins (a footway closed to cars is open on foot), and on foot, foot=no.
   // Routes keep off them, so this is why a route goes round. It says what the map says, not
   // the law: Finnish private roads and apartment-block yards are open on foot and by bike.
-  if (bikeAct || footAct) {
-    const own = bikeAct ? 'bicycle' : 'foot';
-    const opens = ['in', ['coalesce', ['get', own], ''], ['literal', ['yes', 'designated', 'permissive']]];
-    add({
-      id: 'way-noaccess', type: 'line', source: 'ofm', 'source-layer': 'transportation', minzoom: 14,
-      filter: ['all',
-        ['in', ['get', 'class'], ['literal', ['path', 'track', 'service', 'minor', 'tertiary']]],
-        ['any', ['all', ['==', ['get', 'access'], 'no'], ['!', opens]], ...(footAct ? [['==', ['get', 'foot'], 'no']] : [])]],
-      paint: { 'line-color': darkBase ? '#c4b5fd' : '#7c3aed', 'line-width': zi(14, 2, 18, 4), 'line-offset': zi(14, -3, 18, -8), 'line-dasharray': [0.4, 1.6] },
+  if (accessOn) {
+    // No entry (closed to people on foot and on bikes): purple dots on both sides; no walking only: on one side
+    const noEntry = ['all', closed, ['!', allows('foot')], ['!', allows('bicycle')]];
+    const noWalk = ['any', ['==', ['get', 'foot'], 'no'], ['all', closed, ['!', allows('foot')], allows('bicycle')]];
+    const dots = (id, filter, sign) => add({
+      id, type: 'line', source: 'ofm', 'source-layer': 'transportation', minzoom: 14,
+      filter: ['all', ['in', ['get', 'class'], ['literal', ['path', 'track', 'service', 'minor', 'tertiary']]], filter],
+      paint: { 'line-color': darkBase ? '#c4b5fd' : '#7c3aed', 'line-width': zi(14, 2, 18, 4), 'line-offset': zi(14, sign * 3, 18, sign * 8), 'line-dasharray': [0.4, 1.6] },
     });
+    dots('way-noaccess', ['any', noEntry, noWalk], -1);
+    dots('way-noaccess-2', noEntry, 1);
   }
 
   // Trail details beside and on the line: overgrown (green dots) on one side,

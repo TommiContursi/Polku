@@ -410,12 +410,12 @@ export const SAFETY_OVERLAYS = {
 // Defaults per activity; the user's choices are remembered per activity.
 export const ACTIVITY_OVERLAYS = {
   // winterWays, lipasWinter and seaIce draw only while it's winter (js/winter.js): on by default where they matter
-  mtb: { lipasRoutes: true, lipasPoints: true, pois: true, wmtMtb: false, restricted: true, winterWays: true, lipasWinter: true },
-  gravel: { lipasRoutes: false, lipasPoints: true, pois: true, drPaved: false, sfTraffic: true, sfRoadworks: true, sfIncidents: true, sfCameras: true, winterWays: true, lipasWinter: true },
-  road: { lipasRoutes: false, lipasPoints: false, pois: false, wmtCycling: true, sfTraffic: true, sfRoadworks: true, sfIncidents: true, sfRoadcond: true, sfCameras: true, winterWays: true },
-  hike: { lipasRoutes: true, lipasPoints: true, pois: true, wmtHiking: true, restricted: true, winterWays: true, lipasWinter: true },
-  trailrun: { lipasRoutes: true, lipasPoints: true, pois: true, restricted: true, winterWays: true, lipasWinter: true },
-  run: { lipasRoutes: true, lipasPoints: false, pois: false, sfRoadworks: true, winterWays: true, lipasWinter: true },
+  mtb: { access: true, lipasRoutes: true, lipasPoints: true, pois: true, wmtMtb: false, restricted: true, winterWays: true, lipasWinter: true },
+  gravel: { access: true, lipasRoutes: false, lipasPoints: true, pois: true, drPaved: false, sfTraffic: true, sfRoadworks: true, sfIncidents: true, sfCameras: true, winterWays: true, lipasWinter: true },
+  road: { access: true, lipasRoutes: false, lipasPoints: false, pois: false, wmtCycling: true, sfTraffic: true, sfRoadworks: true, sfIncidents: true, sfRoadcond: true, sfCameras: true, winterWays: true },
+  hike: { access: true, lipasRoutes: true, lipasPoints: true, pois: true, wmtHiking: true, restricted: true, winterWays: true, lipasWinter: true },
+  trailrun: { access: true, lipasRoutes: true, lipasPoints: true, pois: true, restricted: true, winterWays: true, lipasWinter: true },
+  run: { access: true, lipasRoutes: true, lipasPoints: false, pois: false, sfRoadworks: true, winterWays: true, lipasWinter: true },
   paddle: { lipasRoutes: true, lipasPoints: true, pois: true, depthAreas: true, depthContours: true, soundings: true, fairways: true, sfShips: true, restricted: true, nautical: true, seaIce: true },
   swim: { lipasRoutes: false, lipasPoints: true, pois: true, depthAreas: true, depthContours: true, fairways: true, sfShips: true, nautical: true, seaIce: true },
 };

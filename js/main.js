@@ -1208,6 +1208,7 @@ const OVERLAY_LABEL = {
   lipasPoints: 'Lean-tos, huts, campfire & landing sites (LIPAS)',
   pois: 'OSM outdoor places',
   propertyLines: 'Property boundaries',
+  access: 'Access restrictions',
   lit: 'Lit ways',
 };
 const OVERLAY_NOTE = {
@@ -1217,6 +1218,7 @@ const OVERLAY_NOTE = {
   lipasPoints: 'LIPAS, Finland',
   pois: 'OpenStreetMap',
   propertyLines: 'National Land Survey · Finland · zoom 14+, property IDs at 16+',
+  access: 'No bikes, no entry and no walking, where OpenStreetMap marks them · zoom 14+ · routes keep off them in their sports either way',
 };
 const overlayLabel = (id) => OVERLAY_LABEL[id] || (RASTER_OVERLAYS[id] && RASTER_OVERLAYS[id].label) || (SAFETY_OVERLAYS[id] && SAFETY_OVERLAYS[id].label) || id;
 
@@ -1274,8 +1276,11 @@ const KEYS = {
     keyItem(keyLine('border-top:2px dashed #a2381f'), 'Footpath / pedestrian street (cycling permission not implied)'),
     keyItem(keyLine('height:7px;background:repeating-linear-gradient(90deg,#a2381f 0 2px,transparent 2px 4px)'), 'Steps'),
     h('p', { class: 'note' }, 'Blue dashes show cycleways and footpaths or pedestrian streets explicitly tagged for bicycles. The Trail map adds a white backing to them and to footpaths, to separate them from the terrain. MTB-graded footpaths keep their difficulty colours. Signed cycling routes are a separate overlay.'),
-    keyItem(keyLine('height:10px;background:repeating-linear-gradient(90deg,transparent 0 7px,#ff003c 7px 10px),linear-gradient(#1f1f1f,#1f1f1f) center/100% 2px no-repeat'), 'No bikes (red bars across a path or forest track)'),
-    keyItem(keyLine('border-top:3px dotted #7c3aed'), 'Marked private or no access for your sport (beside the way): routes keep off it'),
+    ...(state.overlays.access ? [
+      keyItem(keyLine('height:10px;background:repeating-linear-gradient(90deg,transparent 0 7px,#ff003c 7px 10px),linear-gradient(#1f1f1f,#1f1f1f) center/100% 2px no-repeat'), 'No bikes (red bars across a path or forest track)'),
+      keyItem(keyLine('height:9px;border-top:3px dotted #7c3aed;border-bottom:3px dotted #7c3aed;background:linear-gradient(#1f1f1f,#1f1f1f) center/100% 2px no-repeat'), 'No entry: private or no access (dots on both sides)'),
+      keyItem(keyLine('height:9px;border-top:3px dotted #7c3aed;background:linear-gradient(#1f1f1f,#1f1f1f) center/100% 2px no-repeat'), 'No walking (dots on one side)'),
+    ] : []),
     state.activity === 'gravel' || state.activity === 'road' ? keyItem(keyLine('background:#fde7c1;height:6px;box-shadow:0 0 0 2px #c4842d'), 'Unpaved road') : null,
     keyItem(keyLine('background:#3f8f3f;height:2px;opacity:.7'), 'Protected area boundary'),
     h('h3', {}, 'Your route'),
@@ -1431,6 +1436,7 @@ function trailControls() {
       setTrail('trailDetails', v);
       if (v && map.getZoom() < DETAILS_ZOOM) toast(`Zoom in to level ${DETAILS_ZOOM}+ to see trail details`);
     }), `Width, faint trails, overgrown and wet stretches, fallen trees, gates, fords · zoom ${DETAILS_ZOOM}+ · from OpenStreetMap, where mapped`),
+    overlayToggle('access'),
     toggleInfo('Difficulty numbers', state.labelsDown, rerender((v) => setTrail('labelsDown', v)), 'S0–S6 beside graded trails (zoom 15+)'),
     toggleInfo('Uphill numbers', state.labelsUp, rerender((v) => {
       setTrail('labelsUp', v);
@@ -1501,7 +1507,7 @@ const DEPTHS = ['depthAreas', 'depthContours', 'soundings'];
 const onNowIds = () => [
   ...(state.trailColors !== 'off' ? ['trailColors'] : []),
   ...(state.trailDetails ? ['trailDetails'] : []),
-  ...[...LAYER_GROUPS.flatMap((g) => g.ids), 'maastoOverlay', 'mmlMaastoOverlay', 'propertyLines'].filter((id) => state.overlays[id]),
+  ...[...LAYER_GROUPS.flatMap((g) => g.ids), 'maastoOverlay', 'mmlMaastoOverlay', 'propertyLines', 'access'].filter((id) => state.overlays[id]),
   ...['wind', 'temp', 'rain', 'cloud', 'thunder', 'snow', 'towns'].filter((k) => state.weather[k]).map((k) => `wx:${k}`),
 ];
 
@@ -1525,7 +1531,7 @@ function renderLayersPanel() {
     h('button', { type: 'button', class: 'link', onclick: (e) => { openPanel(null); openActs(!e.detail); $('#activity-bar .act-menu .act[aria-selected="true"]')?.focus(); } }, 'Change')));
 
   // what is on right now, at a glance
-  const on = [...LAYER_GROUPS.flatMap((g) => g.ids), 'maastoOverlay', 'mmlMaastoOverlay', 'propertyLines'].filter((id) => state.overlays[id]);
+  const on = [...LAYER_GROUPS.flatMap((g) => g.ids), 'maastoOverlay', 'mmlMaastoOverlay', 'propertyLines', 'access'].filter((id) => state.overlays[id]);
   const wx = [['wind', 'Wind'], ['temp', 'Temperature'], ['rain', 'Rain'], ['cloud', 'Clouds'], ['thunder', 'Thunder'], ['snow', 'Snow depth'], ['towns', 'Weather at places']].filter(([k]) => state.weather[k]);
   const trailOn = state.trailColors !== 'off';
   const custom = Object.keys(state.overlaysByActivity[state.activity] || {}).length > 0 || Object.keys(state.trailsByActivity[state.activity] || {}).length > 0;
@@ -1571,7 +1577,7 @@ function renderLayersPanel() {
     overlayToggle('propertyLines')));
 
   // trails & difficulty (and the map key for the base map's lines): in every sport
-  p.append(layerGroup('trails', 'Trails & difficulty', (state.trailColors !== 'off' ? 1 : 0) + (state.trailDetails ? 1 : 0) + (state.labelsDown ? 1 : 0) + (state.labelsUp ? 1 : 0), ...trailControls()));
+  p.append(layerGroup('trails', 'Trails & difficulty', (state.trailColors !== 'off' ? 1 : 0) + (state.trailDetails ? 1 : 0) + (state.labelsDown ? 1 : 0) + (state.labelsUp ? 1 : 0) + (state.overlays.access ? 1 : 0), ...trailControls()));
 
   // winter: on by itself where there's snow (or yours to set), and what it shows
   const wset = winterSetting(), wOn = state.winterOn;
@@ -1746,14 +1752,14 @@ map.on('data', (e) => {
   tileTrouble[e.sourceId].ok = Date.now();
   refreshQuickSoon();
 });
-// MML's terrain (#1147) has no tile of its own: where its tiles don't load, OSM's wetlands and rock show in their place
-// and cliffs, power lines, the water's marks and the lakes' depths (#1170) are missing, and a message says so once, until
+// MML's terrain (#1147) has no tile of its own: where its tiles don't load, OSM's wetlands, rock and cliffs show in their
+// place, and power lines, the water's marks and the lakes' depths (#1170) are missing, and a message says so once, until
 // one of its tiles comes again
 let mmlDown = false;
 map.on('error', (e) => {
   if (e.sourceId !== 'mml' || mmlDown || (e.error && e.error.name === 'AbortError')) return;
   mmlDown = true;
-  toast('The National Land Survey’s terrain didn’t load: the map shows OpenStreetMap’s wetlands and rock, without cliffs, power lines, stones and rapids in the water, or lake depths.', { ms: 6000 });
+  toast('The National Land Survey’s terrain didn’t load: the map shows OpenStreetMap’s wetlands, rock and cliffs, without power lines, stones and rapids in the water, or lake depths.', { ms: 6000 });
 });
 map.on('data', (e) => { if (e.sourceId === 'mml' && e.dataType === 'source' && e.tile) mmlDown = false; });
 onStatus(() => refreshQuickSoon());
