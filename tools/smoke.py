@@ -1051,7 +1051,8 @@ def osm_cliffs(chrome):
     return not fails
 
 
-# #1178: OSM's saddles, a pass's mark with its name and height, at Pallas, from the live tiles (they carry them to zoom 13).
+# #1178: OSM's saddles, a pass's mark with its name and height, at Pallas, from the live tiles (they carry them to zoom 13),
+# and its ridges, a band of dots, from zoom 14.
 def saddles(chrome):
     pg = chrome.page(1440, 900, False)
     pg.open_app({'activity': 'hike', 'base': 'trail'}, hash_='#13/68.07/24.055')
@@ -1068,11 +1069,19 @@ def saddles(chrome):
         else{const img=makeIcon(id); if(!img||!img.data.some((v,i)=>i%4===3&&v>0))errs.push(`${base}: ${id} isn't drawn`); else if(!m.hasImage(id))errs.push(`${base}: ${id} isn't on the map`);}
         if(!got.some(x=>x.properties.name==='Taivaskeronsatula'))errs.push(`${base}: Taivaskeronsatula isn't among the saddles drawn`);
       }
+      m.jumpTo({center:[24.1066,68.0419],zoom:15});
+      for(const base of ['trail','plain','night']) {
+        polku.set({base}); await settle();
+        if(!m.queryRenderedFeatures({layers:['osm-ridge']}).length){errs.push(`${base}: no ridge drawn at Pallas`);continue;}
+        const id=m.getPaintProperty('osm-ridge','line-pattern'), img=makeIcon(id);
+        if(!/^ridge-[0-9a-f]{6}$/.test(id)||!img||!img.data.some((v,i)=>i%4===3&&v>0))errs.push(`${base}: the ridge's pattern ${id} isn't drawn`);
+        else if(!m.hasImage(id))errs.push(`${base}: ${id} isn't on the map`);
+      }
       return errs;
     })()""", timeout=120000)
     fails += [f'console: {e[:160]}' for e in pg.errors()]
     pg.close()
-    print(f"{'ok  ' if not fails else 'FAIL'} OSM's saddles (#1178)" + ''.join(f'\n     - {f}' for f in fails), flush=True)
+    print(f"{'ok  ' if not fails else 'FAIL'} OSM's saddles and ridges (#1178)" + ''.join(f'\n     - {f}' for f in fails), flush=True)
     return not fails
 
 

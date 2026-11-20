@@ -474,6 +474,20 @@ function strike(age) {
 
 const SDF = new Set(['wind-arrow', 'ship']);
 
+// a ridge (#1178): OSM's standard map's band of dots, dense along the crest and thinning out to either side, drawn
+// along the line by line-pattern. A fixed seed, so every tile's band is the same. `ridge-<colour>`
+function ridge(id) {
+  const [c, ctx] = canvas(16, 16);
+  ctx.fillStyle = `#${id.slice(6)}`;
+  let seed = 7;
+  const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+  for (let i = 0; i < 60; i++) {
+    const off = (rnd() + rnd() + rnd() - 1.5) * (i < 30 ? 1.4 : 5);
+    ctx.beginPath(); ctx.arc(rnd() * 16, 8 + off, 0.4 + rnd() * 0.3, 0, Math.PI * 2); ctx.fill();
+  }
+  return ctx.getImageData(0, 0, c.width, c.height);
+}
+
 export function makeIcon(id) {
   if (id.startsWith('wm-') && MARK[id.slice(3).split('~')[0]]) return warnMark(id.slice(3).split('~')[0]);
   if (/^wetland-[0-9a-f]{6}-[0-9a-f]{6}$/.test(id)) return wetland(id);
@@ -483,6 +497,7 @@ export function makeIcon(id) {
   if (/^(boulders-[0-9a-f]{6}|rock-spot-[0-9a-f]{6}|rock-(stone|rocks))-[0-9a-f]{6}$/.test(id)) return rock(id);
   if (/^pylon-[0-9a-f]{6}$/.test(id)) return pylon(id);
   if (/^saddle-[0-9a-f]{6}$/.test(id)) return saddle(id);
+  if (/^ridge-[0-9a-f]{6}$/.test(id)) return ridge(id);
   if (id === 'wind-arrow') return windArrow();
   if (id === 'ship') return ship();
   if (id === 'sf-incident') return sign('triangle', '#ef4444', '!');

@@ -338,6 +338,8 @@ export function buildStyle(s, ctx) {
     // the elevations either side, 2026-11-20), and a positive line-offset is the right. The ticks are dashes of a wider
     // line beside it. OSM's cliffs (#1178) have their lower side on the right too, and are drawn the same, everywhere:
     // OSM and MML each have cliffs the other lacks, so where both have one it's drawn twice, close together.
+    // a ridge (#1178) is OSM's standard map's band of dots along its crest, in the peaks' brown, under the cliffs
+    add({ id: 'osm-ridge', type: 'line', source: 'ofm', 'source-layer': 'mountain_peak', minzoom: 14, filter: ['==', ['get', 'class'], 'ridge'], paint: { 'line-pattern': 'ridge-6b4b2b', 'line-width': zi(14, 10, 16, 16, 18, 22), 'line-opacity': 0.7 } });
     const cls = ['get', 'kohdeluokka'], tick = zi(13, 2, 16, 3.5, 18, 5), edge = zi(13, 0.8, 16, 1.3, 18, 1.8);
     for (const [id, source, layer, filter] of [['osm-cliff', 'ofm', 'mountain_peak', ['==', ['get', 'class'], 'cliff']], ['mml-cliff', 'mml', 'maasto_viiva', ['==', cls, 34400]]]) {
       add({ id, type: 'line', source, 'source-layer': layer, minzoom: 13, filter, paint: { 'line-color': P.cliff, 'line-width': edge } });
