@@ -1239,7 +1239,9 @@ function addRoads(s, P, hc, layers, ctx) {
     // gates from 16 (town details): a town's courtyard gates filled a phone's screen at 15 (130 in Helsinki's centre)
     const gate = ['in', ['get', 'kind'], ['literal', ['gate', 'gate-no']]];
     add({ id: 'td-points', type: 'symbol', source: 'trailPoints', minzoom: 15, filter: ['!', gate], layout: { 'icon-image': ['concat', 'td-', ['get', 'kind']], ...icon } });
-    add({ id: 'td-gates', type: 'symbol', source: 'trailPoints', minzoom: 16, filter: gate, layout: { 'icon-image': ['concat', 'td-', ['get', 'kind']], ...icon } });
+    // at 16 they give way to each other and to names (39 → 15 on a phone in Helsinki's centre); from 17 all of them
+    add({ id: 'td-gates', type: 'symbol', source: 'trailPoints', minzoom: 16, maxzoom: 17, filter: gate, layout: { 'icon-image': ['concat', 'td-', ['get', 'kind']], ...icon, 'icon-allow-overlap': false } });
+    add({ id: 'td-gates-all', type: 'symbol', source: 'trailPoints', minzoom: 17, filter: gate, layout: { 'icon-image': ['concat', 'td-', ['get', 'kind']], ...icon } });
   }
 }
 
