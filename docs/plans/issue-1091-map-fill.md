@@ -18,7 +18,7 @@ The mock-up: [mockups/issue-1091-map-fill.html](mockups/issue-1091-map-fill.html
 - **Decided, 2026-11-19: the fade is 0.4 s at an even pace** (on #1091's description), about the longest it should be.
 - **Two more ideas from trying it:** the same fade after you move the map yourself, and a fade whose length follows how much of the map the part changes: [after a move, and by what comes](#after-a-move-and-by-what-comes). A ghost of the frame before over the map after quick swipes was fixed in the mock-up: no picture over a moving map.
 - **Decided, 2026-11-19: both** (on #1091's description): the parts fade in after a move of your own too, never from the arrow keys, each over 0.2–0.4 s by how much of the map it changes.
-- **Next:** [building it](#building-it).
+- **The fade-in: built** ([#1136](https://github.com/TommiContursi/Polku/pull/1136)); how it differs from the plan and what its cost measured: [as built](#as-built).
 
 ## What people see
 
@@ -311,6 +311,37 @@ To check in the build:
 - HTML markers (the route's points, your position, a card's pin) aren't in the map's canvas: under the picture they'd seem to wait for it, above it they'd appear at once. Try both.
 - The copies take two canvases of the screen's size: about 20 MB each at 1440 × 900 on a Retina screen, 12 MB on a phone.
 - The night map, the aerial and MML bases (raster tiles, already faded by MapLibre's `raster-fade-duration`: one fade, not two), 3D, and Safari and Firefox, on a real phone on a real mobile network.
+
+### As built
+
+- **The picture lies under the markers,** right after the map's canvas: above them it would hide every marker and fade it back in each time a part came. It lies under the weather's wind and rain canvases too, and under the controls and cards, as planned.
+- **Nothing fades before any input,** as from the keys: the first view, a share link's and a spot's jump come as before, with no flag of their own. Nor do the moves that follow your position, which come with every fix: copying frames after each of them would cost a phone's battery on the trail.
+- **What counts as a part:** a tile of any source, except a GeoJSON source other than Polku's own layers (`TOGETHER`), so a hover, a pick or the route never waits for a fade, and a raster that fades in by itself (`raster-fade-duration` not 0: the photo and terrain bases, the overlays), so those fade once. Hillshade, contours, the trails' and shadows' tiles and the weather's fields count.
+- **"The map is drawn"** is `map.loaded()`, not `areTilesLoaded()`: a GeoJSON source's `setData` is on its way to its worker for a frame or two after D draws, and the tiles alone would say drawn before Polku's own layers had come. Seen on a warm cache (the base map already held, LIPAS answered by the page 0.5 s late with a route across the view): the map drawn at once, the copying on while the loaders were busy, the frame after D drew LIPAS's route with `loaded()` false, and the route faded in at 0.9 s.
+- **A highlight under the mouse ends a fade** (from /review-animations, 2026-11-19): a route's leg, a LIPAS route or the way under the mouse, lit by it, is drawn in the map's canvas, so under a fading picture it lit dimmed and stayed after the mouse left. And a part that comes while one fades no longer shortens that one: the new picture fades no sooner than the one before would have.
+- **Any camera move drops the picture as it starts** (from Codex's review): a move made at once (heading up, following you, any move with reduced motion) has stopped before a frame is drawn, so watching for a moving frame left the picture of the view before over the moved map.
+- **A result's card** opens when the camera stops, as before, over the place while it fades in; opening it doesn't move the camera, so its fades go on.
+- **Two canvases,** reused: the frame before becomes the picture, and the picture that faded becomes the next copy. Their size is set to 0 once nothing fades.
+- **Every part gets a picture,** as in the mock-up: one too thin to change a 48 × 30 cell (a path, a route) fades over 0.2 s. A first build skipped those, and they popped in; the smoke check's hover case found it.
+- **One reading per part:** each `getImageData` waits for the GPU to finish the frame, 5–12 ms in Chrome on an M1 whether it reads the map's canvas, a copy of it, or a `createImageBitmap` later; so both frames are drawn into one 48 × 60 canvas and read once.
+
+What it costs, measured first, against main at ff0af452: headless Chrome with the Mac's GPU (Apple M1 Pro, no SwiftShader), motion as a person has it, a cold profile each run, MTB at Jyväskylä, twelve real flings in a row (touch on the phone page, the mouse on the desktop), each in a new direction and 2.2 s apart, so that parts come after every stop. The phone page is 390 × 844 at a device pixel ratio of 3 (the canvas 1170 × 2532) with the CPU slowed 4×; the desktop 1440 × 900 at 2. What would have been too much was written down first: on the phone page, the `render` listeners' time per frame in the 3 s after a stop rising by more than 2 ms at the median or 6 ms at p95, frames over 33 ms in the 1.5 s after a stop rising by more than one per stop, or the p95 frame interval there by more than 4 ms.
+
+| Two runs each | Fades | Frames over 33 ms after the stops | p95 frame after the stops | `render` listeners after a stop: median, p95 | A part's frame |
+|---|---|---|---|---|---|
+| Phone page, main | 0 | 11, 11 | 16.7–16.8 ms | 0, 0 ms | – |
+| Phone page, built | 5, 7 | 8, 10 | 16.8 ms | 0, 0.8 ms | 7–13 ms |
+| Desktop, main | 0 | 1, 1 | 16.7 ms | 0, 0 ms | – |
+| Desktop, built | 20, 16 | 1, 0 | 16.7–16.8 ms | 0, 0.2 ms | 12–15 ms |
+| Phone page with a route (its chevrons drawn every frame), the timeline, wind and rain, main | 0 | 8, 4 | 16.7–16.8 ms | 0, 0 ms | – |
+| The same, built | 2, 2 | 8, 10 | 16.8 ms | 0, 0.6 ms | 5–12 ms |
+
+| Phone page, main at 2d4f1949 | 0 | 7, 9 | 16.8 ms | 0, 0 ms | – |
+| Phone page, built at d45fc96c (every part a picture) | 13, 16 | 9, 13 | 16.8 ms | 0, 0.7–0.8 ms | 7–10 ms |
+
+(With a route, the swipes were shorter, above the planner's sheet, so fewer parts came: ten stops a run. The last two rows were measured after every part was given a picture: twice the fades, and the main thread's time over the twelve flings 7–19 % above main's, 12.2 and 13.6 s against 11.4 s with the CPU slowed 4×, where the first build's had been even with it.)
+
+Copying a frame costs 0–0.1 ms of the main thread; the cost is each part's reading, a frame of 7–15 ms once per part. Reading the two frames apart, as first built, made a part's frame 10–29 ms. Not measured: a real phone (its GPU may wait longer for the reading), Safari and Firefox, the battery.
 
 ## How A was tried
 

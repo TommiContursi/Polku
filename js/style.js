@@ -789,18 +789,19 @@ function addRoads(s, P, hc, layers, ctx) {
     ['in', ['get', 'subclass'], ['literal', ['footway', 'pedestrian']]],
     ['in', ['get', 'bicycle'], ['literal', ['yes', 'designated']]], ['!', ['has', 'mtb_scale']]]];
   const noBike = ['==', ['get', 'bicycle'], 'no'];
-  const noBikeTicks = (id, source, filter) => {
-    const category = source === 'trailWays' ? ['get', 'w'] : ['literal', 1];
-    const offset = (narrow, usual, wide) => ['*', hc ? -1.5 : -1, ['match', category, 0, narrow, [2, 3], wide, usual]];
+  // No bikes (#1137): short red bars across the line, the trail's halo wide plus 2 px a side,
+  // drawn over the centre line, so the marks beside the line (overgrown, wet, private) keep their sides.
+  const noBikeBars = (id, source, filter) => {
+    const bar = (halo) => (source === 'trailWays' ? ['+', ['*', halo, ['get', 'wf']], 4] : halo + 4);
     add({
       id, type: 'line', source, ...(source === 'trailWays' ? {} : { 'source-layer': 'transportation' }), minzoom: 13.3,
       filter: ['all', filter, ['!=', ['get', 'subclass'], 'footway'],
         ['any', ['!', ['in', ['get', 'access'], ['literal', ['no', 'private']]]], ['==', ['get', 'foot'], 'yes']]],
       paint: {
         'line-color': '#ff003c',
-        'line-width': hc ? zi(12, 2, 14, 3, 16, 6, 18, 9) : zi(14, 2, 16, 3, 18, 6),
-        'line-offset': zi(14, offset(1, 2.5, 3), 16, offset(3, 5, 8), 18, offset(4, 10, 14)),
-        'line-dasharray': hc ? [0.4, 0.5] : [0.2, 0.5],
+        'line-width': zi(14, bar(4 * k), 16, bar(7 * k), 18, bar(12 * k)),
+        // in bar lengths: a quarter of one thick, two apart (thicker in high contrast)
+        'line-dasharray': hc ? [0.35, 2] : [0.25, 2],
         'line-opacity': zi(13.3, 0, 14, ['case', ['==', ['get', 'brunnel'], 'tunnel'], 0.3, 1]),
       },
     });
@@ -872,7 +873,7 @@ function addRoads(s, P, hc, layers, ctx) {
         'line-opacity': zi(10, 0, 10.5, 0.8 * roadsDim, 14, roadsDim),
       },
     });
-    if (bikeAct) noBikeTicks(`track-${brunnel}-nobike`, 'ofm', ['all', ['==', ['get', 'class'], 'track'], bf, noBike]);
+    if (bikeAct) noBikeBars(`track-${brunnel}-nobike`, 'ofm', ['all', ['==', ['get', 'class'], 'track'], bf, noBike]);
 
     // Paths: a difficulty-coloured halo (MTB) under a black dashed centre line.
     // With trail details on, the trails inside the loaded detail tiles are
@@ -907,7 +908,6 @@ function addRoads(s, P, hc, layers, ctx) {
       layout: { 'line-cap': 'round', 'line-join': 'round' },
       paint: { 'line-color': haloOf(MTB_IDX), 'line-width': haloW(1), 'line-opacity': haloOpacity },
     });
-    if (bikeAct) noBikeTicks(`path-${brunnel}-nobike`, 'ofmTrails', ['all', trailFilter, noBike]);
     add({
       id: `path-${brunnel}`, type: 'line', source: 'ofmTrails', 'source-layer': 'transportation', minzoom: 12,
       filter: trailFilter,
@@ -918,6 +918,7 @@ function addRoads(s, P, hc, layers, ctx) {
         'line-opacity': centreOpacity,
       },
     });
+    if (bikeAct) noBikeBars(`path-${brunnel}-nobike`, 'ofmTrails', ['all', trailFilter, noBike]);
     // The same trails from OSM, in the Trailmap / JOSM language: the band is as
     // wide as the trail, faint trails get a dotted centre line, and the barely
     // visible ones only their colour.
@@ -934,7 +935,6 @@ function addRoads(s, P, hc, layers, ctx) {
           'line-opacity': ['*', haloOpacity, ['match', vis, 1, 0.9, 2, 0.75, 3, 0.55, 1]],
         },
       });
-      if (bikeAct) noBikeTicks(`path-osm-${brunnel}-nobike`, 'trailWays', ['all', osmFilter, noBike]);
       add({
         id: `path-osm-${brunnel}`, type: 'line', source: 'trailWays', minzoom: 12,
         filter: osmFilter,
@@ -945,6 +945,7 @@ function addRoads(s, P, hc, layers, ctx) {
           'line-opacity': ['case', ['>=', vis, 3], 0, centreOpacity],
         },
       });
+      if (bikeAct) noBikeBars(`path-osm-${brunnel}-nobike`, 'trailWays', ['all', osmFilter, noBike]);
     }
     // Cycling infrastructure: surface patterns use only the tiles' known coarse class.
     const surfaceWidth = (paved, rough) => ['case', unpaved, rough, paved];
@@ -977,11 +978,10 @@ function addRoads(s, P, hc, layers, ctx) {
         'line-opacity': (trail ? (brunnel === 'tunnel' ? 0.5 : 1) : 0.85) * roadsDim,
       },
     });
-    if (bikeAct) noBikeTicks(`cycleway-${brunnel}-nobike`, 'ofm', ['all', isPathClass, cyclingPath, bf, noBike]);
+    if (bikeAct) noBikeBars(`cycleway-${brunnel}-nobike`, 'ofm', ['all', isPathClass, cyclingPath, bf, noBike]);
   }
 
-  // Ways marked private or closed for your sport (#104): purple dots beside the line, on the
-  // other side from no-bike's red ones. The tiles fold access=private into access=no; the
+  // Ways marked private or closed for your sport (#104): purple dots beside the line. The tiles fold access=private into access=no; the
   // sport's own yes wins (a footway closed to cars is open on foot), and on foot, foot=no.
   // Routes keep off them, so this is why a route goes round. It says what the map says, not
   // the law: Finnish private roads and apartment-block yards are open on foot and by bike.

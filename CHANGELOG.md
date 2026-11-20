@@ -2,11 +2,21 @@
 
 What's new in [Polku](https://polku.si), from the latest updates back to the first release. These notes describe features available in the app, not work still in progress. For upcoming changes, see the [issues](https://github.com/TommiContursi/Polku/issues) and [roadmap](docs/ROADMAP.md).
 
-## 2026-11-19
+## 2026-11-20
 
 ### Wetlands as blue dashes ([#1144](https://github.com/TommiContursi/Polku/issues/1144))
 
 - Wetlands are drawn as rows of short blue dashes on a grey-blue ground from zoom 11, as on Finnish maps, in place of the green tufts. The map's data doesn't say what kind of wetland it is, so the pattern doesn't tell bog from marsh or reeds, whether trees grow there or how easy it is to cross.
+
+## 2026-11-19
+
+### What comes in after the map stops fades in ([#1091](https://github.com/TommiContursi/Polku/issues/1091))
+
+- When the map stops, after you move it or it flies to a place, what comes in no longer appears piece by piece: each part fades in, briefly where little changes and up to 0.4 s where much does. Touching the map ends a fade at once. After a move with the arrow keys, or a search result chosen with **Enter**, everything appears at once, as before.
+
+### No-bike marks you can see at a glance ([#1137](https://github.com/TommiContursi/Polku/issues/1137))
+
+- A path, forest track or cycling path closed to bikes now has short red bars across it in the cycling sports, instead of a thin red line beside it, so it stands out on a phone and on the dark map. The bars leave the line's own colour between them and the sides of the line to the overgrown, wet and private marks.
 
 ### Streams and ditches by size ([#1138](https://github.com/TommiContursi/Polku/issues/1138))
 
