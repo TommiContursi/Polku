@@ -2063,6 +2063,74 @@ def water(chrome):
     return not fails
 
 
+# Lake depths (#1184): Matikanjärvi's tile of Polku's depth files, recorded (tools/fixtures/depths-593-271.json), with
+# no other source. A leg past a shoal keeps 20 m off its soundings under 0.5 m, and says all its water was surveyed;
+# a swimmer's doesn't use them; a leg into the shoal crosses it, and Check says so under Good to know; What Polku
+# looked at says how much of the water Syke surveyed, none where it has no tile, and Not checked when they didn't load.
+WATER_DEPTHS = """(async () => {
+  const wait = (ms) => new Promise((r) => setTimeout(r, ms)), errs = [];
+  const tile = await (await fetch(location.origin + '/tools/fixtures/depths-593-271.json')).json();
+  const D = await import(location.origin + '/js/waterdata.js');
+  const W = await import(location.origin + '/js/water.js');
+  const G = await import(location.origin + '/js/geo.js');
+  const fc = { type: 'FeatureCollection', features: [] };
+  let depths = [tile], missing = [];
+  D.seedWater((box, want) => ({ fairways: fc, hazards: fc, depths: want.depths ? depths : null, wind: null, missing: want.depths ? missing : [], skipped: [] }));
+  // from and to straight through a row of the shoal's soundings; the shoal's end on one of them
+  const from = [28.6095, 64.23944], to = [28.6185, 64.23944], shoal = [28.61389, 64.23989];
+  const near = (c) => Math.min(...tile.shallow.map((p) => G.nearestOnLine(p, c).d));
+  const past = await W.routeWater(from, to, { at: 0, wind: 'ignore' });
+  if (near(past.coords) < 15) errs.push(`passes ${Math.round(near(past.coords))} m from a sounding under 0.5 m (keeps 20 m)`);
+  const d = past.water.depth;
+  if (!d || !(d.water > 300) || d.surveyed < d.water - 25) errs.push(`the leg's surveyed water: ${JSON.stringify(d)}`);
+  const swim = await W.routeWater(from, to, { at: 0, wind: 'ignore', craft: 'swim' });
+  if (swim.water.depth || (swim.water.checked || {}).depths) errs.push(`a swimmer's leg uses the depths: ${JSON.stringify(swim.water.depth)}`);
+  const into = await W.routeWater(from, shoal, { at: 0, wind: 'ignore' });
+  if (!into.water.events.some((e) => e.kind === 'shallow')) errs.push(`a leg into the shoal: ${into.water.events.map((e) => e.kind).join(', ') || 'no events'}`);
+  // in the planner
+  polku.set({ activity: 'paddle' });
+  await wait(800);
+  const p = polku.planner;
+  const row = () => (p.analysis ? p.lookedAt(p.analysis).find((r) => r.what === 'Lake depths') : null);
+  const routed = async (b) => {
+    p.clear();
+    p.setMode('water');
+    p.addPoint(from);
+    p.addPoint(b);
+    for (let k = 0; k < 80 && !(p.analysis && p.analysis.waterWarn && p.legs[0] && p.legs[0].status === 'ok'); k++) await wait(250);
+  };
+  p.setActive(true);
+  await routed(shoal);
+  const look = p.headsUp().look.map((w) => w.text);
+  if (!look.includes('Shallow water, under 0.5 m when surveyed')) errs.push(`Good to know: ${look.join(' / ') || 'nothing'}`);
+  if (!row() || row().state !== 'ok' || row().by !== 'Syke’s soundings') errs.push(`What Polku looked at, lake depths: ${row() ? `${row().state} · ${row().by}` : 'no row'}`);
+  if (!p.lookedAt(p.analysis).some((r) => r.what === 'Sea depths' && /never used for routes/.test(r.by))) errs.push('What Polku looked at has no row for the sea’s depths');
+  depths = [];
+  await routed([to[0], to[1] + 0.0001]);
+  if (!row() || row().state !== 'bad' || row().by !== 'not surveyed where this route goes') errs.push(`no tile here, lake depths: ${row() ? `${row().state} · ${row().by}` : 'no row'}`);
+  depths = null; missing = ['Syke'];
+  await routed([to[0], to[1] + 0.0002]);
+  const lost = p.headsUp().not.find((x) => x.key === 'water' && x.by === 'Syke');
+  if (!lost || lost.text !== 'Lake depths didn’t load' || typeof lost.retry !== 'function') errs.push(`Not checked: ${p.headsUp().not.map((x) => `${x.text} (${x.by})`).join(' / ') || 'nothing'}`);
+  if (!row() || row().state !== 'bad' || row().by !== 'didn’t load') errs.push(`lake depths that didn't load: ${row() ? `${row().state} · ${row().by}` : 'no row'}`);
+  p.clear();
+  D.seedWater(null);
+  polku.set({ activity: 'mtb' });
+  return errs;
+})()"""
+
+
+def water_depths(chrome):
+    pg = chrome.page(1440, 900, False)
+    pg.open_app({'activity': 'mtb'}, {'polku:plannerDock': '"left"'}, '#14/64.2396/28.614')
+    pg.js("import(location.origin + '/js/trails.js').then((T) => { T.holdFetches(); return true; })")
+    fails = pg.js(WATER_DEPTHS, timeout=120000)
+    fails += [f'console: {e[:160]}' for e in pg.errors()]
+    pg.close()
+    print(f"{'ok  ' if not fails else 'FAIL'} lake depths on the water" + ''.join(f'\n     - {f}' for f in fails), flush=True)
+    return not fails
+
+
 # what a water check forgets before and after (WATER_LATE, WATER_BACK)
 WATER_FORGET = '''// the rocks are made up, and the hosted data fails: no answer cached by an earlier run before (nor the hosted
   // data's manifest), none kept after
@@ -24666,7 +24734,7 @@ GROUPS = [
     ('header', [header_fit, head_names], 'the planner header fitting its sheet; the route\'s name following the road names that come late with the map\'s tiles (the review of #1050)'),
     ('lipas', [lipas], 'LIPAS search and riding a LIPAS route (recorded answers), a place, coordinates or a trail from search gets its pin and card (#871, #875)'),
     ('marked', [marked], 'marked routes picked on the map (#308): a hand and the whole route lit under a mouse before a click, a tap 10 px beside the line lit while its card is open and one 30 px away not (recorded LIPAS, cut in two parts)'),
-    ('water', [water, water_late, water_back, water_long, water_hidden, paddle_map, best_time_water], 'the paddling router\'s costs (recorded fairways, a fixed wind), OSM\'s rocks coming late, failing and coming back, Undo, a leg too long to ask for them (mocked), the hidden map\'s last tile failing (#129, #80, #490, #400), and Paddle\'s map: a leg over water stands out from the sea, no hint about trails (#611, #613)'),
+    ('water', [water, water_depths, water_late, water_back, water_long, water_hidden, paddle_map, best_time_water], 'the paddling router\'s costs (recorded fairways, a fixed wind), lake depths from a recorded tile (#1184), OSM\'s rocks coming late, failing and coming back, Undo, a leg too long to ask for them (mocked), the hidden map\'s last tile failing (#129, #80, #490, #400), and Paddle\'s map: a leg over water stands out from the sea, no hint about trails (#611, #613)'),
     ('multi', [multi], 'multisport: a sport per leg, changeovers, share links, Reorder (straight legs)'),
     ('editing', [editing], 'midpoint handle and line drags: one via point, Undo/Redo, mouse and touch in four sports'),
     ('routemenu', [route_menu, quick_taps], 'clicks and taps on the route (straight legs), LIPAS over trails, and quick taps on a busy page (#293)'),

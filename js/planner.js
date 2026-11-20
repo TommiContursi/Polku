@@ -1861,7 +1861,7 @@ export class Planner {
         // on the water: carrying, and what the water router noted (shipping lanes, rough water, rocks)
         const n = (k) => r.events.filter((e) => e.kind === k).length;
         what = r.carry > 30 ? `carry ${fmtDist(r.carry)}` : 'no carries';
-        notes = [n('ship') ? `${n('ship')} shipping lane${n('ship') > 1 ? 's' : ''}` : '', n('rough') ? 'rough water' : '', n('hazard') ? 'near rocks' : '', n('harbour') ? 'a harbour' : ''].filter(Boolean);
+        notes = [n('ship') ? `${n('ship')} shipping lane${n('ship') > 1 ? 's' : ''}` : '', n('rough') ? 'rough water' : '', n('hazard') ? 'near rocks' : '', n('shallow') ? 'shallow water' : '', n('harbour') ? 'a harbour' : ''].filter(Boolean);
         notes = [r.o.outBack ? 'out and back' : '', notes.length ? notes.join(' · ') : 'nothing to note on the water', r.twice > 0.05 ? `${Math.round(r.twice * 100)} % paddled twice` : ''];
       } else {
         const trails = a.ways.filter(([k]) => k === 'path' || k === 'track').reduce((m, [, d]) => m + d, 0);
@@ -2334,7 +2334,7 @@ export class Planner {
   waterWarnings() {
     const out = [];
     // (shipping lanes are Väylävirasto's fairway areas; harbours and rocks OpenStreetMap's too)
-    const MAP = { kind: 'map', by: 'Väylävirasto and OpenStreetMap' }, LANES = { kind: 'map', by: 'Väylävirasto' }, WAVES = { kind: 'estimate', by: 'the waves, from the forecast' };
+    const MAP = { kind: 'map', by: 'Väylävirasto and OpenStreetMap' }, LANES = { kind: 'map', by: 'Väylävirasto' }, WAVES = { kind: 'estimate', by: 'the waves, from the forecast' }, SYKE = { kind: 'map', by: 'Syke’s lake soundings' };
     this.legs.forEach((leg, i) => {
       const wr = leg.mode === 'water' && leg.status === 'ok' && leg.result && leg.result.water;
       if (!wr) return;
@@ -2347,6 +2347,7 @@ export class Planner {
             : { at, len, kind: 'water', hide: 'Shipping lanes', noAvoid: true, text: `Crosses ${e.name ? `the ${e.name}` : 'a shipping lane'}`, note: 'cross quickly and straight, after looking both ways: ships can’t stop or turn', tier: 'read', src: LANES });
         } else if (e.kind === 'harbour') out.push({ at, len, kind: 'water', hide: 'Harbour basins', noAvoid: true, text: 'Through a harbour basin', note: 'boats coming and going', tier: 'look', src: MAP });
         else if (e.kind === 'hazard') out.push({ at, len, kind: 'water', hide: 'Rocks and shoals', text: 'Close to a marked rock or shoal', note: 'the only way here passes near a danger mark or a rock in OpenStreetMap', tier: 'look', src: MAP });
+        else if (e.kind === 'shallow') out.push({ at, len, kind: 'water', hide: 'Shallow water', text: 'Shallow water, under 0.5 m when surveyed', note: 'Syke’s lake soundings, at the lake’s survey level: the water may be lower now, and stones can lie nearer the surface between the soundings', tier: 'look', src: SYKE });
         else if (e.kind === 'rough') {
           // for the departure the timeline shows (moving it routes the leg again) [jc-paddle-step]
           const w = wr.wind, when = wr.at ? ` for ${clock(wr.at * 1000)}` : '';
@@ -7056,8 +7057,15 @@ export class Planner {
     row(land ? 'Weather on the way' : 'Wind and waves', windLost ? 'Open-Meteo didn’t answer' : a.wind ? `Open-Meteo, ${timeOf(start)}` : 'loading…', windLost ? 'bad' : a.wind ? 'ok' : 'wait');
     const sun = sunTimes(start, this.points[0] || a.pts[0]);
     row('Daylight', sun.set ? `sunset ${clock(sun.set * 1000)}` : sun.day === 'polar-day' ? 'the sun doesn’t set' : 'the sun doesn’t rise', 'ok');
-    if (water) row('Depths', 'shown on the map, never used for routes', 'na');
-    else row('Water hazards', 'no water on this route', 'na');
+    if (water) {
+      // Syke's lake depths (#1184): how much of the route's water it surveyed; none of the sea
+      const dep = wr.filter((w) => w.depth), wet = dep.reduce((t, w) => t + w.depth.water, 0), got = dep.reduce((t, w) => t + w.depth.surveyed, 0);
+      if (!asked('depths')) row('Lake depths', 'not used for this route', 'na');
+      else if (missing('Syke') || skipped('Syke')) row('Lake depths', missing('Syke') ? 'didn’t load' : 'not checked: a leg too long to ask for', 'bad');
+      else if (got >= wet - 25) row('Lake depths', 'Syke’s soundings', 'ok');
+      else row('Lake depths', got < 25 ? 'not surveyed where this route goes' : `Syke’s soundings for ${fmtDist(got)} of the ${fmtDist(wet)} on the water`, 'bad');
+      row('Sea depths', 'shown on the map, never used for routes (Traficom’s licence)', 'na');
+    } else row('Water hazards', 'no water on this route', 'na');
     return rows;
   }
 
@@ -8358,11 +8366,13 @@ const WATER_LOST = {
   OpenStreetMap: ['Rocks and shoals from OpenStreetMap didn’t answer', 'Routed without them: the line may pass close to a rock the map knows.'],
   Väylävirasto: ['Fairways and marks from Väylävirasto didn’t answer', 'Routed without them: the line may cross a shipping lane or pass a danger mark without saying so.'],
   'the wind forecast': ['The wind forecast didn’t answer on the water', 'Routed without the wind: how rough the water gets isn’t known.'],
+  Syke: ['Lake depths didn’t load', 'Routed without them: the line may cross shallow water Syke surveyed without saying so.'],
 };
 // ...and for each that wasn't asked, the leg being too long for it (#490)
 const WATER_LONG = {
   OpenStreetMap: ['Rocks and shoals: not checked, the leg is too long', 'Routed without OpenStreetMap’s rocks and shoals: the line may pass close to one. Add a point to split the leg.'],
   Väylävirasto: ['Fairways and marks: not checked, the leg is too long', 'Routed without Väylävirasto’s fairways and marks: the line may cross a shipping lane or pass a danger mark without saying so. Add a point to split the leg.'],
+  Syke: ['Lake depths: not checked, the leg is too long', 'Routed without Syke’s lake depths: the line may cross shallow water without saying so. Add a point to split the leg.'],
 };
 
 // "2 h 13" or "54 min": a duration where there's little room
