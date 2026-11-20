@@ -1390,6 +1390,19 @@ TRACKS_FROM_13 = """(async () => {
     T.holdFetches();
     if (busy) errs.push(`a tile outside the hosted data below 14 was called busy ${busy} times`);
   }
+  // ... and zoomed in to 14 while the hosted data is still being asked for it, Overpass is asked (Codex on #1150; answered here)
+  {
+    const real = window.fetch;
+    let overpass = 0;
+    window.fetch = (u, o) => (/interpreter/.test(String(u)) ? (overpass++, Promise.resolve(new Response('{"elements":[]}', { headers: { 'content-type': 'application/json' } }))) : real(u, o));
+    T.holdFetches(false);
+    const at13 = T.trailTile(3002, 3002, { hostedOnly: true }).catch(() => null), at14 = await T.trailTile(3002, 3002).then(() => null, (x) => x);
+    await at13;
+    T.holdFetches();
+    window.fetch = real;
+    // (a profile that ran this before has the answer cached, so Overpass is asked 0 or 1 times: the tile loading is what counts)
+    if (at14) errs.push(`zoomed in to 14 during a hosted-only ask: ${at14.message}, Overpass asked ${overpass} times`);
+  }
   // Trail details off (cycling on gravel): the hint is back at once
   m.jumpTo({ center: [25.8095, 62.26066], zoom: 13.45 });
   await wait(800); await idle();
