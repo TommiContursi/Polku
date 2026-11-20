@@ -45,6 +45,7 @@ function waterStyle() {
 const CLEAR = { danger: 45, cardinal: 55, shift: 35, point: 25, edge: 15 };
 const SHALLOW_M = 20; // round a sounding under 0.5 m (#1184)
 const EMPTY_FC = { type: 'FeatureCollection', features: [] };
+const OFFLINE = 'Routing over water needs a connection.';
 
 function ensureHidden() {
   if (hidden) return hidden;
@@ -96,8 +97,8 @@ const mercY = (lat) => { const s = Math.sin((lat * Math.PI) / 180); return 0.5 -
 
 async function rasteriseNow(bounds) {
   const h = ensureHidden();
-  const lost = []; // what didn't load offline while this leg's water was drawn: a tile's zoom, or -1 for the TileJSON
-  const onLost = (e) => { if (!navigator.onLine) lost.push(e.tile ? e.tile.tileID.canonical.z : -1); };
+  const lost = []; // what didn't load offline while this leg's water was drawn: a tile's canonical id, or null for the TileJSON
+  const onLost = (e) => { if (!navigator.onLine) lost.push(e.tile ? e.tile.tileID.canonical : null); };
   h.map.on('error', onLost);
   await h.ready;
   const [w, s, e, n] = bounds;
@@ -113,17 +114,11 @@ async function rasteriseNow(bounds) {
   h.map.fitBounds([[w, s], [e, n]], { padding: 0, animate: false });
   await waitIdle(h.map);
   h.map.off('error', onLost);
-  // Offline, a tile of the leg's own zoom that didn't load was drawn from Finland's coarse overview (lakes without islands)
-  // or as land, and the leg looked routed (#1195). It fails instead, also when the connection is back by now, and the map
-  // goes: its failed tiles would stay failed for a Retry. (The coarser tiles asked for to stand in, and the first view's,
-  // don't count.)
+  // Offline, a tile of the leg's own zoom that didn't load is drawn from Finland's coarse overview (lakes without islands)
+  // or as land (#1195): attempt() fails a leg whose line crosses one, also when the connection is back by now. (The
+  // coarser tiles asked for to stand in, and the first view's, don't count.)
   const z = Math.min(h.map.getSource('ofm').maxzoom, Math.floor(h.map.getZoom()));
-  if (lost.some((t) => t < 0 || t >= z)) {
-    h.map.remove();
-    h.el.remove();
-    hidden = null;
-    throw new Error('Routing over water needs a connection.');
-  }
+  const gone = lost.filter((t) => !t || t.z >= z);
   const src = h.map.getCanvas();
   const cw = src.width, ch = src.height;
   const c = document.createElement('canvas');
@@ -142,8 +137,14 @@ async function rasteriseNow(bounds) {
   const nw = h.map.unproject([0, 0]), se = h.map.unproject([cw, ch]);
   const x0 = mercX(nw.lng), x1 = mercX(se.lng), y0 = mercY(nw.lat), y1 = mercY(se.lat);
   const projectMerc = (X, Y) => ({ x: ((X - x0) / (x1 - x0)) * cw, y: ((Y - y0) / (y1 - y0)) * ch });
+  if (gone.length) { // the map goes: MapLibre keeps a failed tile failed for the same view, for a Retry online too
+    h.map.remove();
+    h.el.remove();
+    hidden = null;
+    if (gone.includes(null)) throw new Error(OFFLINE);
+  }
   return {
-    W: cw, H: ch, type, waterCells, res, projectMerc,
+    W: cw, H: ch, type, waterCells, res, projectMerc, lost: gone.length ? { z, tiles: new Set(gone.map((t) => `${t.x}/${t.y}`)) } : null,
     project: ([lon, lat]) => projectMerc(mercX(lon), mercY(lat)),
     unproject: (x, y) => {
       const X = x0 + (x / cw) * (x1 - x0), Y = y0 + (y / ch) * (y1 - y0);
@@ -496,7 +497,7 @@ async function attempt(from, to, padFactor, allowPortage, style = {}, inputs = n
   const lap = (k) => { const n = performance.now(); T[k] = Math.round(n - T.t); T.t = n; };
   const [grid, got] = await Promise.all([rasterise(bounds), inputs ? inputs(bounds) : null]); // the data comes while the water renders
   lap('render+data');
-  if (!grid.waterCells) throw new Error('No water found here — zoom to a lake, river or the sea.');
+  if (!grid.waterCells) throw new Error(grid.lost ? OFFLINE : 'No water found here — zoom to a lake, river or the sea.');
   if (got) {
     if (got.fairways.features.length || got.hazards.features.length || (style.nogos && style.nogos.length) || (got.depths && got.depths.length)) rasteriseCosts(grid, { fairways: got.fairways, hazards: got.hazards, nogos: style.nogos, depths: got.depths });
     lap('costs');
@@ -514,7 +515,7 @@ async function attempt(from, to, padFactor, allowPortage, style = {}, inputs = n
   const [tx, ty] = toCell(to);
   const path = astar(grid, sx, sy, tx, ty, allowPortage ? style.carry || 22 : 400, style.shore === 'near', comfort, FAIR_COST[style.fairways] || FAIR_COST.cross);
   lap('astar');
-  if (!path) throw new Error('No water connection found.');
+  if (!path) throw new Error(grid.lost ? OFFLINE : 'No water connection found.');
   const pulled = stringPull(grid, path);
   lap('pull');
 
@@ -534,12 +535,23 @@ async function attempt(from, to, padFactor, allowPortage, style = {}, inputs = n
     tags.push(onLand && seg > grid.res * 1.5 ? { portage: 'yes', surface: 'ground' } : { route: 'water', surface: 'water' });
     coords.push(ll);
   }
+  if (grid.lost && overLost(grid.lost, coords)) throw new Error(OFFLINE);
   const { events, wave, depth } = eventsAlong(grid, coords, comfort, got);
   lap('events');
   const reach = reachAlong(grid, coords);
   lap('reach');
   delete T.t;
   return { coords, tags, portage, portageM, resolution: grid.res, cells: grid.W * grid.H, events, wave, depth, reach, wind: got && got.wind, missing: got ? got.missing : [], skipped: got ? got.skipped : [], times: T };
+}
+
+// Whether the line crosses a tile that didn't load offline (#1195): looked at every 20 m, its ends too.
+function overLost({ z, tiles }, coords) {
+  const n = 2 ** z, tile = ([lon, lat]) => `${Math.floor(mercX(lon) * n)}/${Math.floor(mercY(lat) * n)}`;
+  return coords.some((b, k) => {
+    const a = coords[k - 1] || b, steps = Math.max(1, Math.ceil(dist(a, b) / 20));
+    for (let j = 0; j <= steps; j++) if (tiles.has(tile([a[0] + ((b[0] - a[0]) * j) / steps, a[1] + ((b[1] - a[1]) * j) / steps]))) return true;
+    return false;
+  });
 }
 
 // Where the finished line meets what costs: shipping lanes and harbours it

@@ -2930,10 +2930,11 @@ def water_hidden(chrome):
 
 
 # A new leg on the water offline (#1195), with the real service worker and the network off, as the changelog check: where
-# the hidden map's tiles aren't kept (Oulujärvi, never seen), it ends at once as a straight line and says routing over
-# water needs a connection, rather than being routed on Finland's coarse overview or called land. With the page open (the
-# hidden map made online) and reloaded offline (made offline). Back online, Retry routes it. The sources are seeded (no
-# answers), so only the map's tiles are offline. ([at, from, to, the status to wait for])
+# its line crosses tiles that aren't kept (Oulujärvi, never seen), it ends at once as a straight line and says routing
+# over water needs a connection, rather than being routed on Finland's coarse overview or called land. With the page open
+# (the hidden map made online) and reloaded offline (made offline). Back online, Retry routes it. A short leg inside a
+# route saved with Save offline is still routed, though its window reaches a tile the route didn't keep (#1206's review).
+# The sources are seeded (no answers), so only the map's tiles are offline. ([at, from, to, the status to wait for])
 WATER_OFFLINE_LEG = """(async ([at, a, b, until]) => {
   const wait = (ms) => new Promise((r) => setTimeout(r, ms)), fc = { type: 'FeatureCollection', features: [] };
   const D = await import(location.origin + '/js/waterdata.js');
@@ -2988,11 +2989,22 @@ def water_offline(chrome):
         if got['status'] != 'error' or not any('Routing over water needs a connection' in t for t in got['said']):
             fails.append(f"{name}: the leg is {got['status']}{' with a route' if got['water'] else ''} after {got['ms'] / 1000:.0f} s, said {' / '.join(got['said']) or 'nothing'}")
 
+    area = None
     try:
         first = pg.js(WATER_OFFLINE_LEG % json.dumps([[28.614, 64.2396], [28.6095, 64.23944], [28.6185, 64.23944], 'ok']), timeout=40000)
         if first['status'] != 'ok':
             fails.append(f"(the test) the leg online at Matikanjärvi: {first['status']}")
+        area = pg.js("""(async () => {
+          const O = await import(location.origin + '/js/offline.js');
+          const a = await O.saveArea({ name: 'smoke', line: [[27.05, 64.33], [27.20, 64.30]], bbox: null, route: null }, { buffer: 1000, terrain: false }, () => {}, new AbortController().signal);
+          return { id: a.id, failed: a.failed };
+        })()""", timeout=120000)
+        if area['failed']:
+            fails.append(f"(the test) {area['failed']} tiles of the saved route weren't saved")
         offline(True)
+        near = pg.js(WATER_OFFLINE_LEG % json.dumps([[27.125, 64.312], [27.125, 64.315], [27.125, 64.30781], 'ok']), timeout=40000)
+        if near['status'] != 'ok' or not near['water']:
+            fails.append(f"a short new leg inside the saved route: {near['status']}, said {' / '.join(near['said']) or 'nothing'}")
         leg('the page open, offline')
         pg.reload()
         leg('reloaded offline')
@@ -3002,12 +3014,14 @@ def water_offline(chrome):
             fails.append(f'back online, Retry: the leg is {back}')
     finally:
         offline(False)
+        if area:
+            pg.js(f"import(location.origin + '/js/offline.js').then((O) => O.removeArea({json.dumps(area['id'])})).then(() => true)")
         pg.js("(async () => { for (const r of await navigator.serviceWorker.getRegistrations()) await r.unregister(); return true })()")
         for s in ws:
             chrome.send('Target.detachFromTarget', {'sessionId': s})
     fails += [f'console: {e[:160]}' for e in pg.errors()]
     pg.close()
-    print(f"{'ok  ' if not fails else 'FAIL'} a new leg on the water offline says routing needs a connection; back online, Retry routes it (#1195)" + ''.join(f'\n     - {f}' for f in fails), flush=True)
+    print(f"{'ok  ' if not fails else 'FAIL'} a new leg on the water offline says routing needs a connection, but inside a saved route; back online, Retry routes it (#1195)" + ''.join(f'\n     - {f}' for f in fails), flush=True)
     return not fails
 
 
