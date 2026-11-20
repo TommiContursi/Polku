@@ -4,6 +4,10 @@ What's new in [Polku](https://polku.si), from the latest updates back to the fir
 
 ## 2026-11-20
 
+### A smoother glide after a flick ([#1193](https://github.com/TommiContursi/Polku/issues/1193))
+
+- The map keeps the speed of your finger when you flick it and then slows down smoothly, instead of braking as you let go. With reduced motion it stops where you let go, as before.
+
 ### Access restrictions in Layers ([#1162](https://github.com/TommiContursi/Polku/issues/1162))
 
 - **Access restrictions** is a switch of its own in Layers, under Trails & difficulty. Choosing a cycling or walking sport turns it on, and Layers remembers your choice for each sport. While it's on, it shows in **On now**.

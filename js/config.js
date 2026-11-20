@@ -16,6 +16,11 @@ export const ESRI_IMAGERY =
   'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}?blankTile=false'; // a missing tile lets MapLibre keep its parent image
 export const RASTER_RATIO = globalThis.devicePixelRatio > 1 ? 2 : 1;
 
+// A flicked map's glide (MapLibre's dragPan inertia, #1193) starts at the finger's speed. MapLibre starts it at
+// linearity × the curve's first slope / 2 of that speed: the slope of this quint (the shape of --ease-out) is 5, so
+// linearity is 2 / 5. The deceleration is MapLibre's own; maxSpeed (linearity × speed) caps a flick at 5,000 px/s.
+export const GLIDE = { linearity: 0.4, easing: (t) => 1 - (1 - t) ** 5, deceleration: 2500, maxSpeed: 2000 };
+
 export const BROUTER = 'https://brouter.de/brouter';
 export const PHOTON = 'https://photon.komoot.io/api/';
 export const OSM_DATA_MANIFEST = 'https://ducksoft.fi/polku-osm/current.json';

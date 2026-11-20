@@ -124,6 +124,7 @@ EDIT = """(async () => {
   if (p.past.length !== u0 + 1) errs.push(`${p.past.length - u0} undo steps`);
   if (map.getCenter().lng !== c0.lng || map.getCenter().lat !== c0.lat) errs.push('the map panned');
   if (!map.dragPan.isEnabled()) errs.push('map panning left off');
+  if (map.dragPan._inertiaOptions.linearity !== 0.4) errs.push("a flick's glide back to MapLibre's own (#1193)");
   if (p.edit) errs.push('still editing');
   p.undo();
   return errs;
