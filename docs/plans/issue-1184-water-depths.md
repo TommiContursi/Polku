@@ -78,7 +78,7 @@ Water routes are for planning, not navigation (PRODUCT.md). The words never say 
 
 ## Not in this part
 
-- Traficom's depths at sea: an agreement with Traficom, the user's to ask for (#1184's comment of 2026-11-20).
+- Traficom's depths at sea and on its charted lakes: an agreement with Traficom, the user's to ask for (#152, and #1184's comment of 2026-11-20).
 - MML's stones in the water for the router (#153), and rapids (#856).
 - Lake depths on the map: #1170 draws MML's depth contours and points (Syke's lakes) under Depth contours and Depth soundings.
 
