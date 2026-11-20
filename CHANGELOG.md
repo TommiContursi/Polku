@@ -6,7 +6,7 @@ What's new in [Polku](https://polku.si), from the latest updates back to the fir
 
 ### Mountain passes ([#1178](https://github.com/TommiContursi/Polku/issues/1178))
 
-- Passes between fells, mapped as saddles in OpenStreetMap, are marked with a small brown )( and their name and height, like the peaks, from zoom 11 to 13. Taivaskeronsatula at Pallas is one. The map's data has them only up to zoom 13, so they aren't shown when you zoom in further.
+- Passes between fells, mapped as saddles in OpenStreetMap, are marked with OpenStreetMap's usual saddle mark, a small brown block with a notch in its top, and their name and height, like the peaks, from zoom 11 to 13. Taivaskeronsatula at Pallas is one. The map's data has them only up to zoom 13, so they aren't shown when you zoom in further.
 
 ### Access restrictions in Layers ([#1162](https://github.com/TommiContursi/Polku/issues/1162))
 

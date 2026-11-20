@@ -143,14 +143,11 @@ function pylon(id) {
   return ctx.getImageData(0, 0, c.width, c.height);
 }
 
-// a mountain pass (#1178): two arcs back to back, as topographic maps mark one. `saddle-<colour>`
+// a mountain pass (#1178): OSM's standard map's saddle, a block with a notch in its top. `saddle-<colour>`
 function saddle(id) {
-  const [c, ctx] = canvas(9, 9);
-  ctx.strokeStyle = `#${id.slice(7)}`;
-  ctx.lineWidth = 1.3;
-  ctx.lineCap = 'round';
-  ctx.beginPath(); ctx.arc(-0.5, 4.5, 3.8, -Math.PI / 3, Math.PI / 3); ctx.stroke();
-  ctx.beginPath(); ctx.arc(9.5, 4.5, 3.8, Math.PI * 2 / 3, Math.PI * 4 / 3); ctx.stroke();
+  const [c, ctx] = canvas(8, 8);
+  ctx.fillStyle = `#${id.slice(7)}`;
+  ctx.beginPath(); ctx.moveTo(0, 3); ctx.lineTo(0, 8); ctx.lineTo(8, 8); ctx.lineTo(8, 3); ctx.lineTo(4, 5); ctx.closePath(); ctx.fill();
   return ctx.getImageData(0, 0, c.width, c.height);
 }
 
