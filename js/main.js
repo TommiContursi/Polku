@@ -25,7 +25,7 @@ import { initHover, hoverCapable } from './hover.js';
 import { registerServiceWorker, initOfflineStatus, openSaveOffline, renderOfflineSection, saveOverview } from './offline.js';
 import { initSearch, recentSearches, clearRecentSearches } from './search.js';
 import { parseTrackFile } from './gpx.js';
-import { lineLength, bbox, fmtDist, compass as side, finlandInView } from './geo.js';
+import { lineLength, bbox, fmtDist, compass as side, finlandInView, shipsInView, boxesMeet } from './geo.js';
 import { $, $$, h, icon, toast, store, popMenu, settleControls, infoDot, tooltip } from './ui.js';
 import { initGestures, bindCrosshair } from './gestures.js';
 import { initView3d } from './view3d.js';
@@ -1225,16 +1225,14 @@ const OVERLAY_NOTE = {
 const overlayLabel = (id) => OVERLAY_LABEL[id] || (RASTER_OVERLAYS[id] && RASTER_OVERLAYS[id].label) || (SAFETY_OVERLAYS[id] && SAFETY_OVERLAYS[id].label) || id;
 
 // Where a layer's source has data (#1200). With none of its area in view, its tile and its switch say so in words, and it
-// isn't counted as on, though its switch stays as it was. Digitraffic's AIS sees ships around the northern Baltic (as
-// checked on 2026-11-20); FMI's ice charts are the Baltic Sea's (their own bounds).
+// isn't counted as on, though its switch stays as it was. FMI's ice charts are the Baltic Sea's (their own bounds).
 const FINLAND_ONLY = { only: 'Finland only', inView: finlandInView };
-const meets = (a, b) => a[0] <= b[2] && b[0] <= a[2] && a[1] <= b[3] && b[1] <= a[3];
 const AREA = {
   ...Object.fromEntries(['maastoOverlay', 'mmlMaastoOverlay', 'propertyLines', 'lipasRoutes', 'lipasPoints', 'lipasWinter', 'nautical', 'depths',
     'depthAreas', 'depthContours', 'soundings', 'fairways', 'sfTraffic', 'sfIncidents', 'sfRoadworks', 'sfRoadcond', 'sfCameras',
     'drPaved', 'drPrivate', 'drSpeed'].map((id) => [id, FINLAND_ONLY])),
-  sfShips: { only: 'Northern Baltic only', inView: (b) => finlandInView(b) || meets(b, [17.8, 58.5, 30.5, 66]) },
-  seaIce: { only: 'Baltic Sea only', inView: (b) => meets(b, [9, 53.2, 31, 66.2]) },
+  sfShips: { only: 'Northern Baltic only', inView: shipsInView },
+  seaIce: { only: 'Baltic Sea only', inView: (b) => boxesMeet(b, [9, 53.2, 31, 66.2]) },
 };
 const outside = (id) => {
   const b = map.getBounds();

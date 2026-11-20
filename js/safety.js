@@ -9,7 +9,7 @@
 //
 // The same data is checked against planned routes (see `hazardsAlong`).
 
-import { lonLatToTile, tileBounds, pointSegment, dist, inFinland, finlandInView } from './geo.js';
+import { lonLatToTile, tileBounds, pointSegment, dist, inFinland, finlandInView, shipsInView } from './geo.js';
 import { DIGIROAD_WMS, isWater } from './config.js';
 import { openModal } from './modal.js';
 import { h, icon } from './ui.js';
@@ -134,7 +134,7 @@ export class SafetyLayers {
     const z = this.map.getZoom();
     const b = this.map.getBounds();
     const view = [b.getWest(), b.getSouth(), b.getEast(), b.getNorth()];
-    if (this.on.ships && z >= 8) this.loadShips(); // (Digitraffic's AIS sees beyond Finland: its timer asks anywhere too)
+    if (this.on.ships && z >= 8) this.loadShips(); // (Digitraffic's AIS sees beyond Finland: its own area)
     if (!finlandInView(view)) return; // Fintraffic's roads and Digiroad are Finland's (#1200)
     if (this.on.traffic && z >= 10) this.loadAadt(view);
     if (this.on.roadworks && z >= 7) this.loadRoadworks(view);
@@ -247,6 +247,7 @@ export class SafetyLayers {
     if (!this.on.ships || this.map.getZoom() < 8 || this.loadingShips) return;
     const c = this.map.getCenter();
     const b = this.map.getBounds();
+    if (!shipsInView([b.getWest(), b.getSouth(), b.getEast(), b.getNorth()])) return; // (the map's middle isn't sent where it sees none)
     // the view's middle to about a kilometre, and a kilometre more round it: while the map
     // follows you, the middle is where you are, and that isn't sent
     const lat = +c.lat.toFixed(2), lon = +c.lng.toFixed(2);

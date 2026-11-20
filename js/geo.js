@@ -116,6 +116,10 @@ export const inFinland = (p) => inPolygon(p, FINLAND);
 // shortcut: a strip of Finland narrower than the box, crossing it with no corner in it, counts as outside; test the edges if one turns up.
 export const finlandInView = ([w, s, e, n]) => [[w, s], [w, n], [e, s], [e, n]].some(inFinland)
   || FINLAND.coordinates[0].some(([x, y]) => x >= w && x <= e && y >= s && y <= n);
+// Whether two boxes [w, s, e, n] overlap.
+export const boxesMeet = (a, b) => a[0] <= b[2] && b[0] <= a[2] && a[1] <= b[3] && b[1] <= a[3];
+// Any of the box where Digitraffic's AIS sees ships: Finland and the northern Baltic round it (as checked on 2026-11-20, #1200).
+export const shipsInView = (b) => finlandInView(b) || boxesMeet(b, [17.8, 58.5, 30.5, 66]);
 
 // Distance (m) from point p to segment ab, using a local equirectangular projection.
 export function pointSegment(p, a, b) {

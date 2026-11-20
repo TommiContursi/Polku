@@ -867,13 +867,30 @@ def waterway_style(chrome):
     return not fails
 
 
+# #1200: the Finnish sources and Digitraffic's ships, answered at once with nothing, each request logged in window.__asked
+FINNISH_HELD = """(() => {
+  const real = window.fetch.bind(window);
+  window.__asked = [];
+  window.fetch = (input, init) => {
+    const url = String(input && input.url ? input.url : input);
+    let u = null;
+    try { u = new URL(url, location.href); } catch {}
+    if (!u || !/^(lipas\\.fi|avoinapi\\.vaylapilvi\\.fi|meri\\.digitraffic\\.fi|tie\\.digitraffic\\.fi)$/.test(u.hostname)) return real(input, init);
+    window.__asked.push(u.href);
+    const body = /\\/vessels$/.test(u.pathname) ? [] : { type: 'FeatureCollection', features: [] };
+    return Promise.resolve(new Response(JSON.stringify(body), { headers: { 'Content-Type': 'application/json' } }));
+  };
+})();"""
+
+
 # #1200: a layer from a Finnish source says "Finland only" on its tile and its switch where none of Finland is in view (Luleå's
 # archipelago, inside the box the code once tested), and Paddle's defaults don't count it as on there; Marked routes asks you to zoom
-# in on Finland there. With Tornio in view, or in Finland, nothing changes. Ships and Sea ice reach farther: they say so only beyond the northern Baltic and the Baltic.
+# in on Finland there, and nothing is asked of LIPAS or Väylävirasto. With Tornio in view, or in Finland, nothing changes. Ships and
+# Sea ice reach farther: they say so only beyond the northern Baltic and the Baltic, and beyond it no ships are asked for.
 def layer_coverage(chrome):
     pg = chrome.page(1440, 900, False)
     try:
-        pg.c.send('Page.addScriptToEvaluateOnNewDocument', {'source': EMPTY_DEPTHS}, pg.s)
+        pg.c.send('Page.addScriptToEvaluateOnNewDocument', {'source': EMPTY_DEPTHS + FINNISH_HELD}, pg.s)
         pg.open_app({'activity': 'paddle'}, None, '#11/65.45/22.4')
         fails = pg.js("""(async () => {
           const errs=[], m=polku.map, frame=()=>new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)));
@@ -886,6 +903,8 @@ def layer_coverage(chrome):
           const chips=()=>[...document.querySelectorAll('#layers-panel .on-chip span')].map(s=>s.textContent);
           const count=(g)=>document.querySelector(`#layers-panel [data-group="${g}"] .lg-count`)?.textContent||'';
           const FI=['Official routes (LIPAS)','Shipping lanes','Depth areas','Nautical marks & fairways'];
+          const asked=(host,path='')=>window.__asked.filter(u=>{const x=new URL(u);return x.hostname===host&&x.pathname.includes(path);});
+          const pause=(ms)=>new Promise(r=>setTimeout(r,ms));
           // Luleå's archipelago, Sweden: Marked routes asks you to zoom in on Finland, and the drawer's tiles
           await polku.planner.listMarked();
           if(polku.planner.marked.state!=='far')errs.push(`Luleå: Marked routes is “${polku.planner.marked.state}”, not asking you to zoom in on Finland`);
@@ -897,6 +916,7 @@ def layer_coverage(chrome):
           // (Paddle's other layers on: Official routes and Shipping lanes, from Finland; Outdoor places and Military areas, everywhere)
           if(more()!=='More: all layers, 2 more on')errs.push(`Luleå: ${more()}, not 2 more on`);
           if(!polku.state.overlays.fairways||!polku.state.overlays.lipasRoutes)errs.push('Luleå: Paddle\\'s Finnish layers were switched off, not just not counted');
+          for(const host of ['lipas.fi','avoinapi.vaylapilvi.fi'])if(asked(host).length)errs.push(`Luleå: asked ${host} for ${asked(host).length} things`);
           // the full panel: not counted as on, and each switch says so in words
           document.querySelector('#quick-layers .qt-more').click();
           if(!await until(()=>row('Shipping lanes')))return [...errs,'More opened no Shipping lanes switch'];
@@ -917,11 +937,18 @@ def layer_coverage(chrome):
           // Haparanda, Sweden, with Tornio across the river in view: a view partly in Finland counts as in it
           const {inFinland}=await import('/js/geo.js');
           if(!inFinland||inFinland([24.12,65.83])||!inFinland([24.2,65.85]))errs.push('(the test) Haparanda is in Finland, or Tornio isn\\'t');
+          window.__asked.length=0;
           await go([24.12,65.83],12);
           if(!await until(()=>count('water')==='6 on'))errs.push(`Haparanda with Tornio in view: Water & nautical says “${count('water')}”, not 6 on`);
+          if(!await until(()=>asked('lipas.fi').length&&asked('avoinapi.vaylapilvi.fi','/vaylatiedot/ows').length))errs.push(`Haparanda with Tornio in view: LIPAS asked ${asked('lipas.fi').length} times, Väylävirasto's marks ${asked('avoinapi.vaylapilvi.fi').length}`);
           // Lofoten, Norway: Ships and Sea ice say where they reach
+          window.__asked.length=0;
           await go([14.5,68.2],10);
+          const water=document.querySelector('#layers-panel [data-group="water"]');
+          if(water&&!water.open)water.querySelector('summary').click();
           if(!await until(()=>note('Ships (live AIS)')==='Northern Baltic only'))errs.push(`Lofoten: the Ships switch says “${note('Ships (live AIS)')}”`);
+          await pause(1500);
+          for(const [host,path] of [['lipas.fi',''],['avoinapi.vaylapilvi.fi',''],['meri.digitraffic.fi','/ais/v1/locations']])if(asked(host,path).length)errs.push(`Lofoten: asked ${host}${path}`);
           if(!note('Sea ice').startsWith('Baltic Sea only'))errs.push(`Lofoten: the Sea ice switch says “${note('Sea ice')}”`);
           // back in the drawer, which keeps its tiles' words as the map moves
           document.querySelector('#layers-panel .panel-back').click();
