@@ -20,7 +20,8 @@ Outside Finland the map stays as it is, on OpenFreeMap's tiles and OSM.
   one. Polku's own archive, decided earlier the same day, is kept for later
   in [#1155](https://github.com/TommiContursi/Polku/issues/1155).
 - **Built, 2026-11-20:** property boundaries and their plots (#1157,
-  #1159), bogs (#1160), and rock, cliffs, reeds and power lines (#1168).
+  #1159), bogs (#1160), rock, cliffs, reeds and power lines (#1168), and a
+  tap on the terrain (#1175).
   What was built is in [Drawing](#drawing) and [Parts](#parts); the
   decisions made while building are in the "Decided" lists of
   [#1147](https://github.com/TommiContursi/Polku/issues/1147) and
@@ -242,9 +243,17 @@ Plain and Night maps, in MTB and paddle; its PR lists what else it covered.
   slider. A plot is tinted under the mouse pointer and when picked, which
   opens a card with its property ID (#1159); **Plot under the pointer** is
   its own switch, on at first. No transition.
-- **Tap and hover** on the terrain open no card yet: MML's terrain layers
-  aren't among the layers the map picks from (`INSPECTABLE` in
-  `js/inspect.js`), so a tap on a bog opens what's under it (#1175).
+- **Tap and hover** (#1175): a tap or a click on the terrain opens the
+  card the map's other things use, naming what it is, and the pointer's
+  tooltip says the same. A bog's card has its survey class, easier or hard
+  to cross, from zoom 13's tiles, with the survey's caveat; zoom 12's
+  classes are generalised and zoom 11's have none, so further out it says
+  to zoom in. The areas (bogs, paludified land, rock, boulder fields) count
+  under the point only, after the water and a property's plot and before a
+  park; the lines and marks come after the ways and before the water,
+  which they're drawn over. Nothing is outlined, as a tile's piece of a bog
+  would stop at the tile's edge: the card's pin marks the spot, a point its
+  ring. Nothing new is drawn, so there's no basemap or layer to weigh.
 
 ## Parts
 
@@ -255,12 +264,14 @@ Plain and Night maps, in MTB and paddle; its PR lists what else it covered.
    source, after #1146 and #1154 (#1160). Done.
 3. **Rock, boulders, stones, cliffs, reeds and power lines** ([#1147](https://github.com/TommiContursi/Polku/issues/1147)) (#1168).
    Done.
-4. Later, each its own issue in Map style: heath, clear-cuts and open
+4. **A tap on the terrain** ([#1175](https://github.com/TommiContursi/Polku/issues/1175)): its card and the pointer's
+   tooltip. Done.
+5. Later, each its own issue in Map style: heath, clear-cuts and open
    ground (#1169), stones, shoals and rapids in the water (#1170), paths
    and winter roads where OSM has none (#1171), fences, gates, ski lifts and
    masts (#1172), fire places, springs and monuments (#1173), place names
-   (#1174), a tap on the terrain (#1175), MML's tiles in offline areas
-   (#1176), and Polku's own archive (#1155).
+   (#1174), MML's tiles in offline areas (#1176), and Polku's own archive
+   (#1155).
 
 ## Not checked
 

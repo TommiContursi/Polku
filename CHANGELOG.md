@@ -4,6 +4,12 @@ What's new in [Polku](https://polku.si), from the latest updates back to the fir
 
 ## 2026-11-20
 
+### A tap on the National Land Survey's terrain says what it is ([#1175](https://github.com/TommiContursi/Polku/issues/1175))
+
+- In Finland, a tap or a click on the National Land Survey's bogs, paludified land, overgrowing water, rock, boulder fields, stones, cliffs, reeds, power lines and pylons opens a card that names what it is. On a desktop, resting the pointer on one says the same.
+- A bog's card has its survey class, easier or hard to cross, from zoom 13. Further out, the National Land Survey's map data has the class only roughly, and the card says to zoom in. **The survey class is not a promise about the ground today:** bogs are classed from aerial photos and surveyed again every 5–10 years.
+- A bog, paludified land or rock is picked only right under your finger, not beside it, and before a park it lies in. The water, and a property's plot with **Property boundaries** on, still come first. Holding the map opens the spot's card, as before.
+
 ### Rock, cliffs and power lines from the National Land Survey ([#1147](https://github.com/TommiContursi/Polku/issues/1147))
 
 - In Finland, the Trail, Plain and Night maps draw the National Land Survey's rock from zoom 13, in the same grey as OpenStreetMap's rock, and its boulder fields dotted. From zoom 14, rocks too small for an area, single stones and sparse boulders are small marks of their own.
