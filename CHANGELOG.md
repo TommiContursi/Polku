@@ -6,7 +6,7 @@ What's new in [Polku](https://polku.si), from the latest updates back to the fir
 
 ### Bogs from the National Land Survey ([#1147](https://github.com/TommiContursi/Polku/issues/1147))
 
-- In Finland, the Trail, Plain and Night maps draw the National Land Survey's bogs from zoom 11, by kind. Open bogs keep the blue dashes, wooded bogs have the same dashes on the forest's green, and a bog the survey classes as hard to cross has unbroken blue lines: large bogs from zoom 12, the rest from 13. Paludified land, ground turning into bog, has sparse short dashes from zoom 13, and overgrowing water has the dashes on the water's blue.
+- In Finland, the Trail, Plain and Night maps draw the National Land Survey's bogs from zoom 11, by kind. Open bogs keep the blue dashes, wooded bogs have the same dashes on the forest's green, and a bog the survey classes as hard to cross has unbroken blue lines: some from zoom 12, all of them from 13. Paludified land, ground turning into bog, has sparse short dashes from zoom 13, and overgrowing water has the dashes on the water's blue.
 - **Hard to cross is the survey's class, not a promise about the ground today:** the National Land Survey classes bogs from aerial photos and surveys them again every 5–10 years. The dashes don't say a bog is easy to cross.
 - Where the National Land Survey has no bog, outside Finland, and wherever its map data doesn't load, OpenStreetMap's wetlands are drawn as before. When its map data doesn't load, a message says so. It isn't saved in offline areas.
 
