@@ -20,11 +20,12 @@ Outside Finland the map stays as it is, on OpenFreeMap's tiles and OSM.
   one. Polku's own archive, decided earlier the same day, is kept for later
   in [#1155](https://github.com/TommiContursi/Polku/issues/1155).
 - **Built, 2026-11-20:** property boundaries and their plots (#1157,
-  #1159), bogs (#1160), rock, cliffs, reeds and power lines (#1168), and
-  heath, open forest land and open ground (#1169).
+  #1159), bogs (#1160), rock, cliffs, reeds and power lines (#1168),
+  the water's marks and lake depths (#1186), and heath, open forest land and
+  open ground (#1169).
   What was built is in [Drawing](#drawing) and [Parts](#parts); the
   decisions made while building are in the "Decided" lists of
-  [#1147](https://github.com/TommiContursi/Polku/issues/1147),
+  [#1147](https://github.com/TommiContursi/Polku/issues/1147), [#1170](https://github.com/TommiContursi/Polku/issues/1170),
   [#1148](https://github.com/TommiContursi/Polku/issues/1148) and
   [#1169](https://github.com/TommiContursi/Polku/issues/1169). More of MML's
   classes are filed as their own issues ([Parts](#parts)).
@@ -241,6 +242,22 @@ Plain and Night maps, in MTB and paddle; its PR lists what else it covered.
 - **Reeds** as one tuft each from zoom 14, over the water, not under OSM's
   reedbeds as first planned (decided on #1147: MML's reed points lie in the
   water).
+- **The water** (#1170), marks in the basemap (decided on #1170): stones under
+  the surface (T), at it (+) and above it (⊥) from zoom 14, as MML's own
+  map and Traficom's charts draw them; shoals and stone fields as light lines across the water from zoom
+  13, stone fields with triangles; rapids as a row of white ovals along the
+  river from zoom 11, as MML's own map draws them (bars across read as a
+  ladder, decided on #1170 by #181's rule on standard symbols); which way a river flows as an arrow from zoom 14; jetties
+  as dark lines from zoom 14, with OSM's piers everywhere in the same look.
+  Over the water and Traficom's depths, under the buildings.
+- **Lake depths** (#1170), under the existing **Depth contours** and
+  **Depth soundings** switches (decided on #1170: one layer with
+  Traficom's): MML's depth contours with their depths, and its depth points,
+  from zoom 13. MML's tiles have none at sea or on charted lakes, so the two
+  sources don't overlap. Syke's dataset record says Syke makes the lake
+  depth contours and delivers them to MML (#1184). They're drawn in
+  Traficom's look, so the two read as one (decided on #1170). A lake's
+  surface height is a label in the basemap, "94.6 m a.s.l.", from zoom 13.
 - **Heath, open forest land and open ground** (#1169): heath a flat pale
   olive tint from zoom 11, open forest land the Maastokartta's diagonal
   hatch in the forest's green from zoom 13, meadows, open shores, fields and
@@ -268,9 +285,10 @@ Plain and Night maps, in MTB and paddle; its PR lists what else it covered.
    source, after #1146 and #1154 (#1160). Done.
 3. **Rock, boulders, stones, cliffs, reeds and power lines** ([#1147](https://github.com/TommiContursi/Polku/issues/1147)) (#1168).
    Done.
-4. **Heath, clear-cuts and open ground** ([#1169](https://github.com/TommiContursi/Polku/issues/1169)): with the forest
-   symbols and OSM's heath and scrub in the same looks (#1203). Done.
-5. Later, each its own issue in Map style: stones, shoals and rapids in the water (#1170), paths
+4. **Stones, shoals, rapids, flow, jetties and lake depths** ([#1170](https://github.com/TommiContursi/Polku/issues/1170)) (#1186).
+5. **Heath, clear-cuts and open ground** ([#1169](https://github.com/TommiContursi/Polku/issues/1169)): with the forest
+   symbols and OSM's heath and scrub in the same looks (#1203).
+6. Later, each its own issue in Map style: paths
    and winter roads where OSM has none (#1171), fences, gates, ski lifts and
    masts (#1172), fire places, springs and monuments (#1173), place names
    (#1174), a tap on the terrain (#1175), MML's tiles in offline areas
