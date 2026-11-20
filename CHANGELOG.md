@@ -11,6 +11,17 @@ What's new in [Polku](https://polku.si), from the latest updates back to the fir
 - A bog, paludified land, overgrowing water or rock is picked only right under your finger, not beside it, and only where the map shows it, not under a lake, a town or a house. It's picked before a park it lies in. The water, and a property's plot with **Property boundaries** on, still come first, but overgrowing water, drawn over a lake, comes before the lake. Holding the map opens the spot's card, as before.
 - A tap on the National Land Survey's water where OpenStreetMap has none, such as a marsh it cuts out of a lake or a small pond in a bog, opens the water's card, with its depth and **Paddle from here**. Its name is what OpenStreetMap has around it, such as a national park.
 
+### Access restrictions in Layers ([#1162](https://github.com/TommiContursi/Polku/issues/1162))
+
+- **Access restrictions** is a switch of its own in Layers, under Trails & difficulty. Choosing a cycling or walking sport turns it on, and Layers remembers your choice for each sport. While it's on, it shows in **On now**.
+- While it's on, the map shows everyone's restrictions in any sport, so you can check where bikes may go while planning a walk. Red bars across a path mean no bikes, purple dots on both sides mean no entry, and purple dots on one side mean no walking. A way closed to everyone except people on foot now counts as no bikes.
+- Routes keep off these ways in their sports whether or not the marks are shown. The marks say what OpenStreetMap says, not the law.
+
+### Cliffs and scree from OpenStreetMap ([#1178](https://github.com/TommiContursi/Polku/issues/1178))
+
+- The Trail, Plain and Night maps draw OpenStreetMap's cliffs from zoom 13, everywhere, the same way as the National Land Survey's: a dark line with short ticks on the lower side. OpenStreetMap and the National Land Survey each have cliffs the other lacks, so more of them show, at Tykkikallio in Jyväskylä for example.
+- Scree is dotted like the National Land Survey's boulder fields from zoom 13, so it reads apart from smooth rock.
+
 ### Lakes with marshes and overgrowing water ([#1177](https://github.com/TommiContursi/Polku/issues/1177))
 
 - In Finland, a lake's shallows that OpenStreetMap maps as marshes are now drawn as water, not as pale land in the lake. The National Land Survey's overgrowing water shows its whole shape, as blue dashes on the water's blue, paddling's too. Marshes on land are drawn as before.
