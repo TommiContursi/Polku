@@ -77,6 +77,8 @@ SCRIPT = """(async () => {
      const litAgain = await L.litTile(...xy), lit_repeat_ms = performance.now()-at;
      if (JSON.stringify(lit) !== JSON.stringify(litAgain) || calls.length !== begin) throw new Error(name + ': repeat lighting downloads again');
      if (!out.length && (await new StaticOSM(OSM_DATA_MANIFEST).ready()).manifest.datasets.geometry) products.push({name:'geometry',z:13,reader:new StaticOSM(OSM_DATA_MANIFEST,'geometry',13)});
+     // reedbeds (#1144) are in releases built since; health still accepts one from before
+     if (!out.length && (await new StaticOSM(OSM_DATA_MANIFEST).ready()).manifest.datasets.wetlands) products.push({name:'wetlands',z:12,reader:new StaticOSM(OSM_DATA_MANIFEST,'wetlands',12)});
      const details = {};
      for (const {name:product,z,reader} of products) {
        const tile = G.lonLatToTile(...ll,z).map(Math.floor);
@@ -103,6 +105,7 @@ BORDER_SCRIPT = """(async()=>{
  const {StaticOSM}=await import('/js/osm-data.js'), {OSM_DATA_MANIFEST}=await import('/js/config.js'), {lonLatToTile}=await import('/js/geo.js');
  const readers=Object.entries({ways:14,lit:13,trails:13,winter:12,hazards:11,places:12,inspection:14}).map(([name,z])=>({name,z,reader:new StaticOSM(OSM_DATA_MANIFEST,name,z)}));
  if((await new StaticOSM(OSM_DATA_MANIFEST).ready()).manifest.datasets.geometry)readers.push({name:'geometry',z:13,reader:new StaticOSM(OSM_DATA_MANIFEST,'geometry',13)});
+ if((await new StaticOSM(OSM_DATA_MANIFEST).ready()).manifest.datasets.wetlands)readers.push({name:'wetlands',z:12,reader:new StaticOSM(OSM_DATA_MANIFEST,'wetlands',12)});
  const out={}, calls=[], real=window.fetch, root=new URL('.',OSM_DATA_MANIFEST).href;
  let publicCalls=0;
  window.fetch=async(input,init)=>{

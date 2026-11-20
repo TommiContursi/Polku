@@ -58,6 +58,26 @@ function wetland(id) {
   return ctx.getImageData(0, 0, c.width, c.height);
 }
 
+// a reedbed's fill: tufts of three strokes, as Finnish maps draw reeds, on the wetland colour, so it covers the
+// dashes under it (#1144). `reedbed-<fill>-<reeds>`, both hex without '#'
+function reedbed(id) {
+  const [, fill, reed] = id.split('-');
+  const [c, ctx] = canvas(12, 12);
+  ctx.fillStyle = `#${fill}`;
+  ctx.fillRect(0, 0, 12, 12);
+  ctx.strokeStyle = `#${reed}`;
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  // two tufts a row apart, the second half a tile along
+  for (const [x, y] of [[3, 5.5], [9, 11.5]]) {
+    ctx.moveTo(x, y); ctx.lineTo(x, y - 4.5);
+    ctx.moveTo(x - 0.4, y); ctx.lineTo(x - 2.4, y - 3.5);
+    ctx.moveTo(x + 0.4, y); ctx.lineTo(x + 2.4, y - 3.5);
+  }
+  ctx.stroke();
+  return ctx.getImageData(0, 0, c.width, c.height);
+}
+
 function chevron(color, outline, w = 18, h = 14) {
   const [c, ctx] = canvas(w, h);
   ctx.lineJoin = 'round';
@@ -384,6 +404,7 @@ const SDF = new Set(['wind-arrow', 'ship']);
 export function makeIcon(id) {
   if (id.startsWith('wm-') && MARK[id.slice(3).split('~')[0]]) return warnMark(id.slice(3).split('~')[0]);
   if (/^wetland-[0-9a-f]{6}-[0-9a-f]{6}$/.test(id)) return wetland(id);
+  if (/^reedbed-[0-9a-f]{6}-[0-9a-f]{6}$/.test(id)) return reedbed(id);
   if (id === 'wind-arrow') return windArrow();
   if (id === 'ship') return ship();
   if (id === 'sf-incident') return sign('triangle', '#ef4444', '!');

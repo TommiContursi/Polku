@@ -2,7 +2,7 @@ import './geometry.test.mjs';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { test } from 'node:test';
-import { StaticOSM } from '../../js/osm-data.js';
+import { StaticOSM, Reedbeds } from '../../js/osm-data.js';
 
 const archive = await readFile(new URL('../fixtures/osm-static.pmtiles', import.meta.url));
 const manifest = { schema: 1, release: 'fixture', bounds: [-180, -85.05112878, 180, 85.05112878], source: { timestamp: '2026-11-01T00:00:00Z' },
@@ -532,4 +532,23 @@ test('a multi-stage hosted geometry attempt shares one deadline and cancels its 
     assert.ok(performance.now()-start<9000,'the second stage cannot start another eight-second UI wait');
     assert.ok(aborted,'the expired operation cancels its outstanding hosted read');
   } finally {StaticOSM.prototype.readTile=original;}
+});
+
+test('reedbeds: a release without them draws none and asks again only after the cool-down', async () => {
+  mode = 'ok';
+  let reads = 0;
+  const published = [], wait = (ms) => new Promise((r) => setTimeout(r, ms));
+  const map = { style: {}, on() {}, getLayer: () => ({ id: 'lc-reedbed' }), getZoom: () => 14,
+    getBounds: () => { reads++; return { getWest: () => 0.001, getEast: () => 0.002, getNorth: () => -0.001, getSouth: () => -0.002 }; } };
+  const reeds = new Reedbeds(map, 'https://data.example/no-reeds/current.json', (fc) => published.push(fc));
+  reeds.update();
+  await wait(400);
+  const settled = reads;
+  await wait(300);
+  reeds.update = () => {}; // (stops a loop, so a failure ends the test)
+  clearTimeout(reeds.timer);
+  assert.equal(reads, settled, 'a failed tile is not asked for again at once');
+  assert.ok(settled <= 3);
+  assert.ok(published.every((fc) => fc.features.length === 0));
+  assert.equal(reeds.busy, false);
 });
