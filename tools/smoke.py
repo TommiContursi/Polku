@@ -600,6 +600,7 @@ TRAILS = """(async () => {
   const pts = m.queryRenderedFeatures({ layers: ['td-points'] });
   if (!pts.some((f) => f.properties.kind === 'tree') || !pts.some((f) => f.properties.kind === 'gate-no')) errs.push(`icons: ${pts.map((f) => f.properties.kind).join(', ') || 'none'}`);
   if (!m.queryRenderedFeatures({ layers: ['td-fence'] }).length) errs.push('no fences drawn');
+  if (m.getPaintProperty('td-fence', 'line-color').at(-1) !== '#545454') errs.push('fences are no longer grey, apart from the brown footways (#1163)');
   const tree = pts.find((f) => f.properties.kind === 'tree');
   if (tree) {
     const point = m.project(tree.geometry.coordinates);
@@ -739,7 +740,7 @@ def mtb_grades(chrome):
     return not fails
 
 
-# #1123: physical cycling paths, pedestrian ways and MTB footways keep distinct styles.
+# #1123, #1163: physical cycling paths, pedestrian ways (thin brown dashes) and MTB footways keep distinct styles.
 def cycleway_style(chrome):
     pg = chrome.page(1440, 900, False)
     pg.open_app({'activity': 'mtb', 'base': 'trail', 'highContrast': False, 'trailDetails': False, 'trailColors': 'down'})
@@ -780,12 +781,18 @@ def cycleway_style(chrome):
         for(const [tags,cycling] of cases) {
           const props={class:'path',...tags,...(pass==='ground'?{}:{brunnel:pass})};
           if(matches(id,props)!==cycling)errs.push(`${id}: ${JSON.stringify(tags)} cycling=${!cycling}`);
-          if(!cycling&&!matches(`path-${pass}`,props))errs.push(`${id}: non-cycling way disappeared`);
-          if(cycling&&matches(`path-${pass}`,props))errs.push(`${id}: cycling way also drawn as a trail`);
+          // #1163: footways and pedestrian streets without a grade are brown lines, not trails
+          const foot=['footway','pedestrian'].includes(tags.subclass)&&!('mtb_scale' in tags);
+          if(!cycling&&!matches(foot?`path-${pass}-foot`:`path-${pass}`,props))errs.push(`${id}: non-cycling way disappeared`);
+          if(!cycling&&foot&&(matches(`path-${pass}`,props)||matches(`path-${pass}-halo`,props)))errs.push(`${id}: ${JSON.stringify(tags)} also drawn as a trail`);
+          if(cycling&&(matches(`path-${pass}`,props)||matches(`path-${pass}-foot`,props)))errs.push(`${id}: cycling way also drawn as a trail`);
           for(const other of ['ground','bridge','tunnel'].filter(x=>x!==pass))if(matches(`cycleway-${other}`,props))errs.push(`${id}: also in ${other}`);
           const kind=F.kindOf({highway:tags.subclass,bicycle:tags.bicycle});
           if(!('mtb_scale' in tags)&&cycling!==(kind==='cycleway'))errs.push(`${id}: disagrees with way facts`);
         }
+        const fl=m.getStyle().layers.find(l=>l.id===`path-${pass}-foot`);
+        if(fl.paint['line-color']!=='#a2381f'||JSON.stringify(fl.paint['line-dasharray'])!=='[1.5,0.7]'||width(fl.id,16)!==2.5)errs.push(`${fl.id}: not a thin brown dashed line`);
+        if(m.getStyle().layers.findIndex(l=>l.id===`path-${pass}-halo`)<m.getStyle().layers.indexOf(fl))errs.push(`${fl.id}: drawn over the trails`);
         for(const [surface,want] of [['paved',[6,1.5]],['unpaved',[1,.5]],[undefined,[2.5,1.5]],['other',[2.5,1.5]]]) {
           const raw=m.getPaintProperty(id,'line-dasharray'), got=layer.paint.get('line-dasharray').value;
           const dash=typeof raw[0]==='number'?raw:got.evaluate({zoom:16},{type:2,properties:{surface}},{});

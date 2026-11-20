@@ -919,7 +919,6 @@ function addRoads(s, P, hc, layers, ctx) {
     const haloOpacity0 = [
       'case',
       bikeAct ? noBike : noFoot, 0.25,
-      act === 'mtb' ? sidewalkish : ['literal', false], 0.35,
       isWater(act) || roadBike ? 0.5 : 0.95,
     ];
     // difficulty colours fade with their slider; the plain halo doesn't
@@ -929,20 +928,28 @@ function addRoads(s, P, hc, layers, ctx) {
     const haloW = (f) => zi(12, times(2.2, f), 14, times(4 * k, f), 16, times(7 * k, f), 18, times(12 * k, f));
     const centreW = (f) => zi(12, times(0.6 * k, f), 14, times(1.15 * k, f), 16, times(1.8 * k, f), 18, times(3 * k, f));
     const centreColor = footAct && !aerial ? '#b42318' : P.path;
-    const centreOpacity = [
-      'case',
-      act === 'mtb' ? sidewalkish : ['literal', false], 0.5,
-      isWater(act) || roadBike ? 0.6 : 1,
-    ];
+    const centreOpacity = isWater(act) || roadBike ? 0.6 : 1;
+    // Footways and pedestrian streets (#1163): a thin brown dashed line without the band, apart from trails.
+    add({
+      id: `path-${brunnel}-foot`, type: 'line', source: 'ofmTrails', 'source-layer': 'transportation', minzoom: 12,
+      filter: ['all', trailFilter, sidewalkish],
+      paint: {
+        'line-color': darkBase ? '#d6725c' : '#a2381f',
+        'line-width': hc ? ze(1.2, 12, 0.9, 14, 2.5, 16, 4, 18, 6) : ze(1.2, 12, 0.8, 14, 1.5, 16, 2.5, 18, 4),
+        'line-dasharray': [1.5, 0.7],
+        'line-opacity': centreOpacity,
+      },
+    });
+    const pathFilter = ['all', trailFilter, ['!', sidewalkish]];
     add({
       id: `path-${brunnel}-halo`, type: 'line', source: 'ofmTrails', 'source-layer': 'transportation', minzoom: 12,
-      filter: trailFilter,
+      filter: pathFilter,
       layout: { 'line-cap': 'round', 'line-join': 'round' },
       paint: { 'line-color': haloOf(MTB_IDX), 'line-width': haloW(1), 'line-opacity': haloOpacity },
     });
     add({
       id: `path-${brunnel}`, type: 'line', source: 'ofmTrails', 'source-layer': 'transportation', minzoom: 12,
-      filter: trailFilter,
+      filter: pathFilter,
       paint: {
         'line-color': centreColor,
         'line-width': centreW(1),
@@ -1037,7 +1044,7 @@ function addRoads(s, P, hc, layers, ctx) {
     add({
       id: 'td-fence', type: 'line', source: 'trailWays', minzoom: 15, filter: ['has', 'fence'],
       paint: {
-        'line-color': ['match', ['get', 'fence'], 'hedge', darkBase ? '#6fbf6f' : '#4d8a3a', 'wall', darkBase ? '#9ca3af' : '#6b7280', darkBase ? '#c08a6a' : '#8b4a2b'],
+        'line-color': ['match', ['get', 'fence'], 'hedge', darkBase ? '#6fbf6f' : '#4d8a3a', 'wall', darkBase ? '#9ca3af' : '#6b7280', darkBase ? '#b0b0b0' : '#545454'],
         'line-width': zi(15, 1, 18, 2.4),
         'line-dasharray': ['match', ['get', 'fence'], 'fence', ['literal', [2.4, 1.2]], ['literal', [1, 0]]],
       },
