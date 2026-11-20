@@ -42,7 +42,7 @@ const BUILDING_HEIGHT = ['get', 'render_height'];
 const PALETTES = {
   trail: {
     bg: '#f5f3ee', wood: '#dbeacd', woodOpacity: 0.9, grass: '#e8f1d9', farmland: '#f7f0cf',
-    wetland: '#dce5e3', wetlandDash: '#8fb0d3', bogWood: '#deebd0', reed: '#5f8a5a', sand: '#f3e7bb', rock: '#e2dfd8', cliff: '#5e574e', ice: '#f4fbff',
+    wetland: '#dce5e3', wetlandDash: '#8fb0d3', bogWood: '#deebd0', reed: '#5f8a5a', heath: '#ebe6c4', openForest: '#c6dcb2', treeMark: '#6b8a5c', sand: '#f3e7bb', rock: '#e2dfd8', cliff: '#5e574e', ice: '#f4fbff',
     residential: '#ece8e2', industrial: '#e8e2e8', cemetery: '#dde7d3', sport: '#dcefd3',
     park: '#3f8f3f', water: '#a8d1ef', waterLine: '#6fa9d6', waterText: '#24618f', shoal: '#ffffff',
     building: '#d9d1c8', buildingLine: '#c4b9ad',
@@ -53,7 +53,7 @@ const PALETTES = {
   },
   plain: {
     bg: '#f7f7f5', wood: '#eef3ea', woodOpacity: 0.7, grass: '#f1f4ed', farmland: '#f7f6ef',
-    wetland: '#eef4f2', wetlandDash: '#b4c9de', bogWood: '#f1f4ed', reed: '#9bb796', sand: '#f4f1e6', rock: '#efeeec', cliff: '#948d83', ice: '#fafdff',
+    wetland: '#eef4f2', wetlandDash: '#b4c9de', bogWood: '#f1f4ed', reed: '#9bb796', heath: '#f2efdf', openForest: '#dde8d4', treeMark: '#9bb796', sand: '#f4f1e6', rock: '#efeeec', cliff: '#948d83', ice: '#fafdff',
     residential: '#f0efed', industrial: '#efedf0', cemetery: '#eaefe6', sport: '#eaf1e6',
     park: '#7aa27a', water: '#c3dcef', waterLine: '#9bbfdc', waterText: '#4a7ca3', shoal: '#ffffff',
     building: '#e6e3df', buildingLine: '#d6d1cb',
@@ -64,7 +64,7 @@ const PALETTES = {
   },
   night: {
     bg: '#161a1f', wood: '#1b2620', woodOpacity: 1, grass: '#1d241f', farmland: '#23231d',
-    wetland: '#18232a', wetlandDash: '#2f5679', bogWood: '#1b2620', reed: '#4f7a55', sand: '#2a271f', rock: '#22221f', cliff: '#a39a8c', ice: '#20262b',
+    wetland: '#18232a', wetlandDash: '#2f5679', bogWood: '#1b2620', reed: '#4f7a55', heath: '#26261c', openForest: '#26362a', treeMark: '#567a5c', sand: '#2a271f', rock: '#22221f', cliff: '#a39a8c', ice: '#20262b',
     residential: '#1e2126', industrial: '#211f25', cemetery: '#1c231d', sport: '#1b241d',
     park: '#4e8f5b', water: '#10304a', waterLine: '#1f5a85', waterText: '#7fb6e3', shoal: '#2f6f9e',
     building: '#272b31', buildingLine: '#30353c',
@@ -199,7 +199,16 @@ export function buildStyle(s, ctx) {
     // MML's terrain in Finland (#1147): its background map's tiles, from zoom 11
     sources.mml = { type: 'vector', tiles: [`${MML_TERRAIN_TILES}?api-key=${encodeURIComponent(mmlKey)}`], minzoom: 11, maxzoom: 14, bounds: FINLAND_BOUNDS, attribution: '© Maanmittauslaitos, Maastotietokanta, CC BY 4.0' };
     const hex = (c) => c.slice(1), dashes = (ground) => `wetland-${hex(ground)}-${hex(P.wetlandDash)}`, hard = (ground) => `bog-hard-${hex(ground)}-${hex(P.wetlandDash)}`;
-    const cls = ['get', 'kohdeluokka'];
+    const cls = ['get', 'kohdeluokka'], openForest = `open-forest-${hex(P.bg)}-${hex(P.openForest)}`;
+    // open ground over the forest (#1169): OSM's heath and scrub, which a forest around them would hide (whole fells at
+    // Pallas), and over them MML's in Finland, in the same looks: heath a flat tint, open forest land (mostly clear-cuts)
+    // and scrub the Maastokartta's hatch, meadows, open shores, fields and sand in OSM's own colours
+    const sub = ['get', 'subclass'];
+    add({ id: 'lc-heath', type: 'fill', source: 'ofm', 'source-layer': 'landcover', filter: ['==', sub, 'heath'], paint: { 'fill-color': P.heath, 'fill-antialias': false } });
+    add({ id: 'lc-scrub', type: 'fill', source: 'ofm', 'source-layer': 'landcover', filter: ['==', sub, 'scrub'], paint: { 'fill-pattern': openForest } });
+    add({ id: 'mml-open', type: 'fill', source: 'mml', 'source-layer': 'maasto_alue', minzoom: 11, filter: ['in', cls, ['literal', [39120, 39130, 34300]]], paint: { 'fill-color': ['match', cls, 39120, P.heath, 39130, P.grass, P.sand], 'fill-antialias': false } });
+    add({ id: 'mml-landuse', type: 'fill', source: 'mml', 'source-layer': 'maankaytto', minzoom: 11, filter: ['in', cls, ['literal', [32611, 32612, 32800, 34300]]], paint: { 'fill-color': ['match', cls, [32611, 32612], P.farmland, 32800, P.grass, P.sand], 'fill-antialias': false } });
+    add({ id: 'mml-open-forest', type: 'fill', source: 'mml', 'source-layer': 'maasto_alue', minzoom: 13, filter: ['==', cls, 39110], paint: { 'fill-pattern': openForest } });
     // paludified land from zoom 13: sparse dashes on a clear ground, so the land shows; under OSM's wetlands, as it isn't a bog
     add({ id: 'mml-paludified', type: 'fill', source: 'mml', 'source-layer': 'maasto_alue', minzoom: 13, filter: ['==', cls, 35300], paint: { 'fill-pattern': `bog-paludified-${hex(P.wetlandDash)}` } });
     lc('lc-wetland', ['wetland'], P.wetland);
@@ -386,6 +395,11 @@ export function buildStyle(s, ctx) {
     add({ id: 'mml-lake-height', type: 'symbol', source: 'mml', 'source-layer': 'korkeus', minzoom: 13, filter: ['all', ['==', cls, 36291], ['has', 'keskikorkeus']], layout: { 'text-field': ['concat', metres('keskikorkeus'), ' m a.s.l.'], 'text-font': FONT_I, 'text-size': 10.5, 'text-optional': true }, paint: { 'text-color': P.waterText, 'text-halo-color': P.halo, 'text-halo-width': 1 } });
     add({ id: 'mml-flow', type: 'symbol', source: 'mml', 'source-layer': 'symboli', minzoom: 14, filter: ['in', cls, ['literal', [36392, 36393]]], layout: { 'icon-image': `flow-${hex(P.waterText)}-${hex(P.halo)}`, 'icon-rotate': ['*', ['get', 'suunta'], -180 / Math.PI / 10000], 'icon-size': zi(14, 1, 17, 1.5), ...flat } });
     add({ id: 'mml-reed', type: 'symbol', source: 'mml', 'source-layer': 'maasto_piste', minzoom: 14, filter: ['==', cls, 38100], layout: { 'icon-image': `reed-${hex(P.reed)}`, 'icon-size': zi(14, 1, 17, 1.5), ...flat } });
+    // the forest's kind, and dwarf-shrub heath, from zoom 14 (#1169): the Maastokartta's symbols, in a dark green
+    add({
+      id: 'mml-forest', type: 'symbol', source: 'mml', 'source-layer': 'symboli', minzoom: 14, filter: ['in', cls, ['literal', [32710, 32713, 32714, 32715]]],
+      layout: { 'icon-image': ['match', cls, 32710, `tree-conifer-${hex(P.treeMark)}`, 32713, `tree-broadleaf-${hex(P.treeMark)}`, 32714, `tree-mixed-${hex(P.treeMark)}`, `tree-heath-${hex(P.treeMark)}`], 'icon-size': zi(14, 0.8, 18, 1.3), ...flat },
+    });
     add({ id: 'mml-pylon', type: 'symbol', source: 'mml', 'source-layer': 'rakennelma', minzoom: 15, filter: ['==', cls, 22392], layout: { 'icon-image': `pylon-${hex(P.power)}`, 'icon-size': zi(15, 1, 18, 1.5), ...flat } });
     add({ id: 'building', type: 'fill', source: 'ofm', 'source-layer': 'building', minzoom: 13, paint: { 'fill-color': s.base === 'trail' ? '#bdb8b0' : P.building, 'fill-outline-color': s.base === 'trail' ? '#918b81' : P.buildingLine, 'fill-opacity': zi(13, 0.5, 15, 1) } });
     add({ id: 'aeroway', type: 'line', source: 'ofm', 'source-layer': 'aeroway', minzoom: 11, filter: ['in', ['get', 'class'], ['literal', ['runway', 'taxiway']]], paint: { 'line-color': '#c9c6c0', 'line-width': ze(1.5, 11, 1, 16, 30) } });
