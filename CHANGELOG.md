@@ -2,7 +2,7 @@
 
 What's new in [Polku](https://polku.si), from the latest updates back to the first release. These notes describe features available in the app, not work still in progress. For upcoming changes, see the [issues](https://github.com/TommiContursi/Polku/issues) and [roadmap](docs/ROADMAP.md).
 
-## 2026-11-20
+## 2026-11-21
 
 ### Rapids on river routes ([#153](https://github.com/TommiContursi/Polku/issues/153))
 
@@ -15,6 +15,8 @@ What's new in [Polku](https://polku.si), from the latest updates back to the fir
 - **What Polku looked at** says which map the route's water had: the National Land Survey's and OpenStreetMap's, OpenStreetMap's alone, or how much of each across a border. The stones are read for legs up to about 5 km, or less where the router looks further round a long carry: on a longer leg, Check says they weren't checked, and adding a point splits the leg.
 - A route that only touches the edge of a rock's or a shoal's zone is no longer listed in Check as close to it.
 - **The map has stones at and above the surface, not those just under it, and no map has every stone: keep a lookout.** Water routes are for planning, not navigation. Keeping clear of stones is part of **Rocks & shoals: Keep clear** in the route style, and **Ignore** turns it off.
+
+## 2026-11-20
 
 ### Heath, clear-cuts and open ground ([#1169](https://github.com/TommiContursi/Polku/issues/1169))
 
