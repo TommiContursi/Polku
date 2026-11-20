@@ -136,8 +136,9 @@ export function initHover(map, app) {
     // (a warning marker's hit area is wider than the box, and wins over the route: asked only when the route would light)
     const lights = top && top.layer.id === 'lipas-route' && !ours && !app.headAt({ x: at[0], y: at[1] }, false);
     light(lights ? top.properties : null);
+    if (app.hoverPlot) app.hoverPlot(top && top.layer.id === 'property-plot' ? top.id : null);
   };
-  const press = () => { hide(); light(null); if (pointer) { pointer = false; canvas.style.cursor = ''; } };
+  const press = () => { hide(); light(null); if (app.hoverPlot) app.hoverPlot(null); if (pointer) { pointer = false; canvas.style.cursor = ''; } };
 
   canvas.addEventListener('pointermove', (e) => {
     if (e.pointerType !== 'mouse') return;
@@ -218,6 +219,7 @@ export function describe(f, feats, ctx) {
     return { title: w ? w.name : 'Road', bits: [`${dot(aadtColor(p.aadt))}about ${fmtAadt(p.aadt)} vehicles/day`] };
   }
   if (id === 'military-fill') return { title: 'Military area', bits: ['May be closed or have live firing'] };
+  if (id === 'property-plot') return { title: `Property ${p.kiinteistotunnuksenEsitysmuoto}`, bits: ['National Land Survey'] };
   if (id === 'lipas-point') return { title: p.name || p.typeName || 'Place', bits: [e(p.typeName || ''), e(p.city || '')].filter(Boolean) };
   if (id === 'lipas-route') {
     const t = LIPAS_TYPES[p.type] || {};

@@ -4149,7 +4149,10 @@ export class Planner {
     this.drawThing(f);
   }
   drawThing(f) {
-    const g = f && f.geometry, fc = (geometry, properties = {}) => ({ type: 'FeatureCollection', features: [{ type: 'Feature', properties, geometry }] });
+    // (a property's plot is tinted by its id instead: an outline of its piece in one tile would cut it at the tile's edge)
+    const plot = f && f.layer.id === 'property-plot';
+    if (this.app.lightPlot) this.app.lightPlot('lit', plot ? f.id : null);
+    const g = !plot && f && f.geometry, fc = (geometry, properties = {}) => ({ type: 'FeatureCollection', features: [{ type: 'Feature', properties, geometry }] });
     const line = g && /LineString/.test(g.type), area = g && /Polygon/.test(g.type);
     this.app.setData('pick', line ? fc(g, { color: '#f59e0b' }) : EMPTY);
     this.app.setData('pickSide', EMPTY);
