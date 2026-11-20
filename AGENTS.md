@@ -155,6 +155,11 @@ conversation again
   switch. **Never burst brouter.de:** it blocks the whole connection, the
   user's too (DEVELOPING, "The free services"). Test routing against
   `tools/brouter-local.sh` or the recorded files in `tools/fixtures/`.
+- **Beyond Finland too.** A feature built on a Finnish source also gets a
+  fallback that works elsewhere: OpenStreetMap, or a source that covers more.
+  A route that crosses a border, say through Åland to Sweden or across to
+  Estonia, is then planned the same way all along. Where data stops at a
+  border, the map says so (#1200).
 - **Traficom's depth data is shown, never routed on.** Its licence excludes
   route planning, so the water router and its warnings use Väylävirasto, OSM
   and SYKE only. Water routes are for planning, not navigation.
