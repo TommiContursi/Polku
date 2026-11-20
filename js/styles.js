@@ -228,7 +228,7 @@ export const STYLES = {
         ['cross', 'Cross straight', {}],
         ['ignore', 'Ignore', {}, {}, { water: { fairways: 'ignore' } }],
       ]),
-      control('k', 'Rocks & shoals', 'Keeps clear of marked dangers: isolated-danger and cardinal marks (Väylävirasto) and the rocks, reefs and shoals in OpenStreetMap. Polku doesn’t know depths, so keep a lookout for the rest.', [
+      control('k', 'Rocks & shoals', 'Keeps clear of marked dangers: isolated-danger and cardinal marks (Väylävirasto) and the rocks, reefs and shoals in OpenStreetMap. Keeps off water Syke surveyed under 0.5 m deep, in the lakes it surveyed; elsewhere Polku doesn’t know the depth, so keep a lookout.', [
         ['clear', 'Keep clear', {}],
         ['ignore', 'Ignore', {}, {}, { water: { hazards: 'ignore' } }],
       ]),

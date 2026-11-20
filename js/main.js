@@ -486,6 +486,7 @@ const details = new TrailDetails(map, {
     ctx.trailCoverage = area;
     if (!holdTogether('trailCoverage')) restyleTrails(); // (with the trails it hides the map's own under)
   },
+  onView: () => syncZoomHint(),
   onBusy: () => {
     detailsBusyAt = Date.now();
     refreshQuickSoon();
@@ -2310,9 +2311,9 @@ window.addEventListener('keydown', (e) => {
   }
 });
 
-// The free vector tiles only carry the full trail network from zoom 14.
+// The free vector tiles only carry the full trail network from zoom 14; the trail details, from 13 (#1128).
 const zoomHint = $('#zoom-hint');
-const syncZoomHint = () => { const z = map.getZoom(); zoomHint.hidden = !(z >= 10.5 && z < 13.8); };
+const syncZoomHint = () => { const z = map.getZoom(); zoomHint.hidden = !(z >= 10.5 && z < 14) || details.covers; };
 map.on('zoomend', syncZoomHint);
 zoomHint.addEventListener('click', () => map.easeTo({ zoom: 14.2, duration: 600 }));
 
