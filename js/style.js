@@ -43,7 +43,7 @@ const PALETTES = {
   trail: {
     bg: '#f5f3ee', wood: '#dbeacd', woodOpacity: 0.9, grass: '#e8f1d9', farmland: '#f7f0cf',
     wetland: '#dce5e3', wetlandDash: '#8fb0d3', bogWood: '#deebd0', reed: '#5f8a5a', heath: '#ebe6c4', openForest: '#c6dcb2', treeMark: '#6b8a5c', sand: '#f3e7bb', rock: '#e2dfd8', cliff: '#5e574e', ice: '#f4fbff',
-    residential: '#ece8e2', industrial: '#e8e2e8', cemetery: '#dde7d3', sport: '#dcefd3', cityPark: '#d3ebbf', parking: '#e3e2de', parkingLine: '#aaa499', bridge: '#2c2721', oneway: '#6b6458', onewayBike: '#1f2fa0',
+    residential: '#ece8e2', industrial: '#e8e2e8', cemetery: '#dde7d3', sport: '#dcefd3', cityPark: '#d3ebbf', parking: '#dcdcd8', parkingLine: '#9a9488', bridge: '#2c2721', oneway: '#6b6458', onewayBike: '#1f2fa0',
     park: '#3f8f3f', water: '#a8d1ef', waterLine: '#6fa9d6', waterText: '#24618f', shoal: '#ffffff',
     building: '#d9d1c8', buildingLine: '#c4b9ad',
     motorway: '#f2a35e', trunk: '#f6c46b', primary: '#fbd77b', secondary: '#fde7a2', tertiary: '#fff3c9',
@@ -576,6 +576,8 @@ export function buildStyle(s, ctx) {
     // parking (town details): the named ones from 15.5, every one from 17, as OSM's standard map; the tiles can't tell a kerbside one
     poi('poi-parking', 15.5, ['all', ['==', ['get', 'class'], 'parking'], ['has', 'name']]);
     poi('poi-parking-all', 17, ['all', ['==', ['get', 'class'], 'parking'], ['!', ['has', 'name']]]);
+    // and a P on each of MML's public car parks in Finland from 15, placed first, so OSM's P on the same car park gives way
+    if (vectorFills) add({ id: 'mml-parking-p', type: 'symbol', source: 'mml', 'source-layer': 'liikenne', minzoom: 15, filter: ['all', ['==', ['get', 'kohdeluokka'], 32421], ['==', ['geometry-type'], 'Polygon']], layout: { 'icon-image': 'parking', 'icon-size': hc ? 1.05 : 0.8, 'icon-padding': 12 }, paint: { 'icon-opacity': s.base === 'night' ? 0.85 : 1 } });
     // shops and food (town details, a layer of its own): from 17, the tiles' rank first, none upstairs or indoors
     const shops = ['shop', 'grocery', 'clothing_store', 'alcohol_shop', 'bakery', 'restaurant', 'cafe', 'fast_food', 'bar', 'beer', 'ice_cream', 'pharmacy', 'hairdresser', 'laundry'];
     add({
