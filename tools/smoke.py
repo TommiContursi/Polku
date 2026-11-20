@@ -1418,6 +1418,9 @@ def mml_cards(chrome):
         fails += [f'{name} console: {e[:160]}' for e in pg.errors()]
         pg.close()
     print(f"{'ok  ' if not fails else 'FAIL'} a tap on MML's terrain says what it is (#1175)" + ''.join(f'\n     - {f}' for f in fails), flush=True)
+    return not fails
+
+
 # #1170: MML's water from five recorded tiles, never live MML: Kotka (tools/fixtures/mml-taustakartta-14-9416-4714.pbf:
 # stones at and above the surface, a shoal, stone fields, jetties), the Porvoo archipelago (…-14-9363-4735.pbf: stones under
 # the surface), Kitkajoki (…-14-9531-4125.pbf: rapids, a wide river's
