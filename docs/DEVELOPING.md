@@ -149,13 +149,15 @@ The `otherways` quick-point check schedules its edit in the same turn as the fir
   - **The grid:** a hidden MapLibre map renders only water, white on black, for the leg's area, and the pixels become a grid. A second drawing on a canvas, in the same projection, marks the costs:
     - Väylävirasto's fairways, by class (shipping lanes are crossed straight);
     - keep-clear zones round danger and cardinal marks and OSM rocks and shoals;
+    - water within 20 m of a sounding under 0.5 m, in the lakes Syke surveyed (×4; not for a swimmer), and where Syke surveyed, measured along the leg (`water.depth`: `{ water, surveyed }` in metres) for What Polku looked at;
     - places you avoid.
   - **Wind:** each water cell's open-water fetch upwind gives a wave height (JONSWAP), and rough water costs more for the craft.
   - **The path:** A* runs on the grid, and the cell path is string-pulled into straight lines that may not cost more than A*'s way. Land is passable at a high cost, which gives carries.
   - **Slow sources:** each source gets 2.5 s; then the leg is routed without it, Check's Not checked says so, and neither `router.js` nor `water.js` keeps that leg. When the answer comes (`onWaterData`), the planner routes those legs again, and a leg still being routed then is routed once more in `water.js`. A source that failed is asked again two minutes on (`AGAIN_MS`): `onWaterData` tells the planner then too, and routing those legs again asks it (#129). Undo and Redo route again a leg that went without a source, online (#80).
   - **Legs too long to ask for:** a box over 16 of OSM's z11 tiles isn't asked for rocks, nor one over 24 of Väylävirasto's z10 tiles for fairways and marks. `waterInputs()` returns those as `skipped`, apart from `missing`: the leg is kept, nothing asks again, and Check says "not checked, the leg is too long" (`WATER_LONG`, key `waterlong`), and What Polku looked at says so too (#490).
   - **The hidden map's tiles:** a tile that fails (not a 404) asks for a frame, as on the main map (#393), or `load` never came and no water leg was routed (#400). A water tile that doesn't load is drawn as land: the leg may carry where there's water.
-  - **No depths.** Traficom's depth data isn't used: its licence excludes route planning. See phase 13 in [plans/done.md](plans/done.md).
+  - **Lake depths** (#1184, [plans/issue-1184-water-depths.md](plans/issue-1184-water-depths.md)): Polku's own files in `data/depths/`, one per z10 tile where Syke surveyed and `index.json` listing them, made from Syke's bulk download by `tools/syke_depths.py` (run by hand when Syke updates its data; it last changed on 2017-03-20). Each holds the soundings under 0.5 m at the lake's survey level, one per 10 m square, and where Syke surveyed (its depth areas, islands left out) as runs of the tile's 256 × 256 cells; `rasteriseCosts()` draws the cells half a cell larger, so the shore's water isn't left out where Syke's shoreline and the map's differ. They're read through `request()` (`polku`), wait 2.5 s like the other sources, and are a source of their own in `missing` and `skipped` (`Syke`). They're asked with `backoff: false` and a 10 s deadline: one that fails pauses nothing else of Polku's, and one that hangs fails in time, so Retry (`forgetWaterFailures()`) and the two-minute retry ask again. A leg routed before the router used depths (no `checked.depths`) is routed again when a saved route loads online. Legs on the water the router didn't draw (freehand, imported) count as water Syke didn't survey. A tile with no file is water Syke didn't survey: What Polku looked at says how much of the route's water it surveyed, and "not surveyed" counts as not checked.
+  - **Traficom's depths aren't used:** its licence excludes route planning. See phase 13 in [plans/done.md](plans/done.md).
 
 ### Marked routes from LIPAS
 
@@ -375,7 +377,7 @@ js/valhalla.js      Valhalla (FOSSGIS) client: routes and way attributes as OSM-
 js/styles.js        route styles: presets and controls per sport, as router parameters
 js/roundtrip.js     round trips: loop shapes, water-aware directions, loops on the water (out and back on rivers), scoring
 js/water.js         open-water router (grid, costs, wind, A*, string-pulling)
-js/waterdata.js     what the water router avoids: fairways, marks, OSM hazards, wind
+js/waterdata.js     what the water router avoids: fairways, marks, OSM hazards, lake depths, wind
 js/analysis.js      profile, grades, climbs, warnings, timing, wind exposure, trail details
 js/chart.js         elevation chart and route readout
 js/uphill.js        uphill-difficulty overlay
@@ -417,6 +419,7 @@ js/heading.js       which way you face: the compass standing, the GPS's course m
 js/compass.js       the compass button: north up, drag to rotate, heading up
 js/modal.js, gpx.js, icons.js, geo.js, ui.js
 profiles/           Polku's own BRouter profiles (road cycling; short cuts through ways marked private)
+data/depths/        lake depths for the water router, from Syke's soundings (tools/syke_depths.py, #1184)
 tools/              dev only: smoke.py, shoot.py, readme_shots.py, probes, cdp.py (headless Chrome), brouter-local.sh, fixtures
 img/base/           base map pictures, 240 × 160 (tools/thumbs.py); Aerial's is Esri's tile, not stored
 docs/               ROADMAP (how phases work), plans/ (phase designs), retros/, reviews/, this file, screenshots
