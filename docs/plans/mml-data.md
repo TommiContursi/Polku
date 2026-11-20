@@ -20,12 +20,14 @@ Outside Finland the map stays as it is, on OpenFreeMap's tiles and OSM.
   one. Polku's own archive, decided earlier the same day, is kept for later
   in [#1155](https://github.com/TommiContursi/Polku/issues/1155).
 - **Built, 2026-11-20:** property boundaries and their plots (#1157,
-  #1159), bogs (#1160), rock, cliffs, reeds and power lines (#1168), and
-  the water's marks and lake depths (#1186).
+  #1159), bogs (#1160), rock, cliffs, reeds and power lines (#1168),
+  the water's marks and lake depths (#1186), and heath, open forest land and
+  open ground (#1169).
   What was built is in [Drawing](#drawing) and [Parts](#parts); the
   decisions made while building are in the "Decided" lists of
-  [#1147](https://github.com/TommiContursi/Polku/issues/1147), [#1170](https://github.com/TommiContursi/Polku/issues/1170) and
-  [#1148](https://github.com/TommiContursi/Polku/issues/1148). More of MML's
+  [#1147](https://github.com/TommiContursi/Polku/issues/1147), [#1170](https://github.com/TommiContursi/Polku/issues/1170),
+  [#1148](https://github.com/TommiContursi/Polku/issues/1148) and
+  [#1169](https://github.com/TommiContursi/Polku/issues/1169). More of MML's
   classes are filed as their own issues ([Parts](#parts)).
 
 ## What people get
@@ -74,8 +76,9 @@ only. The classes come from MML's feature catalogue,
 | High-voltage pylon | 22392 | point | |
 
 MML has no scrub class. Its nearest are dwarf-shrub heath (varvikko, 39120)
-and open forest land (avoin metsämaa, 39110, mostly clear-cuts); whether to
-draw them is the user's call.
+and open forest land (avoin metsämaa, 39110, mostly clear-cuts), drawn with
+meadows, open shore land, fields, sand and the forest symbols by #1169: its
+classes and zooms are in DEVELOPING.
 
 "Easier" and "hard to cross" are MML's survey classes, not a promise about
 today's ground: the map's words say so, and nothing about passability is
@@ -255,6 +258,14 @@ Plain and Night maps, in MTB and paddle; its PR lists what else it covered.
   depth contours and delivers them to MML (#1184). They're drawn in
   Traficom's look, so the two read as one (decided on #1170). A lake's
   surface height is a label in the basemap, "94.6 m a.s.l.", from zoom 13.
+- **Heath, open forest land and open ground** (#1169): heath a flat pale
+  olive tint from zoom 11, open forest land the Maastokartta's diagonal
+  hatch in the forest's green from zoom 13, meadows, open shores, fields and
+  sand in OSM's colours, and the forest symbols from zoom 14 (decided on
+  #1169). OSM's heath and scrub have the same looks and are drawn over OSM's
+  forest everywhere; MML's are drawn over OSM's and under paludified land
+  and the bogs. In the basemap, not a layer: it's the ground, and open
+  forest land is a survey class, not a logging notice (#861 stays apart).
 - **Property boundaries** (#1157) on every base, in orange (lighter on
   Night and the aerial maps), from zoom 14, property IDs from zoom 16, in
   the Layers panel under Terrain, off by default, with an **Opacity**
@@ -276,8 +287,9 @@ Plain and Night maps, in MTB and paddle; its PR lists what else it covered.
 3. **Rock, boulders, stones, cliffs, reeds and power lines** ([#1147](https://github.com/TommiContursi/Polku/issues/1147)) (#1168).
    Done.
 4. **Stones, shoals, rapids, flow, jetties and lake depths** ([#1170](https://github.com/TommiContursi/Polku/issues/1170)) (#1186).
-5. Later, each its own issue in Map style: heath, clear-cuts and open
-   ground (#1169), paths
+5. **Heath, clear-cuts and open ground** ([#1169](https://github.com/TommiContursi/Polku/issues/1169)): with the forest
+   symbols and OSM's heath and scrub in the same looks (#1203).
+6. Later, each its own issue in Map style: paths
    and winter roads where OSM has none (#1171), fences, gates, ski lifts and
    masts (#1172), fire places, springs and monuments (#1173), place names
    (#1174), a tap on the terrain (#1175), MML's tiles in offline areas

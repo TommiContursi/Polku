@@ -8,6 +8,14 @@ What's new in [Polku](https://polku.si), from the latest updates back to the fir
 
 - **Plot selection**, under **Property boundaries** in **Layers → More → Terrain**, turns off both the plot tinted and named under the mouse pointer and the plot's card on a click or a tap. It's there on phones too. With it off, a click or a tap on a plot opens what's under it, such as a park or the water, or nothing, and a long press opens the spot's card, as without the layer. The boundaries and property IDs stay on the map.
 
+### Heath, clear-cuts and open ground ([#1169](https://github.com/TommiContursi/Polku/issues/1169))
+
+- The Trail, Plain and Night maps now show open ground that used to be drawn as forest. Heath is a pale olive tint, so the fells at Pallas read as open ground above the tree line.
+- In Finland, the National Land Survey's open forest land, mostly clear-cuts, is hatched with thin diagonal lines in the forest's green from zoom 13, as on its terrain map. The survey redraws it from aerial photos every 5–10 years, so a clear-cut on the map may have grown back, and a new one may be missing. Scrub mapped in OpenStreetMap has the same hatching.
+- The National Land Survey's meadows, open shores, fields and sand fill in what OpenStreetMap lacks in Finland, in the same colours as OpenStreetMap's.
+- In Finland, from zoom 14, small marks say what kind of forest it is, as on the National Land Survey's terrain map: Λ for coniferous, a ring for deciduous, the ring over Λ for mixed forest, and \ / for dwarf-shrub heath.
+- Outside Finland, and wherever the National Land Survey's map doesn't load, OpenStreetMap's heath and scrub look the same.
+
 ### Stones, shoals and rapids in the water from the National Land Survey ([#1170](https://github.com/TommiContursi/Polku/issues/1170))
 
 - In Finland, the Trail, Plain and Night maps mark the National Land Survey's stones in the water from zoom 14, as its own maps and Traficom's charts do: a T for a stone under the surface (0.3–1.5 m deep), a cross for one at the surface and an upside-down T for one above it. **Stones the survey couldn't see aren't on the map, so water without a mark isn't clear water.** Water routes are for planning, not navigation.
