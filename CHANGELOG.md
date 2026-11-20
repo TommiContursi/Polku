@@ -9,6 +9,7 @@ What's new in [Polku](https://polku.si), from the latest updates back to the fir
 - About half of the layers come from Finnish sources: the National Land Survey's maps and property boundaries, LIPAS's routes and places, Väylävirasto's and Traficom's nautical marks, depths and shipping lanes, and Fintraffic's and Digiroad's road layers. Where none of Finland is in view, their tiles and their switches in Layers now say **Finland only**, instead of looking like layers with nothing to show.
 - **Ships** say **Northern Baltic only** beyond the reach of Finland's AIS stations, which also see the Gulf of Finland, the Åland Sea and the Gulf of Bothnia. **Sea ice** says **Baltic Sea only** beyond the Baltic.
 - There, a sport's layers from those sources aren't counted as on in **On now** or in the count on **More**. Their switches stay on, so the layers show again when the map is back in their area. A view that reaches into Finland counts as in it.
+- **Marked routes** on the first screen asks you to zoom in on Finland where none of it is in view, instead of saying there are no marked routes in view.
 
 ### Mountain passes and ridges ([#1178](https://github.com/TommiContursi/Polku/issues/1178))
 
