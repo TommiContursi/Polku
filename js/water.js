@@ -73,8 +73,11 @@ function ensureHidden() {
 
 const waitIdle = (map) =>
   new Promise((res) => {
-    const t = setTimeout(res, 20000);
-    map.once('idle', () => { clearTimeout(t); res(); });
+    const end = () => { clearTimeout(t); map.off('idle', idle); res(); };
+    const t = setTimeout(end, 20000);
+    // after a tile fails, MapLibre calls the map idle while its other tiles still load: wait for them too (#1195)
+    const idle = () => { if (map.areTilesLoaded()) end(); };
+    map.on('idle', idle);
     map.triggerRepaint();
   });
 
