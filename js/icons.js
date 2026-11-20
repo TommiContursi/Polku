@@ -133,6 +133,40 @@ function rock(id) {
   return ctx.getImageData(0, 0, c.width, c.height);
 }
 
+// MML's open forest land (#1169), mostly clear-cuts, and OSM's scrub: the Maastokartta's diagonal hatch, rising to the
+// right, on an opaque ground so the forest under it doesn't show. `open-forest-<ground>-<lines>`
+function openForest(id) {
+  const [, , ground, line] = id.split('-');
+  const [c, ctx] = canvas(10, 10);
+  ctx.fillStyle = `#${ground}`;
+  ctx.fillRect(0, 0, 10, 10);
+  ctx.strokeStyle = `#${line}`;
+  ctx.lineWidth = 1.6;
+  ctx.beginPath();
+  for (const o of [-10, 0, 10]) { ctx.moveTo(o, 10); ctx.lineTo(o + 10, 0); }
+  ctx.stroke();
+  return ctx.getImageData(0, 0, c.width, c.height);
+}
+
+// MML's forest symbols (#1169), as the Maastokartta draws them. `tree-<kind>-<colour>`: `conifer` Λ, `broadleaf` a ring
+// open at its foot, `mixed` the ring over Λ, `heath` the dwarf-shrub heath's \ /
+function tree(id) {
+  const [, kind, colour] = id.split('-');
+  const [c, ctx] = canvas(10, 12);
+  ctx.strokeStyle = `#${colour}`;
+  ctx.lineWidth = 1.1;
+  ctx.lineCap = 'round';
+  ctx.beginPath();
+  const ring = (y, r) => { ctx.moveTo(5 + r * Math.cos(0.5 * Math.PI + 0.45), y + r * Math.sin(0.5 * Math.PI + 0.45)); ctx.arc(5, y, r, 0.5 * Math.PI + 0.45, 0.5 * Math.PI - 0.45); };
+  const peak = (top) => { ctx.moveTo(2.4, 11); ctx.lineTo(5, top); ctx.lineTo(7.6, 11); };
+  if (kind === 'conifer') peak(3.5);
+  else if (kind === 'broadleaf') ring(6.5, 3);
+  else if (kind === 'mixed') { ring(3.2, 2.2); peak(6.6); }
+  else { ctx.moveTo(2.4, 4.5); ctx.lineTo(3.8, 9); ctx.moveTo(7.6, 4.5); ctx.lineTo(6.2, 9); }
+  ctx.stroke();
+  return ctx.getImageData(0, 0, c.width, c.height);
+}
+
 // a power line's pylon (#1147): a small cross. `pylon-<colour>`
 function pylon(id) {
   const [c, ctx] = canvas(7, 7);
@@ -496,6 +530,8 @@ export function makeIcon(id) {
   if (/^reed-[0-9a-f]{6}$/.test(id)) return reed(id);
   if (/^(boulders-[0-9a-f]{6}|rock-spot-[0-9a-f]{6}|rock-(stone|rocks))-[0-9a-f]{6}$/.test(id)) return rock(id);
   if (/^pylon-[0-9a-f]{6}$/.test(id)) return pylon(id);
+  if (/^open-forest-[0-9a-f]{6}-[0-9a-f]{6}$/.test(id)) return openForest(id);
+  if (/^tree-(conifer|broadleaf|mixed|heath)-[0-9a-f]{6}$/.test(id)) return tree(id);
   if (/^saddle-[0-9a-f]{6}$/.test(id)) return saddle(id);
   if (/^ridge-[0-9a-f]{6}$/.test(id)) return ridge(id);
   if (id === 'wind-arrow') return windArrow();
