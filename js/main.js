@@ -1357,7 +1357,8 @@ const opacityRow = (id) => {
         state.overlayOpacity[id] = v;
         pct.textContent = `${e.target.value} %`;
         if (o.layers) for (const l of o.layers) { if (map.getLayer(l)) map.setPaintProperty(l, 'raster-opacity', v); } // live, no style rebuild
-        else { cancelAnimationFrame(tcFrame); tcFrame = requestAnimationFrame(() => map.setStyle(buildStyle(state, ctx), { diff: true })); } // (as the trail colours')
+        // the rest through the style, as the trail colours': MML's lake depths too, which follow the depth rows' Opacity (#1170)
+        if (!o.layers || id === 'depthContours' || id === 'soundings') { cancelAnimationFrame(tcFrame); tcFrame = requestAnimationFrame(() => map.setStyle(buildStyle(state, ctx), { diff: true })); }
       },
       onchange: () => saveSettings() }), pct);
 };

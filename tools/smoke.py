@@ -1332,6 +1332,16 @@ def mml_water(chrome):
       {const h=lakeHeight(); if(!h||h[0]!==`${+(h[1]/1000).toFixed(1)} m a.s.l.`)errs.push(`a lake's height labelled ${h&&h[0]} (keskikorkeus ${h&&h[1]})`);}
       {const order=m.getStyle().layers.map(l=>l.id), i=(id)=>order.indexOf(id);
         if(!(i('ov-depthContours')<i('mml-depth')&&i('mml-depth')<i('mml-shoal')))errs.push(`MML's depth contours not over Traficom's and under the shoals (${i('ov-depthContours')}, ${i('mml-depth')}, ${i('mml-shoal')})`);}
+      // the depth rows' Opacity reaches MML's depths too: saved, and while its slider moves in Layers
+      polku.set({overlayOpacity:{...polku.state.overlayOpacity,depthContours:0.3,soundings:0.4}}); await settle();
+      const opacities=()=>[m.getPaintProperty('mml-depth','line-opacity'),m.getPaintProperty('mml-depth-label','text-opacity'),m.getPaintProperty('mml-sounding','text-opacity')].join();
+      if(opacities()!=='0.3,0.3,0.4')errs.push(`saved depth opacities 0.3 and 0.4, MML's depths at ${opacities()}`);
+      document.querySelector('#btn-layers').click(); document.querySelector('#quick-layers .qt-more').click(); await new Promise(r=>setTimeout(r,400));
+      const slider=document.querySelector('#layers-body input[aria-label="Depth contours opacity"]');
+      if(!slider)errs.push('(the test) no Depth contours opacity slider in Layers');
+      else { slider.value='60'; slider.dispatchEvent(new Event('input',{bubbles:true})); await settle();
+        if(m.getPaintProperty('mml-depth','line-opacity')!==0.6||m.getPaintProperty('ov-depthContours','raster-opacity')!==0.6)errs.push(`Depth contours' slider at 60 %: MML's at ${m.getPaintProperty('mml-depth','line-opacity')}, Traficom's at ${m.getPaintProperty('ov-depthContours','raster-opacity')}`); }
+      polku.set({overlayOpacity:{...polku.state.overlayOpacity,depthContours:null,soundings:null}});
       polku.set({overlays:{...polku.state.overlays,depthContours:false,soundings:false}}); await settle();
       for(const l of ['mml-depth','mml-depth-label','mml-sounding'])if(m.getLayer(l))errs.push(`${l} drawn with the depths off`);
       if(!lakeHeight())errs.push("no lake's height with the depths off");
