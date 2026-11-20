@@ -173,6 +173,16 @@ function flow(id) {
   return ctx.getImageData(0, 0, c.width, c.height);
 }
 
+// a one-way street's arrow (town details): OSM's standard map's small arrow, pointing east; the layer turns it along the
+// road. `oneway-<colour>`
+function oneway(id) {
+  const [c, ctx] = canvas(14, 8);
+  ctx.strokeStyle = `#${id.slice(7)}`; ctx.lineWidth = 1.4; ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+  ctx.beginPath(); ctx.moveTo(1.5, 4); ctx.lineTo(12, 4); ctx.moveTo(8.8, 1.4); ctx.lineTo(12, 4); ctx.lineTo(8.8, 6.6);
+  ctx.stroke();
+  return ctx.getImageData(0, 0, c.width, c.height);
+}
+
 // rapids (#1170), a line's pattern: a row of white ovals along the river, as on MML's Maastokartta, with a faint edge
 // so they show on the light water. `rapids-<fill>-<edge>`; the pattern's height is the line's width
 function rapids(id) {
@@ -583,6 +593,7 @@ export function makeIcon(id) {
   if (/^(shoal|stonefield-[0-9a-f]{6})-[0-9a-f]{6}$/.test(id)) return shoal(id);
   if (/^flow-[0-9a-f]{6}-[0-9a-f]{6}$/.test(id)) return flow(id);
   if (/^rapids-[0-9a-f]{6}-[0-9a-f]{6}$/.test(id)) return rapids(id);
+  if (/^oneway-[0-9a-f]{6}$/.test(id)) return oneway(id);
   if (/^pylon-[0-9a-f]{6}$/.test(id)) return pylon(id);
   if (/^open-forest-[0-9a-f]{6}-[0-9a-f]{6}$/.test(id)) return openForest(id);
   if (/^tree-(conifer|broadleaf|mixed|heath)-[0-9a-f]{6}$/.test(id)) return tree(id);

@@ -43,7 +43,7 @@ const PALETTES = {
   trail: {
     bg: '#f5f3ee', wood: '#dbeacd', woodOpacity: 0.9, grass: '#e8f1d9', farmland: '#f7f0cf',
     wetland: '#dce5e3', wetlandDash: '#8fb0d3', bogWood: '#deebd0', reed: '#5f8a5a', heath: '#ebe6c4', openForest: '#c6dcb2', treeMark: '#6b8a5c', sand: '#f3e7bb', rock: '#e2dfd8', cliff: '#5e574e', ice: '#f4fbff',
-    residential: '#ece8e2', industrial: '#e8e2e8', cemetery: '#dde7d3', sport: '#dcefd3',
+    residential: '#ece8e2', industrial: '#e8e2e8', cemetery: '#dde7d3', sport: '#dcefd3', cityPark: '#d3ebbf', parking: '#e3e2de', parkingLine: '#aaa499', bridge: '#2c2721', oneway: '#6b6458', onewayBike: '#1f2fa0',
     park: '#3f8f3f', water: '#a8d1ef', waterLine: '#6fa9d6', waterText: '#24618f', shoal: '#ffffff',
     building: '#d9d1c8', buildingLine: '#c4b9ad',
     motorway: '#f2a35e', trunk: '#f6c46b', primary: '#fbd77b', secondary: '#fde7a2', tertiary: '#fff3c9',
@@ -54,7 +54,7 @@ const PALETTES = {
   plain: {
     bg: '#f7f7f5', wood: '#eef3ea', woodOpacity: 0.7, grass: '#f1f4ed', farmland: '#f7f6ef',
     wetland: '#eef4f2', wetlandDash: '#b4c9de', bogWood: '#f1f4ed', reed: '#9bb796', heath: '#f2efdf', openForest: '#dde8d4', treeMark: '#9bb796', sand: '#f4f1e6', rock: '#efeeec', cliff: '#948d83', ice: '#fafdff',
-    residential: '#f0efed', industrial: '#efedf0', cemetery: '#eaefe6', sport: '#eaf1e6',
+    residential: '#f0efed', industrial: '#efedf0', cemetery: '#eaefe6', sport: '#eaf1e6', cityPark: '#e4f0d8', parking: '#ebeae7', parkingLine: '#c4c0b8', bridge: '#5a554e', oneway: '#8a847a', onewayBike: '#4a6890',
     park: '#7aa27a', water: '#c3dcef', waterLine: '#9bbfdc', waterText: '#4a7ca3', shoal: '#ffffff',
     building: '#e6e3df', buildingLine: '#d6d1cb',
     motorway: '#e9c8a5', trunk: '#eed6ad', primary: '#f3e2b8', secondary: '#f6eccb', tertiary: '#faf5e4',
@@ -65,7 +65,7 @@ const PALETTES = {
   night: {
     bg: '#161a1f', wood: '#1b2620', woodOpacity: 1, grass: '#1d241f', farmland: '#23231d',
     wetland: '#18232a', wetlandDash: '#2f5679', bogWood: '#1b2620', reed: '#4f7a55', heath: '#26261c', openForest: '#26362a', treeMark: '#567a5c', sand: '#2a271f', rock: '#22221f', cliff: '#a39a8c', ice: '#20262b',
-    residential: '#1e2126', industrial: '#211f25', cemetery: '#1c231d', sport: '#1b241d',
+    residential: '#1e2126', industrial: '#211f25', cemetery: '#1c231d', sport: '#1b241d', cityPark: '#1e3524', parking: '#25282d', parkingLine: '#454a52', bridge: '#c9c2b5', oneway: '#aaa498', onewayBike: '#a9c4ea',
     park: '#4e8f5b', water: '#10304a', waterLine: '#1f5a85', waterText: '#7fb6e3', shoal: '#2f6f9e',
     building: '#272b31', buildingLine: '#30353c',
     motorway: '#8a5a2f', trunk: '#80633a', primary: '#6f6040', secondary: '#5b5443', tertiary: '#4a4740',
@@ -193,8 +193,16 @@ export function buildStyle(s, ctx) {
   if (vectorFills) {
     const lc = (id, cls, color, extra = {}) =>
       add({ id, type: 'fill', source: 'ofm', 'source-layer': 'landcover', filter: ['in', ['get', 'class'], ['literal', cls]], paint: { 'fill-color': color, 'fill-antialias': false, ...extra } });
+    // the town's land use under the land cover (town details), so a park or a lawn in a block shows
+    const lu = (id, cls, color, minzoom = 8) =>
+      add({ id, type: 'fill', source: 'ofm', 'source-layer': 'landuse', minzoom, filter: ['in', ['get', 'class'], ['literal', cls]], paint: { 'fill-color': color } });
+    lu('lu-residential', ['residential', 'suburb', 'neighbourhood'], P.residential, 9);
+    lu('lu-industrial', ['industrial', 'commercial', 'retail', 'railway', 'garages', 'quarry'], P.industrial, 11);
+    lu('lu-cemetery', ['cemetery'], P.cemetery, 12);
     lc('lc-farmland', ['farmland'], P.farmland);
     lc('lc-grass', ['grass'], P.grass);
+    // parks and gardens (town details): a clearer green than grass, under the forest, which keeps a wooded park's trees
+    add({ id: 'lc-park', type: 'fill', source: 'ofm', 'source-layer': 'landcover', filter: ['in', ['get', 'subclass'], ['literal', ['park', 'garden', 'village_green', 'recreation_ground']]], paint: { 'fill-color': P.cityPark, 'fill-antialias': false } });
     lc('lc-wood', ['wood'], P.wood, { 'fill-opacity': P.woodOpacity });
     // MML's terrain in Finland (#1147): its background map's tiles, from zoom 11
     sources.mml = { type: 'vector', tiles: [`${MML_TERRAIN_TILES}?api-key=${encodeURIComponent(mmlKey)}`], minzoom: 11, maxzoom: 14, bounds: FINLAND_BOUNDS, attribution: '© Maanmittauslaitos, Maastotietokanta, CC BY 4.0' };
@@ -238,12 +246,10 @@ export function buildStyle(s, ctx) {
     add({ id: 'lc-scree', type: 'fill', source: 'ofm', 'source-layer': 'landcover', minzoom: 13, filter: ['==', ['get', 'subclass'], 'scree'], paint: { 'fill-pattern': `boulders-${hex(P.rock)}-${hex(P.cliff)}` } });
     lc('lc-ice', ['ice'], P.ice);
 
-    const lu = (id, cls, color, minzoom = 8) =>
-      add({ id, type: 'fill', source: 'ofm', 'source-layer': 'landuse', minzoom, filter: ['in', ['get', 'class'], ['literal', cls]], paint: { 'fill-color': color } });
-    lu('lu-residential', ['residential', 'suburb', 'neighbourhood'], P.residential, 9);
-    lu('lu-industrial', ['industrial', 'commercial', 'retail', 'railway', 'garages', 'quarry'], P.industrial, 11);
-    lu('lu-cemetery', ['cemetery'], P.cemetery, 12);
+    // pitches and playgrounds over the land cover: they're often in a park
     lu('lu-sport', ['pitch', 'stadium', 'playground', 'track'], P.sport, 13);
+    // parking areas (town details): MML's motor traffic areas in Finland (public car parks of 1,000 m² and more), in OSM's grey
+    add({ id: 'mml-parking', type: 'fill', source: 'mml', 'source-layer': 'liikenne', minzoom: 14, filter: ['all', ['==', cls, 32421], ['==', ['geometry-type'], 'Polygon']], paint: { 'fill-color': P.parking, 'fill-outline-color': P.parkingLine } });
   }
 
   // Protected areas (national parks, nature reserves)
@@ -566,7 +572,22 @@ export function buildStyle(s, ctx) {
       paint: { 'text-color': P.text, 'text-halo-color': P.halo, 'text-halo-width': 1.2, 'icon-opacity': s.base === 'night' ? 0.85 : 1 },
     });
     poi('poi-outdoor', 13, ['any', ['in', ['get', 'class'], ['literal', outdoor]], ['in', ['get', 'subclass'], ['literal', ['viewpoint', 'firepit', 'bbq']]]]);
-    poi('poi-minor', 15.5, ['all', ['in', ['get', 'class'], ['literal', minor]], ['!', ['in', ['get', 'subclass'], ['literal', ['viewpoint', 'firepit', 'bbq']]]]]);
+    poi('poi-minor', 15.5, ['all', ['in', ['get', 'class'], ['literal', minor.filter((c) => c !== 'parking')]], ['!', ['in', ['get', 'subclass'], ['literal', ['viewpoint', 'firepit', 'bbq']]]]]);
+    // parking (town details): the named ones from 15.5, every one from 17, as OSM's standard map; the tiles can't tell a kerbside one
+    poi('poi-parking', 15.5, ['all', ['==', ['get', 'class'], 'parking'], ['has', 'name']]);
+    poi('poi-parking-all', 17, ['all', ['==', ['get', 'class'], 'parking'], ['!', ['has', 'name']]]);
+    // shops and food (town details, a layer of its own): from 17, the tiles' rank first, none upstairs or indoors
+    const shops = ['shop', 'grocery', 'clothing_store', 'alcohol_shop', 'bakery', 'restaurant', 'cafe', 'fast_food', 'bar', 'beer', 'ice_cream', 'pharmacy', 'hairdresser', 'laundry'];
+    add({
+      id: 'poi-shops', type: 'symbol', source: 'ofm', 'source-layer': 'poi', minzoom: 17,
+      filter: ['all', ['in', ['get', 'class'], ['literal', shops]], ['has', 'name'], ['!', ['has', 'indoor']], ['<=', ['coalesce', ['get', 'level'], 0], 0]],
+      layout: {
+        'symbol-sort-key': ['get', 'rank'],
+        'icon-image': ['coalesce', ['image', ['get', 'class']], ['image', 'shop']], 'icon-size': hc ? 1 : 0.75,
+        'text-field': ['get', 'name'], 'text-font': FONT, 'text-size': 10.5, 'text-offset': [0, 0.9], 'text-anchor': 'top', 'text-optional': true, 'text-max-width': 7,
+      },
+      paint: { 'text-color': s.base === 'night' ? '#d6b8e6' : '#7a2e8a', 'text-halo-color': P.halo, 'text-halo-width': 1.2, 'icon-opacity': s.base === 'night' ? 0.85 : 1 },
+    });
   }
   if (s.overlays.lipasPoints || s.overlays.restricted) {
     add({
@@ -935,6 +956,17 @@ function addRoads(s, P, hc, layers, ctx) {
       ? ['!', ['in', ['get', 'brunnel'], ['literal', ['tunnel', 'bridge']]]]
       : ['==', ['get', 'brunnel'], brunnel];
     const op = (brunnel === 'tunnel' ? 0.5 : 1) * roadsDim;
+    // bridges (town details): a dark edge, as OSM's standard map and MML's black; a deck mapped as an area in the ground's colour
+    const bridgeEdge = P.bridge;
+    if (brunnel === 'bridge' && !aerial && !mmlBase) {
+      add({ id: 'bridge-deck', type: 'fill', source: 'ofm', 'source-layer': 'transportation', minzoom: 15, filter: ['all', ['==', ['get', 'class'], 'bridge'], ['==', ['geometry-type'], 'Polygon']], paint: { 'fill-color': P.bg, 'fill-outline-color': bridgeEdge } });
+      const sub = ['get', 'subclass'], w = (foot, cycle, other) => ['match', sub, ['footway', 'pedestrian', 'steps'], foot, 'cycleway', cycle, other];
+      add({
+        id: 'path-bridge-edge', type: 'line', source: 'ofm', 'source-layer': 'transportation', minzoom: 15,
+        filter: ['all', ['in', ['get', 'class'], ['literal', ['path', 'track']]], bf],
+        paint: { 'line-color': bridgeEdge, 'line-width': ze(1.2, 15, w(6, 7.2, 7.5), 16, w(6.5, 12, 9), 18, w(8, 17, 14)), 'line-opacity': zi(15, 0, 15.5, roadsDim) },
+      });
+    }
 
     // casings
     for (const cls of ['service', 'minor', 'tertiary', 'secondary', 'primary', 'trunk', 'motorway']) {
@@ -945,7 +977,7 @@ function addRoads(s, P, hc, layers, ctx) {
         filter: ['all', ['==', ['get', 'class'], cls], bf],
         layout: { 'line-join': 'round', 'line-cap': brunnel === 'ground' ? 'round' : 'butt' },
         paint: {
-          'line-color': aerial ? 'rgba(0,0,0,0.5)' : casingColor,
+          'line-color': aerial ? 'rgba(0,0,0,0.5)' : brunnel === 'bridge' ? ['step', ['zoom'], casingColor, 14, bridgeEdge] : casingColor,
           'line-width': trail && !gravel && cls === 'minor' ? ze(1.4, 11, 0.6, 14, 3.6, 18, 14.85)
             : trail && !gravel && cls === 'service' ? ze(1.4, 13, 0.6, 15, 2.7, 18, 9.45)
             : gravel && cls !== 'motorway' && cls !== 'trunk'
@@ -1028,6 +1060,7 @@ function addRoads(s, P, hc, layers, ctx) {
     const centreOpacity = isWater(act) || roadBike ? 0.6 : 1;
     // Footways and pedestrian streets (#1163): a thin brown dashed line, on the Trail map on a white band 1 px wider a side, apart from trails.
     const footColor = darkBase ? '#d6725c' : '#a2381f';
+    const tun = brunnel === 'tunnel' ? 0.5 : 1; // in a tunnel (town details): half, as the cycleways
     if (trail && brunnel !== 'tunnel') add({
       id: `path-${brunnel}-foot-casing`, type: 'line', source: 'ofmTrails', 'source-layer': 'transportation', minzoom: 12,
       filter: ['all', trailFilter, sidewalkish],
@@ -1044,7 +1077,7 @@ function addRoads(s, P, hc, layers, ctx) {
         'line-color': footColor,
         'line-width': hc ? ze(1.2, 12, 0.9, 14, 2.5, 16, 4, 18, 6) : ze(1.2, 12, 0.8, 14, 1.5, 16, 2.5, 18, 4),
         'line-dasharray': [1.5, 0.7],
-        'line-opacity': centreOpacity,
+        'line-opacity': centreOpacity * tun,
       },
     });
     // Steps without an MTB grade: a wide brown ladder, so they stand out from the footways.
@@ -1056,7 +1089,7 @@ function addRoads(s, P, hc, layers, ctx) {
         'line-color': footColor,
         'line-width': hc ? ze(1.2, 14, 4, 16, 9) : ze(1.2, 14, 3, 17, 9),
         'line-dasharray': hc ? [0.4, 0.4] : [0.2, 0.2],
-        'line-opacity': centreOpacity,
+        'line-opacity': centreOpacity * tun,
       },
     });
     const pathFilter = ['all', trailFilter, ['!', sidewalkish], ['!', steps]];
@@ -1064,7 +1097,7 @@ function addRoads(s, P, hc, layers, ctx) {
       id: `path-${brunnel}-halo`, type: 'line', source: 'ofmTrails', 'source-layer': 'transportation', minzoom: 12,
       filter: pathFilter,
       layout: { 'line-cap': 'round', 'line-join': 'round' },
-      paint: { 'line-color': haloOf(MTB_IDX), 'line-width': haloW(1), 'line-opacity': haloOpacity },
+      paint: { 'line-color': haloOf(MTB_IDX), 'line-width': haloW(1), 'line-opacity': tun === 1 ? haloOpacity : ['*', haloOpacity, tun] },
     });
     add({
       id: `path-${brunnel}`, type: 'line', source: 'ofmTrails', 'source-layer': 'transportation', minzoom: 12,
@@ -1073,7 +1106,7 @@ function addRoads(s, P, hc, layers, ctx) {
         'line-color': centreColor,
         'line-width': centreW(1),
         'line-dasharray': ['match', ['get', 'subclass'], 'steps', ['literal', [0.4, 0.4]], ['literal', [2.4, 1.3]]],
-        'line-opacity': centreOpacity,
+        'line-opacity': centreOpacity * tun,
       },
     });
     noBikeBars(`path-${brunnel}-nobike`, 'ofmTrails', ['all', trailFilter, noBikeMark]);
@@ -1139,6 +1172,19 @@ function addRoads(s, P, hc, layers, ctx) {
     noBikeBars(`cycleway-${brunnel}-nobike`, 'ofm', ['all', isPathClass, cyclingPath, bf, noBikeMark]);
   }
 
+  // one-way streets (town details): OSM's standard map's small arrow along the road from zoom 16, pointing the way the line is
+  // drawn (the tiles' oneway is 1); for traffic: the tiles have no oneway:bicycle, which the way's card says
+  if (!aerial && !mmlBase) {
+    const arrow = (id, filter, colour) => add({
+      // not on parking aisles and driveways: a car park's lanes would fill it with arrows
+      id, type: 'symbol', source: 'ofm', 'source-layer': 'transportation', minzoom: 16, filter: ['all', ['==', ['get', 'oneway'], 1], ['!', ['in', ['coalesce', ['get', 'service'], ''], ['literal', ['parking_aisle', 'driveway']]]], filter],
+      layout: { 'symbol-placement': 'line', 'symbol-spacing': 200, 'icon-image': `oneway-${colour.slice(1)}`, 'icon-rotation-alignment': 'map', 'icon-size': zi(16, 0.85, 18, 1.15), 'icon-padding': 0 },
+      paint: { 'icon-opacity': roadsDim },
+    });
+    arrow('road-oneway', ['in', ['get', 'class'], ['literal', ['motorway', 'trunk', 'primary', 'secondary', 'tertiary', 'minor', 'service']]], P.oneway);
+    arrow('cycleway-oneway', ['all', isPathClass, cyclingPath], trail ? P.onewayBike : P.cycleway);
+  }
+
   // Ways marked private or closed for your sport (#104): purple dots beside the line. The tiles fold access=private into access=no; the
   // sport's own yes wins (a footway closed to cars is open on foot), and on foot, foot=no.
   // Routes keep off them, so this is why a route goes round. It says what the map says, not
@@ -1190,7 +1236,10 @@ function addRoads(s, P, hc, layers, ctx) {
       id: 'td-way-ford', type: 'symbol', source: 'trailWays', minzoom: 15, filter: ['==', ['get', 'wayford'], true],
       layout: { 'symbol-placement': 'line-center', 'icon-image': 'td-ford', ...icon },
     });
-    add({ id: 'td-points', type: 'symbol', source: 'trailPoints', minzoom: 15, layout: { 'icon-image': ['concat', 'td-', ['get', 'kind']], ...icon } });
+    // gates from 16 (town details): a town's courtyard gates filled a phone's screen at 15 (130 in Helsinki's centre)
+    const gate = ['in', ['get', 'kind'], ['literal', ['gate', 'gate-no']]];
+    add({ id: 'td-points', type: 'symbol', source: 'trailPoints', minzoom: 15, filter: ['!', gate], layout: { 'icon-image': ['concat', 'td-', ['get', 'kind']], ...icon } });
+    add({ id: 'td-gates', type: 'symbol', source: 'trailPoints', minzoom: 16, filter: gate, layout: { 'icon-image': ['concat', 'td-', ['get', 'kind']], ...icon } });
   }
 }
 
@@ -1225,6 +1274,10 @@ function addLabels(s, P, hc, layers) {
   if (s.overlays.lipasRoutes) {
     add({ id: 'lipas-route-label', type: 'symbol', source: 'lipasRoutes', minzoom: 13, layout: { 'symbol-placement': 'line', 'text-pitch-alignment': 'viewport', 'text-field': ['get', 'name'], 'text-font': FONT_B, 'text-size': 11, 'symbol-spacing': 400 }, paint: { 'text-color': ['match', ['get', 'type'], ...Object.entries(LIPAS_TYPES).filter(([k]) => +k > 4000).flatMap(([k, v]) => [+k, v.color]), '#444'], ...halo } });
   }
+  // city parks' names (town details): OSM's parks are points in the tiles' poi layer; the park layer holds protected areas only
+  add({ id: 'label-city-park', type: 'symbol', source: 'ofm', 'source-layer': 'poi', minzoom: 15, filter: ['all', ['in', ['get', 'class'], ['literal', ['park', 'garden']]], ['has', 'name']], layout: { 'symbol-sort-key': ['get', 'rank'], 'text-field': ['get', 'name'], 'text-font': FONT_I, 'text-size': 12, 'text-max-width': 8 }, paint: { 'text-color': isAerial(s.base) ? P.text : s.base === 'night' ? '#8fd18f' : '#2f6b2f', ...halo } });
+  // house numbers (town details, an extra): from 17, small and quiet
+  add({ id: 'label-housenumber', type: 'symbol', source: 'ofm', 'source-layer': 'housenumber', minzoom: 17, layout: { 'text-field': ['get', 'housenumber'], 'text-font': FONT, 'text-size': 10, 'text-padding': 2 }, paint: { 'text-color': s.base === 'night' ? '#9aa1a9' : '#7d7468', 'text-halo-color': P.halo, 'text-halo-width': 1 } });
   const place = (id, classes, minzoom, size, font = FONT) =>
     add({ id, type: 'symbol', source: 'ofm', 'source-layer': 'place', minzoom, filter: ['in', ['get', 'class'], ['literal', classes]], layout: { 'text-field': ['get', 'name'], 'text-font': font, 'text-size': size, 'text-max-width': 8 }, paint: { 'text-color': P.text, ...halo } });
   place('label-place-minor', ['hamlet', 'isolated_dwelling', 'locality', 'neighbourhood'], 13, 11);
