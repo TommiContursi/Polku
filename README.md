@@ -99,9 +99,9 @@ Polku brings together open data and free public services. Each source keeps its 
 Requests are paced, cached and counted, with those that failed; see **Settings → Data sources** (map tiles and terrain aren't counted there). Offline areas save only OpenFreeMap and Mapterhorn tiles, whose terms allow it.
 
 Road/path selections and their route memberships, trail details and barriers,
-mapped winter maintenance/access, OSM water hazards, overnight places and
-lighting use hosted OpenStreetMap snapshots for Finland, Sweden, Norway and
-Estonia, from Geofabrik and served by ducksoft.fi. Full-tag inspection uses the
+mapped winter maintenance/access, OSM water hazards, overnight places,
+lighting and the map's reedbeds use hosted OpenStreetMap snapshots for Finland,
+Sweden, Norway and Estonia, from Geofabrik and served by ducksoft.fi. Full-tag inspection uses the
 same original objects; selected-way tags reuse the already loaded ways. Releases
 with local area geometry also supply lake, park and protected-area selection.
 Large areas download only nearby original outlines; area details reuse their tags.
@@ -110,7 +110,8 @@ covered hosted tiles and bounded cached/public Overpass fallback. Actual extract
 polygons determine coverage, including their proven union at shared borders;
 genuine coverage gaps, unsupported objects,
 ambiguous nearby relations and lake/park area selection retain public fallback.
-Missing data remains unknown. Routing and map tiles keep their existing sources.
+Missing data remains unknown. Reedbeds have no fallback: where the hosted data
+is missing they're drawn as plain wetland. Routing and map tiles keep their existing sources.
 Weekly full rebuilds publish automatically after integrity, coverage and browser
 checks, with daily live checks and assigned GitHub failure alerts. Inbox and email
 delivery have been verified. The

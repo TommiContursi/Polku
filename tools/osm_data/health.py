@@ -33,7 +33,8 @@ def verify(output,release_dir=None):
                     urls.update(n['url'] for n in product['network'] if '.pmtiles' in n['url'])
         expected_urls={url.removesuffix('/current.json')+'/'+dataset['url'] for dataset in live['datasets'].values()}
         extended = 'geometry' in live['datasets']
-        expected_count = 29 if extended else 28
+        # four countries' products, seven in a release from before reedbeds (#1144), which a rollback can restore
+        expected_count = 4 * (8 if 'wetlands' in live['datasets'] else 7) + extended
         p.require(len(expected_urls)==expected_count and urls==expected_urls,
                   'Browser consumers did not verify all current release archives')
         if extended:
