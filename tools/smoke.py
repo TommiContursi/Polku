@@ -1164,9 +1164,9 @@ def mml_rock(chrome):
       const settle=async()=>{await new Promise(r=>setTimeout(r,300));await Promise.race([new Promise(r=>{m.once('idle',r);m.triggerRepaint();}),new Promise(r=>setTimeout(r,10000))]);};
       if(m.style.tileManagers.mml.getIds().length)return ['MML was asked for tiles at zoom 10'];""" + MML_FIXTURES + """
       const drawn=(layer)=>new Set(m.queryRenderedFeatures({layers:[layer]}).map(f=>f.properties.kohdeluokka));
-      const want=(layer,classes)=>{const got=drawn(layer); for(const k of classes)if(!got.has(k))errs.push(`${layer}: nothing of class ${k} drawn from the recorded tile`);};
+      let base; const want=(layer,classes)=>{const got=drawn(layer); for(const k of classes)if(!got.has(k))errs.push(`${base}: ${layer} drew nothing of class ${k} from the recorded tile`);};
       const value=(id,prop,z)=>m.style.getLayer(id)._transitionablePaint._values[prop].value.expression.evaluate({zoom:z});
-      for(const base of ['trail','plain','night']) {
+      for(base of ['trail','plain','night']) {
         polku.set({base}); m.jumpTo({center:tileMid(14,9352,4721),zoom:14.6}); await settle();
         want('mml-rock',[34100]); want('mml-rock-point',[34100,34600]); want('mml-reed',[38100]);
         want('mml-cliff',[34400]); want('mml-cliff-ticks',[34400]); want('mml-power',[22311,22312]);
