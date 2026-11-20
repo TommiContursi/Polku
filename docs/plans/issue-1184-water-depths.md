@@ -6,6 +6,7 @@ The water router keeps clear of marked rocks, shipping lanes and rough water, bu
 
 - **Plan, 2026-11-20.**
 - **Decided, 2026-11-20: the three recommendations** (on #1184's description): Polku's own depth files from Syke's download, shallow as a sounding under 0.5 m costed four times and said in Check, not for swimming, and the words of section 3.
+- **Decided, 2026-11-20: "Sea depths" without "(Traficom's licence)"** (on #1184's description).
 - **Built** in [#1187](https://github.com/TommiContursi/Polku/pull/1187): [as built](#as-built).
 
 ## What Syke's data is (checked 2026-11-20)
@@ -60,7 +61,7 @@ The alternatives: 1.0 m (most of a shallow lake's shore counts), a number for ea
 Water routes are for planning, not navigation (PRODUCT.md). The words never say the water is deep enough, clear or safe: no shallow sounding isn't deep water.
 
 - **Check, Good to know:** "Shallow water, under 0.5 m when surveyed", with the note "Syke's lake soundings, at the lake's survey level: the water may be lower now, and stones can lie nearer the surface between the soundings". It can be hidden as "Shallow water". A round trip's card on the water says "shallow water" beside "near rocks".
-- **What Polku looked at,** a row "Lake depths": "Syke's soundings" when all the route's water was surveyed, "Syke's soundings, for 2.1 of 6.4 km on the water" when part of it was, and "not surveyed where this route goes" when none was. The row "Depths: shown on the map, never used for routes" becomes "Sea depths: shown on the map, never used for routes (Traficom's licence)".
+- **What Polku looked at,** a row "Lake depths": "Syke's soundings" when all the route's water was surveyed, "Syke's soundings, for 2.1 of 6.4 km on the water" when part of it was, and "not surveyed where this route goes" when none was. The row "Depths: shown on the map, never used for routes" becomes "Sea depths: shown on the map, never used for routes (Traficom's licence)". Decided later the same day: without "(Traficom's licence)", so the row stays on one line on a desktop.
 - **Not checked,** when the depth files didn't load, as for the other water sources: "Lake depths: didn't load", with Retry.
 - **Route style, Rocks & shoals:** its text ends "Keeps off water Syke surveyed under 0.5 m deep, in the lakes it surveyed; elsewhere Polku doesn't know the depth, so keep a lookout." in place of "Polku doesn't know depths, so keep a lookout for the rest."
 - **README:** the data sources table gains "Lake depths for routing | Syke's lake soundings (CC BY 4.0), about 1,900 lakes", beside Traficom's displayed depths; the bold note and the limits say the router uses lake depths only where Syke surveyed (none of the sea, few of the large lakes) and still can't see stones or today's water level.

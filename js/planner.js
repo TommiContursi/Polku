@@ -7064,7 +7064,7 @@ export class Planner {
       else if (missing('Syke') || skipped('Syke')) row('Lake depths', missing('Syke') ? 'didn’t load' : 'not checked: a leg too long to ask for', 'bad');
       else if (wet > 0 && got >= wet - 25) row('Lake depths', 'Syke’s soundings', 'ok');
       else row('Lake depths', got < 25 ? 'not surveyed where this route goes' : `Syke’s soundings for ${fmtDist(got)} of the ${fmtDist(wet)} on the water`, 'bad');
-      row('Sea depths', 'shown on the map, never used for routes (Traficom’s licence)', 'na');
+      row('Sea depths', 'shown on the map, never used for routes', 'na');
     } else row('Water hazards', 'no water on this route', 'na');
     return rows;
   }
