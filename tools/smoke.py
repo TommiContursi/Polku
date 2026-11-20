@@ -1070,6 +1070,8 @@ def reedbed_style(chrome):
       for(const base of ['trail','plain','night']) {
         polku.set({base});
         await settle();
+        // the seeded reedbed drawn, 10 s at most more: with MML's terrain the first base can take longer than settle's 8 s (#1180)
+        for(let t=0;t<40&&!here();t++)await new Promise(r=>setTimeout(r,250));
         const layers=m.getStyle().layers, i=layers.findIndex(l=>l.id==='lc-reedbed'), l=layers[i];
         if(!l){errs.push(`${base}: no reedbed layer`);continue;}
         if(i<layers.findIndex(l=>l.id==='lc-wetland-pattern'))errs.push(`${base}: reedbeds under the wetland dashes`);
