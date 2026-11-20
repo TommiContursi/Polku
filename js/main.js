@@ -1752,7 +1752,7 @@ let mmlDown = false;
 map.on('error', (e) => {
   if (e.sourceId !== 'mml' || mmlDown || (e.error && e.error.name === 'AbortError')) return;
   mmlDown = true;
-  toast('The National Land Survey’s terrain didn’t load: the map shows OpenStreetMap’s wetlands and rock, without cliffs or power lines.', { ms: 6000 });
+  toast('The National Land Survey’s terrain didn’t load: the map shows OpenStreetMap’s wetlands, rock and cliffs, without power lines.', { ms: 6000 });
 });
 map.on('data', (e) => { if (e.sourceId === 'mml' && e.dataType === 'source' && e.tile) mmlDown = false; });
 onStatus(() => refreshQuickSoon());

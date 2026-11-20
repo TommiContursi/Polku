@@ -4,6 +4,11 @@ What's new in [Polku](https://polku.si), from the latest updates back to the fir
 
 ## 2026-11-20
 
+### Cliffs and scree from OpenStreetMap ([#1178](https://github.com/TommiContursi/Polku/issues/1178))
+
+- The Trail, Plain and Night maps draw OpenStreetMap's cliffs from zoom 13, everywhere, the same way as the National Land Survey's: a dark line with short ticks on the lower side. OpenStreetMap and the National Land Survey each have cliffs the other lacks, so more of them show, at Tykkikallio in Jyväskylä for example.
+- Scree is dotted like the National Land Survey's boulder fields from zoom 13, so it reads apart from smooth rock.
+
 ### Lakes with marshes and overgrowing water ([#1177](https://github.com/TommiContursi/Polku/issues/1177))
 
 - In Finland, a lake's shallows that OpenStreetMap maps as marshes are now drawn as water, not as pale land in the lake. The National Land Survey's overgrowing water shows its whole shape, as blue dashes on the water's blue, paddling's too. Marshes on land are drawn as before.
