@@ -899,7 +899,7 @@ def property_lines(chrome):
     return not fails
 
 
-# #1148: with Property boundaries on, the plot under the pointer is tinted, and a click on a plot opens its card with its ID
+# #1148: with Property boundaries on (and its Plot under the pointer, on at first), the plot under the pointer is tinted, and a click on a plot opens its card with its ID
 # and tints it more, by its id (all its tiles' pieces), until the card closes.
 def property_plots(chrome):
     pg = chrome.page(1440, 900, False)
@@ -925,6 +925,21 @@ def property_plots(chrome):
       if(m.querySourceFeatures('pickArea').length)errs.push("the plot's piece is outlined, cut at its tile's edge");
       polku.planner.cards.close(); await frame();
       if(st(spot.f.id).lit)errs.push('the plot stays tinted after its card closes');
+      // Plot under the pointer, under the switch in Layers: off, the pointer tints nothing, and a click still picks the plot
+      document.querySelector('#btn-layers').click(); await frame();
+      [...document.querySelectorAll('button')].find(b=>/^More: all layers/.test(b.getAttribute('aria-label')||''))?.click(); await frame();
+      const sub=[...document.querySelectorAll('[data-group=terrain] input[role=switch]')].find(i=>i.closest('label')?.textContent.includes('Plot under the pointer'));
+      if(!sub)errs.push('no Plot under the pointer switch under Property boundaries');
+      else {
+        if(!sub.checked)errs.push('Plot under the pointer is off at first');
+        sub.click(); await frame(); polku.set({}); await frame();
+        cv.dispatchEvent(new PointerEvent('pointermove',{bubbles:true,pointerType:'mouse',clientX:R.left+spot.x+1,clientY:R.top+spot.y,buttons:0})); await frame(); await frame();
+        if(st(spot.f.id).hover)errs.push('the plot is tinted with Plot under the pointer off');
+        if(polku.state.plotHover!==false)errs.push('Plot under the pointer stays on after its switch');
+        ev('mousedown'); ev('mouseup'); ev('click'); await wait(600);
+        if(!st(spot.f.id).lit)errs.push('with Plot under the pointer off, a click no longer picks the plot');
+        polku.planner.cards.close();
+      }
       return errs;
     })()""", timeout=90000)
     fails += [f'console: {e[:160]}' for e in pg.errors()]

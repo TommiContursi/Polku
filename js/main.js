@@ -79,6 +79,7 @@ const DEFAULTS = {
   quickTiles: {}, // the quick drawer's tiles you chose, per sport (#123); a sport you haven't edited has its own
   depthsBack: {}, // per sport: the depth layers the Depths tile brings back when it's turned on again
   litLook: 'lines', // how Lit ways looks: 'lines' or 'dark' (In the dark, #638)
+  plotHover: true, // Property boundaries: the plot under the mouse pointer tinted and named (#1148)
 };
 const state = { ...DEFAULTS, ...store.get('settings', {}) };
 if (!ACTIVITIES[state.activity]) state.activity = 'mtb'; // a sport this version doesn't know
@@ -692,7 +693,7 @@ const inspector = initInspector(map, {
   openCamera: (id, name) => cameras.open(id, name),
 });
 const hover = initHover(map, { wayUnder: (ll, loaded) => wayUnder(ll, map.getZoom(), loaded), hoverPick: (coords) => { dropFade(); planner.hoverPick(coords); },
-  enabled: () => state.hoverInfo && hoverCapable() && !planner.edit, isPlanning: () => planner.active, isDrawing: () => planner.drawing(), activity: () => state.activity, difficulty: showsDifficulty, bike: isBike, hoverLeg: routeHoverLeg, hoverRoute: routeHoverRoute, hoverPlot: (id) => lightPlot('hover', id), headAt: (point, touch) => planner.headAt(point, touch ? 18 : 10) });
+  enabled: () => state.hoverInfo && hoverCapable() && !planner.edit, isPlanning: () => planner.active, isDrawing: () => planner.drawing(), activity: () => state.activity, difficulty: showsDifficulty, bike: isBike, hoverLeg: routeHoverLeg, hoverRoute: routeHoverRoute, plotHover: () => state.plotHover, hoverPlot: (id) => lightPlot('hover', id), headAt: (point, touch) => planner.headAt(point, touch ? 18 : 10) });
 
 initSearch(map, $('#search-input'), $('#search-results'), {
   sportTypes: () => ACTIVITIES[state.activity].lipas.routes,
@@ -1439,6 +1440,8 @@ const overlayToggle = (id) => {
     if (v && id === 'sfShips' && map.getZoom() < 8) toast('Zoom in to level 8+ to see ships');
     if (v && id === 'lit' && map.getZoom() < LIT_MIN_ZOOM) toast(`Zoom in to level ${LIT_MIN_ZOOM}+ to see the lit ways`);
   }), sf ? sf.note : o ? o.attribution.replace('© ', '') : OVERLAY_NOTE[id] || '');
+  if (id === 'propertyLines' && state.overlays.propertyLines && hoverCapable()) return h('div', { class: 'tg-group' }, tg,
+    toggle('Plot under the pointer', state.plotHover, (v) => { state.plotHover = v; if (!v) lightPlot('hover', null); saveSettings(); }), opacityRow(id));
   if (id !== 'lit' || !state.overlays.lit) return withOpacity(id, tg);
   return h('div', { class: 'tg-group' }, tg, seg(LIT_LOOKS, state.litLook, (v) => { state.litLook = v; applyStyle(); renderLayersPanel(); }), opacityRow(id));
 };
