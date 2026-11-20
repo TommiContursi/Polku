@@ -1068,6 +1068,8 @@ def saddles(chrome):
         if(!/^saddle-[0-9a-f]{6}$/.test(id))errs.push(`${base}: a saddle's mark is ${id}`);
         else{const img=makeIcon(id); if(!img||!img.data.some((v,i)=>i%4===3&&v>0))errs.push(`${base}: ${id} isn't drawn`); else if(!m.hasImage(id))errs.push(`${base}: ${id} isn't on the map`);}
         if(!got.some(x=>x.properties.name==='Taivaskeronsatula'))errs.push(`${base}: Taivaskeronsatula isn't among the saddles drawn`);
+        if(base==='trail'){polku.planner.openPlaceCard(got[0],got[0].geometry.coordinates);const t=polku.planner.cards.box.textContent;
+          if(!/Pass/.test(t)||/Peak/.test(t))errs.push(`a pass's card reads ${JSON.stringify(t.slice(0,80))}`);polku.planner.cards.close();}
       }
       m.jumpTo({center:[24.1066,68.0419],zoom:15});
       for(const base of ['trail','plain','night']) {
