@@ -143,7 +143,7 @@ export const VIS_TEXT = ['clear', 'faint in places', 'hard to see', 'barely visi
 const obstacles = (t) => String(t.obstacle || '').toLowerCase();
 const yes = (v) => v != null && v !== 'no';
 // the trails style.js draws from OSM (the same set it hides from the vector tiles)
-const isTrail = (t) => ['path', 'bridleway', 'steps'].includes(t.highway) || (t.highway === 'footway' && t['mtb:scale'] != null);
+const isTrail = (t) => ['path', 'bridleway'].includes(t.highway) || (['footway', 'steps'].includes(t.highway) && t['mtb:scale'] != null);
 
 /** What's on a node, as an icon: tree, gate, gate-no, stile, cycle, ford (or null). */
 export function obstacleKind(t) {

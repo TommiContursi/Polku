@@ -9,7 +9,58 @@ What's new in [Polku](https://polku.si), from the latest updates back to the fir
 - With **Trail details** on, as in MTB, hiking and trail running, every path and forest track now shows from zoom 13 where Polku has its own trail data, as in Finland. Before, most of them showed only from zoom 14, and what showed at zoom 13 depended on whether you had already zoomed in there. Forest tracks keep their dashes and difficulty colours.
 - **Zoom in to see every trail** now shows until zoom 14 wherever the map still leaves some paths and tracks out, and goes once the trail details cover the map.
 
+### Access restrictions in Layers ([#1162](https://github.com/TommiContursi/Polku/issues/1162))
+
+- **Access restrictions** is a switch of its own in Layers, under Trails & difficulty. Choosing a cycling or walking sport turns it on, and Layers remembers your choice for each sport. While it's on, it shows in **On now**.
+- While it's on, the map shows everyone's restrictions in any sport, so you can check where bikes may go while planning a walk. Red bars across a path mean no bikes, purple dots on both sides mean no entry, and purple dots on one side mean no walking. A way closed to everyone except people on foot now counts as no bikes.
+- Routes keep off these ways in their sports whether or not the marks are shown. The marks say what OpenStreetMap says, not the law.
+
+### Cliffs and scree from OpenStreetMap ([#1178](https://github.com/TommiContursi/Polku/issues/1178))
+
+- The Trail, Plain and Night maps draw OpenStreetMap's cliffs from zoom 13, everywhere, the same way as the National Land Survey's: a dark line with short ticks on the lower side. OpenStreetMap and the National Land Survey each have cliffs the other lacks, so more of them show, at Tykkikallio in Jyväskylä for example.
+- Scree is dotted like the National Land Survey's boulder fields from zoom 13, so it reads apart from smooth rock.
+
+### Lakes with marshes and overgrowing water ([#1177](https://github.com/TommiContursi/Polku/issues/1177))
+
+- In Finland, a lake's shallows that OpenStreetMap maps as marshes are now drawn as water, not as pale land in the lake. The National Land Survey's overgrowing water shows its whole shape, as blue dashes on the water's blue, paddling's too. Marshes on land are drawn as before.
+
+### Rock, cliffs and power lines from the National Land Survey ([#1147](https://github.com/TommiContursi/Polku/issues/1147))
+
+- In Finland, the Trail, Plain and Night maps draw the National Land Survey's rock from zoom 13, in the same grey as OpenStreetMap's rock, and its boulder fields dotted. From zoom 14, rocks too small for an area, single stones and sparse boulders are small marks of their own.
+- Cliffs are drawn from zoom 13 as a dark line with short ticks on the lower side. Power lines are thin grey lines from zoom 13, with their pylons as small crosses from zoom 15. Both are drawn over lakes and the sea, so a cliff on the shore and a line across a lake show.
+- The National Land Survey's reeds are a small reed tuft each from zoom 14, in the water where the survey marks them.
+- Where its map data doesn't load, OpenStreetMap's rock is drawn as before, and cliffs and power lines are missing: the message says so. Outside Finland nothing changes, and power lines aren't drawn there yet.
+
+### Bogs from the National Land Survey ([#1147](https://github.com/TommiContursi/Polku/issues/1147))
+
+- In Finland, the Trail, Plain and Night maps draw the National Land Survey's bogs from zoom 11, by kind. Open bogs keep the blue dashes, wooded bogs have the same dashes on the forest's green, and a bog the survey classes as hard to cross has unbroken blue lines: some from zoom 12, all of them from 13. Paludified land, ground turning into bog, has sparse short dashes from zoom 13, and overgrowing water has the dashes on the water's blue.
+- **Hard to cross is the survey's class, not a promise about the ground today:** the National Land Survey classes bogs from aerial photos and surveys them again every 5–10 years. The dashes don't say a bog is easy to cross.
+- Where the National Land Survey has no bog, outside Finland, and wherever its map data doesn't load, OpenStreetMap's wetlands are drawn as before. When its map data doesn't load, a message says so. It isn't saved in offline areas.
+
+### Footways in brown ([#1163](https://github.com/TommiContursi/Polku/issues/1163))
+
+- Footways and pedestrian streets are drawn as a thin brown dashed line in every sport, on the Trail map on a narrow white band, so a trail in the woods stands out from the footways between buildings. Brown doesn't mean bikes aren't allowed: the red bars still say that. Footways open to bikes stay blue, and footways with an MTB grade keep their difficulty colour.
+- Fences on the trail details are now grey instead of brown, so they aren't mistaken for footways.
+- Steps are a wide brown ladder, so they stand out from the footways around them. Steps with an MTB grade keep their difficulty colour.
+
+### Property boundaries ([#1148](https://github.com/TommiContursi/Polku/issues/1148))
+
+- **Property boundaries**, a new switch under **Layers → More → Terrain** (or a tile of your own), draws the National Land Survey's property boundaries in Finland in orange from zoom 14, and each property's ID from zoom 16, so you can see whose land you're on. **Opacity** under its switch makes them fainter. It's off at first in every sport. The boundaries come from the National Land Survey with Polku's API key, or with your own if you have added one in Settings. They aren't saved in offline areas, and the tile says **No data now** when they don't load.
+- With **Property boundaries** on, the plot under the mouse pointer is tinted and named (**Plot under the pointer**, under its switch, turns that off), and a click or tap on a plot opens its card with the property's ID and tints the plot until the card closes. Roads, paths and the water keep their own cards where they are.
+
+### Reedbeds on the map ([#1144](https://github.com/TommiContursi/Polku/issues/1144))
+
+- Reedbeds that OpenStreetMap marks as such are drawn with small reed tufts from zoom 12 on the Trail, Plain and Night maps, so a shore's reeds no longer look like a bog. Where Polku's own map data can't be read, or doesn't cover the place, they're drawn as ordinary wetland.
+
+### Wetlands as blue dashes ([#1144](https://github.com/TommiContursi/Polku/issues/1144))
+
+- Wetlands are drawn as rows of short blue dashes on a grey-blue ground from zoom 11, as on Finnish maps, in place of the green tufts. The pattern doesn't tell bog from marsh, whether trees grow there or how easy it is to cross.
+
 ## 2026-11-19
+
+### What comes in after the map stops fades in ([#1091](https://github.com/TommiContursi/Polku/issues/1091))
+
+- When the map stops, after you move it or it flies to a place, what comes in no longer appears piece by piece: each part fades in, briefly where little changes and up to 0.4 s where much does. Touching the map ends a fade at once. After a move with the arrow keys, or a search result chosen with **Enter**, everything appears at once, as before.
 
 ### No-bike marks you can see at a glance ([#1137](https://github.com/TommiContursi/Polku/issues/1137))
 
