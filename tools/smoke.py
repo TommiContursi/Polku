@@ -1262,6 +1262,20 @@ def mml_cards(chrome):
                     fails.append(f"{name}: {what} marked by {c['drawn']} lines or areas, {c['ring']} rings and {'a' if c['pin'] else 'no'} pin")
             pg.js("polku.planner.cards.close(); true")
         if not phone:
+            # a pond in Seitseminen's recorded bog: the pointer on the water names nothing, as a click picks the water
+            at = pg.js("""(async () => {
+              const m=polku.map, I=await import('/js/inspect.js'), R=m.getCanvas().getBoundingClientRect();
+              m.jumpTo({center:[23.4778,61.9131],zoom:14.6}); await new Promise(r=>setTimeout(r,300)); await Promise.race([new Promise(r=>{m.once('idle',r);m.triggerRepaint();}),new Promise(r=>setTimeout(r,10000))]);
+              for(let y=150;y<innerHeight-150;y+=4)for(let x=30;x<innerWidth-100;x+=4)
+                if(m.queryRenderedFeatures([x,y],{layers:['water']}).length&&m.queryRenderedFeatures([x,y],{layers:['mml-bog']}).length&&I.pickFeature(I.featuresAt(m,{x,y},I.hitBox({x,y},false),I.inspectLayers(m))).layer.id==='water')return [R.left+x,R.top+y];
+              return null; })()""")
+            if not at:
+                fails.append(f'{name}: (the test) no spot in the recorded tile where a bog lies under the water')
+            else:
+                pg.c.send('Input.dispatchMouseEvent', {'type': 'mouseMoved', 'x': at[0], 'y': at[1], 'button': 'none'}, pg.s)
+                tip = pg.js("new Promise((ok) => setTimeout(() => { const t=document.querySelector('.hover-tip'); ok(t&&!t.hidden ? t.textContent : null); }, 700))")
+                if tip:
+                    fails.append(f'{name}: the pointer on the water over a bog says {tip!r}')
             fails += pg.js("""(async () => {
               const errs=[], m=polku.map, I=await import('/js/inspect.js'), H=await import('/js/hover.js');
               // zoom 12's tiles have a generalised class and zoom 11's none: a tile under 13 never says how easy it is to cross
