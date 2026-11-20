@@ -3,7 +3,7 @@
 import {
   ACTIVITIES, ACTIVITY_OVERLAYS, RASTER_OVERLAYS, DEM_URL, DEM_MAXZOOM,
   DIFF_COLORS, MTB_COLORS, MTB_GRADES, MTB_SCALE_TEXT, UPHILL_TEXT, LIPAS_TYPES, SAFETY_OVERLAYS, BROUTER, isWater, WINTER_LIPAS,
-  QUICK_TILES, QUICK_TILE, QUICK_MAX, QUICK_PLACES, ESRI_IMAGERY, CRAFT, OSM_DATA_MANIFEST,
+  QUICK_TILES, QUICK_TILE, QUICK_MAX, QUICK_PLACES, ESRI_IMAGERY, CRAFT, OSM_DATA_MANIFEST, GLIDE,
 } from './config.js';
 import { LitWays, LIT_MIN_ZOOM } from './lit.js';
 import { Reedbeds } from './osm-data.js';
@@ -163,6 +163,7 @@ const map = new maplibregl.Map({
   maxPitch: 80,
   attributionControl: false,
   cooperativeGestures: false,
+  dragPan: GLIDE,
 });
 // A coarse map underneath (#1091): while a base map tile in view hasn't come, the tile four zoom levels up (and for the
 // vector base, zoom 6's too) is kept among MapLibre's own tiles, so its place shows that one (masked to the missing tile's square), never plain paper. Once the

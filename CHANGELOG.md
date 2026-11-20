@@ -4,6 +4,10 @@ What's new in [Polku](https://polku.si), from the latest updates back to the fir
 
 ## 2026-11-20
 
+### A smoother glide after a flick ([#1193](https://github.com/TommiContursi/Polku/issues/1193))
+
+- The map keeps the speed of your finger when you flick it and then slows down smoothly, instead of braking as you let go. With reduced motion it stops where you let go, as before.
+
 ### Every path and forest track from zoom 13 ([#1128](https://github.com/TommiContursi/Polku/issues/1128))
 
 - With **Trail details** on, as in MTB, hiking and trail running, every path and forest track now shows from zoom 13 where Polku has its own trail data, as in Finland. Before, most of them showed only from zoom 14, and what showed at zoom 13 depended on whether you had already zoomed in there. Forest tracks keep their dashes and difficulty colours.

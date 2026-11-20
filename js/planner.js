@@ -1,7 +1,7 @@
 // Route planner: waypoints, per-leg routing modes, undo/redo, the bottom sheet
 // with stats, elevation profile, climbs, warnings and (for paddling) wind.
 
-import { ACTIVITIES, CRAFT, DIFF_COLORS, UPHILL_TEXT, MTB_GRADES, MTB_SCALE_TEXT, OFFROAD_BIKE, gradeColor, groupOf, isWater, ROUTE_COLORS } from './config.js';
+import { ACTIVITIES, CRAFT, DIFF_COLORS, UPHILL_TEXT, MTB_GRADES, MTB_SCALE_TEXT, OFFROAD_BIKE, gradeColor, groupOf, isWater, ROUTE_COLORS, GLIDE } from './config.js';
 import { routeLeg, routeRun, routeLoop, routerHeadroom, routerRoomThisMinute } from './router.js';
 import { roundTripSports, radiusFor, reach, waterOf, plan, planWater, nearestWater, waterLoop, resize, twiceShare, score as loopScore, distanceForTime } from './roundtrip.js';
 import { analyse, estimateTime, surfaceClass, trailWarnings, sportSplit, accessOf, accessRow, OSM } from './analysis.js';
@@ -3744,7 +3744,7 @@ export class Planner {
       armed = true;
       map.dragPan.disable();
       if (navigator.vibrate) navigator.vibrate(10);
-      still = setTimeout(() => { still = setTimeout(() => { map.dragPan.enable(); edit(); }, 60); }, STILL - HOLD); // (a moment more for a late lift, as the hold's)
+      still = setTimeout(() => { still = setTimeout(() => { map.dragPan.enable(GLIDE); edit(); }, 60); }, STILL - HOLD); // (a moment more for a late lift, as the hold's)
     };
     const move = (ev) => {
       if (!dot) {
@@ -3782,7 +3782,7 @@ export class Planner {
       clearTimeout(still);
       map.off(touch ? 'touchmove' : 'mousemove', move);
       if (touch) { map.off('touchend', stop); map.off('touchcancel', stop); } else window.removeEventListener('mouseup', stop);
-      if (armed) map.dragPan.enable();
+      if (armed) map.dragPan.enable(GLIDE);
       // held still long enough by the finger's own times, though a busy page hasn't run the timers yet: Edit this stretch
       if (touch && !dot && !card && ev && ev.type === 'touchend' && ev.originalEvent.timeStamp - t0 >= STILL) { edit(); ev.originalEvent.preventDefault(); this.noClickUntil = Date.now() + 400; return; }
       // the finger was up before the hold's time, though a busy page saw it late: a tap after all, so the route's card
