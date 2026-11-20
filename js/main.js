@@ -576,6 +576,11 @@ function lightPlot(key, id) {
   plotLit[key] = id;
   if (id != null && map.getSource(src.source)) map.setFeatureState({ ...src, id }, { [key]: true });
 }
+// a new style makes the source anew (the layer switched off and on, another base map) without its states: the plots again
+map.on('styledata', () => {
+  if (!map.getSource('ov-propertyLines')) return;
+  for (const [key, id] of Object.entries(plotLit)) if (id != null) map.setFeatureState({ source: 'ov-propertyLines', sourceLayer: 'PalstanSijaintitiedot', id }, { [key]: true });
+});
 const planner = new Planner(map, {
   activity: () => state.activity,
   lightPlot,

@@ -96,8 +96,9 @@ export function initInspector(map, app) {
     const leg = map.getLayer('route-casing') && map.queryRenderedFeatures(box, { layers: ['route-casing'] }).find((x) => x.properties.kind === 'leg');
     if (leg && app.openRoute) { app.openRoute(leg.properties.leg, e.lngLat); return; }
     const feats = map.queryRenderedFeatures(box, { layers: inspectLayers(map) });
-    // (nothing else there: a lake or a park is picked too, #574)
-    const f = pickFeature(feats) || (areaUnder(map, e.point) && { layer: { id: 'area' } });
+    // (nothing else there: a lake or a park is picked too, #574; a property's plot only after them, #1148)
+    const top = pickFeature(feats), plot = top && top.layer.id === 'property-plot';
+    const f = (!plot && top) || (areaUnder(map, e.point) && { layer: { id: 'area' } }) || top;
     if (!f) return;
     // cameras and ships open their own modal / live card
     if (f.layer.id === 'cameras') { app.openCamera(f.properties.id, f.properties.name); return; }

@@ -923,8 +923,25 @@ def property_plots(chrome):
       if(!card||!/^Property \\d/.test(card.title))errs.push(`a click on a plot opened ${card?card.title:'no card'}`);
       if(!st(spot.f.id).lit)errs.push('the picked plot is not tinted');
       if(m.querySourceFeatures('pickArea').length)errs.push("the plot's piece is outlined, cut at its tile's edge");
+      // the layer off and on again with the card open: the source is new, and the picked plot tinted again
+      const sw2=(v)=>{polku.state.overlaysByActivity.mtb={...(polku.state.overlaysByActivity.mtb||{}),propertyLines:v}; polku.set({overlays:{...polku.state.overlays,propertyLines:v}});};
+      sw2(false); await frame(); sw2(true); await frame(); await wait(300);
+      if(!st(spot.f.id).lit)errs.push('the picked plot is no longer tinted after the layer is switched off and on');
       polku.planner.cards.close(); await frame();
       if(st(spot.f.id).lit)errs.push('the plot stays tinted after its card closes');
+      // a park picks the park first, as without the layer (#574)
+      const {areaUnder}=await import(location.origin+'/js/inspect.js');
+      let park=null;
+      for(let y=150;y<850&&!park;y+=17)for(let x=100;x<1300&&!park;x+=23){const f=pickFeature(m.queryRenderedFeatures(hitBox({x,y},false),{layers:inspectLayers(m)}));if(f&&f.layer.id==='property-plot'&&areaUnder(m,{x,y})==='park')park={x,y};}
+      if(!park)errs.push('no spot in a park at Jyväskylä to click');
+      else {
+        for(const t of ['mousedown','mouseup','click'])cv.dispatchEvent(new MouseEvent(t,{bubbles:true,cancelable:true,clientX:R.left+park.x,clientY:R.top+park.y,button:0,buttons:t==='mousedown'?1:0}));
+        await wait(800);
+        const c=polku.planner.cards.current;
+        if(!c)errs.push('a click in the park opened no card');
+        else if(/^Property /.test(c.title))errs.push('a click in a park opened the property under it, not the park');
+        polku.planner.cards.close(); await frame();
+      }
       // Plot under the pointer, under the switch in Layers: off, the pointer tints nothing, and a click still picks the plot
       document.querySelector('#btn-layers').click(); await frame();
       [...document.querySelectorAll('button')].find(b=>/^More: all layers/.test(b.getAttribute('aria-label')||''))?.click(); await frame();
