@@ -37,6 +37,9 @@ export const mmlKey = (own) => own || [...atob(MML_KEY)].map((c, i) => String.fr
 // MML's property map as vector tiles, zooms 0–14 (#1148)
 export const mmlPropertyTiles = (key) =>
   `https://avoin-karttakuva.maanmittauslaitos.fi/kiinteisto-avoin/tiles/wmts/1.0.0/kiinteistojaotus/default/v3/WGS84_Pseudo-Mercator/{z}/{y}/{x}.pbf?api-key=${encodeURIComponent(key)}`;
+// MML's background map as vector tiles, zooms 0–14: the terrain in Finland, bogs first (#1147)
+export const mmlTerrainTiles = (key) =>
+  `https://avoin-karttakuva.maanmittauslaitos.fi/vectortiles/taustakartta/wmts/1.0.0/taustakartta/default/v21/WGS84_Pseudo-Mercator/{z}/{y}/{x}.pbf?api-key=${encodeURIComponent(key)}`;
 export const FINLAND_BOUNDS = [19.0, 59.3, 31.6, 70.1];
 
 export const mmlTiles = (layer, key) =>

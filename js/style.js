@@ -4,7 +4,7 @@
 
 import {
   OFM_TILEJSON, OFM_SPRITE, OFM_GLYPHS, ESRI_IMAGERY, DEM_MAXZOOM, DEM_TILESIZE,
-  DIFF_COLORS, MTB_COLORS, MTB_GRADES, ROUTE_COLORS, RASTER_OVERLAYS, RASTER_RATIO, LIPAS_TYPES, mmlTiles, mmlKey, mmlPropertyTiles, FINLAND_BOUNDS, kapsiTiles, groupOf,
+  DIFF_COLORS, MTB_COLORS, MTB_GRADES, ROUTE_COLORS, RASTER_OVERLAYS, RASTER_RATIO, LIPAS_TYPES, mmlTiles, mmlKey, mmlPropertyTiles, mmlTerrainTiles, FINLAND_BOUNDS, kapsiTiles, groupOf,
   isWater, isLipasRoute, WARN_COLORS,
 } from './config.js';
 import { warnMarkId } from './icons.js';
@@ -42,7 +42,7 @@ const BUILDING_HEIGHT = ['get', 'render_height'];
 const PALETTES = {
   trail: {
     bg: '#f5f3ee', wood: '#dbeacd', woodOpacity: 0.9, grass: '#e8f1d9', farmland: '#f7f0cf',
-    wetland: '#dce5e3', wetlandDash: '#8fb0d3', reed: '#5f8a5a', sand: '#f3e7bb', rock: '#e2dfd8', ice: '#f4fbff',
+    wetland: '#dce5e3', wetlandDash: '#8fb0d3', bogWood: '#deebd0', reed: '#5f8a5a', sand: '#f3e7bb', rock: '#e2dfd8', ice: '#f4fbff',
     residential: '#ece8e2', industrial: '#e8e2e8', cemetery: '#dde7d3', sport: '#dcefd3',
     park: '#3f8f3f', water: '#a8d1ef', waterLine: '#6fa9d6', waterText: '#24618f',
     building: '#d9d1c8', buildingLine: '#c4b9ad',
@@ -53,7 +53,7 @@ const PALETTES = {
   },
   plain: {
     bg: '#f7f7f5', wood: '#eef3ea', woodOpacity: 0.7, grass: '#f1f4ed', farmland: '#f7f6ef',
-    wetland: '#eef4f2', wetlandDash: '#b4c9de', reed: '#9bb796', sand: '#f4f1e6', rock: '#efeeec', ice: '#fafdff',
+    wetland: '#eef4f2', wetlandDash: '#b4c9de', bogWood: '#f1f4ed', reed: '#9bb796', sand: '#f4f1e6', rock: '#efeeec', ice: '#fafdff',
     residential: '#f0efed', industrial: '#efedf0', cemetery: '#eaefe6', sport: '#eaf1e6',
     park: '#7aa27a', water: '#c3dcef', waterLine: '#9bbfdc', waterText: '#4a7ca3',
     building: '#e6e3df', buildingLine: '#d6d1cb',
@@ -64,7 +64,7 @@ const PALETTES = {
   },
   night: {
     bg: '#161a1f', wood: '#1b2620', woodOpacity: 1, grass: '#1d241f', farmland: '#23231d',
-    wetland: '#18232a', wetlandDash: '#2f5679', reed: '#4f7a55', sand: '#2a271f', rock: '#22221f', ice: '#20262b',
+    wetland: '#18232a', wetlandDash: '#2f5679', bogWood: '#1b2620', reed: '#4f7a55', sand: '#2a271f', rock: '#22221f', ice: '#20262b',
     residential: '#1e2126', industrial: '#211f25', cemetery: '#1c231d', sport: '#1b241d',
     park: '#4e8f5b', water: '#10304a', waterLine: '#1f5a85', waterText: '#7fb6e3',
     building: '#272b31', buildingLine: '#30353c',
@@ -195,6 +195,19 @@ export function buildStyle(s, ctx) {
     lc('lc-wetland', ['wetland'], P.wetland);
     // blue dashes from zoom 11 (js/icons.js): the tiles' wetlands are all one kind, so nothing about trees or footing (#1144)
     add({ id: 'lc-wetland-pattern', type: 'fill', source: 'ofm', 'source-layer': 'landcover', minzoom: 11, filter: ['==', ['get', 'class'], 'wetland'], paint: { 'fill-pattern': `wetland-${P.wetland.slice(1)}-${P.wetlandDash.slice(1)}` } });
+    // MML's bogs in Finland (#1147), over OSM's wetlands: where MML has a bog its class shows, and OSM's wetland stays
+    // where MML has none, abroad and wherever MML's tiles don't come. Every ground is opaque, so no dashes show through.
+    // Below zoom 13 the tiles only say open or wooded (35401/35402, then 35411/35412 with the hard ones folded in);
+    // from 13 a bog MML's survey classes hard to cross gets unbroken lines.
+    sources.mml = { type: 'vector', tiles: [mmlTerrainTiles(mmlKey(s.mmlKey))], minzoom: 11, maxzoom: 14, bounds: FINLAND_BOUNDS, attribution: '© Maanmittauslaitos, Maastotietokanta, CC BY 4.0' };
+    const hex = (c) => c.slice(1), dashes = (ground) => `wetland-${hex(ground)}-${hex(P.wetlandDash)}`, hard = (ground) => `bog-hard-${hex(ground)}-${hex(P.wetlandDash)}`;
+    const cls = ['get', 'kohdeluokka'];
+    add({ id: 'mml-paludified', type: 'fill', source: 'mml', 'source-layer': 'maasto_alue', minzoom: 13, filter: ['==', cls, 35300], paint: { 'fill-pattern': `bog-paludified-${hex(P.wetlandDash)}` } });
+    add({
+      id: 'mml-bog', type: 'fill', source: 'mml', 'source-layer': 'maasto_alue', minzoom: 11,
+      filter: ['in', cls, ['literal', [35401, 35402, 35411, 35412, 35421, 35422, 38300]]],
+      paint: { 'fill-pattern': ['match', cls, [35401, 35411], dashes(P.wetland), [35402, 35412], dashes(P.bogWood), 35421, hard(P.wetland), 35422, hard(P.bogWood), dashes(P.water)] },
+    });
     // reedbeds over it, from Polku's own OSM data (js/osm-data.js): reed stems on the same ground, covering the dashes
     add({ id: 'lc-reedbed', type: 'fill', source: 'reedbeds', minzoom: 12, paint: { 'fill-pattern': `reedbed-${P.wetland.slice(1)}-${P.reed.slice(1)}` } });
     lc('lc-sand', ['sand'], P.sand);
