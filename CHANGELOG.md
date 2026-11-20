@@ -4,6 +4,12 @@ What's new in [Polku](https://polku.si), from the latest updates back to the fir
 
 ## 2026-11-20
 
+### Access restrictions in Layers ([#1162](https://github.com/TommiContursi/Polku/issues/1162))
+
+- **Access restrictions** is a switch of its own in Layers, under Trails & difficulty. Choosing a cycling or walking sport turns it on, and Layers remembers your choice for each sport. While it's on, it shows in **On now**.
+- While it's on, the map shows everyone's restrictions in any sport, so you can check where bikes may go while planning a walk. Red bars across a path mean no bikes, purple dots on both sides mean no entry, and purple dots on one side mean no walking. A way closed to everyone except people on foot now counts as no bikes.
+- Routes keep off these ways in their sports whether or not the marks are shown. The marks say what OpenStreetMap says, not the law.
+
 ### Rock, cliffs and power lines from the National Land Survey ([#1147](https://github.com/TommiContursi/Polku/issues/1147))
 
 - In Finland, the Trail, Plain and Night maps draw the National Land Survey's rock from zoom 13, in the same grey as OpenStreetMap's rock, and its boulder fields dotted. From zoom 14, rocks too small for an area, single stones and sparse boulders are small marks of their own.
