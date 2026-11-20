@@ -14,11 +14,15 @@ Outside Finland the map stays as it is, on OpenFreeMap's tiles and OSM.
 - **Researched, 2026-11-19.** Services, access, licence, coverage and CORS
   were checked, and a vector-tile archive was built from two real map sheets
   (below). Nothing is built in the app.
-- **Decided, 2026-11-20: Polku's own archive** (on #1147 and #1148), built
-  from Kapsi's keyless copy. No MML API key in the app; a key, if one is
-  ever needed, is used only by the build job as a GitHub secret.
-- **Waits on #1146** for the bogs: in Finland, MML's bogs and OSM's
-  wetlands would otherwise be drawn twice ([Drawing](#drawing)).
+- **Decided, 2026-11-20: MML's own vector tiles first, with Polku's API
+  key in the app** (on #1147 and #1148), kept out of plain sight in the
+  source; a person's own key from Settings is used instead when they have
+  one. Polku's own archive, decided earlier the same day, is kept for later
+  in [#1155](https://github.com/TommiContursi/Polku/issues/1155).
+- **Waits on #1146 and #1154** for the bogs and reeds: in Finland, MML's
+  bogs and OSM's wetlands would otherwise be drawn twice
+  ([Drawing](#drawing)). Property boundaries, rock, cliffs and power lines
+  don't wait.
 
 ## What people get
 
@@ -78,8 +82,8 @@ MML is replacing this database with its new national one (KMTK); the
 map-oriented product, Karttatieto, is due in 2027, and MML recommends the
 current database for maps until then
 ([timetable](https://www.maanmittauslaitos.fi/kartat-ja-paikkatieto/aineistot-ja-rajapinnat/maastotiedot-ja-niiden-hankinta/maastotiedot)).
-The build reads the class codes above, so a change of schema shows as a
-failed build, not as a quietly empty map.
+The tile URL names its version (`v21`), so a new schema comes as a new
+version, not as a quietly emptied map.
 
 ## Delivery
 
@@ -99,7 +103,7 @@ exclude high-volume use and allow restrictions. Kapsi is run by
 volunteers and documents outages; Polku already leaves its rasters out of
 offline areas.
 
-### Recommended: Polku's own archive, built from Kapsi's downloads
+### Kept for later: Polku's own archive, built from Kapsi's downloads ([#1155](https://github.com/TommiContursi/Polku/issues/1155))
 
 A monthly job on GitHub's runner downloads the GeoPackage, keeps only the
 classes above, writes them as vector tiles into one PMTiles archive with
@@ -132,7 +136,7 @@ boundaries come the same way, from Kapsi's per-sheet vector files.
   the runner's time and disk for the 22.8 GB input, and the per-sheet
   property files.
 
-### The alternative: MML's own tiles with Polku's key
+### Chosen: MML's own tiles with Polku's key
 
 One key, from an account, written into the app. Least code: a vector source
 and its layers, no build job. Costs: the key is public (MML's key
@@ -175,22 +179,25 @@ Not recommended.
 
 ## How it fits the map
 
-- **Source.** A vector source `mml` read through a protocol handler that
-  takes byte ranges from the archive through `request()`, as
-  `js/osm-data.js` does, with an entry of its own in `SOURCES`, so
-  Settings → Data sources shows it. A position never leaves the device
+- **Sources.** Vector sources for MML's background map (`taustakartta`,
+  v21) and property map (`kiinteistojaotus`, v3), with Finland's bounds, so
+  nothing is asked for outside Finland. Map tiles have their own path, not
+  `request()`, as OpenFreeMap's do. A position never leaves the device
   beyond the tiles of the area on screen, as with every map tile.
-- **Coverage.** The archive's bounds and `data/finland-coverage.geojson`
-  say where it applies. Outside, nothing is requested and nothing changes.
-- **When it fails.** A failed or late archive is not an empty landscape:
-  the map's data status says Finnish terrain details didn't load, and the
-  OSM-based map stays under it. A tile with nothing in it is a successful
-  empty tile.
-- **Offline.** Offline areas save tiles by URL today; an archive is read
-  in byte ranges. The first version doesn't save it: offline areas say
-  that Finnish terrain details aren't included. Saving it is a later part.
-- **Attribution.** "© Maanmittauslaitos, Maastotietokanta MM/YYYY, CC BY
-  4.0", the date from the archive's manifest.
+- **The key.** Polku's key sits in `js/config.js` scrambled, not as plain
+  text, so it doesn't show in the source or to scrapers; the browser still
+  sends it, and anyone can read it from a tile's address, so it is not a
+  secret. A person's own key from Settings (`s.mmlKey`, which already
+  turns on MML's raster maps) is used instead when they have one. Sending
+  the key in a header instead would keep it out of tile addresses, but MML
+  then asks the browser for a preflight on every tile, doubling the
+  requests.
+- **When it fails.** MML refusing the key, or not answering, leaves the
+  OSM-based map under it, and the map's data status says MML's tiles
+  didn't load. A tile with nothing in it is a successful empty tile.
+- **Offline.** Offline areas don't save MML's tiles at first; offline, the
+  layers are missing and the map says so.
+- **Attribution.** "© Maanmittauslaitos" with the dataset, CC BY 4.0.
 - **Bases.** Terrain on the Trail, Plain and Night maps. The Maastokartta
   and MML bases already draw these classes, and the aerial maps show the
   ground itself; neither gets the terrain. Property boundaries on every
@@ -231,21 +238,16 @@ Not recommended.
 Each is its own PR with its smoke check, map-only screenshots, CHANGELOG,
 DESIGN.md and DEVELOPING.
 
-1. **The archive** ([#1147](https://github.com/TommiContursi/Polku/issues/1147)): the build job, measured on the whole
-   country; published next to the OSM data. Tooling only, nothing in the
-   app.
-2. **Bogs on the map** ([#1147](https://github.com/TommiContursi/Polku/issues/1147)), after #1146: the source, coverage,
-   failure state, attribution, the patterns, and OSM's wetlands turned off
-   inside Finland.
-3. **Rock, boulders, cliffs, reeds and power lines** ([#1147](https://github.com/TommiContursi/Polku/issues/1147)).
-4. **Property boundaries** ([#1148](https://github.com/TommiContursi/Polku/issues/1148)): added to the archive's build,
-   then the layer.
-5. Later: saving the archive in offline areas.
+1. **Property boundaries** ([#1148](https://github.com/TommiContursi/Polku/issues/1148)): the key, the property source, failure
+   state and attribution, and the layer.
+2. **Rock, boulders, cliffs and power lines** ([#1147](https://github.com/TommiContursi/Polku/issues/1147)): the terrain source.
+3. **Bogs, overgrowing water and reeds** ([#1147](https://github.com/TommiContursi/Polku/issues/1147)), after #1146 and #1154,
+   with OSM's wetlands turned off inside Finland.
+4. Later: MML's tiles in offline areas; Polku's own archive
+   ([#1155](https://github.com/TommiContursi/Polku/issues/1155)).
 
 ## Open questions for the user
 
-- The delivery: Polku's own archive (recommended) or MML's tiles with a
-  key.
 - Which source wins where MML's bogs and OSM's wetlands overlap.
 - Whether dwarf-shrub heath and open forest land are drawn.
 
@@ -253,10 +255,9 @@ DESIGN.md and DEVELOPING.
 
 - The other mapping services at a power line and at property boundaries,
   close up: the browser pane was hidden and the map didn't draw.
-- The whole-country build's size, time and disk.
-- The GeoPackage itself: its tables and field names weren't opened; the
-  spike read the per-sheet shapefiles.
+- For the archive (#1155): the whole-country build's size, time and disk,
+  and the GeoPackage's tables and field names (the spike read the
+  per-sheet shapefiles).
 - How OSM's wetlands are turned off inside Finland only. A fill layer
   can't simply be filtered by a polygon, so this decides how "MML wins in
-  Finland" is built; it blocks the bogs part's design, not the choice of
-  delivery.
+  Finland" is built; it blocks the bogs part's design.
