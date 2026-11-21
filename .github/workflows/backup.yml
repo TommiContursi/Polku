@@ -1,0 +1,77 @@
+name: Polku backup
+
+# A weekly copy of the code and of GitHub's issues, PRs, comments and milestones to a private
+# Bitbucket repository (docs/plans/protected-polku.md, "A backup outside GitHub").
+# Needs the secret BITBUCKET_TOKEN and the variable BITBUCKET_REPOSITORY (workspace/repository).
+# No third-party action: nothing to pin, and nothing else that can read the token.
+
+on:
+  schedule:
+    - cron: '41 4 * * 0'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: read
+  pull-requests: read
+
+concurrency:
+  group: backup
+  cancel-in-progress: false
+
+jobs:
+  backup:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    env:
+      GH_TOKEN: ${{ github.token }}
+      BITBUCKET_TOKEN: ${{ secrets.BITBUCKET_TOKEN }}
+      BITBUCKET_REPOSITORY: ${{ vars.BITBUCKET_REPOSITORY }}
+    steps:
+      - name: Check the Bitbucket settings
+        run: |
+          test -n "$BITBUCKET_TOKEN" && test -n "$BITBUCKET_REPOSITORY" \
+            || { echo "::error::Set the secret BITBUCKET_TOKEN and the variable BITBUCKET_REPOSITORY"; exit 1; }
+
+      - name: The code
+        shell: bash # -e -o pipefail: a failed API call must fail the run
+        run: |
+          bb="https://x-token-auth:${BITBUCKET_TOKEN}@bitbucket.org/${BITBUCKET_REPOSITORY}.git"
+          git init -q code && cd code
+          git remote add origin "https://github.com/${GITHUB_REPOSITORY}.git"
+          git config http.https://github.com/.extraheader "Authorization: Basic $(printf 'x-access-token:%s' "$GH_TOKEN" | base64 -w0)"
+          # pr-screenshots is about 800 MB of images: never fetched, so never pushed
+          specs=()
+          branches=$(gh api --paginate "repos/${GITHUB_REPOSITORY}/branches" --jq '.[].name')
+          while read -r b; do specs+=("+refs/heads/$b:refs/heads/$b"); done < <(grep -vx pr-screenshots <<< "$branches")
+          git fetch -q --no-tags origin "${specs[@]}" '+refs/tags/*:refs/tags/*'
+          # shortcut: a branch deleted on GitHub stays in the backup, which is what a backup is for
+          git push --force "$bb" 'refs/heads/*:refs/heads/*' 'refs/tags/*:refs/tags/*'
+
+      - name: The issues, PRs, comments and milestones
+        shell: bash # -e -o pipefail: a failed page must fail the run, not leave a partial export
+        run: |
+          bb="https://x-token-auth:${BITBUCKET_TOKEN}@bitbucket.org/${BITBUCKET_REPOSITORY}.git"
+          git init -q -b github-export export && cd export
+          git config user.name 'Polku backup' && git config user.email 'backup@polku.invalid'
+          if git fetch -q "$bb" github-export; then git reset -q --hard FETCH_HEAD; fi
+          api() { gh api --paginate "repos/${GITHUB_REPOSITORY}/$1" | jq -s 'add // []'; }
+          api 'issues?state=all&per_page=100'          > issues.json   # includes the PRs' own entries
+          api 'pulls?state=all&per_page=100'           > pulls.json
+          api 'issues/comments?per_page=100'           > issue-comments.json
+          api 'pulls/comments?per_page=100'            > pr-review-comments.json
+          api 'milestones?state=all&per_page=100'      > milestones.json
+          api 'labels?per_page=100'                    > labels.json
+          for f in *.json; do jq -e 'length > 0' "$f" > /dev/null || { echo "::error::$f is empty"; exit 1; }; done
+          git add -A
+          git diff --cached --quiet || git commit -q -m "GitHub export $(date -u +%F)"
+          git push "$bb" github-export
+
+      - name: Restore check (a fresh clone from Bitbucket)
+        run: |
+          git clone -q "https://x-token-auth:${BITBUCKET_TOKEN}@bitbucket.org/${BITBUCKET_REPOSITORY}.git" restore
+          cd restore
+          want=$(git -C ../code rev-parse refs/heads/main)
+          test "$(git rev-parse origin/main)" = "$want" || { echo "::error::main in Bitbucket is not GitHub's main"; exit 1; }
+          git show origin/github-export:issues.json | jq -e 'map(select(.number == 115)) | length == 1' > /dev/null
+          echo "main $want restored; issues.json holds $(git show origin/github-export:issues.json | jq length) entries"
