@@ -2024,13 +2024,15 @@ def mml_names(chrome):
       if(L().layout.get('text-font').evaluate({type:1,properties:{}},{}).join()!==m.style.getLayer('label-water').layout.get('text-font').evaluate({type:1,properties:{}},{}).join())errs.push("MML's names not in the italic of the water's names");
       const order=m.getLayersOrder(), at=(id)=>order.indexOf(id);
       for(const id of ['label-water','label-waterway','label-island','label-place-minor','label-peak'])if(!(at('mml-name')<at(id)))errs.push(`MML's names over ${id}: OSM's must be placed first`);
-      // drawn from the recorded tiles
+      // drawn from the recorded tiles (OSM's labels hidden meanwhile: they're placed first and may win, as they should)
+      const osmLabels=order.filter((id)=>/^label-/.test(id)); for(const id of osmLabels)m.setLayoutProperty(id,'visibility','none');
       m.jumpTo({center:tileMid(14,9171,4611),zoom:14.6}); await settle();
       let got=new Set(); for(let k=0;k<20&&!got.size;k++){got=new Set(m.queryRenderedFeatures({layers:['mml-name']}).map((f)=>f.properties.lajikoodi)); if(!got.size)await wait(250);}
       for(const k of [1020105,1010130,1999999])if(!got.has(k))errs.push(`Yyteri: no name of kind ${k} drawn (${[...got]})`);
       m.jumpTo({center:tileMid(14,9531,4125),zoom:14.6}); await settle();
       got=new Set(); for(let k=0;k<20&&!got.has(2020115);k++){got=new Set(m.queryRenderedFeatures({layers:['mml-name']}).map((f)=>f.properties.lajikoodi)); if(!got.has(2020115))await wait(250);}
       if(!got.has(2020115))errs.push("Kitkajoki: the rapids' name not drawn");
+      for(const id of osmLabels)m.setLayoutProperty(id,'visibility','visible');
       for(const base of ['aerial','maasto']){polku.set({base}); await settle(); if(m.getLayer('mml-name'))errs.push(`MML's names on the ${base} base`);}
       return errs;
     })()""", timeout=120000)
