@@ -42,7 +42,7 @@ const BUILDING_HEIGHT = ['get', 'render_height'];
 const PALETTES = {
   trail: {
     bg: '#f5f3ee', wood: '#dbeacd', woodOpacity: 0.9, grass: '#e8f1d9', farmland: '#f7f0cf',
-    wetland: '#dce5e3', wetlandDash: '#8fb0d3', bogWood: '#deebd0', reed: '#5f8a5a', heath: '#ebe6c4', openForest: '#c6dcb2', treeMark: '#6b8a5c', sand: '#f3e7bb', rock: '#e2dfd8', cliff: '#5e574e', ice: '#f4fbff',
+    wetland: '#dce5e3', wetlandDash: '#8fb0d3', bogWood: '#deebd0', reed: '#5f8a5a', heath: '#ebe6c4', openForest: '#c6dcb2', treeMark: '#6b8a5c', sand: '#f3e7bb', rock: '#cccbc7', cliff: '#5e574e', ice: '#f4fbff',
     residential: '#ece8e2', industrial: '#e8e2e8', cemetery: '#dde7d3', sport: '#dcefd3', cityPark: '#d3ebbf', parking: '#dcdcd8', parkingLine: '#9a9488', bridge: '#2c2721', oneway: '#6b6458', onewayBike: '#1f2fa0',
     park: '#3f8f3f', water: '#a8d1ef', waterLine: '#6fa9d6', waterText: '#24618f', shoal: '#ffffff',
     building: '#d9d1c8', buildingLine: '#c4b9ad',

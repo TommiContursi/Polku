@@ -4,6 +4,10 @@ What's new in [Polku](https://polku.si), from the latest updates back to the fir
 
 ## 2026-11-21
 
+### Bare rock stands out on the Trail map ([#1308](https://github.com/TommiContursi/Polku/issues/1308))
+
+- Bare rock is a darker grey, as on the National Land Survey's terrain map, so a rock outcrop no longer looks like a clearing among the open ground and heath. It's the same grey in Finland and beyond.
+
 ### Forest tracks stay on the map as you zoom in ([#1192](https://github.com/TommiContursi/Polku/issues/1192))
 
 - With **Trail details** on, forest tracks no longer blink out for a moment when you zoom in past 14: they're drawn from the trail details at every zoom.
