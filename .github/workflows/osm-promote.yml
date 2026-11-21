@@ -1,0 +1,214 @@
+name: Polku OSM promotion
+run-name: OSM promotion / ${{ github.event_name == 'workflow_dispatch' && inputs.operation || github.event_name == 'pull_request' && 'check' || 'weekly' }}
+
+# The OSM data is built in a public repository of its own, which uploads a verified candidate and never sees Polku's
+# code or tokens. Here the candidate meets the app: its checks run against the candidate where it lies on the host, and
+# only then is it promoted, with this repository's own credentials. Without a newer candidate the live release is
+# checked in a browser instead, weekly.
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/osm-promote.yml'
+      - 'tools/osm_data/preview.py'
+      - 'tools/osm_data/measure_browser.py'
+      - 'tools/osm_data/smoke_checks.js'
+  schedule:
+    # Thursday: Monday's build, its re-runs on new runners and its upload have had three days
+    - cron: '17 6 * * 4'
+  workflow_dispatch:
+    inputs:
+      operation:
+        description: Check and promote a newer candidate (or check the live release), or roll back to an earlier release
+        type: choice
+        options: [promote, rollback]
+        default: promote
+      release:
+        description: Release ID for rollback
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: osm-promote
+  cancel-in-progress: false
+
+env:
+  # The build's code that runs here with Polku's credentials, pinned: a change to it is a PR here
+  OSM_DATA_REPOSITORY: TommiContursi/Polku
+  OSM_DATA_COMMIT: c51868058344e036f171b2d4fb1fea436c0d5729
+
+jobs:
+  check:
+    if: github.event_name != 'workflow_dispatch' || inputs.operation == 'promote'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    outputs:
+      release: ${{ steps.candidate.outputs.release }}
+      manifest: ${{ steps.candidate.outputs.manifest }}
+      sha256: ${{ steps.candidate.outputs.sha256 }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          repository: ${{ env.OSM_DATA_REPOSITORY }}
+          ref: ${{ env.OSM_DATA_COMMIT }}
+          path: osm
+          persist-credentials: false
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1
+        with:
+          python-version: '3.14.3'
+      - name: Find a candidate built after the live release
+        id: candidate
+        env:
+          OSM_PUBLIC_URL: ${{ vars.OSM_PUBLIC_URL }}
+        run: |
+          mkdir -p osm-check
+          python osm/tools/osm_data/publish.py candidate "$OSM_PUBLIC_URL" > osm-check/candidate.json
+          cat osm-check/candidate.json
+          python -c 'import json,os; c=json.load(open("osm-check/candidate.json")); open(os.environ["GITHUB_OUTPUT"],"a").write("".join(f"{k}={c[k]}\n" for k in ("release","manifest","sha256") if k in c))'
+      - name: Fixture dependencies of the osmdata group
+        if: steps.candidate.outputs.release
+        run: python -m pip install -r tools/osm_data/requirements.txt
+      - name: The app's checks against the candidate, read where it lies on the host
+        if: steps.candidate.outputs.release
+        env:
+          CANDIDATE: ${{ steps.candidate.outputs.manifest }}
+          POLKU_URL: http://127.0.0.1:8765/
+          POLKU_CHROME: ${{ github.workspace }}/.github/chrome.sh
+          POLKU_CHROME_PROFILE: ${{ runner.temp }}/osm-chrome
+        run: |
+          python tools/osm_data/preview.py --manifest "$CANDIDATE" --port 8765 > osm-check/preview.log 2>&1 &
+          for i in $(seq 30); do
+            if curl -sf -o /dev/null http://127.0.0.1:8765/index.html; then break; fi
+            sleep 1
+          done
+          python tools/smoke.py osmdata
+          python tools/osm_data/measure_browser.py --country all > osm-check/browser-measurements.json
+      - name: Without a newer candidate, the live release in a browser
+        if: ${{ !steps.candidate.outputs.release }}
+        env:
+          OSM_PUBLIC_URL: ${{ vars.OSM_PUBLIC_URL }}
+          POLKU_CHROME: ${{ github.workspace }}/.github/chrome.sh
+          POLKU_CHROME_PROFILE: ${{ runner.temp }}/osm-health-chrome
+        run: python osm/tools/osm_data/health.py osm-check/live
+      - uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f
+        if: always()
+        with:
+          name: osm-check-${{ github.run_id }}
+          path: osm-check/
+          if-no-files-found: ignore
+          retention-days: 14
+
+  promote:
+    needs: check
+    if: needs.check.outputs.release != '' && github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    environment: osm-data-production
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          repository: ${{ env.OSM_DATA_REPOSITORY }}
+          ref: ${{ env.OSM_DATA_COMMIT }}
+          path: osm
+          persist-credentials: false
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1
+        with:
+          python-version: '3.14.3'
+      - name: Install pinned SFTP dependency
+        run: python -m pip install -r osm/tools/osm_data/sftp-requirements.txt
+      - name: Promote the checked candidate
+        env:
+          RELEASE: ${{ needs.check.outputs.release }}
+          MANIFEST: ${{ needs.check.outputs.manifest }}
+          SHA256: ${{ needs.check.outputs.sha256 }}
+          OSM_ALLOW_PUBLISH: 'true'
+          OSM_FTP_HOST: ${{ secrets.OSM_FTP_HOST }}
+          OSM_FTP_USER: ${{ secrets.OSM_FTP_USER }}
+          OSM_FTP_PASSWORD: ${{ secrets.OSM_FTP_PASSWORD }}
+          OSM_SFTP_HOST_KEY_SHA256: ${{ secrets.OSM_SFTP_HOST_KEY_SHA256 }}
+          OSM_FTP_ROOT: ${{ vars.OSM_FTP_ROOT }}
+          OSM_PUBLIC_URL: ${{ vars.OSM_PUBLIC_URL }}
+        run: |
+          mkdir -p osm-promote
+          curl --fail --silent --show-error --user-agent 'Mozilla/5.0' "$MANIFEST" -o osm-promote/manifest.json
+          echo "$SHA256  osm-promote/manifest.json" | sha256sum --check
+          python osm/tools/osm_data/publish.py promote "$RELEASE" --sha256 "$SHA256" --directory osm-promote
+      - name: Verify live consumers and restore predecessor on failure
+        env:
+          OSM_ALLOW_PUBLISH: 'true'
+          OSM_FTP_HOST: ${{ secrets.OSM_FTP_HOST }}
+          OSM_FTP_USER: ${{ secrets.OSM_FTP_USER }}
+          OSM_FTP_PASSWORD: ${{ secrets.OSM_FTP_PASSWORD }}
+          OSM_SFTP_HOST_KEY_SHA256: ${{ secrets.OSM_SFTP_HOST_KEY_SHA256 }}
+          OSM_FTP_ROOT: ${{ vars.OSM_FTP_ROOT }}
+          OSM_PUBLIC_URL: ${{ vars.OSM_PUBLIC_URL }}
+          POLKU_CHROME: ${{ github.workspace }}/.github/chrome.sh
+          POLKU_CHROME_PROFILE: ${{ runner.temp }}/osm-health-chrome
+        run: python osm/tools/osm_data/health.py osm-health --release-dir osm-promote
+      - uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f
+        if: always()
+        with:
+          name: osm-published-health-${{ github.run_id }}
+          path: osm-health/
+          if-no-files-found: ignore
+          retention-days: 14
+      - name: Preserve the previous pointer for rollback
+        if: always()
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f
+        with:
+          name: osm-rollback-${{ github.run_id }}
+          path: osm-promote/rollback-*.json
+          if-no-files-found: ignore
+          retention-days: 90
+
+  rollback:
+    if: github.event_name == 'workflow_dispatch' && inputs.operation == 'rollback' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    environment: osm-data-production
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          repository: ${{ env.OSM_DATA_REPOSITORY }}
+          ref: ${{ env.OSM_DATA_COMMIT }}
+          path: osm
+          persist-credentials: false
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1
+        with:
+          python-version: '3.14.3'
+      - name: Install pinned SFTP dependency
+        run: python -m pip install -r osm/tools/osm_data/sftp-requirements.txt
+      - name: Read the immutable release requested for rollback
+        working-directory: osm
+        env:
+          RELEASE: ${{ inputs.release }}
+          OSM_PUBLIC_URL: ${{ vars.OSM_PUBLIC_URL }}
+        run: |
+          python - <<'PY'
+          import json, os
+          from pathlib import Path
+          from tools.osm_data.publish import NAME, current, get, public_url, require, validate
+          release = os.environ['RELEASE']
+          require(NAME.fullmatch(release), 'Invalid release ID')
+          raw = get(public_url(os.environ['OSM_PUBLIC_URL']) + '/releases/' + release + '/manifest.json', immutable=True)
+          manifest = validate(json.loads(raw))
+          require(manifest['release'] == release, 'Release ID differs')
+          Path(os.environ['GITHUB_WORKSPACE'], 'rollback.json').write_text(json.dumps(current(manifest)))
+          PY
+      - name: Verify existing release before switching the pointer
+        env:
+          OSM_ALLOW_PUBLISH: 'true'
+          OSM_FTP_HOST: ${{ secrets.OSM_FTP_HOST }}
+          OSM_FTP_USER: ${{ secrets.OSM_FTP_USER }}
+          OSM_FTP_PASSWORD: ${{ secrets.OSM_FTP_PASSWORD }}
+          OSM_SFTP_HOST_KEY_SHA256: ${{ secrets.OSM_SFTP_HOST_KEY_SHA256 }}
+          OSM_FTP_ROOT: ${{ vars.OSM_FTP_ROOT }}
+          OSM_PUBLIC_URL: ${{ vars.OSM_PUBLIC_URL }}
+        run: python osm/tools/osm_data/publish.py rollback --manifest rollback.json

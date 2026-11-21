@@ -1,4 +1,4 @@
-"""Preview Polku with a local release: python tools/osm_data/preview.py --release DIR."""
+"""Preview Polku with a local release (--release DIR) or a published one (--manifest URL of its manifest.json)."""
 
 import argparse
 from functools import partial
@@ -11,10 +11,12 @@ from urllib.parse import unquote, urlsplit
 
 
 class Preview(SimpleHTTPRequestHandler):
-    def __init__(self, *args, release, directory=None, **kwargs):
-        self.release = Path(release).resolve()
+    def __init__(self, *args, release=None, manifest=None, directory=None, **kwargs):
+        # A published candidate is read where it is: Polku's promotion never downloads its 13 GB
+        self.manifest = manifest
+        self.release = Path(release).resolve() if release else None
         self.allowed = {f['path'] for f in json.loads(
-            (self.release / 'manifest.json').read_bytes())['files']} | {'manifest.json'}
+            (self.release / 'manifest.json').read_bytes())['files']} | {'manifest.json'} if release else set()
         self.data = self.immutable = False
         self.remaining = None
         super().__init__(*args, directory=directory or Path(__file__).resolve().parents[2], **kwargs)
@@ -44,7 +46,7 @@ class Preview(SimpleHTTPRequestHandler):
         self.data = path == '/__osm' or path.startswith('/__osm/')
         if path == '/js/config.js':
             source = (Path(self.directory) / 'js/config.js').read_text(encoding='utf-8')
-            url = f'http://127.0.0.1:{self.server.server_port}/__osm/current.json'
+            url = self.manifest or f'http://127.0.0.1:{self.server.server_port}/__osm/current.json'
             source, count = re.subn(r"^export const OSM_DATA_MANIFEST = '[^'\n]*';$",
                                     f"export const OSM_DATA_MANIFEST = '{url}';", source, flags=re.MULTILINE)
             if count != 1:
@@ -57,6 +59,8 @@ class Preview(SimpleHTTPRequestHandler):
             return io.BytesIO(body)
         if not self.data:
             return super().send_head()
+        if not self.release:
+            return self.send_error(404)
         name = path.removeprefix('/__osm/')
         name = 'manifest.json' if name == 'current.json' else name
         file = (self.release / name).resolve()
@@ -107,10 +111,13 @@ class Preview(SimpleHTTPRequestHandler):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('--release', type=Path, required=True)
+    source = parser.add_mutually_exclusive_group(required=True)
+    source.add_argument('--release', type=Path)
+    source.add_argument('--manifest', help="a published release's manifest.json, over HTTPS")
     parser.add_argument('--port', type=int, default=8796)
     args = parser.parse_args()
-    handler = partial(Preview, release=args.release.resolve(strict=True))
+    handler = partial(Preview, release=args.release and args.release.resolve(strict=True), manifest=args.manifest)
+    ThreadingHTTPServer.request_queue_size = 128  # as serve.py's: macOS resets a module burst over 5 (#409)
     with ThreadingHTTPServer(('127.0.0.1', args.port), handler) as server:
         print(f'Polku preview: http://127.0.0.1:{server.server_port}/', flush=True)
         server.serve_forever()
