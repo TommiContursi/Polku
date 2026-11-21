@@ -2372,7 +2372,7 @@ export class Planner {
   // on land, whether or not the map shows the layer: a fallen tree is in the way
   // of a gravel bike too.
   async loadTrail(a) {
-    const opt = () => ({ activity: this.mainSport(), wet: this.wetFor(this.styleOf(this.mainSport())) });
+    const opt = () => ({ activity: this.mainSport(), wet: this.wetFor(this.styleOf(this.mainSport())), winter: !!(this.app.winter && this.app.winter().on) });
     a.trailWarn = trailWarnings(a, opt());
     const land = !this.routeSports().every(isWater);
     a.trailAsking = land; // (What Polku looked at: being asked)
@@ -2504,6 +2504,8 @@ export class Planner {
       if (sum(unploughed) >= 100) out.push({ at: a.along[unploughed[0].i0], len: sum(unploughed), kind: 'winter', ic: 'snow', noAvoid: true, osm: true, lngLat: a.pts[unploughed[0].i0], text: `Not ploughed in winter: ${fmtDist(sum(unploughed))}`, note: 'snow and ruts: slow going by bike', ...lookTags });
       const slowOpen = stretches((i) => c[i] === 'open3' && bikeAt(i) && a.snow && a.snow.cm[i] >= 5);
       if (sum(slowOpen) >= 100) out.push({ at: a.along[slowOpen[0].i0], len: sum(slowOpen), kind: 'winter', ic: 'snow', noAvoid: true, osm: true, lngLat: a.pts[slowOpen[0].i0], text: `Opens slowly after snow: ${fmtDist(sum(slowOpen))}`, note: 'little travelled in winter: maybe not packed down yet', ...lookTags });
+      // thin ice mapped on the route (#1287), on foot, by bike or on the ice
+      for (const x of stretches((i) => c.thin[i]).slice(0, 3)) out.push({ at: a.along[x.i0], len: x.len, kind: 'winter', ic: 'warn', osm: true, lngLat: a.pts[x.i0], text: `Thin ice: ${fmtDist(x.len)}`, note: 'hazard=thin_ice · mapped where the ice is often thin or open, as at a current or an outlet: keep off it', ...readTags });
     }
     // on the water in the ice season
     const wet = stretches(water);

@@ -143,7 +143,8 @@ def products(kind, tags):
         hazard = (tags.get('natural') in {'reef', 'shoal'} or tags.get('seamark:type') in {'rock', 'obstruction'} or
                   tags.get('waterway') == 'rapids')
         if ('mtb:winter' in tags or any(tags.get(k) for k in ['snowplowing', 'winter_service', 'bicycle:winter', 'foot:winter']) or
-                tags.get('seasonal') == 'winter' or tags.get('piste:type') == 'nordic'):
+                tags.get('seasonal') == 'winter' or tags.get('piste:type') == 'nordic' or
+                tags.get('ice_road') == 'yes' or tags.get('winter_road') == 'yes' or tags.get('hazard') == 'thin_ice'):
             result.append('winter')
     if trail:
         result.append('trails')
