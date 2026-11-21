@@ -4,6 +4,12 @@ What's new in [Polku](https://polku.si), from the latest updates back to the fir
 
 ## 2026-11-21
 
+### Reeds stand out from open water, and stones show among them ([#1296](https://github.com/TommiContursi/Polku/issues/1296))
+
+- On the Trail, Plain and Night maps, reeds in the water are drawn on a green-tinted blue, the water's colour with some of the reeds' green, so a reedbed stands out from open water and still never reads as land.
+- The lake's thin shore line is drawn under the reeds, so it no longer runs across a reedbed where OpenStreetMap's lake ends inside one.
+- In Finland, stones in the water and the triangles of stone fields sit on a small edge of the water's colour, so they show among reeds too.
+
 ### House numbers ([#1223](https://github.com/TommiContursi/Polku/issues/1223))
 
 - From zoom 17, house numbers show on the buildings, small and in a quiet grey, so you can find an address in a town. Every other name and place wins where they would overlap.
@@ -48,7 +54,7 @@ What's new in [Polku](https://polku.si), from the latest updates back to the fir
 
 ### Reeds in the water look the same everywhere ([#1248](https://github.com/TommiContursi/Polku/issues/1248))
 
-- On the Trail, Plain and Night maps, reeds in the water are reed tufts on the water's blue, whether they come from OpenStreetMap's reedbeds or, in Finland, from the National Land Survey's overgrowing water. Before, the same reedy shore could be tufts on a pale ground, which read as land, or blue dashes on the water. Blue dashes now mean bogs and wetlands only.
+- On the Trail, Plain and Night maps, reeds in the water are reed tufts in the water, whether they come from OpenStreetMap's reedbeds or, in Finland, from the National Land Survey's overgrowing water. Before, the same reedy shore could be tufts on a pale ground, which read as land, or blue dashes on the water. Blue dashes now mean bogs and wetlands only.
 - Reedbeds that OpenStreetMap maps inside a lake now show. Before, the lake covered them.
 
 ### A tap on a river's flow arrow, a jetty or open ground says what it is ([#1234](https://github.com/TommiContursi/Polku/issues/1234))

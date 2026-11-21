@@ -91,7 +91,7 @@ function tufts(ctx, colour, feet) {
 }
 
 // reeds in the water, OSM's reedbeds (#1144) and MML's overgrowing water: tufts on an opaque ground, the water's colour
-// (#1248). `reedbed-<fill>-<reeds>`, both hex without '#'
+// with some of the reeds' green (#1248, #1296). `reedbed-<fill>-<reeds>`, both hex without '#'
 function reedbed(id) {
   const [, fill, reed] = id.split('-');
   const [c, ctx] = canvas(12, 12);
@@ -113,7 +113,7 @@ function reed(id) {
 // so they don't read as a grid; `rock-<kind>-<colour>`, a point: `spot-<colour>-<edge>`, a rock too small for an area,
 // a speck in the rock's grey with an edge; `stone`, one dot; `rocks`, sparse boulders, three dots; and stones in the
 // water (#1170) as MML's and Traficom's maps draw them: `under`, under the surface, a T; `awash`, at the surface, a cross;
-// `above`, above it, an upside-down T
+// `above`, above it, an upside-down T, each `-<colour>-<edge>`, on an edge of the water's colour (#1284)
 function rock(id) {
   const [what, kind, colour, edge] = id.split('-');
   const dot = (ctx, x, y, r) => { ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fill(); };
@@ -127,10 +127,12 @@ function rock(id) {
   }
   if (kind === 'under' || kind === 'awash' || kind === 'above') {
     // larger than the land's stones: they're a hazard on the water
-    const [c, ctx] = canvas(11, 11);
-    ctx.strokeStyle = `#${colour}`; ctx.lineWidth = 1.4; ctx.beginPath();
+    const [c, ctx] = canvas(13, 13);
+    ctx.translate(1, 1);
+    ctx.beginPath();
     if (kind === 'awash') { ctx.moveTo(1.5, 5.5); ctx.lineTo(9.5, 5.5); ctx.moveTo(5.5, 1.5); ctx.lineTo(5.5, 9.5); } else if (kind === 'above') { ctx.moveTo(1.5, 9); ctx.lineTo(9.5, 9); ctx.moveTo(5.5, 1.5); ctx.lineTo(5.5, 9); } else { ctx.moveTo(1.5, 2); ctx.lineTo(9.5, 2); ctx.moveTo(5.5, 2); ctx.lineTo(5.5, 9.5); }
-    ctx.stroke();
+    ctx.strokeStyle = `#${edge}`; ctx.lineWidth = 4; ctx.lineCap = 'round'; ctx.lineJoin = 'round'; ctx.stroke();
+    ctx.strokeStyle = `#${colour}`; ctx.lineWidth = 1.4; ctx.lineCap = 'butt'; ctx.stroke();
     return ctx.getImageData(0, 0, c.width, c.height);
   }
   const [c, ctx] = canvas(8, 8);
@@ -144,17 +146,18 @@ function rock(id) {
 }
 
 // MML's shoals and stone fields in the water (#1170), on a clear ground so the water and its depths show:
-// `shoal-<lines>`, light lines across; `stonefield-<lines>-<marks>`, the same with MML's small triangles
+// `shoal-<lines>`, light lines across; `stonefield-<lines>-<marks>-<edge>`, the same with MML's small triangles, each on an
+// edge of the water's colour, so it shows among reeds (#1284)
 function shoal(id) {
-  const [what, lines, marks] = id.split('-');
+  const [what, lines, marks, edge] = id.split('-');
   const [c, ctx] = canvas(12, 12);
   ctx.fillStyle = `#${lines}`;
   ctx.globalAlpha = 0.75;
   for (const y of [1, 5, 9]) ctx.fillRect(0, y, 12, 1);
   ctx.globalAlpha = 1;
   if (what === 'stonefield') {
-    ctx.fillStyle = `#${marks}`;
-    for (const [x, y] of [[3, 4], [9, 10]]) { ctx.beginPath(); ctx.moveTo(x - 1.4, y); ctx.lineTo(x + 1.4, y); ctx.lineTo(x, y - 2.4); ctx.fill(); }
+    ctx.fillStyle = `#${marks}`; ctx.strokeStyle = `#${edge}`; ctx.lineWidth = 1.6; ctx.lineJoin = 'round';
+    for (const [x, y] of [[3, 4], [9, 10]]) { ctx.beginPath(); ctx.moveTo(x - 1.4, y); ctx.lineTo(x + 1.4, y); ctx.lineTo(x, y - 2.4); ctx.closePath(); ctx.stroke(); ctx.fill(); }
   }
   return ctx.getImageData(0, 0, c.width, c.height);
 }
@@ -579,8 +582,8 @@ export function makeIcon(id) {
   if (/^reedbed-[0-9a-f]{6}-[0-9a-f]{6}$/.test(id)) return reedbed(id);
   if (/^bog-(hard-[0-9a-f]{6}|paludified)-[0-9a-f]{6}$/.test(id)) return bog(id);
   if (/^reed-[0-9a-f]{6}$/.test(id)) return reed(id);
-  if (/^(boulders-[0-9a-f]{6}|rock-spot-[0-9a-f]{6}|rock-(stone|rocks|under|awash|above))-[0-9a-f]{6}$/.test(id)) return rock(id);
-  if (/^(shoal|stonefield-[0-9a-f]{6})-[0-9a-f]{6}$/.test(id)) return shoal(id);
+  if (/^(boulders-[0-9a-f]{6}|rock-spot-[0-9a-f]{6}|rock-(stone|rocks)|rock-(under|awash|above)-[0-9a-f]{6})-[0-9a-f]{6}$/.test(id)) return rock(id);
+  if (/^(shoal|stonefield-[0-9a-f]{6}-[0-9a-f]{6})-[0-9a-f]{6}$/.test(id)) return shoal(id);
   if (/^flow-[0-9a-f]{6}-[0-9a-f]{6}$/.test(id)) return flow(id);
   if (/^rapids-[0-9a-f]{6}-[0-9a-f]{6}$/.test(id)) return rapids(id);
   if (/^pylon-[0-9a-f]{6}$/.test(id)) return pylon(id);
