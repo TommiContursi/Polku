@@ -231,7 +231,9 @@ conversation again
   (`POLKU_URL=http://localhost:8771/ python3 tools/smoke.py`). Never stop
   another agent's server.
 - **One smoke run at a time on the machine,** across all sessions: start
-  one only when `pgrep -f tools/smoke.py` shows none. Each commit runs in a
+  one only when `pgrep -f '[t]ools/smoke.py'` shows none (the brackets keep a
+  waiting loop's own shell out of it; #1241 plans a lock in the tool itself).
+  Each commit runs in a
   frozen worktree that stays put while a run uses it. Stop only the Chrome
   you started, by its process id. Before calling a failure the change's,
   run the same group on `main`.
@@ -246,8 +248,9 @@ conversation again
 - **App changes pass `python3 tools/smoke.py`** in the groups they touch
   (`python3 tools/smoke.py water loops`), run locally: while working, and
   before the PR leaves draft, once on its last commit that changes the app,
-  against the checkout and against the built site (`tools/site.sh`, then
-  `python3 serve.py <port> --site`; DEVELOPING, "The built site"). GitHub
+  against the built site, which is what people get (`tools/site.sh`, then
+  `python3 serve.py <port> --site`; DEVELOPING, "The built site"). Against
+  the checkout only to tell the build's failure from the code's. GitHub
   runs a group only for a check that fails only on its runner. A session
   never runs the whole suite locally. The whole suite runs on GitHub,
   started by hand, at most about 20 times a month (Actions are paid once the
