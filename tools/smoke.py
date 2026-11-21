@@ -1248,6 +1248,8 @@ def town_gates(chrome):
         const c=polku.planner.cards.current, ok=c&&c.kind==='place'; polku.planner.cards.close(); return ok;};
       // (a fallen tree, a gate and a locked gate within 250 m)
       m.jumpTo({center:[25.7652,62.2289],zoom:15.5}); await settle();
+      // the seeded tile drawn, 10 s at most more: in a long group run it can come after the map is idle (#1205)
+      for(let t=0;t<40&&!drawn().some((f)=>f.properties.kind==='tree');t++)await wait(250);
       if(!drawn().some((f)=>f.properties.kind==='tree'))errs.push('15.5: no fallen tree');
       if(gates().length)errs.push(`15.5: ${gates().length} gates drawn`);
       m.jumpTo({center:[25.75467,62.238343],zoom:16.5}); await settle();
