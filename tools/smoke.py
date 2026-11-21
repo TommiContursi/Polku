@@ -11,8 +11,8 @@ raises fails and the rest still run. Needs the dev server (python3 serve.py) and
 Chrome. Draws a straight-line route (no routing requests). The forecast comes from
 Open-Meteo, cached for an hour. Exits 1 if anything fails.
 
-One run at a time on the machine, from any worktree: a run started while another holds
-~/.cache/polku-tools/smoke.lock says which run it waits for, and starts when that one ends.
+Two runs at a time on the machine, from any worktree (#1317): a run started while two others hold
+~/.cache/polku-tools/smoke.lock and smoke-2.lock says which runs it waits for, and starts when one ends.
 """
 import base64
 import fcntl
@@ -24,6 +24,7 @@ import sys
 import time
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import cdp  # noqa: E402
 from cdp import BASE, LOAD_STEP, Chrome  # noqa: E402
 
 # (width, height, phone, planner docked at the bottom on desktop)
@@ -16110,15 +16111,19 @@ def runner(chrome):
     listed = [line.split()[0] for line in r.stdout.splitlines() if line.strip()]
     if r.returncode != 0 or listed[:-1] != [n for n, _, _ in GROUPS]:
         fails.append(f'--list exits {r.returncode} and lists {listed}')
-    # a second run waits for this one, before its Chrome starts (#1241); with no dev server at its address, one that didn't
-    # wait would stop at once rather than start a Chrome
+    # with both slots taken (this run holds one, and here the other unless a run beside it does), a third run waits,
+    # before its Chrome starts (#1241, #1317); with no dev server at its address, one that didn't wait would stop at once
+    # rather than start a Chrome
+    held = [f for f in (open(p, 'a+') for p in SLOTS) if try_lock(f)]
     p = subprocess.Popen([sys.executable, me, 'changelog'], stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True,
                          env={**os.environ, 'POLKU_URL': 'http://localhost:9/'})
     said = p.stdout.readline()
     p.kill()
     p.wait()
-    if f'Waiting for another smoke run to end (pid {os.getpid()}, ' not in said:
-        fails.append(f'a second run didn\'t wait for this one: it said {said.strip()[:160]!r}')
+    for f in held:
+        f.close()
+    if f'Waiting for one of the other two smoke runs to end (' not in said or f'pid {os.getpid()}, ' not in said:
+        fails.append(f'a third run didn\'t wait for this one and the one beside it: it said {said.strip()[:160]!r}')
 
     ran = []
 
@@ -26832,10 +26837,11 @@ GROUPS = [
     ('pastforecast', [pastforecast], 'past the forecast (25d, #465): the time without the wind past its last hour, the profile grey with No forecast yet, Not checked from where, the cold and the rain checked only within it, a section past it, paddling\'s key fact, the water router\'s wind from the 10-day forecast and none past it (Open-Meteo answered in the page)'),
     ('sheetstops', [sheet_stops, sheet_card_peek, sheet_profile_peek], 'the planner\'s sheet\'s stops (#233, 2026-10-30): a swipe from full, half or the line lands on the peek where it rests (#586) at 390 × 844, 360 × 740, 200 % and on a desktop\'s bottom dock by mouse; by touch, a light flick one stop each way, a release just under a flick\'s speed near the finger, the marks while dragging, the start\'s ways resisting; on a phone at half and full the sheet scrolling as one, a finger on the numbers scrolling it (#597), ⌄ over the docked toolbox (#598), the top row with the numbers and moving the sheet, Back to the list where it was, at 390 × 844 and 200 %; the desktop\'s side panel scrolling as one by mouse, its top row with the name and the numbers once they\'ve gone and its ⌄ folding it, its resize grip beside it, at its edge, still resizing it, and a card on the map leaving its scroll; ⌃ and ⌄ one size each by mouse in a narrow window and on the bottom dock, none by touch; a card\'s stops (#603), its peek the planner\'s at most, a finger on its body to half, the card whole while dragged, scrolling first at half, ↑ and ↓, a short card its own height alone, at 390 × 844 and 360 × 740; a card opened from a card, and Back, keeping half or full where it has that stop (#692); a scrolled card dragged from half keeping its content under the finger, scrolling back with the spring, and ↓ bringing its peek to its top, with motion and reduced motion'),
     ('fold', [fold], 'fold, then away (step 3 of #233): ⌄, the line and ✕, swipes and the handle\'s keys by touch at 390 × 844, a point\'s card folded, full and closed, what each card with no numbers says folded, no ⌄ and no line once there\'s nothing to fold (Clear route, Undo down to one point), the map\'s buttons moving once (#540); at 200 % resting at the line, the column clear of the top bar and the toolbox, the full sheet scrolling as one (#453, #344); desktops: the side panel and the bottom panel folded down, a card on the map folded keeping its bottom edge; a narrow window by mouse: the line, its handle and the open sheet\'s handle dragged, quickly too (#585)'),
-    ('runner', [runner], 'the runner itself: a name it doesn\'t know, a second run waiting for the first (#1241), a group that raises or stops Chrome, a Chrome profile in use (#262, #263, #254); the dev server answering a burst of connections (#409)'),
+    ('runner', [runner], 'the runner itself: a name it doesn\'t know, a third run waiting while two go (#1241, #1317), a group that raises or stops Chrome, a Chrome profile in use (#262, #263, #254); the dev server answering a burst of connections (#409)'),
 ]
 SIZES = list(dict.fromkeys(f'{w}x{h}' for w, h, _, _ in VIEWPORTS))
-LOCK = os.path.expanduser('~/.cache/polku-tools/smoke.lock')
+# two runs at a time (#1317): the first slot is #1241's lock, which older branches take too
+SLOTS = [os.path.expanduser('~/.cache/polku-tools/smoke.lock'), os.path.expanduser('~/.cache/polku-tools/smoke-2.lock')]
 
 
 def run(chrome, steps):
@@ -26873,6 +26879,14 @@ def shard_check():
     return shards, '.github/smoke-shards.json: ' + '; '.join(problems) + '. Every group and size goes in exactly one job.' if problems else ''
 
 
+def try_lock(f):
+    try:
+        fcntl.flock(f, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        return True
+    except BlockingIOError:
+        return False
+
+
 def main():
     args = sys.argv[1:]
     if args == ['--list']:
@@ -26891,17 +26905,25 @@ def main():
         sys.exit(2)
     steps = [(n if len(fns) == 1 else f'{n} ({fn.__name__})', fn, ()) for n, fns, _ in GROUPS if not args or n in args for fn in fns]
     steps += [(f'{w}x{h}', check, (w, h, phone, bottom)) for w, h, phone, bottom in VIEWPORTS if not args or f'{w}x{h}' in args]
-    # one run at a time on the machine (#1241): a second waits here, before its Chrome starts, and the kernel frees the
-    # lock when a run ends, a crash or a kill included
-    os.makedirs(os.path.dirname(LOCK), exist_ok=True)
-    lock = open(LOCK, 'a+')
-    try:
-        fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
-    except BlockingIOError:
-        lock.seek(0)
-        holder = lock.read().strip() or 'which one is unknown'
-        print(f'Waiting for another smoke run to end ({holder}): this one starts then.', flush=True)
-        fcntl.flock(lock, fcntl.LOCK_EX)
+    # two runs at a time on the machine (#1241, #1317): a third waits here, before its Chrome starts, and the kernel
+    # frees a slot when its run ends, a crash or a kill included
+    os.makedirs(os.path.dirname(SLOTS[0]), exist_ok=True)
+    locks, said = [open(p, 'a+') for p in SLOTS], False
+    while True:
+        slot = next((k for k, f in enumerate(locks) if try_lock(f)), None)
+        if slot is not None:
+            break
+        if not said:
+            holders = []
+            for f in locks:
+                f.seek(0)
+                holders.append(f.read().strip() or 'which one is unknown')
+            print(f'Waiting for one of the other two smoke runs to end ({"; ".join(holders)}): this one starts then.', flush=True)
+            said = True
+        time.sleep(2)
+    lock = locks[slot]
+    if slot:
+        cdp.PROFILE += f'-{slot + 1}'  # a profile of its own, so both runs keep their cached tiles
     lock.truncate(0)
     lock.write(f'pid {os.getpid()}, {" ".join(args) or "the whole suite"}, in {os.path.dirname(os.path.dirname(os.path.abspath(__file__)))}, since {time.strftime("%H:%M")}')
     lock.flush()
