@@ -5,5 +5,7 @@
   "compatibility_date": "2026-11-21",
   "assets": { "directory": "./site" },
   // the test address, polku.<account>.workers.dev, until polku.si is served from here (part 5 turns it off)
-  "workers_dev": true
+  "workers_dev": true,
+  // no public address per uploaded version: it would keep serving old builds, and nothing uses it
+  "preview_urls": false
 }

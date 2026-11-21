@@ -107,7 +107,9 @@ headers a `<meta>` tag can't set (HSTS, `frame-ancestors`, `X-Frame-Options`, th
   with the path and query kept. **Always Use HTTPS** is turned on, so `http://` keeps
   redirecting. Before the DNS moves, the Worker's only address is `polku.<account>.workers.dev`:
   it is the **test address** until polku.si is served from Cloudflare (part 4), and is turned
-  off in part 5 (`workers_dev: false`), so no copy stays public there.
+  off in part 5 (`workers_dev: false`), so no copy stays public there. Preview URLs, a public
+  address for every uploaded version, are off from the start (`preview_urls: false`): they would
+  keep serving old builds, and nothing uses them.
 - **Rollback:** Cloudflare keeps earlier versions, and one can be made current from its
   dashboard. Until part 5, the DNS can also point back to GitHub Pages (part 5 removes `sw.js`'s
   `Last-Modified` fallback and lengthens HSTS), and until DNSSEC is on at Cloudflare (Tomba's
@@ -379,7 +381,7 @@ checks the result after it.
 | 2 | session, Tomba | The `workers.dev` address checked: the headers, `tdmrep.json`, the walk-through (Share and the compass on Tomba's phone); the Cloudflare GitHub app sees only Polku | Tomba's step 2 | nothing in the walk-through fails or reports a violation |
 | 3 | Tomba | The DNS to Cloudflare (step 3) | part 2 | step 3's checks pass |
 | 4 | session, Tomba | polku.si on Cloudflare checked: the redirects (`curl -I http://polku.si/`, `https://www.polku.si/?r=x`, `/index.html?r=x` keeping the query), `index.html` byte for byte against a `site/` built at the same commit, share links, offline, routing, the walk-through | step 3.4 | all of it passes |
-| 5 | session | The policy enforced; HSTS a year; `sw.js`'s `Last-Modified` fallback removed; `workers_dev` and `preview_urls` off; "GitHub Pages" made "Cloudflare" in AGENTS.md, PRODUCT.md and DEVELOPING | part 4, then a week on Cloudflare without trouble | merged, the groups it touches passing |
+| 5 | session | The policy enforced; HSTS a year; `sw.js`'s `Last-Modified` fallback removed; `workers_dev` off; "GitHub Pages" made "Cloudflare" in AGENTS.md, PRODUCT.md and DEVELOPING | part 4, then a week on Cloudflare without trouble | merged, the groups it touches passing |
 | 6 | session, Tomba (step 4) | The OSM data build moved | this plan merged | a candidate from the new repository promoted by Polku's job, its daily check passed, the workflows gone from Polku |
 | 7 | session | The security check and its fixes, the history scan first | this plan merged | every finding filed; the history scanned and anything found rotated |
 | 8 | Tomba | Pro, budget, private (step 6) | parts 5 and 6, part 7's history scan, step 0 | step 6's check passes |
