@@ -243,11 +243,16 @@ conversation again
 - **Every bug fix has a check in `tools/smoke.py`** that fails before the fix
   and passes after it: an existing one if it shows the bug, else a new one.
 - **App changes pass `python3 tools/smoke.py`** in the groups they touch
-  (`python3 tools/smoke.py water loops`): while working, and before the PR
-  leaves draft, once on its last commit that changes the app. A session
+  (`python3 tools/smoke.py water loops`), run locally: while working, and
+  before the PR leaves draft, once on its last commit that changes the app,
+  against the checkout and against the built site (`tools/site.sh`, then
+  `python3 serve.py <port> --site`; DEVELOPING, "The built site"). GitHub
+  runs a group only for a check that fails only on its runner. A session
   never runs the whole suite locally. The whole suite runs on GitHub,
-  started by hand, and only once `main`'s suite is green (#579); until then
-  the groups are enough. Where an issue, a work package or a plan asks for
+  started by hand, at most about 20 times a month (Actions are paid once the
+  repository is private): before a phase PR leaves draft and before a
+  milestone closes, once `main`'s suite is green (#579); until then the
+  groups are enough. Where an issue, a work package or a plan asks for
   the whole suite, this rule decides how and when it runs. A check stays
   good for the commit it ran on, whoever ran it, and for any later commit
   whose files outside `docs/`, AGENTS.md, README.md and PRODUCT.md are the

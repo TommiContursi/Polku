@@ -1,13 +1,49 @@
-"""Tiny no-cache static server for local development: python3 serve.py [port]"""
+"""Tiny no-cache static server for local development: python3 serve.py [port] [--site]
+
+--site serves the built site (site/, from tools/site.sh) as Cloudflare would: with site/_headers' headers, and the
+content security policy enforced rather than report-only, so the smoke groups test the policy too. /tools/ still
+comes from the checkout, for the smoke checks' fixtures and helpers (#115)."""
 import http.server
 import os
+import re
 import sys
+from urllib.parse import urlsplit
+
+ROOT = os.path.dirname(os.path.abspath(__file__))
+SITE = os.path.join(ROOT, 'site')
 
 
 class NoCache(http.server.SimpleHTTPRequestHandler):
     def end_headers(self):
         self.send_header("Cache-Control", "no-store")
         super().end_headers()
+
+
+class Built(NoCache):
+    def translate_path(self, path):
+        self.directory = ROOT if urlsplit(path).path.startswith('/tools/') else SITE
+        return super().translate_path(path)
+
+    def end_headers(self):
+        path = urlsplit(self.path).path
+        for pattern, name, value in RULES:
+            if pattern.match(path):
+                self.send_header(name, value)
+        super().end_headers()
+
+
+def rules(file):
+    """site/_headers as (path pattern, header, value): a pattern line, then its indented 'Name: value' lines"""
+    out, pattern = [], None
+    for line in open(file, encoding='utf-8'):
+        if not line.strip() or line.lstrip().startswith('#'):
+            continue
+        if not line[0].isspace():
+            pattern = re.compile('^' + re.escape(line.strip()).replace(r'\*', '.*') + '$')
+            continue
+        name, value = (s.strip() for s in line.split(':', 1))
+        out.append((pattern, 'Content-Security-Policy' if name == 'Content-Security-Policy-Report-Only' else name, value))
+    return out
 
 
 class Server(http.server.ThreadingHTTPServer):
@@ -17,6 +53,9 @@ class Server(http.server.ThreadingHTTPServer):
 
 
 if __name__ == "__main__":
-    os.chdir(os.path.dirname(os.path.abspath(__file__)))
-    port = int(sys.argv[1]) if len(sys.argv) > 1 else 8765
-    Server(("127.0.0.1", port), NoCache).serve_forever()
+    os.chdir(ROOT)
+    args = [a for a in sys.argv[1:] if a != '--site']
+    port = int(args[0]) if args else 8765
+    if '--site' in sys.argv:
+        RULES = rules(os.path.join(SITE, '_headers'))
+    Server(("127.0.0.1", port), Built if '--site' in sys.argv else NoCache).serve_forever()

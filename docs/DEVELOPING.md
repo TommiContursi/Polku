@@ -13,6 +13,7 @@ Read the section the task needs, not the whole file. The files after a section a
 - [Bugs and reviews](#bugs-and-reviews)
 - [Running it](#running-it)
   - [Writing a smoke check](#writing-a-smoke-check)
+  - [The built site](#the-built-site)
 - [How the trickier parts work](#how-the-trickier-parts-work)
   - [In-app release notes](#in-app-release-notes): `js/changelog.js`
   - [The map: style, grades, terrain and trails](#the-map-style-grades-terrain-and-trails): `js/style.js`, `js/uphill.js`, `js/dem.js`, `js/analysis.js`, `js/trails.js`, `js/osm.js`
@@ -63,7 +64,7 @@ python3 tools/loop_probe.py             # how long do round-trip loops ride? (ca
 python3 tools/water_probe.py            # paddling legs before/after the water costs: length, ms, grid cells
 ```
 
-A session runs the groups its change touches, never the whole suite on this computer. The whole suite runs on GitHub's Ubuntu runner, started by hand, and only once `main`'s suite is green (#579); until then the groups are enough (AGENTS.md, "Testing"). To start it: **Actions → Smoke suite → Run workflow** on any branch, or `gh workflow run smoke.yml --ref <branch>`, with `-f groups="fit quick"` for only some groups. The full suite runs in ten parallel jobs, about 4–16 minutes each; `button3d` and `button3dphone` have one each, as the 3D button's checks took 16–27 minutes as one group (#411); `.github/smoke-shards.json` says which groups each one runs, and a new group goes into one of them, by its time on the runner, or the run fails; `tools/smoke.py` fails the same way before a local run starts (`shard_check()`, #577). The `report` job's summary has every `FAIL` with its lines, the Chrome version, the time per step and the requests to other hosts; each job's log is its `smoke-log-<n>` artifact. The runner is set up like the development Mac (Inter, en-GB, Helsinki time, a mouse) in `.github/workflows/smoke.yml` and `.github/chrome.sh`. It isn't a required check (#268).
+Which groups run where, and when the whole suite runs, is AGENTS.md's "Testing". The whole suite runs on GitHub's Ubuntu runner. To start it: **Actions → Smoke suite → Run workflow** on any branch, or `gh workflow run smoke.yml --ref <branch>`, with `-f groups="fit quick"` for only some groups. The full suite runs in ten parallel jobs, about 4–16 minutes each; `button3d` and `button3dphone` have one each, as the 3D button's checks took 16–27 minutes as one group (#411); `.github/smoke-shards.json` says which groups each one runs, and a new group goes into one of them, by its time on the runner, or the run fails; `tools/smoke.py` fails the same way before a local run starts (`shard_check()`, #577). The `report` job's summary has every `FAIL` with its lines, the Chrome version, the time per step and the requests to other hosts; each job's log is its `smoke-log-<n>` artifact. The runner is set up like the development Mac (Inter, en-GB, Helsinki time, a mouse) in `.github/workflows/smoke.yml` and `.github/chrome.sh`. It isn't a required check (#268).
 
 The tests answer from recorded files in `tools/fixtures/` (a route, an Overpass tile, LIPAS answers, Väylävirasto fairways), so they make no routing calls. `tools/brouter-local.sh` starts BRouter on your computer for anything that does route; please don't burst-test brouter.de.
 
@@ -74,6 +75,23 @@ The README links JPEGs on the `pr-screenshots` branch. Capture its current scene
 Headless Chrome draws the map in software, and one frame can take a second when the computer is busy. So a check waits for the state it tests, not a fixed time: the next animation frame for something the app does in one, `SETTLED` in `tools/smoke.py` for the planner's size. It also runs with reduced motion, so `fitBounds` and `flyTo` fire `moveend` at once: call `map.once('moveend')` before moving the map.
 
 The `otherways` quick-point check schedules its edit in the same turn as the first leg's alternative-route timer, then waits for the final leg's offer. It also blocks the main thread for 2.2 seconds so both timers are overdue, checking that a slow frame preserves their order. Keep the request-count, requested-leg and offered-leg assertions; the separate pause case checks that waiting really does fetch an earlier alternative.
+
+### The built site
+
+polku.si publishes a built copy of the app (#115, [the plan](plans/protected-polku.md)), made by `tools/site.sh` into `site/`; the app itself runs from the checkout, with no build step. Cloudflare's build runs `npm ci && tools/site.sh`, then `npx wrangler deploy` (`wrangler.jsonc`). Locally:
+
+```bash
+npm ci                          # once per worktree: esbuild, pinned in package-lock.json
+tools/site.sh                   # → site/, about a second
+python3 serve.py 8771 --site    # the built site, as Cloudflare serves it, with the policy enforced
+POLKU_URL=http://localhost:8771/ python3 tools/smoke.py startfail changelog
+```
+
+- **Only an allowlist is published:** `index.html`, `sw.js`, `js/`, `css/`, `fonts/`, `img/`, `data/`, `profiles/`, `CHANGELOG.md`, `LICENSE`, `THIRD_PARTY_NOTICES.md`, `robots.txt` and `.well-known/`, the list at the top of `tools/site.sh`. A new top-level file the app needs goes into that list; the build fails when `index.html`, `sw.js` or the code names a file under `fonts/`, `img/`, `data/`, `profiles/`, `css/` or `js/`, or `CHANGELOG.md`, that isn't published.
+- **Minified with esbuild,** each file on its own (no bundling, so modules and `import.meta.url` stay as they are), without comments or source maps. The `/*!` copyright line at the top of every file of Polku's own is kept: a new file in `js/` or `css/` needs it, or the build fails. `js/vendor/` is published as it is. `index.html` loses its whole-line comments but the copyright line, and its two inline scripts are minified; `profiles/*.brf` lose their whole-line comments.
+- **The deploy id** is the commit (`WORKERS_CI_COMMIT_SHA` on Cloudflare, `git rev-parse HEAD` locally). It is sent on every file as `X-Polku-Deploy`, which `sw.js` reads ("One deploy's files per page"), and stamped into the copyright line of Polku's own `.js` and `.css` files and `index.html`, so every deploy changes their ETags. `sw.js` isn't stamped: a changed `sw.js` installs a new worker, which forgets the open pages' deploys and saved copies.
+- **`site/_headers`** holds the security headers Cloudflare sends (the plan's "Security headers"): the content security policy, report-only until the plan's part 5; its `script-src` names unpkg's files from `index.html`'s `<script src>` and the inline scripts by their hashes after minifying, so changing either needs only a rebuild. The policy allows no `on…=` attributes and no new outside script; a new kind of source (fonts, frames, media from another host) is blocked until the policy names it.
+- **`serve.py --site`** serves `site/` with `_headers` applied, sending the policy as `Content-Security-Policy`, so the smoke groups test it enforced. `/tools/` comes from the checkout, for the checks' fixtures and helpers. A failure only on the built site is the build's, and is fixed there.
 
 ### Writing a smoke check
 
@@ -367,6 +385,7 @@ How Polku works where data or services fall short, with nothing planned to chang
 ```
 index.html          shell + CDN scripts (maplibre-gl 5.24.0, maplibre-contour 0.1.1, with integrity hashes)
 sw.js               service worker: the app and saved tiles offline
+tools/site.sh       the built site polku.si publishes (site/), with wrangler.jsonc, package.json, robots.txt and .well-known/
 css/app.css         UI (light and dark)
 fonts/              the two typefaces, cut to Polku's characters, and their OFL licences
 docs/kit.html       the kit page: the type list and the values, drawn by css/app.css
