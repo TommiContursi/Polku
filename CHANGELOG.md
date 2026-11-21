@@ -13,6 +13,13 @@ What's new in [Polku](https://polku.si), from the latest updates back to the fir
 
 ## 2026-11-20
 
+### Layers say where they have data ([#1200](https://github.com/TommiContursi/Polku/issues/1200))
+
+- About half of the layers come from Finnish sources: the National Land Survey's maps and property boundaries, LIPAS's routes and places, Väylävirasto's and Traficom's nautical marks, depths and shipping lanes, and Fintraffic's and Digiroad's road layers. Where none of Finland is in view, their tiles and their switches in Layers now say **Finland only**, instead of looking like layers with nothing to show.
+- **Ships** say **Northern Baltic only** beyond the reach of Finland's AIS stations, which also see the Gulf of Finland, the Åland Sea and the Gulf of Bothnia. **Sea ice** says **Baltic Sea only** beyond the Baltic.
+- There, a sport's layers from those sources aren't counted as on in **On now** or in the count on **More**. Their switches stay on, so the layers show again when the map is back in their area. A view that reaches into Finland counts as in it.
+- **Marked routes** on the first screen asks you to zoom in on Finland where none of it is in view, instead of saying there are no marked routes in view.
+
 ### A new leg on the water offline ([#1195](https://github.com/TommiContursi/Polku/issues/1195))
 
 - Without a connection, a new leg over water where the map's detail isn't on your device is drawn as a straight line at once, and Polku says routing over water needs a connection. Before, it could be routed on Finland's coarse map, whose lakes have no islands, and look like a finished route. Where the detail is on your device, as along a route saved with **Save offline**, the leg can still be routed. Once you're back online, **Retry** in Check routes it.

@@ -25,7 +25,7 @@ import { initHover, hoverCapable } from './hover.js';
 import { registerServiceWorker, initOfflineStatus, openSaveOffline, renderOfflineSection, saveOverview } from './offline.js';
 import { initSearch, recentSearches, clearRecentSearches } from './search.js';
 import { parseTrackFile } from './gpx.js';
-import { lineLength, bbox, fmtDist, compass as side } from './geo.js';
+import { lineLength, bbox, fmtDist, compass as side, finlandInView, polygonInView, shipsInView, boxesMeet } from './geo.js';
 import { $, $$, h, icon, toast, store, popMenu, settleControls, infoDot, tooltip } from './ui.js';
 import { initGestures, bindCrosshair } from './gestures.js';
 import { initView3d } from './view3d.js';
@@ -1224,6 +1224,38 @@ const OVERLAY_NOTE = {
 };
 const overlayLabel = (id) => OVERLAY_LABEL[id] || (RASTER_OVERLAYS[id] && RASTER_OVERLAYS[id].label) || (SAFETY_OVERLAYS[id] && SAFETY_OVERLAYS[id].label) || id;
 
+// Where a layer's source has data (#1200). With none of its area in view, its tile and its switch say so in words, and it
+// isn't counted as on, though its switch stays as it was. FMI's ice charts are the Baltic Sea's (their own bounds).
+const FINLAND_ONLY = { only: 'Finland only', inView: finlandInView };
+// Traficom charts the Gulf of Finland past Finland's territorial sea, towards its middle: the depths from 22.9° E to
+// 26.4° E, and the shipping lanes from 24.1° E on, out to those off Gogland, besides a lane on the Kvarken's Swedish side
+// (where its layers draw outside Finland's outline, as surveyed on 2026-11-21: #1204's review)
+const traficom = (coordinates) => ({ only: 'Finland only', inView: (b) => finlandInView(b) || polygonInView({ type: 'MultiPolygon', coordinates }, b) });
+const DEPTHS_AREA = traficom([[[[22.9, 59.57], [23.25, 59.6], [23.5, 59.64], [24.25, 59.65], [24.5, 59.7], [24.75, 59.77], [25.25, 59.86],
+  [26, 59.84], [26.25, 59.94], [26.4, 60], [26.4, 60.15], [22.9, 60.15], [22.9, 59.57]]]]);
+const AREA = {
+  ...Object.fromEntries(['maastoOverlay', 'mmlMaastoOverlay', 'propertyLines', 'lipasRoutes', 'lipasPoints', 'lipasWinter', 'nautical',
+    'sfTraffic', 'sfIncidents', 'sfRoadworks', 'sfRoadcond', 'sfCameras', 'drPaved', 'drPrivate', 'drSpeed'].map((id) => [id, FINLAND_ONLY])),
+  ...Object.fromEntries(['depths', 'depthAreas', 'depthContours', 'soundings'].map((id) => [id, DEPTHS_AREA])),
+  fairways: traficom([[[[24.1, 59.66], [24.5, 59.67], [25, 59.76], [25.5, 59.8], [26, 59.83], [26.5, 59.9], [27, 59.96], [27.5, 60.04],
+    [28, 60.11], [28.2, 60.15], [28.2, 60.45], [27.6, 60.45], [27, 60.15], [24.1, 60.15], [24.1, 59.66]]],
+  [[[20.55, 63.45], [21, 63.45], [21, 63.62], [20.55, 63.62], [20.55, 63.45]]]]),
+  sfShips: { only: 'Northern Baltic only', inView: shipsInView },
+  seaIce: { only: 'Baltic Sea only', inView: (b) => boxesMeet(b, [9, 53.2, 31, 66.2]) },
+};
+const outside = (id) => {
+  const b = map.getBounds();
+  return AREA[id] && !AREA[id].inView([b.getWest(), b.getSouth(), b.getEast(), b.getNorth()]) ? AREA[id].only : '';
+};
+const areaNote = (id, note) => [outside(id), note].filter(Boolean).join(' · ');
+const counted = (id) => !!state.overlays[id] && !outside(id);
+// the map moved into or out of a layer's area: Layers says so as it moves
+let away = '';
+map.on('moveend', () => {
+  const now = Object.keys(AREA).filter(outside).join();
+  if (now !== away) { away = now; renderLayersPanel(); }
+});
+
 // Groups of the Layers panel (base maps sit above them; weather and terrain are state, not overlays).
 const LAYER_GROUPS = [
   { id: 'dark', title: 'After dark', ids: ['lit'] },
@@ -1450,13 +1482,15 @@ function trailControls() {
 }
 // one overlay's switch, with its opacity under it while it's on (Lit ways: its look, then its opacity)
 const overlayToggle = (id) => {
-  const o = RASTER_OVERLAYS[id], sf = SAFETY_OVERLAYS[id];
-  const tg = (o?.keepNote ? toggle : toggleInfo)(overlayLabel(id), !!state.overlays[id], rerender((v) => {
+  const o = RASTER_OVERLAYS[id], sf = SAFETY_OVERLAYS[id], note = sf ? sf.note : o ? o.note || o.attribution.replace('© ', '') : OVERLAY_NOTE[id] || '';
+  // in words: a note that keeps you safe, and where the layer has no data (#1200), else the note behind an ⓘ
+  const words = o?.keepNote ? areaNote(id, note) : outside(id);
+  const tg = (words ? toggle : toggleInfo)(overlayLabel(id), !!state.overlays[id], rerender((v) => {
     setOverlay(id, v);
     if (v && id === 'sfTraffic' && map.getZoom() < 10) toast('Zoom in to level 10+ to see traffic volumes');
     if (v && id === 'sfShips' && map.getZoom() < 8) toast('Zoom in to level 8+ to see ships');
     if (v && id === 'lit' && map.getZoom() < LIT_MIN_ZOOM) toast(`Zoom in to level ${LIT_MIN_ZOOM}+ to see the lit ways`);
-  }), sf ? sf.note : o ? o.note || o.attribution.replace('© ', '') : OVERLAY_NOTE[id] || '');
+  }), words || note);
   if (id === 'propertyLines' && state.overlays.propertyLines && hoverCapable()) return h('div', { class: 'tg-group' }, tg,
     toggle('Plot under the pointer', state.plotHover, (v) => { state.plotHover = v; if (!v) lightPlot('hover', null); saveSettings(); }), opacityRow(id));
   if (id !== 'lit' || !state.overlays.lit) return withOpacity(id, tg);
@@ -1510,7 +1544,7 @@ const DEPTHS = ['depthAreas', 'depthContours', 'soundings'];
 const onNowIds = () => [
   ...(state.trailColors !== 'off' ? ['trailColors'] : []),
   ...(state.trailDetails ? ['trailDetails'] : []),
-  ...[...LAYER_GROUPS.flatMap((g) => g.ids), 'maastoOverlay', 'mmlMaastoOverlay', 'propertyLines', 'access'].filter((id) => state.overlays[id]),
+  ...[...LAYER_GROUPS.flatMap((g) => g.ids), 'maastoOverlay', 'mmlMaastoOverlay', 'propertyLines', 'access'].filter(counted),
   ...['wind', 'temp', 'rain', 'cloud', 'thunder', 'snow', 'towns'].filter((k) => state.weather[k]).map((k) => `wx:${k}`),
 ];
 
@@ -1534,7 +1568,7 @@ function renderLayersPanel() {
     h('button', { type: 'button', class: 'link', onclick: (e) => { openPanel(null); openActs(!e.detail); $('#activity-bar .act-menu .act[aria-selected="true"]')?.focus(); } }, 'Change')));
 
   // what is on right now, at a glance
-  const on = [...LAYER_GROUPS.flatMap((g) => g.ids), 'maastoOverlay', 'mmlMaastoOverlay', 'propertyLines', 'access'].filter((id) => state.overlays[id]);
+  const on = [...LAYER_GROUPS.flatMap((g) => g.ids), 'maastoOverlay', 'mmlMaastoOverlay', 'propertyLines', 'access'].filter(counted);
   const wx = [['wind', 'Wind'], ['temp', 'Temperature'], ['rain', 'Rain'], ['cloud', 'Clouds'], ['thunder', 'Thunder'], ['snow', 'Snow depth'], ['towns', 'Weather at places']].filter(([k]) => state.weather[k]);
   const trailOn = state.trailColors !== 'off';
   const custom = Object.keys(state.overlaysByActivity[state.activity] || {}).length > 0 || Object.keys(state.trailsByActivity[state.activity] || {}).length > 0;
@@ -1572,11 +1606,11 @@ function renderLayersPanel() {
     ...terrain3dControls()));
 
   // terrain shading right after the base maps and 3D, open unless you close it
-  p.append(layerGroup('terrain', 'Terrain', ['maastoOverlay', 'propertyLines'].filter((id) => state.overlays[id]).length, true,
+  p.append(layerGroup('terrain', 'Terrain', ['maastoOverlay', 'propertyLines'].filter(counted).length, true,
     hillshadeControls(),
     toggleInfo('Contour lines', state.contours, (v) => { state.contours = v; applyStyle(); }, '5 m, 2.5 m when zoomed in'),
-    withOpacity('maastoOverlay', toggleInfo(RASTER_OVERLAYS.maastoOverlay.label, !!state.overlays.maastoOverlay, rerender((v) => setOverlay('maastoOverlay', v)), RASTER_OVERLAYS.maastoOverlay.attribution.replace('© ', ''))),
-    state.mmlKey ? withOpacity('mmlMaastoOverlay', toggle(RASTER_OVERLAYS.mmlMaastoOverlay.label, !!state.overlays.mmlMaastoOverlay, rerender((v) => setOverlay('mmlMaastoOverlay', v)))) : null,
+    overlayToggle('maastoOverlay'),
+    state.mmlKey ? withOpacity('mmlMaastoOverlay', toggle(RASTER_OVERLAYS.mmlMaastoOverlay.label, !!state.overlays.mmlMaastoOverlay, rerender((v) => setOverlay('mmlMaastoOverlay', v)), outside('mmlMaastoOverlay'))) : null,
     overlayToggle('propertyLines')));
 
   // trails & difficulty (and the map key for the base map's lines): in every sport
@@ -1585,7 +1619,7 @@ function renderLayersPanel() {
   // winter: on by itself where there's snow (or yours to set), and what it shows
   const wset = winterSetting(), wOn = state.winterOn;
   const wIds = ['winterWays', 'lipasWinter', 'seaIce'];
-  p.append(layerGroup('winter', wOn ? 'Winter ❄' : 'Winter', wOn ? wIds.filter((id) => state.overlays[id]).length : 0, wOn,
+  p.append(layerGroup('winter', wOn ? 'Winter ❄' : 'Winter', wOn ? wIds.filter(counted).length : 0, wOn,
     seg([['auto', 'Auto'], ['on', 'On'], ['off', 'Off']], wset, (v) => {
       setWinterSetting(v);
       if (v === 'auto') { winterAt = null; checkWinter(true); }
@@ -1597,8 +1631,8 @@ function renderLayersPanel() {
       setOverlay('winterWays', v);
       if (v && wOn && map.getZoom() < WINTER_MIN_ZOOM) toast(`Zoom in to level ${WINTER_MIN_ZOOM}+ to see the winter ways`);
     }), 'How soon trails open after snow, ploughing, no access in winter, ski tracks · OpenStreetMap, where mapped · zoom 11+'),
-    toggle('Ski tracks, skating & snowmobile routes', !!state.overlays.lipasWinter, rerender((v) => setOverlay('lipasWinter', v)), 'LIPAS · keep off ski tracks on foot and by bike'),
-    withOpacity('seaIce', toggle('Sea ice', !!state.overlays.seaIce, rerender((v) => setOverlay('seaIce', v)), 'FMI’s daily ice charts (Copernicus Marine) · never a sign that ice is safe')),
+    toggle('Ski tracks, skating & snowmobile routes', !!state.overlays.lipasWinter, rerender((v) => setOverlay('lipasWinter', v)), areaNote('lipasWinter', 'LIPAS · keep off ski tracks on foot and by bike')),
+    withOpacity('seaIce', toggle('Sea ice', !!state.overlays.seaIce, rerender((v) => setOverlay('seaIce', v)), areaNote('seaIce', 'FMI’s daily ice charts (Copernicus Marine) · never a sign that ice is safe'))),
     withOpacity('wx:snow', toggleInfo('Snow depth on the map', state.weather.snow, (v) => setWeather({ snow: v }), 'On the timeline, with FMI’s measured depths')),
     wOn ? null : h('p', { class: 'note' }, 'These show while it’s winter.'),
     mapKey(...KEYS.winter())));
@@ -1608,7 +1642,7 @@ function renderLayersPanel() {
     if (g.id === 'dark') kids.push(h('div', { id: 'lit-load-status', class: 'note', hidden: true }, h('span'), h('button', { class: 'btn', type: 'button', onclick: retryLit, hidden: true }, 'Try again')));
     if (g.id === 'safety') kids.push(h('p', { class: 'note' }, 'Planned routes are checked against these too: road works, incidents, slippery and busy roads show up in Check, each with Avoid it on its card.'));
     if (KEYS[g.id]) kids.push(mapKey(...KEYS[g.id]()));
-    p.append(layerGroup(g.id, g.title, g.ids.filter((id) => state.overlays[id]).length, ...kids));
+    p.append(layerGroup(g.id, g.title, g.ids.filter(counted).length, ...kids));
   }
 
   // weather on the map — the same switches as on the Weather button's timeline
@@ -1696,6 +1730,8 @@ function tileFailing(id) {
   return !!src && src.every((s) => sourceStatus(s));
 }
 function tileStatus(id) {
+  const out = outside(id); // (on or off: before you turn it on, too)
+  if (out) return out;
   if (!tileOn(id)) return '';
   if (QUICK_TILE[id].winter && !state.winterOn) return 'Shows in winter';
   if (map.getZoom() < tileZoom(id)) return 'Zoom in to see';
