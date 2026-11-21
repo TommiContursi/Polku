@@ -601,6 +601,11 @@ export function buildStyle(s, ctx) {
     poi('poi-parking', 15.5, ['all', ['==', ['get', 'class'], 'parking'], ['has', 'name']]);
     poi('poi-parking-all', 17, ['all', ['==', ['get', 'class'], 'parking'], ['!', ['has', 'name']]]);
     // and a P on each of MML's car parks in Finland from 15, placed before them, so OSM's P on the same car park gives way
+    // MML's springs and tar pits in Finland (#1173) from 15, as places with icons of their own; OSM's points come after them,
+    // so where both have one, OSM's is placed first and drawn
+    if (vectorFills) for (const [id, layer, cls, kind] of [['mml-spring', 'maasto_piste', 36100, 'spring'], ['mml-tarpit', 'poi', 45400, 'tarpit']]) {
+      add({ id, type: 'symbol', source: 'mml', 'source-layer': layer, minzoom: 15, filter: ['==', ['get', 'kohdeluokka'], cls], layout: { 'icon-image': `place-${kind}`, 'icon-size': 0.6 }, paint: { 'icon-opacity': s.base === 'night' ? 0.85 : 1 } });
+    }
     if (vectorFills) add({ id: 'mml-parking-p', type: 'symbol', source: 'mml', 'source-layer': 'liikenne', minzoom: 15, filter: ['all', ['==', ['get', 'kohdeluokka'], 32421], ['==', ['geometry-type'], 'Polygon']], layout: { 'icon-image': 'parking', 'icon-size': hc ? 1.05 : 0.8, 'icon-padding': 12 }, paint: { 'icon-opacity': s.base === 'night' ? 0.85 : 1 } });
   }
   // Shops and food (#1222), a layer of its own: from 17, the tiles' rank first where they crowd; none upstairs or indoors, where

@@ -270,6 +270,8 @@ export const LIPAS_TYPES = {
 // js/icons.js) on a disc in the kind's colour, `place-<kind>` on the map. One list, for the catalogue of place kinds (#121).
 export const PLACE_KINDS = {
   guidepost: { name: 'Guidepost', color: '#734a08', icon: 'guidepost' }, // OSM's standard map's brown for tourism
+  spring: { name: 'Spring', color: '#1d6fb8', icon: 'spring' }, // the water's blue
+  tarpit: { name: 'Tar pit', color: '#57534e', icon: 'tarpit' }, // tar's
 };
 
 // ---------------------------------------------------------------------------
