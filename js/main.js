@@ -7,6 +7,7 @@ import {
 } from './config.js';
 import { LitWays, LIT_MIN_ZOOM } from './lit.js';
 import { HostedLayer } from './osm-data.js';
+import { MmlPaths } from './mmlpaths.js';
 import { WinterWays, measuredSnow, snowNear, isWinter, winterSetting, setWinterSetting, seaIceProtocol, WINTER_TEXT, WINTER_MIN_ZOOM, SNOW_ON } from './winter.js';
 import { pointForecasts, sampleAt, skyKind } from './weather.js';
 import { SafetyLayers, AADT_STEPS } from './safety.js';
@@ -277,7 +278,7 @@ map.on('webglcontextrestored', () => map.once('style.load', applyStyle));
 // comes after it, while any of them is still busy (an update to run, tiles on their way), for 500 ms at most; then it's
 // all drawn at once. What comes later is drawn as it comes, and nothing else waits: a route, a pick, loops, a layer you
 // switch or Try again (configureLayers and retryLit draw what's held first).
-const TOGETHER = new Set(['trailWays', 'trailPoints', 'trailCoverage', 'lipasRoutes', 'lipasPoints', 'litWays', 'litCover', 'winterWays', 'uphill', 'nmMarks', 'nmLines', 'nmAreas', 'nmSectors', 'nmLights', 'reedbeds', 'osmPoints']);
+const TOGETHER = new Set(['trailWays', 'trailPoints', 'trailCoverage', 'lipasRoutes', 'lipasPoints', 'litWays', 'litCover', 'winterWays', 'uphill', 'nmMarks', 'nmLines', 'nmAreas', 'nmSectors', 'nmLights', 'reedbeds', 'osmPoints', 'mmlPaths']);
 const together = { loaders: [], armed: false, held: null, until: 0 };
 map.on('moveend', () => { together.armed = true; });
 function holdTogether(id) {
@@ -508,6 +509,7 @@ const lipas = new LipasLayer(map, (routes, points) => { setData('lipasRoutes', r
 const winterWays = new WinterWays(map, (fc) => setData('winterWays', fc));
 const reedbeds = new HostedLayer(map, OSM_DATA_MANIFEST, 'wetlands', (fc) => setData('reedbeds', fc)); // OSM's reedbeds on the vector base maps (#1144)
 const osmPoints = new HostedLayer(map, OSM_DATA_MANIFEST, 'points', (fc) => setData('osmPoints', fc), () => refreshQuickSoon()); // and its fire places, springs, caves… (#1179)
+const mmlPaths = new MmlPaths(map, (fc) => setData('mmlPaths', fc)); // MML's paths OSM lacks (#1171)
 // (a tile that comes in may end "No data now" on the Lit ways tile)
 const litWays = new LitWays(map, { onData: (fc, cover) => { setData('litWays', fc); setData('litCover', cover); }, onStatus: refreshLitStatus });
 const retryLit = () => { drawTogether(); litWays.retry(); }; // (Try again's answer is never held)
@@ -565,7 +567,7 @@ let mapTime = () => Date.now() / 1000;
 const safety = new SafetyLayers(map, { setData, time: () => mapTime() });
 const cameras = new CameraLayer(map, { setData });
 const nautical = new NauticalLayer(map, { setData });
-together.loaders = [details, lipas, litWays, winterWays, uphill, nautical, reedbeds, osmPoints];
+together.loaders = [details, lipas, litWays, winterWays, uphill, nautical, reedbeds, osmPoints, mmlPaths];
 
 flow = new RouteFlow(map, {
   enabled: () => state.routeFlow,

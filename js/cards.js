@@ -600,7 +600,7 @@ const markColour = (pick) => (pick.a && pick.a !== 'failed' && (breakdownRows(pi
 // kin, on the same card as a way, highlighted on the map: what it is, its facts, where they come from, and the card's last row
 // (Share, Weather here ›, and the source's own page where it has one). The water is a pick's (pickBody()), with its depth.
 export function thingCard(pl, f, ll) {
-  const t = thingOf(f, pl.map), spot = { ll, title: t.title, line: t.sub || '' };
+  const t = thingOf(f, pl.map, ll), spot = { ll, title: t.title, line: t.sub || '' };
   const card = {
     kind: 'thing', key: ll, spot, pinned: true,
     get title() { return t.title; }, get label() { return t.title; }, get sub() { return t.sub || ''; },

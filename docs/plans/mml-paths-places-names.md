@@ -48,6 +48,11 @@ ways to avoid it, and asks seven questions, each with one recommendation.
   `poi-fire` from 13 and `poi-points` from 15; MML's springs and tar pits are
   `mml-spring` and `mml-tarpit`, placed after OSM's. The kinds are
   `PLACE_KINDS`, the list #121 takes over.
+- **Built, part 4: the paths OSM lacks.** `js/mmlpaths.js` runs way C's
+  distance test once per zoom-14 tile on the tiles loaded; `mml-path` draws
+  the pieces from zoom 14 in every sport, with a card that says routes don't
+  follow them. On Yyteri's recorded tiles it takes about 10 ms (on a desktop;
+  a phone not measured).
 
 ## The questions
 

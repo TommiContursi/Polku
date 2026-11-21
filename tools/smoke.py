@@ -2108,6 +2108,67 @@ def osm_points(chrome):
     fails += [f'console: {e[:160]}' for e in pg.errors()]
     pg.close()
     print(f"{'ok  ' if not fails else 'FAIL'} OSM's fire places, springs, caves, bunkers and tar kilns, MML's springs and tar pits (#1179, #1173)" + ''.join(f'\n     - {f}' for f in fails), flush=True)
+
+
+# #1171: MML's paths, forest tracks and drives that OSM lacks, from the app's own distance test on recorded tiles of the same
+# place (Yyteri: tools/fixtures/mml-taustakartta-14-9171-4611.pbf and OpenFreeMap's tools/fixtures/ofm-14-9171-4611.pbf), never
+# live MML: the pieces with no OSM way within 15 m, 50 m or more, from zoom 14, under OSM's ways, in every sport; a click on one
+# opens its card, which says routes don't follow it and links to OpenStreetMap's editor there.
+def mml_paths(chrome):
+    pg = chrome.page(1440, 900, False)
+    pg.open_app({'activity': 'hike', 'base': 'trail'}, None, '#10/61.55/21.6')
+    fails = pg.js("""(async () => {
+      const errs=[], m=polku.map, FX=['14/9171/4611'], wait=(ms)=>new Promise((r)=>setTimeout(r,ms));
+      const settle=async()=>{await wait(300);await Promise.race([new Promise(r=>{m.once('idle',r);m.triggerRepaint();}),wait(10000)]);await wait(600);};
+      if(m.style.tileManagers.mml.getIds().length)return ['MML was asked for tiles at zoom 10'];""" + MML_FIXTURES + """
+      const ofm=await (await fetch('/tools/fixtures/ofm-14-9171-4611.pbf')).arrayBuffer();
+      maplibregl.addProtocol('ofmtest', async () => ({data: ofm.slice(0)}));
+      m.setTransformRequest((url)=>({url: url.startsWith('https://avoin-karttakuva.maanmittauslaitos.fi/vectortiles/') ? url.replace(/^https:/,'mmltest:')
+        : /^https:\\/\\/tiles\\.openfreemap\\.org\\/planet\\/[^/]+\\/14\\/9171\\/4611\\.pbf/.test(url) ? 'ofmtest://14/9171/4611' : url}));
+      const {missingPieces}=await import('/js/mmlpaths.js'), I=await import('/js/inspect.js');
+      // (the source's own data: querySourceFeatures would give the pieces cut and repeated by the GeoJSON source's tiles)
+      const pieces=async()=>{for(let k=0;k<40;k++){const f=(await m.getSource('mmlPaths').getData()).features; if(f.length)return f; await wait(250);} return [];};
+      const kx=111320*Math.cos(61.6*Math.PI/180), metres=(a,b)=>Math.hypot((a[0]-b[0])*kx,(a[1]-b[1])*110574), len=(c)=>c.reduce((s,p,i)=>i?s+metres(c[i-1],p):0,0);
+      m.jumpTo({center:tileMid(14,9171,4611),zoom:13.6}); await settle();
+      if(m.queryRenderedFeatures({layers:['mml-path']}).length)errs.push('paths drawn under zoom 14');
+      m.jumpTo({zoom:14.6}); await settle();
+      const got=await pieces(), by={};
+      if(!got.length)return [...errs,'no piece worked out from the recorded tiles'];
+      for(const f of got){by[f.properties.kohdeluokka]=(by[f.properties.kohdeluokka]||0)+len(f.geometry.coordinates); if(len(f.geometry.coordinates)<49)errs.push(`a piece of ${len(f.geometry.coordinates).toFixed(0)} m`);}
+      // (worked out from the two tiles on 2026-11-21: 544 m of path and 51 m of drive)
+      if(!(by[12313]>450&&by[12313]<650))errs.push(`${(by[12313]||0).toFixed(0)} m of path drawn, not about 544`);
+      // no point of a piece within 15 m of an OSM way of the recorded tile
+      const ways=m.querySourceFeatures('ofm',{sourceLayer:'transportation'}).filter((f)=>f._z===14&&f._x===9171&&f._y===4611&&!['rail','transit','ferry','aerialway'].includes(f.properties.class)).flatMap((f)=>f.geometry.type==='LineString'?[f.geometry.coordinates]:f.geometry.type==='MultiLineString'?f.geometry.coordinates:[]);
+      const seg=(p,a,b)=>{const ax=a[0]*kx,ay=a[1]*110574,bx=b[0]*kx,by_=b[1]*110574,x=p[0]*kx,y=p[1]*110574,dx=bx-ax,dy=by_-ay,t=dx||dy?Math.max(0,Math.min(1,((x-ax)*dx+(y-ay)*dy)/(dx*dx+dy*dy))):0;return Math.hypot(x-ax-t*dx,y-ay-t*dy);};
+      let close=0; for(const f of got)for(const p of f.geometry.coordinates)for(const w of ways)for(let i=1;i<w.length;i++)if(seg(p,w[i-1],w[i])<14.5)close++;
+      if(!ways.length)errs.push('(the test) no OSM ways in the recorded tile'); else if(close)errs.push(`${close} points of the pieces within 15 m of an OSM way`);
+      // the distance test alone: on an OSM way nothing, 20 m off a piece, a short one nothing, a line MML has twice once
+      const B=[21.5,61.6,21.6,61.7], dl=1/(111320*Math.cos(61.65*Math.PI/180)), P=(x,y)=>[21.55+x*dl,61.65+y/110574], osm=[[P(0,0),P(200,0)]];
+      for(const [what,mml,n] of [['along an OSM way',[{cls:12313,coords:[P(0,10),P(200,10)]}],0],['20 m off it',[{cls:12313,coords:[P(0,20),P(200,20)]}],1],['40 m long',[{cls:12313,coords:[P(100,30),P(100,70)]}],0],
+          ['twice',[{cls:12316,coords:[P(0,100),P(300,100)]},{cls:12313,coords:[P(50,100),P(250,100)]}],1]])
+        if(missingPieces(mml,osm,B).length!==n)errs.push(`the test on a line ${what}: ${missingPieces(mml,osm,B).length} pieces, not ${n}`);
+      const order=m.getLayersOrder(), first=order.findIndex((id)=>/^(path|track|road)-/.test(id));
+      if(!(order.indexOf('mml-path')>=0&&order.indexOf('mml-path')<first))errs.push(`MML's paths not under OSM's ways (${order.indexOf('mml-path')}, ${order[first]} at ${first})`);
+      // a click on one: its card
+      let pt=null;
+      for(let y=80;y<innerHeight-40&&!pt;y+=4)for(let x=24;x<innerWidth-100&&!pt;x+=4){const f=I.pickAt(m,[x,y],I.featuresAt(m,{x,y},I.hitBox({x,y},false),I.inspectLayers(m))); if(f&&f.layer.id==='mml-path')pt={x,y};}
+      if(!pt)errs.push("no spot where a click picks MML's path");
+      else {
+        m.fire('click',{point:pt,lngLat:m.unproject([pt.x,pt.y]),originalEvent:new MouseEvent('click')});
+        let c=null; for(let k=0;k<20&&!(c=polku.planner.cards.current);k++)await wait(100);
+        const el=[...document.querySelectorAll('.pl-way.card')].find((e)=>e.getClientRects().length), text=el?el.textContent:'';
+        if(!c||!['Path','Forest track','Drive'].includes(c.title))errs.push(`a click on MML's path opened ${c?c.title:'nothing'}`);
+        for(const w of ['not in OpenStreetMap','draw this stretch with Freehand','Add it to OpenStreetMap'])if(!text.includes(w))errs.push(`the path's card doesn't say ${w}`);
+        polku.planner.cards.close(); await wait(300);
+        if(I.tapLayers(m,'all','off').includes('mml-path'))errs.push("a tap that picks no way still picks MML's path");
+      }
+      for(const activity of ['road','paddle','mtb']){polku.set({activity}); await settle(); if(!m.getLayer('mml-path'))errs.push(`no MML paths in ${activity}`);}
+      polku.set({base:'aerial'}); await settle(); if(m.getLayer('mml-path'))errs.push('MML paths on the aerial photos');
+      return errs;
+    })()""", timeout=150000)
+    fails += [f'console: {e[:160]}' for e in pg.errors()]
+    pg.close()
+    print(f"{'ok  ' if not fails else 'FAIL'} MML's paths OSM lacks, from the distance test (#1171)" + ''.join(f'\n     - {f}' for f in fails), flush=True)
     return not fails
 
 # #1179: guideposts from zoom 15 with an icon of their own (a post with two signs on a brown disc), not the information
@@ -26938,7 +26999,7 @@ GROUPS = [
     ('site', [license_text], 'the built site: LICENSE sent as text, since every file\'s copyright line links to it (#115); against the checkout it checks nothing'),
     ('pacing', [pacing, paced_legs, net_fails], 'calls made together go out paced and counted (mocked services, a fake clock); legs refused for a slot follow at it (#78); the calls that failed, in Data sources (#687)'),
     ('loading', [loading, routing_edits], 'cancel obsolete routing, edits/Undo/Clear, shared subscribers, refusal/recovery, deadlines, terrain slots and LIPAS viewport/cache (mocked)'),
-    ('layers', [layers, layer_coverage, cycleway_style, cycling_restrictions, waterway_style, property_lines, property_plots, wetland_style, reedbed_style, mml_bogs, mml_rock, mml_water, mml_open, osm_cliffs, saddles, mml_cards, mml_winter_roads, guideposts, mml_names, osm_points, town_gates, town_bridges, town_oneway, town_parks, town_parking, town_shops, town_housenumbers], 'the Layers panel in every sport'),
+    ('layers', [layers, layer_coverage, cycleway_style, cycling_restrictions, waterway_style, property_lines, property_plots, wetland_style, reedbed_style, mml_bogs, mml_rock, mml_water, mml_open, osm_cliffs, saddles, mml_cards, mml_winter_roads, guideposts, mml_names, osm_points, mml_paths, town_gates, town_bridges, town_oneway, town_parks, town_parking, town_shops, town_housenumbers], 'the Layers panel in every sport'),
     ('raster', [raster_maps, aerial_fallback, aerial_labels], 'terrain and aerial detail, bounded high-density WMS symbols, depth boundaries and missing aerial detail (#649, #650, #653); the map\'s words on the aerial photos at 4.5:1 on their halo (#554)'),
     ('coarse', [coarse], 'a coarse map underneath (#1091): the base map\'s tile four zoom levels up stands in for one that hasn\'t come, at 1440 and 390'),
     ('offline', [mml_offline], 'Save offline keeps the National Land Survey\'s tiles (#1176): its terrain at zooms 11–14 and property boundaries while on, under addresses without the key, two at a time and ten a second at most; what Offline maps says an area lacks; offline, with the real worker, the bogs drawn from the saved tile and no message'),

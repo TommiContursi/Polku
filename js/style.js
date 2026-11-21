@@ -150,6 +150,7 @@ export function buildStyle(s, ctx) {
     winterWays: { type: 'geojson', data: ctx.data.winterWays || EMPTY }, // OSM's winter tags (js/winter.js)
     reedbeds: { type: 'geojson', data: ctx.data.reedbeds || EMPTY }, // OSM's reedbeds (HostedLayer in js/osm-data.js)
     osmPoints: { type: 'geojson', data: ctx.data.osmPoints || EMPTY }, // OSM's fire places, springs, caves… (HostedLayer too)
+    mmlPaths: { type: 'geojson', data: ctx.data.mmlPaths || EMPTY }, // MML's paths OSM lacks (js/mmlpaths.js)
     litWays: { type: 'geojson', data: ctx.data.litWays || EMPTY }, // OSM's lit and unlit ways (js/lit.js)
     litCover: { type: 'geojson', data: ctx.data.litCover || EMPTY }, // the lit tiles that came in: In the dark's veil
     lipasPoints: { type: 'geojson', data: ctx.data.lipasPoints || EMPTY },
@@ -424,6 +425,16 @@ export function buildStyle(s, ctx) {
   // the hills' shadows, and the trees' and buildings' (js/shadows.js, #919) from zoom 14: over water, fields and roofs
   if (sources.sunshadow) add({ id: 'sun-shadow', type: 'raster', source: 'sunshadow', minzoom: 10, paint: { 'raster-fade-duration': 0 } });
   if (sources.objshadow) add({ id: 'obj-shadow', type: 'raster', source: 'objshadow', minzoom: 14, paint: { 'raster-fade-duration': 0 } });
+
+  // MML's paths, forest tracks and drives that OSM lacks (#1171), from zoom 14 in every sport, under OSM's ways: the
+  // Maastokartta's dashes in the paths' colour, forest tracks and drives with longer ones, and none of OSM's halo, so they
+  // don't read as a path routes follow
+  if (sources.mml) {
+    add({
+      id: 'mml-path', type: 'line', source: 'mmlPaths', minzoom: 14, layout: { 'line-join': 'round' },
+      paint: { 'line-color': P.path, 'line-width': zi(14, 1, 16, 1.6, 18, 2.6), 'line-dasharray': ['match', ['get', 'kohdeluokka'], 12313, ['literal', [1.6, 1.6]], ['literal', [4, 1.6]]] },
+    });
+  }
 
   addRoads(s, P, hc, layers, ctx);
 
