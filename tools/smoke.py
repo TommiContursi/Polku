@@ -3851,6 +3851,11 @@ AVOID_OPENED = """(async (sent) => {
   q.set('av', Array.from({ length: 205 }, (_, i) => `24.9_60.${100 + i}_30`).join(','));
   const many = P.parseShared(q);
   if (!many || (many.nogos || []).length !== 200 || !many.nogosLost) errs.push(`205 circles in a link: ${many ? `${(many.nogos || []).length} read, lost: ${many.nogosLost}` : 'did not open'}`);
+  // (#1246) a route with a point off the earth isn't read: the map threw on it, and Polku stopped starting
+  const G = await import(location.origin + '/js/geo.js');
+  for (const off of [[24.95, 95], [200, 60.18]]) {
+    if (P.parseShared(new URLSearchParams({ r: G.encodePolyline([[24.94, 60.17], off]) }))) errs.push(`a link with a point at ${off} was read as a route`);
+  }
   return errs;
 })"""
 # a reload: the saved route keeps them
@@ -6238,6 +6243,11 @@ FIT_LIB = """(() => {
     // a KML line's empty values are missing too, not 0 (an empty altitude leaves the point as it is)
     const ls = G.parseTrackFile('<?xml version="1.0"?><kml xmlns="http://www.opengis.net/kml/2.2"><Placemark><LineString><coordinates>23.7,61.4,0 ,61.41,0 23.72,,0 23.73, 61.43 23.74,61.44,</coordinates></LineString></Placemark></kml>', 'bad.kml');
     if (ls.lines.map((l) => l.length).join() !== '2' || ls.lines.some((l) => l.some((c) => c.some((v) => !v)))) err(`a KML line with empty values: ${JSON.stringify(ls.lines)} (want 2 points, no zero)`);
+    // (#1246) a point off the earth is left out too: the map throws on a latitude beyond 90°, and Analyse & edit stopped there
+    const far = G.parseTrackFile(`<?xml version="1.0"?><gpx version="1.1"><trk><trkseg>${[pt('trkpt', 'lat="61.4" lon="23.7"'), pt('trkpt', 'lat="95" lon="23.71"'), pt('trkpt', 'lat="61.42" lon="23.72"'), pt('trkpt', 'lat="61.43" lon="190"')].join('')}</trkseg></trk>${pt('wpt', 'lat="-91" lon="23.7"')}</gpx>`, 'far.gpx');
+    if (far.lines.map((l) => l.length).join() !== '2' || far.points.length) err(`a GPX with points off the earth: lines of ${far.lines.map((l) => l.length).join()} points (want 2), ${far.points.length} waypoints (want 0)`);
+    const farKml = G.parseTrackFile('<?xml version="1.0"?><kml xmlns="http://www.opengis.net/kml/2.2"><Placemark><LineString><coordinates>23.7,61.4 23.71,95 23.72,61.42</coordinates></LineString></Placemark></kml>', 'far.kml');
+    if (farKml.lines.map((l) => l.length).join() !== '2') err(`a KML line with a point off the earth: lines of ${farKml.lines.map((l) => l.length).join()} points (want 2)`);
     p.setSheetState('half');
     return T.errs.splice(0);
   };
@@ -17062,7 +17072,7 @@ BT_STATES = """(async () => {
     polku.planner.btRedraw(polku.planner.cards.current);
     await BT.until(() => BT.box()?.querySelector('.stale-note, .bt-fail') && BT.done());
     const old = BT.box().querySelector('.stale-note')?.textContent || '';
-    if (!/^Older forecast \(from /.test(old) || !BT.box().querySelector('.bt-best')) errs.push(`an hour on with the forecast failing: “${BT.box().textContent.slice(0, 160)}”, not the older forecast, said`);
+    if (!/^Older forecast \\(from /.test(old) || !BT.box().querySelector('.bt-best')) errs.push(`an hour on with the forecast failing: “${BT.box().textContent.slice(0, 160)}”, not the older forecast, said`);
   } finally { Date.now = now; W.fail = false; }
   return errs;
 })()"""
@@ -17275,7 +17285,7 @@ BT_WATER = """(async () => {
   const cross = () => [...BT.box().querySelectorAll('.bt-cross')].map((e) => e.textContent);
   const step = async (k) => { BT.box().querySelector('[data-k=bt-next]').click(); return BT.until(() => BT.box()?.querySelector('.bt-day b')?.textContent.includes(new Date(BT.day(k, 12) * 1000).toLocaleDateString([], { weekday: 'short' })) && BT.done(), 30000); };
   await step(2);
-  const two = /^Leave between (\S+) and (\S+) to cross in small waves/.exec(cross()[0] || '');
+  const two = /^Leave between (\\S+) and (\\S+) to cross in small waves/.exec(cross()[0] || '');
   if (!two || two[1] !== BT.clock(BT.day(2, 10)) || ![BT.clock(BT.day(2, 13)), BT.clock(BT.day(2, 14))].includes(two[2])) errs.push(`the day after tomorrow, calm from 10:00 to 15:00: “${cross().join(' / ')}”`);
   for (const k of [3, 4, 5]) await step(k);
   if (cross().length) errs.push(`five days ahead (${BT.box().querySelector('.bt-day b')?.textContent}), past the forecast: “${cross().join(' / ')}”`);
@@ -25252,6 +25262,42 @@ def point_card_actions(chrome):
 LIPAS_KOTA = {'name': 'Haukanlammen kota', 'typeName': 'Laavu, kota tai kammi', 'city': 'Tampere', 'lipasId': 72269, 'type': 206}
 
 
+# (#1247) a name from map data, with HTML in it, in each kind of feature whose name heads the spot card: the card
+# says it as written, and nothing in it loads (an image's request would mean it was put into the page as HTML)
+SPOT_NAMES = """(async () => {
+  const m = polku.map, p = polku.planner, at = m.getCenter(), errs = [], real = m.queryRenderedFeatures, IMG = '/__smoke-1247.png';
+  const name = `<img src="${IMG}" onerror="window.__ran1247 = 1">Kota & co`;
+  const kinds = [['winter-ski', { name, cls: 'ski' }], ['cameras', { name }], ['sf-points', { kind: 'roadcond', label: name }], ['lipas-route', { name, typeName: 'Hiking route' }]];
+  p.placeAt = () => null; // (on the spot: no place under it, whatever the tiles have)
+  try {
+    for (const [id, props] of kinds) {
+      window.__ran1247 = 0;
+      m.queryRenderedFeatures = () => [{ type: 'Feature', layer: { id }, source: 'x', properties: props, geometry: { type: 'LineString', coordinates: [[at.lng - 0.001, at.lat], [at.lng + 0.001, at.lat]] } }];
+      try { p.openSpotCard([at.lng, at.lat]); } finally { m.queryRenderedFeatures = real; }
+      await new Promise((r) => setTimeout(r, 500));
+      const card = document.querySelector('.pl-way.card');
+      if (window.__ran1247 || performance.getEntriesByName(location.origin + IMG).length) errs.push(`${id}: the name went into the page as HTML`);
+      else if (!card || !card.textContent.includes(name)) errs.push(`${id}: the card says ${card ? JSON.stringify(card.textContent.slice(0, 80)) : 'nothing'}, not the name as written`);
+      p.cards.close();
+    }
+  } finally { delete p.placeAt; }
+  return errs;
+})()"""
+
+
+def spot_card_names(chrome):
+    """A name with HTML in it, from LIPAS, a winter way or Fintraffic, is text in the spot card, never run (#1247)."""
+    pg = chrome.page(1440, 900, False)
+    try:
+        pg.open_app({'activity': 'mtb'}, {'polku:winter': '"off"'}, '#15/61.514/23.818')
+        pg.js("import(location.origin + '/js/ways.js').then((W) => { W.holdWays(); return true; })")  # (no answer from Overpass to name the spot instead)
+        fails = pg.js(SPOT_NAMES, timeout=30000) + [f'console: {e[:160]}' for e in pg.errors()]
+    finally:
+        pg.close()
+    print(' ', 'ok' if not fails else 'FAIL', 'a name with HTML in it is text in the spot card (#1247)', *(['\n    1440x900: ' + f for f in fails] if fails else []))
+    return not fails
+
+
 def spot_card_actions(chrome):
     """A place's card (#690): the action row of four under its numbers, Add to my route first and green, inside the peek;
     Start here, End here and Copy under More for this place; Not right? alone in its foot. Add to my route gives the
@@ -25686,7 +25732,7 @@ GROUPS = [
     ('pointcard', [point_card, point_card_actions], 'a point\'s card (25d): a tap, a hold and a right-click open the same card, when you\'re there and the profile up to it, with its actions, in the peek or at the point, its numbers, Make it a stop, Stay the night, Change sport from here, Move by a tap, Rename, Remove and Undo, Back and the back gesture, the route\'s view, 200 % and Finnish (straight legs)'),
     ('routecard', [route_card, near_line, route_card_actions], 'the route\'s card and a stretch\'s (25d 1b): a tap on the route, a tap just beside it while drawing (#725), Add a waypoint here at the spot, This stretch, What\'s here, Edit this stretch, On the profile, Avoid this spot, the whole route, the start\'s Back to start, End not Finish (straight legs, mocked BRouter)'),
     ('pickcard', [pick_card, pick_card_settings], 'a pick (#574): road works on the same card with their years (#564, #565), a phone\'s tap opening the card at its peek, the hover; a way\'s pieces joined into one thing from a recorded tile, the S5 path\'s grade and incline in Gravel (#561), nothing "not mapped" that wasn\'t loaded (#562), a street in many pieces, Way type on a trail across kinds (the legend\'s lengths add up; recorded ways, set terrain and weather)'),
-    ('spotcard', [spot_card, spot_card_foot, spot_card_actions], 'hold the map to see what\'s there (25d part 5): a finger held 0.5 s or a right-click, the ring, a tap, a move and two fingers, a busy page (#293), the spot\'s and a place\'s cards, Add to my route where it fits or on the line, Start here and End here, the line\'s hold and right-click, the route\'s view, the planner put away (straight legs, mocked BRouter)'),
+    ('spotcard', [spot_card, spot_card_foot, spot_card_actions, spot_card_names], 'hold the map to see what\'s there (25d part 5): a finger held 0.5 s or a right-click, the ring, a tap, a move and two fingers, a busy page (#293), the spot\'s and a place\'s cards, Add to my route where it fits or on the line, Start here and End here, the line\'s hold and right-click, the route\'s view, the planner put away (straight legs, mocked BRouter)'),
     ('crosshair', [crosshair], 'the keyboard\'s crosshair (25d part 5b): Tab to the map, the keys listed, Enter as a tap (a point, the route\'s card), Shift+F10 and the menu key as a hold, Escape and the focus, the crosshair gone with the focus, never by touch (straight legs)'),
     ('facts', [facts], 'facts on the card (#574, What\'s here\'s levels before): the same facts in every sport, All OpenStreetMap details and Copy (a failure, a late answer), Not right?, a toilet\'s and an obstacle\'s facts, a LIPAS place\'s, a late height, a path\'s card with the planner put away, a ship\'s own card (recorded ways, Overpass answered here)'),
     ('sharespot', [share_spot], 'Share a spot and Weather here (25d part 6b): the share sheet and the copied link, the link\'s pin and card with a route as it was, a bad pin, an old route link, the timeline held at the spot and released, no request with the spot'),

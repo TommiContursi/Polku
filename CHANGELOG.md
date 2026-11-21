@@ -8,6 +8,12 @@ What's new in [Polku](https://polku.si), from the latest updates back to the fir
 
 - A switch of its own, **Property details**, under **Property boundaries** in **Layers → More → Terrain**, turns off both the plot tinted and named under the mouse pointer and the plot's card on a click or a tap. It's there on phones too. Turning it off closes a plot's card if one is open. With it off, a click or a tap on a plot opens what's under it, such as a park or the water, or nothing, and a long press opens the spot's card, as without the layer. The boundaries and property IDs stay on the map.
 
+### Names from the map's data are shown as text, and odd share links and files can't stop Polku ([#1247](https://github.com/TommiContursi/Polku/issues/1247), [#1246](https://github.com/TommiContursi/Polku/issues/1246))
+
+- A tap or a hold on the map shows the name of a LIPAS route, a winter way or a Fintraffic road camera or road-conditions point exactly as its source wrote it. Before, a name that contained HTML could run as a script in Polku.
+- A share link with a point beyond the poles or the date line opens no route, as any link Polku can't read, instead of stopping Polku as it starts.
+- A GPX or KML file leaves out points beyond the poles or the date line, as it leaves out points without coordinates, so **Analyse & edit** works on the rest.
+
 ### The sport pill's name on phones ([#1214](https://github.com/TommiContursi/Polku/issues/1214))
 
 - On a phone, where the sport pill shows only its icon, a screen reader names it by its sport again, as on a desktop.
