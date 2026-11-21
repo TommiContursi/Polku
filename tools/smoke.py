@@ -942,7 +942,7 @@ def layer_coverage(chrome):
           const {finlandInView}=await import('/js/geo.js');
           await go([25.75,59.875],13);
           const vb=m.getBounds();
-          if(finlandInView([vb.getWest(),vb.getSouth(),vb.getEast(),vb.getNorth()]))errs.push('(the test) the view off Kalbådagrund reaches Finland\'s outline');
+          if(finlandInView([vb.getWest(),vb.getSouth(),vb.getEast(),vb.getNorth()]))errs.push('(the test) the view off Kalbådagrund reaches Finland\\'s outline');
           if(!await until(()=>row('Shipping lanes')&&!note('Shipping lanes').startsWith('Finland only')))errs.push(`off Kalbådagrund: the Shipping lanes switch says “${note('Shipping lanes')}”, where Traficom draws them`);
           if(note('Depth areas').startsWith('Finland only'))errs.push(`off Kalbådagrund: the Depth areas switch says “${note('Depth areas')}”, where Traficom draws them`);
           // Haparanda, Sweden, with Tornio across the river in view: a view partly in Finland counts as in it
