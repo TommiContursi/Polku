@@ -4,6 +4,10 @@ What's new in [Polku](https://polku.si), from the latest updates back to the fir
 
 ## 2026-11-21
 
+### Road numbers on the map ([#1307](https://github.com/TommiContursi/Polku/issues/1307))
+
+- Roads show their numbers from zoom 10, in a small box along the road, as on the National Land Survey's terrain map, so you can find a trailhead or follow a numbered road. They show everywhere OpenStreetMap has them. Where one road carries several numbers, the first shows.
+
 ### Bare rock stands out on the Trail map ([#1308](https://github.com/TommiContursi/Polku/issues/1308))
 
 - Bare rock is a darker grey, as on the National Land Survey's terrain map, so a rock outcrop no longer looks like a clearing among the open ground and heath. It's the same grey in Finland and beyond.

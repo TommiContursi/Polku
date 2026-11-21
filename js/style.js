@@ -1278,6 +1278,19 @@ function addLabels(s, P, hc, layers) {
   add({ id: 'label-water', type: 'symbol', source: 'ofm', 'source-layer': 'water_name', minzoom: 6, filter: ['all', ['has', 'name'], ['==', ['geometry-type'], 'Point']], layout: { 'text-field': ['get', 'name'], 'text-font': FONT_I, 'text-size': zi(6, 10, 12, 13, 15, 15), 'text-max-width': 6, 'text-letter-spacing': 0.08 }, paint: { 'text-color': P.waterText, ...halo } });
   add({ id: 'label-water-line', type: 'symbol', source: 'ofm', 'source-layer': 'water_name', minzoom: 6, filter: ['all', ['has', 'name'], ['==', ['geometry-type'], 'LineString']], layout: { 'symbol-placement': 'line', 'text-pitch-alignment': 'viewport', 'text-field': ['get', 'name'], 'text-font': FONT_I, 'text-size': zi(6, 10, 12, 13, 15, 15), 'text-letter-spacing': 0.15 }, paint: { 'text-color': P.waterText, ...halo } });
   add({ id: 'label-park', type: 'symbol', source: 'ofm', 'source-layer': 'park', minzoom: 9, filter: ['all', ['has', 'name'], ['==', ['geometry-type'], 'Point']], layout: { 'text-field': ['get', 'name'], 'text-font': FONT_I, 'text-size': 12, 'text-max-width': 8 }, paint: { 'text-color': isAerial(s.base) ? P.text : '#2f6b2f', ...halo } });
+  // road numbers (#1307): in a plain box, as on the Maastokartta, upright along the road; names placed first win.
+  // A road that's several at once ("9;13;23") shows its first number.
+  const ref = ['let', 'r', ['get', 'ref'], ['case', ['in', ';', ['var', 'r']], ['slice', ['var', 'r'], 0, ['index-of', ';', ['var', 'r']]], ['var', 'r']]];
+  add({
+    id: 'label-road-ref', type: 'symbol', source: 'ofm', 'source-layer': 'transportation_name', minzoom: 10,
+    filter: ['all', ['has', 'ref'], ['in', ['get', 'class'], ['literal', ['motorway', 'trunk', 'primary', 'secondary', 'tertiary', 'minor']]]],
+    layout: {
+      'symbol-placement': 'line', 'symbol-spacing': 400, 'text-field': ref, 'text-font': FONT, 'text-size': 10,
+      'text-rotation-alignment': 'viewport', 'icon-rotation-alignment': 'viewport', 'text-pitch-alignment': 'viewport',
+      'icon-image': `road-ref-${P.halo.slice(1)}-${P.text.slice(1)}`, 'icon-text-fit': 'both', 'icon-text-fit-padding': [1, 3, 1, 3],
+    },
+    paint: { 'text-color': P.text },
+  });
   add({ id: 'label-road', type: 'symbol', source: 'ofm', 'source-layer': 'transportation_name', minzoom: 13, filter: ['has', 'name'], layout: { 'symbol-placement': 'line', 'text-pitch-alignment': 'viewport', 'text-field': ['get', 'name'], 'text-font': FONT, 'text-size': zi(13, 10, 17, 13), 'text-rotation-alignment': 'map' }, paint: { 'text-color': P.text, ...halo } });
   add({
     id: 'label-peak', type: 'symbol', source: 'ofm', 'source-layer': 'mountain_peak', minzoom: 11,

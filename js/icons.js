@@ -573,6 +573,17 @@ function ridge(id) {
   return ctx.getImageData(0, 0, c.width, c.height);
 }
 
+// a road's number (#1307): the Maastokartta's plain box, stretched round the number by icon-text-fit. `road-ref-<fill>-<edge>`
+const BOX = { stretchX: [[6, 14]], stretchY: [[6, 14]], content: [5, 5, 15, 15] };
+function roadRef(id) {
+  const [c, ctx] = canvas(10, 10);
+  ctx.fillStyle = `#${id.slice(9, 15)}`;
+  ctx.strokeStyle = `#${id.slice(16)}`;
+  ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.roundRect(0.5, 0.5, 9, 9, 1.5); ctx.fill(); ctx.stroke();
+  return ctx.getImageData(0, 0, c.width, c.height);
+}
+
 export function makeIcon(id) {
   if (id.startsWith('wm-') && MARK[id.slice(3).split('~')[0]]) return warnMark(id.slice(3).split('~')[0]);
   if (/^wetland-[0-9a-f]{6}-[0-9a-f]{6}$/.test(id)) return wetland(id);
@@ -587,6 +598,7 @@ export function makeIcon(id) {
   if (/^open-forest-[0-9a-f]{6}-[0-9a-f]{6}$/.test(id)) return openForest(id);
   if (/^tree-(conifer|broadleaf|mixed|heath)-[0-9a-f]{6}$/.test(id)) return tree(id);
   if (/^saddle-[0-9a-f]{6}$/.test(id)) return saddle(id);
+  if (/^road-ref-[0-9a-f]{6}-[0-9a-f]{6}$/.test(id)) return roadRef(id);
   if (/^ridge-[0-9a-f]{6}$/.test(id)) return ridge(id);
   if (id === 'wind-arrow') return windArrow();
   if (id === 'ship') return ship();
@@ -620,6 +632,6 @@ export function installIcons(map) {
   map.on('styleimagemissing', (e) => {
     if (map.hasImage(e.id)) return;
     const img = makeIcon(e.id);
-    if (img) map.addImage(e.id, img, { pixelRatio: S, sdf: SDF.has(e.id) });
+    if (img) map.addImage(e.id, img, { pixelRatio: S, sdf: SDF.has(e.id), ...(e.id.startsWith('road-ref-') ? BOX : {}) });
   });
 }
