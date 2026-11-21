@@ -4114,7 +4114,8 @@ export class Planner {
     const ll = Array.isArray(lngLat) ? lngLat : [+lngLat.lng.toFixed(6), +lngLat.lat.toFixed(6)], p = pt || this.map.project(ll);
     place = place || this.placeAt(p, touch);
     if (place) { this.openPlaceCard(place, ll, { from, pin }); return; }
-    const feats = this.map.queryRenderedFeatures(hitBox(p, touch), { layers: inspectLayers(this.map) });
+    // (MML's terrain is named by a tap: a hold's card stays the spot's, whose words OpenStreetMap's answer replaces, #1175)
+    const feats = this.map.queryRenderedFeatures(hitBox(p, touch), { layers: inspectLayers(this.map).filter((id) => !id.startsWith('mml-')) });
     const route = feats.find((x) => x.layer.id === 'lipas-route');
     const f = pickFeature(feats), way = feats.find((x) => /^(path|track|cycleway|road)-/.test(x.layer.id)), bike = groupOf(this.app.activity()) === 'bike';
     const d = f && describe(f, feats, { ll, bike, mtb: this.app.activity() === 'mtb' });
@@ -4150,10 +4151,11 @@ export class Planner {
     this.drawThing(f);
   }
   drawThing(f) {
-    // (a property's plot is tinted by its id instead: an outline of its piece in one tile would cut it at the tile's edge)
-    const plot = f && f.layer.id === 'property-plot';
+    // (a property's plot is tinted by its id instead: an outline of its piece in one tile would cut it at the tile's edge;
+    // MML's terrain has no ids, so its lines and areas have only the card's pin, #1175)
+    const plot = f && f.layer.id === 'property-plot', piece = f && /^mml-/.test(f.layer.id) && f.geometry.type !== 'Point';
     if (this.app.lightPlot) this.app.lightPlot('lit', plot ? f.id : null);
-    const g = !plot && f && f.geometry, fc = (geometry, properties = {}) => ({ type: 'FeatureCollection', features: [{ type: 'Feature', properties, geometry }] });
+    const g = !plot && !piece && f && f.geometry, fc = (geometry, properties = {}) => ({ type: 'FeatureCollection', features: [{ type: 'Feature', properties, geometry }] });
     const line = g && /LineString/.test(g.type), area = g && /Polygon/.test(g.type);
     this.app.setData('pick', line ? fc(g, { color: '#f59e0b' }) : EMPTY);
     this.app.setData('pickSide', EMPTY);
@@ -7061,8 +7063,9 @@ export class Planner {
     row('Daylight', sun.set ? `sunset ${clock(sun.set * 1000)}` : sun.day === 'polar-day' ? 'the sun doesn’t set' : 'the sun doesn’t rise', 'ok');
     if (water) {
       // Syke's lake depths (#1184): how much of the route's water it surveyed; none of the sea
-      // legs on the water the router didn't draw (freehand, imported) count as water not surveyed; a swim's don't count
-      const free = this.legs.reduce((t, l, i) => t + (onWater(l, i) && this.legSport(i) !== 'swim' && !(l.mode === 'water' && l.result && l.result.water) ? this.lengthTo(i + 1) - this.lengthTo(i) : 0), 0);
+      // legs on the water the router didn't draw (freehand, imported, or a straight stand-in) count as water not surveyed;
+      // a swim's don't count, nor a leg still routing (#1196)
+      const free = this.legs.reduce((t, l, i) => t + (onWater(l, i) && this.legSport(i) !== 'swim' && l.result && !(l.mode === 'water' && l.result.water) ? this.lengthTo(i + 1) - this.lengthTo(i) : 0), 0);
       const dep = wr.filter((w) => w.depth), wet = dep.reduce((t, w) => t + w.depth.water, free), got = dep.reduce((t, w) => t + w.depth.surveyed, 0);
       if (!asked('depths')) row('Lake depths', 'not used for this route', 'na');
       else if (missing('Syke') || skipped('Syke')) row('Lake depths', missing('Syke') ? 'didn’t load' : 'not checked: a leg too long to ask for', 'bad');

@@ -1298,6 +1298,129 @@ def mml_rock(chrome):
     return not fails
 
 
+# #1175: a tap or a click on MML's terrain opens its card (the map's other things'), from the recorded tiles, never live MML:
+# a bog hard to cross with the survey's caveat (Seitseminen), reeds in the water (Porvoo) and a stone above the surface (Kotka, #1170),
+# by touch at 390 × 844 and by mouse
+# at 1440 × 900, where the pointer's tooltip says the same first. A bog's crossing class only from zoom 13's tiles, and a name
+# for every class the inspected layers draw.
+def mml_cards(chrome):
+    fails = []
+    mid = lambda x, y: [(x + 0.5) / 2 ** 14 * 360 - 180, math.degrees(math.atan(math.sinh(math.pi * (1 - 2 * (y + 0.5) / 2 ** 14))))]
+    # a spot where a click or a tap picks the layer's class (inspect.js's own choice) with nothing else there but the water, clear
+    # of the top bar and the map's buttons; a point's own spot first (sourceLayer: centred on it, as a narrow phone may not show it)
+    spot = """(async (layer, classes, touch, sourceLayer) => {
+      const m=polku.map, {inspectLayers,pickFeature,hitBox,featuresAt}=await import('/js/inspect.js'), R=m.getCanvas().getBoundingClientRect();
+      const settle=async()=>{await new Promise(r=>setTimeout(r,300));await Promise.race([new Promise(r=>{m.once('idle',r);m.triggerRepaint();}),new Promise(r=>setTimeout(r,10000))]);};
+      const pt=sourceLayer&&m.querySourceFeatures('mml',{sourceLayer}).find((f)=>classes.includes(f.properties.kohdeluokka));
+      if(pt){m.jumpTo({center:pt.geometry.coordinates}); await settle();}
+      const at=pt&&m.project(pt.geometry.coordinates);
+      for(let y=at?at.y:140;y<(at?at.y+1:innerHeight-180);y+=9)for(let x=at?at.x:24;x<(at?at.x+1:innerWidth-100);x+=9){
+        const fs=featuresAt(m,{x,y},hitBox({x,y},touch),inspectLayers(m)), f=pickFeature(fs);
+        if(f&&f.layer.id===layer&&classes.includes(f.properties.kohdeluokka)&&fs.every((g)=>g.layer.id===layer||/^(water|mml-shoal)$/.test(g.layer.id)))return [R.left+x,R.top+y];
+      }
+      return null;
+    })"""
+    # the card, and what marks its thing on the map a second later: a point's ring, or a line or an area outlined
+    card = """new Promise((ok) => { const t0=Date.now(), m=polku.map, go=()=>{ const c=polku.planner.cards.current, el=[...document.querySelectorAll('.pl-way.card')].find((e)=>e.getClientRects().length);
+      c&&el ? setTimeout(()=>ok({title:c.title, text:el.textContent, ring:m.querySourceFeatures('pickRing').length, drawn:m.querySourceFeatures('pick').length+m.querySourceFeatures('pickArea').length, pin:!!document.querySelector('.card-pin')}),1000) : Date.now()-t0>8000 ? ok(null) : setTimeout(go,100); }; go(); })"""
+    for name, w, h_, phone in (('390 × 844 by touch', 390, 844, True), ('1440 × 900 by mouse', 1440, 900, False)):
+        pg = chrome.page(w, h_, phone)
+        # (zoom 10: under the source's zoom 11, so MML is asked for nothing before the test answers it)
+        pg.open_app({'activity': 'mtb', 'base': 'trail'}, hash_='#10/61.92/23.478')
+        pg.js("""(async () => { const m=polku.map, FX=['14/9260/4578','14/9352/4721','14/9416/4714'];""" + MML_FIXTURES + """ return true; })()""")
+        for what, center, layer, classes, title, words, src in (
+                ('a bog hard to cross', mid(9260, 4578), 'mml-bog', [35421], 'Open bog', ['Survey class', 'Hard to cross', 'not a promise about the ground today', 'From the National Land Survey'], None),
+                ('reeds', mid(9352, 4721), 'mml-reed', [38100], 'Reeds', ['From the National Land Survey'], 'maasto_piste'),
+                ('a stone above the surface', mid(9416, 4714), 'mml-rock-point', [38513], 'Stone above the surface', ['From the National Land Survey'], 'maasto_piste')):
+            pg.js(f"(async () => {{ const m=polku.map; m.jumpTo({{center:{json.dumps(center)},zoom:14.6}}); await new Promise(r=>setTimeout(r,300)); "
+                  "await Promise.race([new Promise(r=>{m.once('idle',r);m.triggerRepaint();}),new Promise(r=>setTimeout(r,10000))]); return true; })()")
+            at = pg.js(f"({spot})('{layer}', {json.dumps(classes)}, {json.dumps(phone)}, {json.dumps(src)})")
+            if not at:
+                fails.append(f'{name}: no spot where a tap picks {what} from the recorded tile')
+                continue
+            if phone:
+                pg.quick_tap(*at)
+            else:
+                pg.c.send('Input.dispatchMouseEvent', {'type': 'mouseMoved', 'x': at[0], 'y': at[1], 'button': 'none'}, pg.s)
+                tip = pg.js("new Promise((ok) => setTimeout(() => { const t=document.querySelector('.hover-tip'); ok(t&&!t.hidden ? t.textContent : null); }, 700))")
+                if not tip or not tip.startswith(title) or (layer == 'mml-bog' and 'Survey class: hard to cross' not in tip):
+                    fails.append(f'{name}: the pointer resting on {what} says {tip!r}')
+                for kind in ('mousePressed', 'mouseReleased'):
+                    pg.c.send('Input.dispatchMouseEvent', {'type': kind, 'x': at[0], 'y': at[1], 'button': 'left', 'buttons': 1 if kind == 'mousePressed' else 0, 'clickCount': 1}, pg.s)
+            c = pg.js(card)
+            if not c:
+                fails.append(f'{name}: a {"tap" if phone else "click"} on {what} opened no card')
+            else:
+                if c['title'] != title:
+                    fails.append(f'{name}: a {"tap" if phone else "click"} on {what} opened {c["title"]!r}')
+                fails += [f'{name}: the card for {what} doesn’t say {w_!r}' for w_ in words if w_ not in c['text']]
+                # a bog's piece in one tile would stop at the tile's edge: the card's pin alone; a point (reeds, a stone), a ring
+                if c['drawn'] or not c['pin'] or bool(src) != bool(c['ring']):
+                    fails.append(f"{name}: {what} marked by {c['drawn']} lines or areas, {c['ring']} rings and {'a' if c['pin'] else 'no'} pin")
+            pg.js("polku.planner.cards.close(); true")
+        if not phone:
+            # a pond in Seitseminen's recorded bog: the pointer on the water names nothing, as a click picks the water
+            at = pg.js("""(async () => {
+              const m=polku.map, I=await import('/js/inspect.js'), R=m.getCanvas().getBoundingClientRect();
+              m.jumpTo({center:[23.4778,61.9131],zoom:14.6}); await new Promise(r=>setTimeout(r,300)); await Promise.race([new Promise(r=>{m.once('idle',r);m.triggerRepaint();}),new Promise(r=>setTimeout(r,10000))]);
+              for(let y=150;y<innerHeight-150;y+=4)for(let x=30;x<innerWidth-100;x+=4)
+                if(m.queryRenderedFeatures([x,y],{layers:['water']}).length&&m.queryRenderedFeatures([x,y],{layers:['mml-bog']}).length&&I.pickFeature(I.featuresAt(m,{x,y},I.hitBox({x,y},false),I.inspectLayers(m))).layer.id==='water')return [R.left+x,R.top+y];
+              return null; })()""")
+            if not at:
+                fails.append(f'{name}: (the test) no spot in the recorded tile where a bog lies under the water')
+            else:
+                pg.c.send('Input.dispatchMouseEvent', {'type': 'mouseMoved', 'x': at[0], 'y': at[1], 'button': 'none'}, pg.s)
+                tip = pg.js("new Promise((ok) => setTimeout(() => { const t=document.querySelector('.hover-tip'); ok(t&&!t.hidden ? t.textContent : null); }, 700))")
+                if tip:
+                    fails.append(f'{name}: the pointer on the water over a bog says {tip!r}')
+            fails += pg.js("""(async () => {
+              const errs=[], m=polku.map, I=await import('/js/inspect.js'), H=await import('/js/hover.js');
+              // zoom 12's tiles have a generalised class and zoom 11's none: a tile under 13 never says how easy it is to cross
+              for(const [z,k,want] of [[12,35421,'Zoom in to see it'],[11,35401,'Zoom in to see it'],[13,35422,'Hard to cross'],[14,35411,'Easier to cross']]) {
+                const f={_z:z,properties:{kohdeluokka:k},layer:{id:'mml-bog'},geometry:{type:'Polygon'}};
+                const row=(I.thingOf(f,m)||{rows:[]}).rows[0], tip=(H.describe(f,[f],{})||{bits:[]}).bits.join(' · ');
+                if(!row||row[1]!==want)errs.push(`a bog of class ${k} in a zoom-${z} tile: ${row&&row[1]} on the card`);
+                if(!tip.includes(`Survey class: ${want.toLowerCase()}`))errs.push(`a bog of class ${k} in a zoom-${z} tile: ${tip} under the pointer`);
+              }
+              // beside a bog, the forest isn't the bog: MML's areas only under the point itself
+              m.jumpTo({center:[23.4778,61.9131],zoom:14.6}); await new Promise(r=>setTimeout(r,300)); await Promise.race([new Promise(r=>{m.once('idle',r);m.triggerRepaint();}),new Promise(r=>setTimeout(r,10000))]);
+              let beside=null;
+              for(let y=150;y<innerHeight-150&&!beside;y+=4)for(let x=30;x<innerWidth-100&&!beside;x+=4)
+                if(!m.queryRenderedFeatures([x,y],{layers:['mml-bog']}).length&&m.queryRenderedFeatures(I.hitBox({x,y},true),{layers:['mml-bog']}).length)beside={x,y};
+              if(!beside)errs.push('(the test) no spot beside a bog in the recorded tile');
+              else if(I.featuresAt(m,beside,I.hitBox(beside,true),I.inspectLayers(m)).some((f)=>f.layer.id==='mml-bog'))errs.push('a tap beside a bog picks the bog');
+              // MML's areas only where they're the ground drawn: not a bog under the water drawn over it (a pond), yet one under a park's
+              // see-through tint (the recorded tiles have nothing else over them: a town and a house are looked at by hand)
+              let under=null, park=null;
+              for(let y=150;y<innerHeight-150&&!(under&&park);y+=3)for(let x=30;x<innerWidth-100&&!(under&&park);x+=3){
+                if(!m.queryRenderedFeatures([x,y],{layers:['mml-bog']}).length)continue;
+                if(m.queryRenderedFeatures([x,y],{layers:['water']}).length)under=under||{x,y}; else if(m.queryRenderedFeatures([x,y],{layers:['park-fill']}).length)park=park||{x,y};
+              }
+              const bogAt=(p)=>I.featuresAt(m,p,I.hitBox(p,true),I.inspectLayers(m)).some((f)=>f.layer.id==='mml-bog');
+              if(!under||!park)errs.push(`(the test) no bog ${under?'in a park':'under the water'} in the recorded tile`);
+              else { if(bogAt(under))errs.push('a bog under the water drawn over it is found'); if(!bogAt(park))errs.push('a bog in a park is not found'); }
+              // a hold on a bog opens the spot's card, as before (OpenStreetMap's answer would replace a bog's words there)
+              if(park){ const ll=m.unproject([park.x,park.y]); polku.planner.openSpotCard(ll,{pt:m.project(ll)}); const held=polku.planner.cards.current;
+                if(!held||/bog/i.test(held.title))errs.push(`a hold on a bog opens ${held?held.title:'no card'}`); polku.planner.cards.close(); }
+              // MML's lake fills the hole OSM's lake leaves for a marsh (#1177): a tap there is the water's (a map with no OSM water)
+              let q=null; for(let y=150;y<innerHeight-150&&!q;y+=6)for(let x=30;x<innerWidth-100&&!q;x+=6)if(m.queryRenderedFeatures([x,y],{layers:['mml-lake']}).length)q=[x,y];
+              const dry={getLayer:(id)=>id!=='water'&&m.getLayer(id), queryRenderedFeatures:(pt,o)=>m.queryRenderedFeatures(pt,o)};
+              if(!q)errs.push('(the test) no MML lake drawn from the recorded tile');
+              else if(I.areaUnder(dry,q)!=='water')errs.push(`MML's lake without OSM's over it is ${I.areaUnder(dry,q)}, not the water`);
+              // every class the inspected MML layers draw has its words
+              for(const id of I.inspectLayers(m).filter((id)=>id.startsWith('mml-'))) {
+                const f=JSON.stringify(m.getFilter(id)), ks=(f.match(/\\b\\d{5}\\b/g)||[]).map(Number);
+                if(!ks.length)errs.push(`${id}: no classes in its filter`);
+                for(const k of ks)if(!(I.MML_TERRAIN||{})[k])errs.push(`${id} draws class ${k}, which has no name`);
+              }
+              return errs;
+            })()""")
+        fails += [f'{name} console: {e[:160]}' for e in pg.errors()]
+        pg.close()
+    print(f"{'ok  ' if not fails else 'FAIL'} a tap on MML's terrain says what it is (#1175)" + ''.join(f'\n     - {f}' for f in fails), flush=True)
+    return not fails
+
+
 # #1170: MML's water from five recorded tiles, never live MML: Kotka (tools/fixtures/mml-taustakartta-14-9416-4714.pbf:
 # stones at and above the surface, a shoal, stone fields, jetties), the Porvoo archipelago (…-14-9363-4735.pbf: stones under
 # the surface), Kitkajoki (…-14-9531-4125.pbf: rapids, a wide river's
@@ -2406,7 +2529,8 @@ def water(chrome):
 # no other source. A leg past a shoal keeps 20 m off its soundings under 0.5 m, and says all its water was surveyed;
 # a swimmer's doesn't use them; a leg into the shoal crosses it, and Check says so under Good to know; What Polku
 # looked at says how much of the water Syke surveyed, none where it has no tile, and Not checked when they didn't load;
-# a route saved before the depths is routed again, and a freehand leg's water isn't surveyed; then the files themselves
+# a route saved before the depths is routed again, and a freehand leg's water isn't surveyed, nor a water leg that
+# couldn't be routed, while one still routing doesn't count (#1196); then the files themselves
 # fail (pausing nothing else of Polku's), hang until their deadline, Retry asks again, and a late answer routes the leg again.
 WATER_DEPTHS = """(async () => {
   const wait = (ms) => new Promise((r) => setTimeout(r, ms)), errs = [];
@@ -2462,6 +2586,30 @@ WATER_DEPTHS = """(async () => {
     await wait(500);
     if (!row() || row().state === 'ok') errs.push(`a freehand leg on the water counts as surveyed: ${row() ? `${row().state} · ${row().by}` : 'no row'}`);
     p.undo(); // back to the one leg
+    for (let k = 0; k < 40 && !(p.legs.length === 1 && p.analysis && p.analysis.waterWarn); k++) await wait(250);
+  }
+  { // a leg on the water still routing isn't counted as water not surveyed (#1196): held until its sources answer.
+    // One that couldn't be routed (a straight stand-in) is.
+    const seed = (box, want) => ({ fairways: fc, hazards: fc, depths: want.depths ? depths : null, wind: null, missing: want.depths ? missing : [], skipped: [] });
+    let free;
+    D.seedWater((box, want) => new Promise((ok) => { free = () => ok(seed(box, want)); }));
+    p.setMode('water');
+    p.addPoint([shoal[0] + 0.004, shoal[1]]);
+    for (let k = 0; k < 20 && !(p.legs.length === 2 && free); k++) await wait(100);
+    await wait(300);
+    if (p.legs.length !== 2 || p.legs[1].status !== 'loading') errs.push(`(the test) the second leg isn't routing: ${p.legs.map((l) => l.status).join(', ')}`);
+    else if (!row() || row().state !== 'ok') errs.push(`a leg still routing counts as water not surveyed: ${row() ? `${row().state} · ${row().by}` : 'no row'}`);
+    D.seedWater(seed);
+    if (free) free();
+    for (let k = 0; k < 40 && !(p.legs.length === 2 && p.legs[1].status === 'ok' && p.analysis && p.analysis.waterWarn); k++) await wait(250);
+    D.seedWater(() => Promise.reject(new Error('the test: no answer')));
+    p.addPoint(to);
+    for (let k = 0; k < 40 && !(p.legs.length === 3 && p.legs[2].status === 'error' && p.analysis && p.analysis.waterWarn); k++) await wait(250);
+    if (p.legs.length !== 3 || p.legs[2].status !== 'error') errs.push(`(the test) the third leg didn't fail: ${p.legs.map((l) => l.status).join(', ')}`);
+    else if (!row() || row().state === 'ok') errs.push(`a leg on the water that couldn't be routed counts as surveyed: ${row() ? `${row().state} · ${row().by}` : 'no row'}`);
+    D.seedWater(seed);
+    p.undo();
+    p.undo();
     for (let k = 0; k < 40 && !(p.legs.length === 1 && p.analysis && p.analysis.waterWarn); k++) await wait(250);
   }
   { // a route saved before the router used lake depths: its leg on the water is routed again when it loads
@@ -2832,14 +2980,24 @@ def water_long(chrome):
 
 # The water router's hidden map, its last tile failing (#400): a dropped connection, after the others are in. MapLibre
 # asks for no frame after a failed tile, so its `load` never came and no water leg was routed. The first leg is routed
-# now, and the next. (Only the route's water: no fairways, rocks or wind asked for.)
+# now, and the next. Then a leg out at sea whose coarser stand-in tile fails at once while its own come 6 s later:
+# MapLibre called the map idle after the failure, and the water was read from Finland's overview with none of the leg's
+# tiles in (#1195). It's routed once they're in. (Only the route's water: no fairways, rocks or wind asked for.)
 WATER_HIDDEN = """(async () => {
   const wait = (ms) => new Promise((r) => setTimeout(r, ms)), errs = [];
-  let tiles = 0, failed = false;
-  // the hidden map's requests through a protocol of the test's: its first tile fails 6 s on, the rest as they are
+  let tiles = 0, failed = false, late = null;
+  const sea = [[24.55, 59.95], [24.59, 59.945]]; // off Espoo, in a zoom 9 tile of its own: its stand-ins aren't held yet
+  // the hidden map's requests through a protocol of the test's: its first tile fails 6 s on, the rest as they are; once
+  // `late` is set, a tile below the leg's zoom 13 (a stand-in) fails at once, and the leg's own come 6 s late
   maplibregl.addProtocol('polkutest', async (params) => {
     const url = params.url.replace(/^polkutest:/, 'https:'), tile = /\\/\\d+\\/\\d+\\/\\d+/.test(url);
     if (tile && !tiles++) { await wait(6000); failed = true; throw new TypeError('Failed to fetch'); }
+    const zxy = tile && url.match(/\\/(\\d+)\\/(\\d+)\\/(\\d+)\\.pbf/).slice(1).map(Number);
+    if (late && zxy) {
+      if (zxy[0] < 13) { late.failed = true; throw new TypeError('Failed to fetch'); }
+      await wait(6000);
+      late.came = Date.now();
+    }
     const r = await fetch(url);
     return { data: tile ? await r.arrayBuffer() : await r.json() };
   });
@@ -2865,6 +3023,14 @@ WATER_HIDDEN = """(async () => {
     p.addPoint([24.9700, 60.1400]);
     for (let k = 0; k < 120 && !routed(2); k++) await wait(250);
     if (!routed(2)) errs.push(`the next leg: ${p.legs[1] ? p.legs[1].status : 'none'} after 30 s`);
+    late = { failed: false, came: 0 };
+    p.clear();
+    p.addPoint(sea[0]);
+    p.addPoint(sea[1]);
+    for (let k = 0; k < 300 && !(p.legs[0] && p.legs[0].status !== 'loading'); k++) await wait(100);
+    const done = Date.now(), l = p.legs[0], w = l && l.result && l.result.water;
+    if (!late.failed) errs.push('(the test) no stand-in tile failed for the leg out at sea');
+    else if (!w || l.status !== 'ok' || (l.result.portage || []).length || !late.came || late.came > done) errs.push(`a stand-in failing at once, the leg's own tiles 6 s late: the leg ${l ? l.status : 'none'}${w ? ` with ${l.result.portage.length} carries` : ''}, ${late.came && late.came <= done ? 'after' : 'before'} its tiles came (#1195)`);
     return errs;
   } finally {
     maplibregl.Map = Map0;
@@ -2879,10 +3045,106 @@ def water_hidden(chrome):
     styles = {'paddle': {'p': 'balanced', 'v': {'w': 'ignore', 'f': 'ignore', 'k': 'ignore'}}}
     pg.open_app({'activity': 'mtb'}, {'polku:plannerDock': '"left"', 'polku:styles': json.dumps(styles)}, '#13/60.152/24.97')
     pg.js("import(location.origin + '/js/trails.js').then((T) => { T.holdFetches(); return true; })")
-    fails = pg.js(WATER_HIDDEN, timeout=85000)
+    fails = pg.js(WATER_HIDDEN, timeout=130000)
     fails += [f'console: {e[:160]}' for e in pg.errors()]
     pg.close()
-    print(f"{'ok  ' if not fails else 'FAIL'} water routing when the hidden map's last tile fails (#400)" + ''.join(f'\n     - {f}' for f in fails), flush=True)
+    print(f"{'ok  ' if not fails else 'FAIL'} water routing when the hidden map's last tile fails (#400), or a stand-in fails while the leg's own tiles come late (#1195)" + ''.join(f'\n     - {f}' for f in fails), flush=True)
+    return not fails
+
+
+# A new leg on the water offline (#1195), with the real service worker and the network off, as the changelog check: where
+# its line crosses tiles that aren't kept (Oulujärvi, never seen), it ends at once as a straight line and says routing
+# over water needs a connection, rather than being routed on Finland's coarse overview or called land. With the page open
+# (the hidden map made online) and reloaded offline (made offline). Back online, Retry routes it. A short leg inside a
+# route saved with Save offline is still routed, though its window reaches a tile the route didn't keep (#1206's review).
+# The sources are seeded (no answers), so only the map's tiles are offline. ([at, from, to, the status to wait for])
+WATER_OFFLINE_LEG = """(async ([at, a, b, until]) => {
+  const wait = (ms) => new Promise((r) => setTimeout(r, ms)), fc = { type: 'FeatureCollection', features: [] };
+  const D = await import(location.origin + '/js/waterdata.js');
+  D.seedWater(() => ({ fairways: fc, hazards: fc, depths: null, wind: null, missing: [], skipped: [] }));
+  const p = polku.planner, said = [], box = document.querySelector('#toast');
+  const notes = new MutationObserver(() => { if (!box.hidden && said.at(-1) !== box.textContent) said.push(box.textContent); });
+  notes.observe(box, { childList: true, subtree: true, characterData: true, attributes: true });
+  polku.map.jumpTo({ center: at, zoom: 13 });
+  p.setActive(true);
+  p.clear();
+  p.setMode('water');
+  p.addPoint(a);
+  p.addPoint(b);
+  const t0 = Date.now(), l = () => p.legs[0] || {};
+  for (let k = 0; k < 120 && (l().status === 'loading' || (until && l().status !== until)); k++) await wait(250);
+  await wait(300);
+  notes.disconnect();
+  return { status: l().status, water: !!(l().result && l().result.water), ms: Date.now() - t0, said };
+})(%s)"""
+WATER_OFFLINE_RETRY = """(async () => {
+  const p = polku.planner, wait = (ms) => new Promise((r) => setTimeout(r, ms)), l = () => p.legs[0] || {};
+  p.retryFailed();
+  for (let k = 0; k < 160 && !(l().status === 'ok' && l().result && l().result.water); k++) await wait(250);
+  return `${l().status}${l().result && l().result.water ? ' with a route' : ''}`;
+})()"""
+
+
+def water_offline(chrome):
+    fails = []
+    pg = chrome.page(390, 844, True)
+    pg.open_app({'activity': 'paddle'}, None, '#14/64.2396/28.614')
+    chrome.send('Network.setBypassServiceWorker', {'bypass': False}, pg.s)
+    pg.js("(async () => { for (const r of await navigator.serviceWorker.getRegistrations()) await r.unregister(); await caches.delete('polku-shell-v1'); await navigator.serviceWorker.register('./sw.js'); await navigator.serviceWorker.ready; return true })()")
+    pg.reload()
+    # every worker of Polku's: one unregistered by an earlier check may still be listed beside the one that controls the page
+    workers = [t for t in chrome.send('Target.getTargets')['targetInfos'] if t['type'] == 'service_worker' and t['url'] == BASE + 'sw.js']
+    if not pg.js('!!navigator.serviceWorker.controller') or not workers:
+        raise RuntimeError('a water leg offline: the page has no service worker')
+    ws = [chrome.send('Target.attachToTarget', {'targetId': t['targetId'], 'flatten': True})['sessionId'] for t in workers]
+    for s in ws:
+        chrome.send('Network.enable', {}, s)
+
+    def offline(on):  # the network off, and no copy from the browser's cache either: only what the worker keeps
+        for s in (pg.s, *ws):
+            chrome.send('Network.emulateNetworkConditions', {'offline': on, 'latency': 0, 'downloadThroughput': -1, 'uploadThroughput': -1}, s)
+            chrome.send('Network.setCacheDisabled', {'cacheDisabled': on}, s)
+
+    far = [[27.225, 64.305], [27.20, 64.30], [27.25, 64.31]]  # Oulujärvi
+
+    def leg(name):
+        got = pg.js(WATER_OFFLINE_LEG % json.dumps([*far, None]), timeout=40000)
+        if got['status'] != 'error' or not any('Routing over water needs a connection' in t for t in got['said']):
+            fails.append(f"{name}: the leg is {got['status']}{' with a route' if got['water'] else ''} after {got['ms'] / 1000:.0f} s, said {' / '.join(got['said']) or 'nothing'}")
+
+    area = None
+    try:
+        first = pg.js(WATER_OFFLINE_LEG % json.dumps([[28.614, 64.2396], [28.6095, 64.23944], [28.6185, 64.23944], 'ok']), timeout=40000)
+        if first['status'] != 'ok':
+            fails.append(f"(the test) the leg online at Matikanjärvi: {first['status']}")
+        area = pg.js("""(async () => {
+          const O = await import(location.origin + '/js/offline.js');
+          const a = await O.saveArea({ name: 'smoke', line: [[27.05, 64.33], [27.20, 64.30]], bbox: null, route: null }, { buffer: 1000, terrain: false }, () => {}, new AbortController().signal);
+          return { id: a.id, failed: a.failed };
+        })()""", timeout=120000)
+        if area['failed']:
+            fails.append(f"(the test) {area['failed']} tiles of the saved route weren't saved")
+        offline(True)
+        near = pg.js(WATER_OFFLINE_LEG % json.dumps([[27.125, 64.312], [27.125, 64.315], [27.125, 64.30781], 'ok']), timeout=40000)
+        if near['status'] != 'ok' or not near['water']:
+            fails.append(f"a short new leg inside the saved route: {near['status']}, said {' / '.join(near['said']) or 'nothing'}")
+        leg('the page open, offline')
+        pg.reload()
+        leg('reloaded offline')
+        offline(False)
+        back = pg.js(WATER_OFFLINE_RETRY, timeout=50000)
+        if back != 'ok with a route':
+            fails.append(f'back online, Retry: the leg is {back}')
+    finally:
+        offline(False)
+        if area:
+            pg.js(f"import(location.origin + '/js/offline.js').then((O) => O.removeArea({json.dumps(area['id'])})).then(() => true)")
+        pg.js("(async () => { for (const r of await navigator.serviceWorker.getRegistrations()) await r.unregister(); return true })()")
+        for s in ws:
+            chrome.send('Target.detachFromTarget', {'sessionId': s})
+    fails += [f'console: {e[:160]}' for e in pg.errors()]
+    pg.close()
+    print(f"{'ok  ' if not fails else 'FAIL'} a new leg on the water offline says routing needs a connection, but inside a saved route; back online, Retry routes it (#1195)" + ''.join(f'\n     - {f}' for f in fails), flush=True)
     return not fails
 
 
@@ -25143,7 +25405,7 @@ GROUPS = [
     ('changelog', [changelog], 'release notes, retry, safe rendering, keyboard, route preservation and real worker offline'),
     ('pacing', [pacing, paced_legs, net_fails], 'calls made together go out paced and counted (mocked services, a fake clock); legs refused for a slot follow at it (#78); the calls that failed, in Data sources (#687)'),
     ('loading', [loading, routing_edits], 'cancel obsolete routing, edits/Undo/Clear, shared subscribers, refusal/recovery, deadlines, terrain slots and LIPAS viewport/cache (mocked)'),
-    ('layers', [layers, cycleway_style, cycling_restrictions, waterway_style, property_lines, property_plots, wetland_style, reedbed_style, mml_bogs, mml_rock, mml_water, mml_open, osm_cliffs, saddles], 'the Layers panel in every sport'),
+    ('layers', [layers, cycleway_style, cycling_restrictions, waterway_style, property_lines, property_plots, wetland_style, reedbed_style, mml_bogs, mml_rock, mml_water, mml_open, osm_cliffs, saddles, mml_cards], 'the Layers panel in every sport'),
     ('raster', [raster_maps, aerial_fallback, aerial_labels], 'terrain and aerial detail, bounded high-density WMS symbols, depth boundaries and missing aerial detail (#649, #650, #653); the map\'s words on the aerial photos at 4.5:1 on their halo (#554)'),
     ('coarse', [coarse], 'a coarse map underneath (#1091): the base map\'s tile four zoom levels up stands in for one that hasn\'t come, at 1440 and 390'),
     ('together', [together], 'Polku\'s own layers come in together after the map stops, 500 ms at most (#1091)'),
@@ -25152,7 +25414,7 @@ GROUPS = [
     ('header', [header_fit, head_names], 'the planner header fitting its sheet; the route\'s name following the road names that come late with the map\'s tiles (the review of #1050)'),
     ('lipas', [lipas], 'LIPAS search and riding a LIPAS route (recorded answers), a place, coordinates or a trail from search gets its pin and card (#871, #875)'),
     ('marked', [marked], 'marked routes picked on the map (#308): a hand and the whole route lit under a mouse before a click, a tap 10 px beside the line lit while its card is open and one 30 px away not (recorded LIPAS, cut in two parts)'),
-    ('water', [water, water_depths, water_late, water_back, water_long, water_hidden, paddle_map, best_time_water], 'the paddling router\'s costs (recorded fairways, a fixed wind), lake depths from a recorded tile (#1184), OSM\'s rocks coming late, failing and coming back, Undo, a leg too long to ask for them (mocked), the hidden map\'s last tile failing (#129, #80, #490, #400), and Paddle\'s map: a leg over water stands out from the sea, no hint about trails (#611, #613)'),
+    ('water', [water, water_depths, water_late, water_back, water_long, water_hidden, water_offline, paddle_map, best_time_water], 'the paddling router\'s costs (recorded fairways, a fixed wind), lake depths from a recorded tile (#1184), OSM\'s rocks coming late, failing and coming back, Undo, a leg too long to ask for them (mocked), the hidden map\'s last tile failing (#129, #80, #490, #400), a new leg offline with the real service worker (#1195), and Paddle\'s map: a leg over water stands out from the sea, no hint about trails (#611, #613)'),
     ('multi', [multi], 'multisport: a sport per leg, changeovers, share links, Reorder (straight legs)'),
     ('editing', [editing], 'midpoint handle and line drags: one via point, Undo/Redo, mouse and touch in four sports'),
     ('routemenu', [route_menu, quick_taps], 'clicks and taps on the route (straight legs), LIPAS over trails, and quick taps on a busy page (#293)'),
