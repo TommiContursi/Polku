@@ -2,6 +2,15 @@
 
 What's new in [Polku](https://polku.si), from the latest updates back to the first release. These notes describe features available in the app, not work still in progress. For upcoming changes, see the [issues](https://github.com/TommiContursi/Polku/issues) and [roadmap](docs/ROADMAP.md).
 
+## 2026-11-21
+
+### A tap on the National Land Survey's terrain says what it is ([#1175](https://github.com/TommiContursi/Polku/issues/1175))
+
+- In Finland, a tap or a click on the National Land Survey's bogs, paludified land, overgrowing water, rock, boulder fields, stones, cliffs, reeds, power lines and pylons opens a card that names what it is, and so does a tap on its stones, shoals, stone fields and rapids in the water. On a desktop, resting the pointer on one says the same.
+- A bog's card has its survey class, easier or hard to cross, from zoom 13. Further out, the National Land Survey's map data has the class only roughly, and the card says to zoom in. **The survey class is not a promise about the ground today:** bogs are classed from aerial photos and surveyed again every 5–10 years.
+- A bog, paludified land, overgrowing water or rock is picked only right under your finger, not beside it, and only where the map shows it, not under a lake, a town or a house. It's picked before a park it lies in. The water, and a property's plot with **Property boundaries** on, still come first, but overgrowing water and shoals, drawn over a lake, come before the lake, and so do reeds and stones in it. Holding the map opens the spot's card, as before.
+- A tap on the National Land Survey's water where OpenStreetMap has none, such as a marsh it cuts out of a lake or a small pond in a bog, opens the water's card, with its depth and **Paddle from here**. Its name is what OpenStreetMap has around it, such as a national park.
+
 ## 2026-11-20
 
 ### Layers say where they have data ([#1200](https://github.com/TommiContursi/Polku/issues/1200))
