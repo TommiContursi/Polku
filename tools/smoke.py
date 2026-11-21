@@ -1045,12 +1045,13 @@ def property_lines(chrome):
     return not fails
 
 
-# #1148: with Property boundaries on (and its Plot under the pointer, on at first), the plot under the pointer is tinted, and a click on a plot opens its card with its ID
-# and tints it more, by its id (all its tiles' pieces), until the card closes.
+# #1148: with Property boundaries on (and its Property details switch, on at first), the plot under the pointer is tinted, and a click on a plot opens its card with its ID
+# and tints it more, by its id (all its tiles' pieces), until the card closes. #1199: with Property details off, no plot is tinted or
+# picked by a mouse, a hold or a tap, and the switch is there by touch too.
 def property_plots(chrome):
     pg = chrome.page(1440, 900, False)
     pg.open_app({'activity': 'mtb', 'overlaysByActivity': {'mtb': {'propertyLines': True}}}, None, '#16.5/62.2415/25.748')
-    fails = pg.js("""(async () => {
+    r = pg.js("""(async () => {
       const errs=[], m=polku.map, wait=(ms)=>new Promise(r=>setTimeout(r,ms)), frame=()=>new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)));
       const t0=performance.now();
       while(performance.now()-t0<30000&&!m.queryRenderedFeatures({layers:['property-plot']}).length)await wait(250);
@@ -1058,7 +1059,8 @@ def property_plots(chrome):
       const {inspectLayers,pickFeature,hitBox}=await import(location.origin+'/js/inspect.js');
       let spot=null;
       for(let y=200;y<800&&!spot;y+=23)for(let x=200;x<1200&&!spot;x+=29){const f=pickFeature(m.queryRenderedFeatures(hitBox({x,y},false),{layers:inspectLayers(m)}));if(f&&f.layer.id==='property-plot'&&f.id!=null)spot={x,y,f};}
-      if(!spot)return ['no spot at Jyväskylä where a click picks a plot'];
+      if(!spot)return {errs:['no spot at Jyväskylä where a click picks a plot']};
+      const ll=m.unproject([spot.x,spot.y]).toArray();
       const st=(id)=>m.getFeatureState({source:'ov-propertyLines',sourceLayer:'PalstanSijaintitiedot',id});
       const cv=m.getCanvas(), R=cv.getBoundingClientRect();
       const ev=(type)=>cv.dispatchEvent(new MouseEvent(type,{bubbles:true,cancelable:true,clientX:R.left+spot.x,clientY:R.top+spot.y,button:0,buttons:type==='mouseup'?0:1}));
@@ -1095,26 +1097,106 @@ def property_plots(chrome):
         else if(/^Property /.test(c.title))errs.push('a click in a park opened the property under it, not the park');
         polku.planner.cards.close(); await frame();
       }
-      // Plot under the pointer, under the switch in Layers: off, the pointer tints nothing, and a click still picks the plot
+      // Property details, under the switch in Layers (#1199): off, the pointer, a click and a hold pick no plot, and what's under it
+      // opens as without the layer; the plot whose card is open as it goes off is no longer tinted, and its card closes
+      const idle=()=>Promise.race([new Promise(r=>{m.once('idle',r);m.triggerRepaint();}),wait(5000)]);
+      const tinted=()=>m.getLayer('property-plot')&&m.queryRenderedFeatures([spot.x,spot.y],{layers:['property-plot']}).some(f=>f.id===spot.f.id)&&(st(spot.f.id).lit||st(spot.f.id).hover);
+      const move=(dx)=>cv.dispatchEvent(new PointerEvent('pointermove',{bubbles:true,pointerType:'mouse',clientX:R.left+spot.x+dx,clientY:R.top+spot.y,buttons:0}));
+      ev('mousedown'); ev('mouseup'); ev('click'); await wait(600);
+      if(!/^Property \\d/.test(polku.planner.cards.current?.title||''))errs.push('before Property details goes off, a click on the plot opens no card of it');
       document.querySelector('#btn-layers').click(); await frame();
       [...document.querySelectorAll('button')].find(b=>/^More: all layers/.test(b.getAttribute('aria-label')||''))?.click(); await frame();
-      const sub=[...document.querySelectorAll('[data-group=terrain] input[role=switch]')].find(i=>i.closest('label')?.textContent.includes('Plot under the pointer'));
-      if(!sub)errs.push('no Plot under the pointer switch under Property boundaries');
+      const sub=[...document.querySelectorAll('[data-group=terrain] input[role=switch]')].find(i=>i.closest('label')?.textContent.includes('Property details'));
+      if(!sub)errs.push('no Property details switch under Property boundaries');
       else {
-        if(!sub.checked)errs.push('Plot under the pointer is off at first');
-        sub.click(); await frame(); polku.set({}); await frame();
-        cv.dispatchEvent(new PointerEvent('pointermove',{bubbles:true,pointerType:'mouse',clientX:R.left+spot.x+1,clientY:R.top+spot.y,buttons:0})); await frame(); await frame();
-        if(st(spot.f.id).hover)errs.push('the plot is tinted with Plot under the pointer off');
-        if(polku.state.plotHover!==false)errs.push('Plot under the pointer stays on after its switch');
+        if(!sub.checked)errs.push('Property details is off at first');
+        if(!/^Property /.test(polku.planner.cards.current?.title||''))errs.push("the plot's card closed as Layers opened");
+        sub.click(); await idle();
+        if(polku.state.plotSelect!==false)errs.push('Property details stays on after its switch');
+        if(tinted())errs.push('the picked plot stays tinted after Property details goes off');
+        if(polku.planner.cards.current)errs.push(`the plot's card stays open after Property details goes off: ${polku.planner.cards.current.title}`);
+        polku.planner.cards.close(); await frame();
+        move(1); await frame(); await frame();
+        if(tinted())errs.push('the plot under the pointer is tinted with Property details off');
+        if(cv.style.cursor==='pointer')errs.push('the pointer cursor over a plot with Property details off');
         ev('mousedown'); ev('mouseup'); ev('click'); await wait(600);
-        if(!st(spot.f.id).lit)errs.push('with Plot under the pointer off, a click no longer picks the plot');
+        let c=polku.planner.cards.current;
+        if(c)errs.push(`with Property details off, a click on a plot with nothing else there opened ${c.title}`);
+        polku.planner.cards.close(); await frame();
+        // a hold (the right button, whose contextmenu MapLibre passes on at its mouseup): the spot's card, not the property's
+        for(const t of ['mousedown','contextmenu','mouseup'])cv.dispatchEvent(new MouseEvent(t,{bubbles:true,cancelable:true,clientX:R.left+spot.x,clientY:R.top+spot.y,button:2,buttons:t==='mousedown'?2:0}));
+        await wait(600); c=polku.planner.cards.current;
+        if(!c)errs.push('with Property details off, a hold on a plot opens no card');
+        else if(/^Property /.test(c.title))errs.push(`with Property details off, a hold on a plot opens ${c.title}`);
+        polku.planner.cards.close(); await frame();
+        if(park){
+          for(const t of ['mousedown','mouseup','click'])cv.dispatchEvent(new MouseEvent(t,{bubbles:true,cancelable:true,clientX:R.left+park.x,clientY:R.top+park.y,button:0,buttons:t==='mousedown'?1:0}));
+          await wait(800); c=polku.planner.cards.current;
+          if(!c||/^Property /.test(c.title))errs.push(`with Property details off, a click in the park opened ${c?c.title:'no card'}`);
+          polku.planner.cards.close(); await frame();
+        }
+        // on again: the plot under the pointer tinted, and a click opens its card
+        sub.click(); await idle();
+        move(0); await frame(); await frame();
+        if(!tinted())errs.push('the plot under the pointer is not tinted with Property details back on');
+        ev('mousedown'); ev('mouseup'); ev('click'); await wait(600);
+        c=polku.planner.cards.current;
+        if(!c||!/^Property \\d/.test(c.title))errs.push(`with Property details back on, a click on the plot opened ${c?c.title:'no card'}`);
         polku.planner.cards.close();
       }
-      return errs;
+      return {errs, ll};
     })()""", timeout=90000)
+    fails, ll = r['errs'], r.get('ll')
     fails += [f'console: {e[:160]}' for e in pg.errors()]
     pg.close()
-    print(f"{'ok  ' if not fails else 'FAIL'} a property's plot tinted under the pointer and picked (#1148)" + ''.join(f'\n     - {f}' for f in fails), flush=True)
+    # by touch, at a phone's size (#1199): Property details is there too, and with it off a tap on the plot opens nothing
+    # (at the plot the mouse picked: the phone's view of the centre is all park)
+    pg = chrome.page(390, 844, True)
+    pg.open_app({'activity': 'mtb', 'overlaysByActivity': {'mtb': {'propertyLines': True}}}, None, f'#17/{ll[1]:.6f}/{ll[0]:.6f}' if ll else '#17/62.2415/25.748')
+    at = pg.js("""(async () => {
+      const m=polku.map, wait=(ms)=>new Promise(r=>setTimeout(r,ms)), t0=performance.now();
+      while(performance.now()-t0<30000&&!(m.isSourceLoaded('ov-propertyLines')&&m.queryRenderedFeatures({layers:['property-plot']}).length))await wait(250);
+      const {inspectLayers,pickFeature,hitBox,areaUnder}=await import(location.origin+'/js/inspect.js'), R=m.getCanvas().getBoundingClientRect();
+      for(let y=200;y<560;y+=17)for(let x=40;x<350;x+=19){const f=pickFeature(m.queryRenderedFeatures(hitBox({x,y},true),{layers:inspectLayers(m)}));if(f&&f.layer.id==='property-plot'&&!areaUnder(m,[x,y]))return [R.left+x,R.top+y];}
+      return null;
+    })()""", timeout=40000)
+    title = "new Promise(r=>setTimeout(()=>r(polku.planner.cards.current?.title||''),800))"
+    if not at:
+        fails.append('by touch: no spot at Jyväskylä where a tap picks a plot')
+    else:
+        pg.quick_tap(*at)
+        t = pg.js(title)
+        if not t.startswith('Property '):
+            fails.append(f'by touch: before Property details goes off, a tap on the plot opened {t or "no card"}')
+        sw = pg.js("""(async () => {
+          const frame=()=>new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)));
+          polku.planner.cards.close(); await frame();
+          if (document.querySelector('#layers-panel').hidden) { document.querySelector('#btn-layers').click(); await frame(); document.querySelector('#quick-layers .qt-more').click(); await frame(); }
+          const sub=[...document.querySelectorAll('[data-group=terrain] input[role=switch]')].find(i=>i.closest('label')?.textContent.includes('Property details'));
+          if(!sub)return 'no Property details switch under Property boundaries';
+          sub.closest('label').scrollIntoView({block:'center'}); await new Promise(r=>setTimeout(r,400));
+          const r=(sub.offsetWidth?sub:sub.closest('label')).getBoundingClientRect();
+          return [r.left+r.width/2, r.top+r.height/2];
+        })()""")
+        if isinstance(sw, list):
+            pg.quick_tap(*sw)  # (the switch as a finger finds it)
+            sw = pg.js("""(async () => {
+          if(polku.state.plotSelect!==false)return "a tap on Property details doesn't turn it off";
+          document.querySelector('#layers-panel').dispatchEvent(new KeyboardEvent('keydown',{key:'Escape',bubbles:true}));
+          document.querySelector('#quick-layers').dispatchEvent(new KeyboardEvent('keydown',{key:'Escape',bubbles:true}));
+          await new Promise(r=>setTimeout(r,600));
+          return !document.querySelector('#layers-panel').hidden||document.querySelector('#quick-layers.open') ? 'Layers stays open after Escape' : '';
+        })()""")
+        if sw:
+            fails.append(f'by touch: {sw}')
+        else:
+            pg.quick_tap(*at)
+            t = pg.js(title)
+            if t:
+                fails.append(f'by touch: with Property details off, a tap on a plot with nothing else there opened {t}')
+    fails += [f'by touch, console: {e[:160]}' for e in pg.errors()]
+    pg.close()
+    print(f"{'ok  ' if not fails else 'FAIL'} a property's plot tinted under the pointer and picked, and Property details off by mouse and touch (#1148, #1199)" + ''.join(f'\n     - {f}' for f in fails), flush=True)
     return not fails
 
 
@@ -3769,6 +3851,11 @@ AVOID_OPENED = """(async (sent) => {
   q.set('av', Array.from({ length: 205 }, (_, i) => `24.9_60.${100 + i}_30`).join(','));
   const many = P.parseShared(q);
   if (!many || (many.nogos || []).length !== 200 || !many.nogosLost) errs.push(`205 circles in a link: ${many ? `${(many.nogos || []).length} read, lost: ${many.nogosLost}` : 'did not open'}`);
+  // (#1246) a route with a point off the earth isn't read: the map threw on it, and Polku stopped starting
+  const G = await import(location.origin + '/js/geo.js');
+  for (const off of [[24.95, 95], [200, 60.18]]) {
+    if (P.parseShared(new URLSearchParams({ r: G.encodePolyline([[24.94, 60.17], off]) }))) errs.push(`a link with a point at ${off} was read as a route`);
+  }
   return errs;
 })"""
 # a reload: the saved route keeps them
@@ -6156,6 +6243,11 @@ FIT_LIB = """(() => {
     // a KML line's empty values are missing too, not 0 (an empty altitude leaves the point as it is)
     const ls = G.parseTrackFile('<?xml version="1.0"?><kml xmlns="http://www.opengis.net/kml/2.2"><Placemark><LineString><coordinates>23.7,61.4,0 ,61.41,0 23.72,,0 23.73, 61.43 23.74,61.44,</coordinates></LineString></Placemark></kml>', 'bad.kml');
     if (ls.lines.map((l) => l.length).join() !== '2' || ls.lines.some((l) => l.some((c) => c.some((v) => !v)))) err(`a KML line with empty values: ${JSON.stringify(ls.lines)} (want 2 points, no zero)`);
+    // (#1246) a point off the earth is left out too: the map throws on a latitude beyond 90°, and Analyse & edit stopped there
+    const far = G.parseTrackFile(`<?xml version="1.0"?><gpx version="1.1"><trk><trkseg>${[pt('trkpt', 'lat="61.4" lon="23.7"'), pt('trkpt', 'lat="95" lon="23.71"'), pt('trkpt', 'lat="61.42" lon="23.72"'), pt('trkpt', 'lat="61.43" lon="190"')].join('')}</trkseg></trk>${pt('wpt', 'lat="-91" lon="23.7"')}</gpx>`, 'far.gpx');
+    if (far.lines.map((l) => l.length).join() !== '2' || far.points.length) err(`a GPX with points off the earth: lines of ${far.lines.map((l) => l.length).join()} points (want 2), ${far.points.length} waypoints (want 0)`);
+    const farKml = G.parseTrackFile('<?xml version="1.0"?><kml xmlns="http://www.opengis.net/kml/2.2"><Placemark><LineString><coordinates>23.7,61.4 23.71,95 23.72,61.42</coordinates></LineString></Placemark></kml>', 'far.kml');
+    if (farKml.lines.map((l) => l.length).join() !== '2') err(`a KML line with a point off the earth: lines of ${farKml.lines.map((l) => l.length).join()} points (want 2)`);
     p.setSheetState('half');
     return T.errs.splice(0);
   };
@@ -8367,6 +8459,191 @@ def coarse(chrome):
     finally:
         pg.close()
     print(f"{'ok  ' if not fails else 'FAIL'} a coarse map underneath: the base map's zoom 9 tile stands in for a zoom 13 one that hasn't come, Finland's zoom 6 overview for both, kept and answered at once (#1091)" + ''.join(f'\n     - {f}' for f in fails), flush=True)
+    return not fails
+
+
+# #1176: Save offline keeps MML's tiles, MML answered by the page from its recorded tile (14/9260/4578, Seitseminen; an
+# empty tile elsewhere), never live: how many it asks for at once and in a second, with whose key, and what it keeps.
+# Saved first with every MML tile failing (the pace held through failures too), then with MML's zoom 13 failing (Polku's
+# key, property boundaries off), then whole (your own key, property boundaries on). Offline maps says what each lacks,
+# beside two areas saved before MML's tiles were kept.
+MML_OFFLINE_SAVE = r"""
+(async () => {
+  const f = [], off = await import(location.origin + '/js/offline.js'), { idb } = await import(location.origin + '/js/idb.js');
+  const fx = await (await fetch('/tools/fixtures/mml-taustakartta-14-9260-4578.pbf')).arrayBuffer(), real = window.fetch, asked = [];
+  let now = 0, most = 0, failing = null;
+  window.fetch = async (u, o) => {
+    const url = String((u && u.url) || u);
+    if (!url.startsWith('https://avoin-karttakuva.maanmittauslaitos.fi/')) return real(u, o);
+    asked.push([Date.now(), url]); most = Math.max(most, ++now);
+    try {
+      await new Promise((r) => setTimeout(r, 30));
+      if (failing && failing.test(url)) throw new TypeError('Failed to fetch');
+      return new Response(url.includes('/14/4578/9260.pbf') ? fx.slice(0) : new ArrayBuffer(0));
+    } finally { now--; }
+  };
+  const line = [[23.474, 61.92], [23.481, 61.921]], save = (name, mml) => off.saveArea({ name, line, bbox: [23.474, 61.92, 23.481, 61.921], route: null }, { buffer: 1000, terrain: false, mml }, () => {}, new AbortController().signal);
+  const mmlKeys = (a) => a.keys.filter((k) => k.startsWith('https://avoin-karttakuva.maanmittauslaitos.fi/'));
+  // paced: two at a time, ten in any second at most
+  const paced = (what) => {
+    const peak = Math.max(...asked.map(([t]) => asked.filter(([s]) => s >= t && s < t + 1000).length));
+    if (most > 2 || peak > 10) f.push(`${what}, MML asked for ${most} tiles at once and ${peak} in a second`);
+    if (asked.length < 12) f.push(`(the test) ${what}, only ${asked.length} MML tiles asked for: too few to see the pace`);
+  };
+  try {
+    failing = /./;
+    const down = await save('smoke-down', { key: '', property: false });
+    if (!(down.mml && down.mml.tiles && down.mml.failed === down.mml.tiles)) f.push(`with every MML tile failing, the area says ${JSON.stringify(down.mml)} of MML's terrain tiles failed`);
+    paced('with every tile failing');
+    asked.length = 0; most = 0;
+    failing = /\/taustakartta\/.+\/13\/\d+\/\d+\.pbf/;
+    const part = await save('smoke-part', { key: '', property: false });
+    failing = null;
+    const z = (a) => [...new Set(mmlKeys(a).filter((k) => k.includes('/taustakartta/')).map((k) => +k.split('/').at(-3)))].sort((x, y) => x - y).join();
+    if (z(part) !== '11,12,13,14') f.push(`MML's terrain kept at zooms ${z(part)}, not 11–14`);
+    if (mmlKeys(part).some((k) => k.includes('/kiinteistojaotus/'))) f.push('property boundaries kept with their layer off');
+    if (!(part.mml && part.mml.failed > 0 && part.mml.failed < part.mml.tiles)) f.push(`with MML's zoom 13 failing, the area says ${JSON.stringify(part.mml)} of MML's terrain tiles failed`);
+    if (asked.some(([, u]) => !new URL(u).searchParams.get('api-key'))) f.push('MML asked for tiles without a key');
+    // what Offline maps says of each
+    await idb('offline').set('smoke-old', { id: 'smoke-old', name: 'smoke-old', created: 1, bbox: [23.47, 61.91, 23.49, 61.93], keys: [], bytes: 1, failed: 0 });
+    await idb('offline').set('smoke-oslo', { id: 'smoke-oslo', name: 'smoke-oslo', created: 2, bbox: [10.7, 59.9, 10.8, 59.95], keys: [], bytes: 1, failed: 0 });
+    const box = document.createElement('div');
+    await off.renderOfflineSection(box, { open: () => {} });
+    const said = Object.fromEntries([...box.querySelectorAll('.off-area-text')].map((el) => [el.querySelector('b').textContent, el.textContent]));
+    if (!/National Land Survey’s terrain is missing in parts: save the area again/.test(said['smoke-part'])) f.push(`an area whose MML tiles failed in part says: ${said['smoke-part']}`);
+    if (!/National Land Survey’s terrain didn’t load: save the area again/.test(said['smoke-down'])) f.push(`an area whose MML tiles all failed says: ${said['smoke-down']}`);
+    if (!/Saved without the National Land Survey’s terrain: save the area again/.test(said['smoke-old'])) f.push(`an area in Finland saved before MML's tiles were kept says: ${said['smoke-old']}`);
+    if (/National Land Survey/.test(said['smoke-oslo'])) f.push(`an area in Oslo says: ${said['smoke-oslo']}`);
+    for (const id of ['smoke-old', 'smoke-oslo', part.id, down.id]) await off.removeArea(id);
+    asked.length = 0; most = 0;
+    const whole = await save('smoke-mml', { key: 'own-test', property: true });
+    if (!whole.mml || whole.mml.failed || !whole.mml.tiles) f.push(`saved whole, the area says ${JSON.stringify(whole.mml)} of MML's terrain tiles failed`);
+    if (!mmlKeys(whole).some((k) => k.includes('/kiinteistojaotus/default/v3/WGS84_Pseudo-Mercator/14/'))) f.push('property boundaries not kept with their layer on');
+    if (mmlKeys(whole).some((k) => k.includes('?'))) f.push(`MML's tiles kept under an address with its key: ${mmlKeys(whole).find((k) => k.includes('?'))}`);
+    if (asked.some(([, u]) => new URL(u).searchParams.get('api-key') !== 'own-test')) f.push('your own key not used for MML\'s tiles');
+    paced('saved whole');
+    const c = await caches.open('polku-offline-tiles');
+    if (!await c.match('https://avoin-karttakuva.maanmittauslaitos.fi/vectortiles/taustakartta/wmts/1.0.0/taustakartta/default/v21/WGS84_Pseudo-Mercator/14/4578/9260.pbf')) f.push('the recorded tile isn\'t kept');
+  } finally { window.fetch = real; }
+  return f;
+})()
+"""
+
+# Offline and in Preview offline, with this commit's worker: MML's bogs from the saved tile, asked for with Polku's key
+# (saved with your own), and no message that MML's terrain didn't load, though the view reaches past the corridor
+MML_OFFLINE_MAP = r"""
+(async () => {
+  const f = [], m = polku.map, wait = (ms) => new Promise((r) => setTimeout(r, ms)), failed = [];
+  m.on('error', (e) => { if (e.sourceId === 'mml') failed.push(e.tile ? e.tile.tileID.canonical.toString() : String(e.error && e.error.message)); });
+  m.jumpTo({ center: [(9260.5 / 2 ** 14) * 360 - 180, Math.atan(Math.sinh(Math.PI * (1 - (2 * 4578.5) / 2 ** 14))) * 180 / Math.PI], zoom: 14.5 });
+  const bogs = () => m.queryRenderedFeatures({ layers: ['mml-bog'] }).length;
+  for (let k = 0; k < 60 && !(bogs() && m.areTilesLoaded()); k++) await wait(250);
+  await wait(1500);
+  if (!bogs()) f.push('no bogs drawn from the saved tile');
+  const said = (window.__toasts || []).filter((t) => t.includes('National Land Survey'));
+  if (said.length) f.push(`in the saved area: ${said[0]} (MML's tiles that failed: ${failed.join(' ')})`);
+  return f;
+})()
+"""
+
+# MML out of reach with the device still online (a signal without data): zoomed out through the saved zooms, the message
+# comes once, not again each time a saved tile loads after one that failed
+MML_UNREACHABLE = r"""
+(async () => {
+  const f = [], m = polku.map, wait = (ms) => new Promise((r) => setTimeout(r, ms));
+  const center = [(9260.5 / 2 ** 14) * 360 - 180, Math.atan(Math.sinh(Math.PI * (1 - (2 * 4578.5) / 2 ** 14))) * 180 / Math.PI];
+  for (const zoom of [14.5, 13.5, 12.5, 11.5]) {
+    m.jumpTo({ center, zoom });
+    for (let k = 0; k < 40 && !m.areTilesLoaded(); k++) await wait(250);
+    await wait(800);
+  }
+  const said = (window.__toasts || []).filter((t) => t.includes('National Land Survey'));
+  if (!navigator.onLine) f.push('(the test) the device says it\'s offline');
+  else if (said.length !== 1) f.push(`the message that MML's terrain didn't load came ${said.length} times, not once`);
+  return f;
+})()
+"""
+
+
+def mml_offline(chrome):
+    """Save offline keeps MML's terrain at its zooms, property boundaries while their layer is on, under addresses
+    without the key, paced (#1176); offline, with the real worker and the network off, the map draws them from there."""
+    fails = []
+    pg = chrome.page(390, 844, True)
+    try:
+        # (zoom 10: under the source's zoom 11, so the map asks MML for nothing)
+        pg.open_app({'activity': 'mtb', 'base': 'trail'}, hash_='#10/61.92/23.478')
+        fails += pg.js(MML_OFFLINE_SAVE, timeout=120000)
+        pg.c.send('Network.setBypassServiceWorker', {'bypass': False}, pg.s)
+        # this commit's worker, not one an earlier run on the port left in the profile (#1134)
+        pg.js("(async () => { for (const r of await navigator.serviceWorker.getRegistrations()) await r.unregister(); return true })()")
+        pg.js("Promise.race([navigator.serviceWorker.register('./sw.js').then(() => navigator.serviceWorker.ready), new Promise((_, no) => setTimeout(() => no(new Error('service worker not ready after 15 s')), 15000))]).then(() => true)", timeout=20000)
+        pg.reload()
+        if not pg.js('!!navigator.serviceWorker.controller'):
+            raise RuntimeError('the page is not controlled by the worker')
+        toasts = "new MutationObserver((ms) => { for (const m of ms) if (m.target.id === 'toast') (window.__toasts ||= []).push(m.target.textContent); }).observe(document, { childList: true, subtree: true }); true"
+        pg.js(toasts)
+        # the page, its own workers (MapLibre's, which fetch the tiles) and every service worker of this origin offline: CDP's
+        # offline for the page alone leaves the others' fetches online, and a tile the service worker leaves alone goes out
+        # from MapLibre's worker
+        pg.c.send('Target.setAutoAttach', {'autoAttach': True, 'waitForDebuggerOnStart': False, 'flatten': True}, pg.s)
+        time.sleep(0.5)
+        own = [e['params']['sessionId'] for e in pg.c.events if e.get('method') == 'Target.attachedToTarget' and e.get('sessionId') == pg.s]
+        workers = [t['targetId'] for t in chrome.send('Target.getTargets')['targetInfos'] if t['type'] == 'service_worker' and t['url'].startswith(BASE)]
+        attached = [chrome.send('Target.attachToTarget', {'targetId': t, 'flatten': True})['sessionId'] for t in workers]
+        sessions = [pg.s] + own + attached
+
+        def network(off):
+            for s_ in sessions:
+                try:
+                    chrome.send('Network.enable', {}, s_)
+                    chrome.send('Network.emulateNetworkConditions', {'offline': off, 'latency': 0, 'downloadThroughput': 0 if off else -1, 'uploadThroughput': 0 if off else -1}, s_)
+                except RuntimeError:  # (a worker gone since)
+                    pass
+        try:
+            network(True)
+            fails += [f'offline: {e}' for e in pg.js(MML_OFFLINE_MAP, timeout=60000)]
+            # a saved property tile, asked for with another key
+            fails += pg.js("""(async () => {
+              const { listAreas } = await import(location.origin + '/js/offline.js'), a = (await listAreas()).find((x) => x.name === 'smoke-mml');
+              const k = a && a.keys.find((u) => u.includes('/kiinteistojaotus/'));
+              if (!k) return ['offline: no property tile kept to ask for'];
+              const r = await fetch(k + '?api-key=another').catch(() => null);
+              return r && r.ok ? [] : [`offline: a saved property tile not answered: ${k}`];
+            })()""")
+        finally:
+            network(False)
+        pg.reload()
+        pg.js(toasts)
+        time.sleep(0.5)
+        sessions += [e['params']['sessionId'] for e in pg.c.events if e.get('method') == 'Target.attachedToTarget' and e.get('sessionId') == pg.s and e['params']['sessionId'] not in sessions]
+
+        def block(urls):
+            for s_ in sessions:
+                try:
+                    chrome.send('Network.setBlockedURLs', {'urls': urls}, s_)
+                except RuntimeError:
+                    pass
+        try:
+            block(['*avoin-karttakuva.maanmittauslaitos.fi*'])
+            fails += [f'MML out of reach: {e}' for e in pg.js(MML_UNREACHABLE, timeout=90000)]
+        finally:
+            block([])
+            for s_ in attached:
+                chrome.send('Target.detachFromTarget', {'sessionId': s_})
+        preview = "new Promise((ok) => { navigator.serviceWorker.addEventListener('message', (e) => e.data.type === 'offline-preview' && ok(true)); navigator.serviceWorker.controller.postMessage({ type: 'offline-preview', on: %s }); setTimeout(() => ok(false), 3000); })"
+        try:
+            pg.js(preview % 'true')
+            pg.reload()
+            pg.js(toasts)
+            fails += [f'Preview offline: {e}' for e in pg.js(MML_OFFLINE_MAP, timeout=60000)]
+        finally:
+            pg.js(preview % 'false')
+        pg.js("(async () => { const off = await import(location.origin + '/js/offline.js'); for (const a of await off.listAreas()) if (a.name === 'smoke-mml') await off.removeArea(a.id); return true })()")
+        fails += [f'console: {e[:160]}' for e in pg.errors()]
+    finally:
+        pg.close()
+    print(f"{'ok  ' if not fails else 'FAIL'} MML's tiles in offline areas: kept at its zooms, paced, without the key, drawn offline by the worker (#1176)" + ''.join(f'\n     - {f}' for f in fails), flush=True)
     return not fails
 
 
@@ -25053,6 +25330,7 @@ def osm_data(chrome):
                              'tools.osm_data.test_builder.BuilderTests.test_sample_validation_reads_locations_without_overwriting_them',
                              'tools.osm_data.test_builder.BuilderTests.test_full_country_rejects_missing_required_sample_roads',
                              'tools.osm_data.test_preview.PreviewTests.test_preview_overrides_an_already_configured_live_source_in_response_only',
+                             'tools.osm_data.test_preview.PreviewTests.test_the_server_holds_a_page_of_module_requests',
                              'tools.osm_data.test_alerts.AlertTests.test_retry_runs_only_for_a_failed_main_build_below_the_attempt_cap',
                              'tools.osm_data.test_alerts.AlertTests.test_retry_reruns_the_build_only_when_geofabrik_refused_every_failed_job'],
                             cwd=Path(__file__).resolve().parent.parent, capture_output=True, text=True, timeout=30)
@@ -25180,6 +25458,42 @@ def point_card_actions(chrome):
 
 
 LIPAS_KOTA = {'name': 'Haukanlammen kota', 'typeName': 'Laavu, kota tai kammi', 'city': 'Tampere', 'lipasId': 72269, 'type': 206}
+
+
+# (#1247) a name from map data, with HTML in it, in each kind of feature whose name heads the spot card: the card
+# says it as written, and nothing in it loads (an image's request would mean it was put into the page as HTML)
+SPOT_NAMES = """(async () => {
+  const m = polku.map, p = polku.planner, at = m.getCenter(), errs = [], real = m.queryRenderedFeatures, IMG = '/__smoke-1247.png';
+  const name = `<img src="${IMG}" onerror="window.__ran1247 = 1">Kota & co`;
+  const kinds = [['winter-ski', { name, cls: 'ski' }], ['cameras', { name }], ['sf-points', { kind: 'roadcond', label: name }], ['lipas-route', { name, typeName: 'Hiking route' }]];
+  p.placeAt = () => null; // (on the spot: no place under it, whatever the tiles have)
+  try {
+    for (const [id, props] of kinds) {
+      window.__ran1247 = 0;
+      m.queryRenderedFeatures = () => [{ type: 'Feature', layer: { id }, source: 'x', properties: props, geometry: { type: 'LineString', coordinates: [[at.lng - 0.001, at.lat], [at.lng + 0.001, at.lat]] } }];
+      try { p.openSpotCard([at.lng, at.lat]); } finally { m.queryRenderedFeatures = real; }
+      await new Promise((r) => setTimeout(r, 500));
+      const card = document.querySelector('.pl-way.card');
+      if (window.__ran1247 || performance.getEntriesByName(location.origin + IMG).length) errs.push(`${id}: the name went into the page as HTML`);
+      else if (!card || !card.textContent.includes(name)) errs.push(`${id}: the card says ${card ? JSON.stringify(card.textContent.slice(0, 80)) : 'nothing'}, not the name as written`);
+      p.cards.close();
+    }
+  } finally { delete p.placeAt; }
+  return errs;
+})()"""
+
+
+def spot_card_names(chrome):
+    """A name with HTML in it, from LIPAS, a winter way or Fintraffic, is text in the spot card, never run (#1247)."""
+    pg = chrome.page(1440, 900, False)
+    try:
+        pg.open_app({'activity': 'mtb'}, {'polku:winter': '"off"'}, '#15/61.514/23.818')
+        pg.js("import(location.origin + '/js/ways.js').then((W) => { W.holdWays(); return true; })")  # (no answer from Overpass to name the spot instead)
+        fails = pg.js(SPOT_NAMES, timeout=30000) + [f'console: {e[:160]}' for e in pg.errors()]
+    finally:
+        pg.close()
+    print(' ', 'ok' if not fails else 'FAIL', 'a name with HTML in it is text in the spot card (#1247)', *(['\n    1440x900: ' + f for f in fails] if fails else []))
+    return not fails
 
 
 def spot_card_actions(chrome):
@@ -25553,6 +25867,7 @@ GROUPS = [
     ('layers', [layers, layer_coverage, cycleway_style, cycling_restrictions, waterway_style, property_lines, property_plots, wetland_style, reedbed_style, mml_bogs, mml_rock, mml_water, mml_open, osm_cliffs, saddles, mml_cards], 'the Layers panel in every sport'),
     ('raster', [raster_maps, aerial_fallback, aerial_labels], 'terrain and aerial detail, bounded high-density WMS symbols, depth boundaries and missing aerial detail (#649, #650, #653); the map\'s words on the aerial photos at 4.5:1 on their halo (#554)'),
     ('coarse', [coarse], 'a coarse map underneath (#1091): the base map\'s tile four zoom levels up stands in for one that hasn\'t come, at 1440 and 390'),
+    ('offline', [mml_offline], 'Save offline keeps the National Land Survey\'s tiles (#1176): its terrain at zooms 11–14 and property boundaries while on, under addresses without the key, two at a time and ten a second at most; what Offline maps says an area lacks; offline, with the real worker, the bogs drawn from the saved tile and no message'),
     ('together', [together], 'Polku\'s own layers come in together after the map stops, 500 ms at most (#1091)'),
     ('fadein', [fadein], 'what comes after the map stops fades in, 0.2–0.4 s by how much it changes (#1091): after a move by mouse or touch and a search result\'s flight, never from the keys, ended by a touch, no picture over a moving map'),
     ('trails', [trails, uphill_late, mtb_grades], 'recorded trail details/card, late uphill colors, and consistent MTB 0−/S0 display (#435, #673)'),
@@ -25616,7 +25931,7 @@ GROUPS = [
     ('pointcard', [point_card, point_card_actions], 'a point\'s card (25d): a tap, a hold and a right-click open the same card, when you\'re there and the profile up to it, with its actions, in the peek or at the point, its numbers, Make it a stop, Stay the night, Change sport from here, Move by a tap, Rename, Remove and Undo, Back and the back gesture, the route\'s view, 200 % and Finnish (straight legs)'),
     ('routecard', [route_card, near_line, route_card_actions], 'the route\'s card and a stretch\'s (25d 1b): a tap on the route, a tap just beside it while drawing (#725), Add a waypoint here at the spot, This stretch, What\'s here, Edit this stretch, On the profile, Avoid this spot, the whole route, the start\'s Back to start, End not Finish (straight legs, mocked BRouter)'),
     ('pickcard', [pick_card, pick_card_settings], 'a pick (#574): road works on the same card with their years (#564, #565), a phone\'s tap opening the card at its peek, the hover; a way\'s pieces joined into one thing from a recorded tile, the S5 path\'s grade and incline in Gravel (#561), nothing "not mapped" that wasn\'t loaded (#562), a street in many pieces, Way type on a trail across kinds (the legend\'s lengths add up; recorded ways, set terrain and weather)'),
-    ('spotcard', [spot_card, spot_card_foot, spot_card_actions], 'hold the map to see what\'s there (25d part 5): a finger held 0.5 s or a right-click, the ring, a tap, a move and two fingers, a busy page (#293), the spot\'s and a place\'s cards, Add to my route where it fits or on the line, Start here and End here, the line\'s hold and right-click, the route\'s view, the planner put away (straight legs, mocked BRouter)'),
+    ('spotcard', [spot_card, spot_card_foot, spot_card_actions, spot_card_names], 'hold the map to see what\'s there (25d part 5): a finger held 0.5 s or a right-click, the ring, a tap, a move and two fingers, a busy page (#293), the spot\'s and a place\'s cards, Add to my route where it fits or on the line, Start here and End here, the line\'s hold and right-click, the route\'s view, the planner put away (straight legs, mocked BRouter)'),
     ('crosshair', [crosshair], 'the keyboard\'s crosshair (25d part 5b): Tab to the map, the keys listed, Enter as a tap (a point, the route\'s card), Shift+F10 and the menu key as a hold, Escape and the focus, the crosshair gone with the focus, never by touch (straight legs)'),
     ('facts', [facts], 'facts on the card (#574, What\'s here\'s levels before): the same facts in every sport, All OpenStreetMap details and Copy (a failure, a late answer), Not right?, a toilet\'s and an obstacle\'s facts, a LIPAS place\'s, a late height, a path\'s card with the planner put away, a ship\'s own card (recorded ways, Overpass answered here)'),
     ('sharespot', [share_spot], 'Share a spot and Weather here (25d part 6b): the share sheet and the copied link, the link\'s pin and card with a route as it was, a bad pin, an old route link, the timeline held at the spot and released, no request with the spot'),

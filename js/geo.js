@@ -182,6 +182,9 @@ export function encodePolyline(coords) {
   return out;
 }
 
+// [lon, lat] on the earth (NaN isn't): the map throws on a latitude beyond 90°
+export const onEarth = ([lon, lat]) => Math.abs(lon) <= 180 && Math.abs(lat) <= 90;
+
 export function decodePolyline(str) {
   const coords = [];
   let i = 0, lat = 0, lon = 0;
