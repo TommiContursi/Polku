@@ -4,6 +4,12 @@ What's new in [Polku](https://polku.si), from the latest updates back to the fir
 
 ## 2026-11-21
 
+### The route's forecast offline ([#1288](https://github.com/TommiContursi/Polku/issues/1288))
+
+- **Save offline** now keeps the route's forecast as it is when you save, ten days ahead, so the route's weather, the weather card and the times with the wind still work without a connection.
+- Offline, the route's weather says when its forecast was fetched, with the day when it wasn't today, so an old forecast never looks current. Times past the saved forecast's end say there's no forecast for them. Back online, a fresh forecast replaces it.
+- **Settings → Offline maps** says when an area was saved without the route's forecast: save it again to add it. The weather map still needs a connection.
+
 ### House numbers ([#1223](https://github.com/TommiContursi/Polku/issues/1223))
 
 - From zoom 17, house numbers show on the buildings, small and in a quiet grey, so you can find an address in a town. Every other name and place wins where they would overlap.

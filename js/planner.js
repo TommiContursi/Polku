@@ -19,7 +19,7 @@ import { clock } from './net.js';
 import { winterAlong, windChill, airPast, feelsLike, WINTER_TEXT, forgetWinterFailures } from './winter.js';
 import { isNight, nightsWord, restSec, stopLabel, cleanStop, encodeStops, decodeStops, dayWeather, gearChecks, GEAR, DEFAULT_BREAK, DEFAULT_ON, hhmm, parseHhmm } from './stops.js';
 import { toGPX, download } from './gpx.js';
-import { windAlong, windClass, rainBand, recentRain, pointForecasts, sampleAt, LONG_HOURS, forecastKnown, skyKind } from './weather.js';
+import { windAlong, windClass, rainBand, recentRain, pointForecasts, sampleAt, LONG_HOURS, forecastKnown, skyKind, olderForecast } from './weather.js';
 import { keyFacts, factLine, sportFacts, hardestClimb, climbWords, tileTags } from './facts.js';
 import { icon, h, $, toast, store, escapeHtml, popMenu, tooltip, settleControls, mouseDrag, infoDot, sideways, holdArrow } from './ui.js';
 import { sweepDay, nameDay, good, dayStart, dayOffset, clockMins } from './besttime.js';
@@ -269,6 +269,8 @@ export class Planner {
     addEventListener('online', () => this.retryWater());
     // back online: the terrain that didn't load, now
     addEventListener('online', () => { if (this.analysis && this.analysis.terrain && this.analysis.terrain.retry) this.retryTerrain(this.analysis, 0, true); });
+    // and the forecast: offline it fails without a back-off, so no service's retry asks again (#1288)
+    addEventListener('online', () => { const a = this.analysis; if (a && (a.windError || a.wind?.stale)) this.loadWind(a); });
     // names of roads come with the tiles: when new ones arrive, the list may know more
     map.on('idle', () => {
       if (!this.active || !this.points.length) return;
@@ -4543,7 +4545,7 @@ export class Planner {
     const line = this.mergedLine().coords;
     const b = bbox(line);
     const name = this.routeName || `${ACTIVITIES[this.mainSport()].label} ${fmtDist(a.total)} · ${new Date().toLocaleDateString()}`;
-    return { name, line, bbox: b, km: a.total / 1000, route: this.routeSnapshot() };
+    return { name, line, bbox: b, km: a.total / 1000, route: this.routeSnapshot(), wx: { pts: a.pts, along: a.along } };
   }
 
   shareUrl() {
@@ -4780,7 +4782,8 @@ export class Planner {
     this.els.leave = this.when.control('pill');
     this.els.there = h('span', { class: 'trip-there' });
     this.els.boxDays = h('div', { class: 'rows trip-days' });
-    this.els.box = h('div', { class: 'trip-box pl-group', role: 'group', 'aria-label': 'The trip', hidden: true }, h('div', { class: 'trip-when' }, this.els.leave, this.els.there), this.els.boxDays);
+    this.els.boxOld = h('p', { class: 'note wx-note stale-note', hidden: true }); // an older forecast's age (a saved one's too, #1288)
+    this.els.box = h('div', { class: 'trip-box pl-group', role: 'group', 'aria-label': 'The trip', hidden: true }, h('div', { class: 'trip-when' }, this.els.leave, this.els.there), this.els.boxDays, this.els.boxOld);
     this.els.speedWrap = h('div', { class: 'speed-wrap' }, h('h4', { class: 'how-h' }, 'Your speed', h('small', {}, 'how fast the time is counted')), this.els.speedBox = h('div', { class: 'speed-box' }));
     this.els.panes = {
       route: pane('route',
@@ -7029,7 +7032,7 @@ export class Planner {
     if (a.windError) out.push({ key: 'weather', by: 'Open-Meteo', text: 'The forecast didn’t answer', note: `${typeof a.windError === 'string' ? `${a.windError}. ` : ''}The wind, the rain and the cold on the way aren’t known, and the time is without the wind.`, ranges: null, retry: ask('weather', () => this.loadWind(a)) });
     // past the forecast's reach (10 days, #465): its last hour isn't used, so wind, rain and waves aren't known there
     const w = a.wind;
-    if (w && w.beyond === 0) out.push({ key: 'beyond', by: 'Open-Meteo', text: 'No forecast yet for this trip', note: 'Wind, rain, thunder and waves aren’t checked: the forecast reaches 10 days ahead. Sunset and the dark still count.', ranges: null });
+    if (w && w.beyond === 0) out.push({ key: 'beyond', by: 'Open-Meteo', text: 'No forecast yet for this trip', note: `Wind, rain, thunder and waves aren’t checked: ${w.stale ? `the older forecast reaches ${this.clockOf(w.beyondSec)}` : 'the forecast reaches 10 days ahead'}. Sunset and the dark still count.`, ranges: null });
     else if (w && w.beyond > 0) out.push({ key: 'beyond', by: 'Open-Meteo', text: `No forecast yet from km ${(a.along[w.beyond] / 1000).toFixed(1)}, ${this.clockOf(w.beyondSec)}`, note: 'Wind, rain, thunder and waves aren’t checked from there.', ...place([[a.along[w.beyond], end - a.along[w.beyond]]]) });
     const at = (x) => (x.ranges ? x.at : Infinity);
     return out.sort((x, y) => (at(x) === at(y) ? 0 : at(x) < at(y) ? -1 : 1));
@@ -7549,6 +7552,8 @@ export class Planner {
     this.els.box.hidden = !T;
     if (!T) return;
     this.els.there.textContent = this.thereWords(T);
+    this.els.boxOld.hidden = !a.wind?.stale;
+    if (a.wind?.stale) this.els.boxOld.textContent = olderForecast(a.wind.from);
     const days = this.wxDays(a), many = days.length > 1;
     this.els.boxDays.replaceChildren(...days.map((d, k) => {
       const wx = a.wind && forecastKnown(a.wind, d.i0) && dayWeather(a.wind, a, ...ownSamples(a, d)), line = this.boxLine(a, d);
@@ -7615,7 +7620,7 @@ export class Planner {
     const a = this.analysis, T = this.trip(), w = a.wind, days = this.wxDays(a), known = !!w && w.beyond !== 0;
     const note = (text, cls = '') => h('p', { class: `note wx-note ${cls}` }, text);
     body.append(this.bestBox(card), h('h3', { class: 'wx-head' }, 'Weather on the way'));
-    if (w && w.stale) body.append(note(`Older forecast (from ${timeOf(w.from / 1000)}): Open-Meteo couldn’t be reached.`, 'stale-note'));
+    if (w && w.stale) body.append(note(olderForecast(w.from), 'stale-note'));
     if (!w) {
       body.append(note(a.windError ? (typeof a.windError === 'string' ? a.windError : 'The forecast couldn’t be loaded.') : 'Loading the forecast…'));
       if (a.windError) body.append(h('button', { type: 'button', class: 'btn small', 'data-k': 'retry', onclick: () => this.loadWind(this.analysis) }, 'Retry'));
@@ -7715,7 +7720,7 @@ export class Planner {
       h('span', { 'aria-live': 'polite' }, h('b', {}, dayOf(day0 + 43200, true), word ? infoDot(...word) : null)),
       h('button', { type: 'button', class: 'tool', 'aria-label': 'The day after', 'data-k': 'bt-next', disabled: k === 9 ? true : null, onclick: step(1), html: icon('chevronRight', 20) })));
     const loading = !res, failed = res?.failed;
-    if (res?.old) box.append(h('p', { class: 'note wx-note stale-note' }, `Older forecast (from ${timeOf(res.old / 1000)}): Open-Meteo couldn’t be reached.`));
+    if (res?.old) box.append(h('p', { class: 'note wx-note stale-note' }, olderForecast(res.old)));
     const cur = hrs ? hrs.findIndex((x) => !x.past && x.h0 <= dep && dep < x.h0 + 3600) : -1;
     const marks = new Map([...N.lit, ...N.dark].map((w) => [w.i, w.least])); // (the named hours: least bad or not)
     const read = h('p', { class: 'bt-read' }), range = h('input', { type: 'range', class: 'bt-range', 'data-k': 'bt-range', min: '0', max: String(n - 1), step: '1', 'aria-label': `Departure on ${new Date(day0 * 1000).toLocaleDateString([], { weekday: 'long' })}`, disabled: loading || failed ? true : null });

@@ -9341,6 +9341,123 @@ def mml_offline(chrome):
     return not fails
 
 
+
+# Save offline keeps the route's forecast (#1288). WX_FIXED answers Open-Meteo while the device is online (100 hours);
+# offline its requests go to the network, through the service worker, and fail.
+OFF_FC_MOCK = """window.__wx.n = 100; window.fetch = ((mock, real) => (input, init) => (navigator.onLine ? mock : real)(input, init))(window.fetch, window.__netFetch);"""
+# Online: the route's forecast saved with the area, ten days asked for (WX_FIXED's 100 hours) at its forecast points;
+# then made two days older (as saved the day before yesterday: its hours and when it was fetched), with the weather's
+# own copies gone, so only the saved one is left. Offline maps says when an area has no forecast.
+OFF_FC_SAVE = """(async () => {
+  const f = [], p = polku.planner, wait = (ms) => new Promise((r) => setTimeout(r, ms));
+  for (let k = 0; k < 100 && !p.analysis?.wind; k++) await wait(200);
+  if (!p.analysis?.wind) return { f: ['(the test) the route has no forecast online'] };
+  const O = await import(location.origin + '/js/offline.js'), { idb } = await import(location.origin + '/js/idb.js');
+  const a = await O.saveArea(p.offlinePayload(), { buffer: 500, terrain: true }, () => {}, new AbortController().signal);
+  const kept = Object.values(a.forecast || {});
+  if (kept.length < 2) f.push(`the area keeps ${kept.length} forecast points, not the route's 2 or more`);
+  if (kept.some((v) => !(Date.now() - v.at < 3600e3 && v.s.time.length === 100))) f.push(`the forecast kept: ${kept.map((v) => `${v.s.time.length} hours from ${new Date(v.at).toISOString()}`).join(', ')}`);
+  const back = 48 * 3600;
+  for (const v of kept) { v.at -= back * 1000; v.s.time = v.s.time.map((t) => t - back); }
+  await idb('offline').set(a.id, a);
+  await idb('weather').prune(() => false);
+  await idb('offline').set('smoke-nofc', { ...a, id: 'smoke-nofc', name: 'smoke-nofc', keys: [], forecast: null });
+  const box = document.createElement('div');
+  await O.renderOfflineSection(box, { open: () => {} });
+  const said = Object.fromEntries([...box.querySelectorAll('.off-area-text')].map((el) => [el.querySelector('b').textContent, el.textContent]));
+  if (!/Saved without the route’s forecast: save the area again to add it/.test(said['smoke-nofc'])) f.push(`an area without the forecast says: ${said['smoke-nofc']}`);
+  if (/forecast/.test(said[a.name])) f.push(`an area with the forecast says: ${said[a.name]}`);
+  await O.removeArea('smoke-nofc');
+  return { f, id: a.id, at: kept[0] ? kept[0].at : 0 };
+})()"""
+# Offline, the route opened from Offline maps: its weather is the saved forecast, and the trip's box and the weather
+# card say when it was fetched, with its day; leaving past its end (three days ahead: it reaches 51 hours), no forecast
+OFF_FC_READ = """(async ([id, at]) => {
+  const f = [], p = polku.planner, wait = (ms) => new Promise((r) => setTimeout(r, ms));
+  const O = await import(location.origin + '/js/offline.js'), W = await import(location.origin + '/js/weather.js');
+  if (navigator.onLine) f.push('(the test) the page says it’s online');
+  const area = (await O.listAreas()).find((x) => x.id === id);
+  p.setActive(true);
+  p.restoreSnapshot(area.route);
+  for (let k = 0; k < 150 && !(p.analysis?.wind || p.analysis?.windError); k++) await wait(200);
+  const w = p.analysis?.wind;
+  if (!w) return [...f, `the route has no forecast: ${p.analysis?.windError}`];
+  if (!w.stale || w.from !== at) f.push(`the forecast is ${w.stale ? `from ${new Date(w.from).toISOString()}` : 'fresh'}, not the saved one`);
+  if (Math.round(w.temp[0]) !== -12) f.push(`the forecast's temperature at the start is ${w.temp[0]}, not WX_FIXED's −12`);
+  const words = W.olderForecast(at), day = new Date(at).toLocaleDateString([], { weekday: 'short' });
+  if (!words.includes(day)) f.push(`the forecast's age doesn't say its day (${day}): ${words}`);
+  const old = p.els.boxOld;
+  if (old.hidden || old.textContent !== words) f.push(`the trip's box says ${old.hidden ? 'nothing' : old.textContent} of the forecast's age, not ${words}`);
+  p.openWeather();
+  await wait(600);
+  const card = p.cards.box?.querySelector('.stale-note')?.textContent;
+  if (card !== words) f.push(`the weather card says ${card} of the forecast's age`);
+  p.cards.close();
+  const t = Math.round(Date.now() / 3600e3 + 72) * 3600;
+  p.when.set(t);
+  for (let k = 0; k < 100 && p.analysis?.wind?.start.time !== t; k++) await wait(200); // (the wind sampled from it, not the route retimed at once)
+  const v = p.analysis?.wind;
+  if (!v || v.beyond !== 0) f.push(`leaving past the saved forecast's end, its samples past it from ${v?.beyond}, not 0`);
+  else if (!/no forecast/i.test(p.els.boxDays.textContent)) f.push(`leaving past the saved forecast's end, the trip's box says ${p.els.boxDays.textContent}`);
+  return f;
+})(%s)"""
+# Back online: a fresh forecast replaces the saved one, with no Retry
+OFF_FC_BACK = """(async () => {
+  const p = polku.planner, wait = (ms) => new Promise((r) => setTimeout(r, ms));
+  for (let k = 0; k < 100 && (!p.analysis?.wind || p.analysis.wind.stale); k++) await wait(200);
+  const w = p.analysis?.wind;
+  return !w || w.stale ? [`the forecast is ${w ? 'still the saved one' : 'gone'}`] : !p.els.boxOld.hidden ? [`the trip's box still says ${p.els.boxOld.textContent}`] : [];
+})()"""
+
+
+def offline_forecast(chrome):
+    """Save offline keeps the route's forecast (#1288): offline, with the real worker and the network off, the route's
+    weather is the saved forecast and says when it was fetched; past its end there's none; back online, a fresh one."""
+    fails = []
+    pg = chrome.page(390, 844, True)
+    ws, area = [], None
+
+    def offline(on):  # the network off, and no copy from the browser's cache either: only what the worker keeps
+        for s in (pg.s, *ws):
+            chrome.send('Network.emulateNetworkConditions', {'offline': on, 'latency': 0, 'downloadThroughput': -1, 'uploadThroughput': -1}, s)
+            chrome.send('Network.setCacheDisabled', {'cacheDisabled': on}, s)
+    try:
+        pg.c.send('Page.addScriptToEvaluateOnNewDocument', {'source': EMPTY_DEPTHS + 'window.__netFetch = window.fetch;' + WX_FIXED + OFF_FC_MOCK}, pg.s)
+        pg.open_app({'activity': 'mtb'}, {'polku:winter': '"off"'}, '#13/61.514/23.822')
+        chrome.send('Network.setBypassServiceWorker', {'bypass': False}, pg.s)
+        pg.js("(async () => { for (const r of await navigator.serviceWorker.getRegistrations()) await r.unregister(); await caches.delete('polku-shell-v1'); await navigator.serviceWorker.register('./sw.js'); await navigator.serviceWorker.ready; return true })()")
+        # no forecast an earlier check left in the profile: WX_FIXED's 100 hours, asked for now
+        pg.js("import(location.origin + '/js/idb.js').then(({ idb }) => idb('weather').prune(() => false)).then(() => true)")
+        pg.reload()
+        workers = [t for t in chrome.send('Target.getTargets')['targetInfos'] if t['type'] == 'service_worker' and t['url'] == BASE + 'sw.js']
+        if not pg.js('!!navigator.serviceWorker.controller') or not workers:
+            raise RuntimeError('the route\'s forecast offline: the page has no service worker')
+        ws = [chrome.send('Target.attachToTarget', {'targetId': t['targetId'], 'flatten': True})['sessionId'] for t in workers]
+        for s in ws:
+            chrome.send('Network.enable', {}, s)
+        if not pg.js(PC_ROUTE, timeout=30000):
+            raise RuntimeError('the route\'s forecast offline: no route')
+        got = pg.js(OFF_FC_SAVE, timeout=120000)
+        fails += got['f']
+        area = got.get('id')
+        if area:
+            offline(True)
+            pg.reload()
+            fails += [f'offline: {e}' for e in pg.js(OFF_FC_READ % json.dumps([area, got['at']]), timeout=90000)]
+            offline(False)
+            fails += [f'back online: {e}' for e in pg.js(OFF_FC_BACK, timeout=60000)]
+    finally:
+        offline(False)
+        if area:
+            pg.js(f"import(location.origin + '/js/offline.js').then((O) => O.removeArea({json.dumps(area)})).then(() => true)")
+        pg.js("(async () => { for (const r of await navigator.serviceWorker.getRegistrations()) await r.unregister(); return true })()")
+        for s in ws:
+            chrome.send('Target.detachFromTarget', {'sessionId': s})
+    fails += [f'console: {e[:160]}' for e in pg.errors()]
+    pg.close()
+    print(f"{'ok  ' if not fails else 'FAIL'} Save offline keeps the route's forecast: offline, with the real worker, it says when it was fetched, none past its end, a fresh one back online (#1288)" + ''.join(f'\n     - {f}' for f in fails), flush=True)
+    return not fails
+
 # Polku's own layers come in together (#1091): Väylävirasto's tiles and Digitraffic's faults answered by the page (an
 # empty chart, so no request leaves), before Polku loads: window.__nmDelay ms after they're asked for, or, while
 # window.__nmHeld is a list, once window.__nmRelease() is called
@@ -16821,12 +16938,12 @@ WC_JS = """(async () => {
   const set = (w, error = false) => { a.wind = w; a.windError = error; p.renderAnalysis(); };
   const wind = (o = {}) => ({ start: { speed: 5, gust: 9, dir: 270, temp: 4, precip: 0 }, head: fill(2), cross: fill(0), speed: fill(5), gust: fill(9), dir: fill(270), temp: fill(4), precip: fill(0),
     feel: fill(1), cloud: fill(90), snow: fill(NaN), beyond: -1, beyondSec: t0 + 3 * 3600, unsure: -1, series: [series(1)], cell: new Uint8Array(n), ...o });
-  const k = Math.round(n / 3), km = (a.along[k] / 1000).toFixed(1);
+  const k = Math.round(n / 3), km = (a.along[k] / 1000).toFixed(1), old = Date.now() - 2 * 3600e3, W = await import(location.origin + '/js/weather.js');
   p.openWeather(); await wait(300);
   const states = [
     ['loading', () => set(null), 'loading the forecast…', 'Loading the forecast…'],
     ['failed', () => set(null, true), 'forecast unavailable', 'The forecast couldn’t be loaded.'],
-    ['older', () => set(wind({ stale: true, from: Date.now() - 2 * 3600e3 })), '4 °C · dry', `Older forecast (from ${new Date(Date.now() - 7200e3).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}): Open-Meteo couldn’t be reached.`],
+    ['older', () => set(wind({ stale: true, from: old })), '4 °C · dry', W.olderForecast(old)], // (its time, with the day past midnight: #1288's check)
     ['from a km', () => set(wind({ beyond: k, beyondSec: T.at(k) })), `no forecast yet from km ${km}`, `The forecast only reaches ${p.clockOf(T.at(k))}`],
     ['less certain', () => set(wind({ unsure: k })), 'less certain', 'More than three days ahead: the forecast is less certain.'],
     ['none for the trip', () => set(wind({ beyond: 0 })), 'no forecast yet', 'No forecast yet for '],
@@ -25856,7 +25973,7 @@ def pick_card(chrome):
         old = pg.js("""(async () => { const c = polku.planner.cards.current, pick = c.pick, wx = pick.wx, places = pick.places;
           pick.wx = { ...wx, stale: true, from: Date.now() - 2 * 3600e3 }; pick.places = [{ type: 301, id: 9301, name: 'Testilaavu', at: pick.ll }]; polku.planner.cards.refresh();
           await new Promise((r) => setTimeout(r, 300));
-          const box = document.querySelector('.pl-way.card'), said = /Older forecast \\(from \\d/.test(box.textContent);
+          const box = document.querySelector('.pl-way.card'), said = /Older forecast \\(from /.test(box.textContent);
           [...box.querySelectorAll('.row')].find((r) => r.textContent.includes('Testilaavu')).click();
           await new Promise((r) => setTimeout(r, 500));
           const now = polku.planner.cards.current, out = { said, kind: now && now.kind, follow: /Follow this route/.test(document.querySelector('.pl-way.card')?.textContent || '') };
@@ -26771,7 +26888,7 @@ GROUPS = [
     ('layers', [layers, layer_coverage, cycleway_style, cycling_restrictions, waterway_style, property_lines, property_plots, wetland_style, reedbed_style, mml_bogs, mml_rock, mml_water, mml_open, osm_cliffs, saddles, mml_cards, town_gates, town_bridges, town_oneway, town_parks, town_parking, town_shops, town_housenumbers], 'the Layers panel in every sport'),
     ('raster', [raster_maps, aerial_fallback, aerial_labels], 'terrain and aerial detail, bounded high-density WMS symbols, depth boundaries and missing aerial detail (#649, #650, #653); the map\'s words on the aerial photos at 4.5:1 on their halo (#554)'),
     ('coarse', [coarse], 'a coarse map underneath (#1091): the base map\'s tile four zoom levels up stands in for one that hasn\'t come, at 1440 and 390'),
-    ('offline', [mml_offline], 'Save offline keeps the National Land Survey\'s tiles (#1176): its terrain at zooms 11–14 and property boundaries while on, under addresses without the key, two at a time and ten a second at most; what Offline maps says an area lacks; offline, with the real worker, the bogs drawn from the saved tile and no message'),
+    ('offline', [mml_offline, offline_forecast], 'Save offline keeps the National Land Survey\'s tiles (#1176): its terrain at zooms 11–14 and property boundaries while on, under addresses without the key, two at a time and ten a second at most; what Offline maps says an area lacks; offline, with the real worker, the bogs drawn from the saved tile and no message; the route\'s forecast kept with the area, offline saying when it was fetched, none past its end, a fresh one back online (#1288)'),
     ('together', [together], 'Polku\'s own layers come in together after the map stops, 500 ms at most (#1091)'),
     ('fadein', [fadein], 'what comes after the map stops fades in, 0.2–0.4 s by how much it changes (#1091): after a move by mouse or touch and a search result\'s flight, never from the keys, ended by a touch, no picture over a moving map'),
     ('trails', [trails, uphill_late, mtb_grades], 'recorded trail details/card, late uphill colors, and consistent MTB 0−/S0 display (#435, #673)'),

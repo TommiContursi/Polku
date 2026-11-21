@@ -1,7 +1,8 @@
 // Offline areas: Polku's trail map and terrain along a planned route, saved in
-// the browser so the map, the route, its profile and uphill grades work with no
-// signal. Tiles go into Cache Storage, where the service worker (sw.js) finds
-// them; the list of areas (with the routed line itself) lives in IndexedDB.
+// the browser so the map, the route, its profile, uphill grades and the route's
+// forecast as it was work with no signal. Tiles go into Cache Storage, where the
+// service worker (sw.js) finds them; the list of areas (with the routed line
+// itself and its forecast, js/weather.js) lives in IndexedDB.
 //
 // Only sources whose terms allow it are saved: OpenFreeMap vector tiles and
 // Mapterhorn terrain, and in Finland the National Land Survey's (MML) vector tiles,
@@ -12,6 +13,7 @@
 import { OFM_TILEJSON, OFM_SPRITE, OFM_GLYPHS, DEM_URL, MML_TERRAIN_TILES, MML_PROPERTY_TILES, FINLAND_BOUNDS, mmlApiKey } from './config.js';
 import { densify, lonLatToTile, tileBounds, fmtDist } from './geo.js';
 import { idb } from './idb.js';
+import { keepForecast } from './weather.js';
 import { openModal, closeModal } from './modal.js';
 import { h, icon, toast } from './ui.js';
 
@@ -100,7 +102,7 @@ async function saveShell() {
 }
 
 // ------------------------------------------------------------------ saving
-export async function saveArea({ name, line, bbox, route }, { buffer, terrain, mml }, onProgress, signal) {
+export async function saveArea({ name, line, bbox, route, wx }, { buffer, terrain, mml }, onProgress, signal) {
   const plan = await planArea(line, { buffer, terrain, mml });
   if (plan.tiles.size > MAX_TILES) throw new Error('This area is too big to save. Try a narrower corridor.');
   if (navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(() => {});
@@ -144,7 +146,9 @@ export async function saveArea({ name, line, bbox, route }, { buffer, terrain, m
     throw new DOMException('Cancelled', 'AbortError');
   }
   const mmlTiles = list.filter(([, t]) => t.kind === 'mml').length;
-  const area = { id: `a${Date.now().toString(36)}`, name, created: Date.now(), bbox, keys: [...plan.tiles.keys()], tiles: list.length, bytes, failed, buffer, terrain, mml: { tiles: mmlTiles, failed: mmlFailed }, route };
+  // the route's ten-day forecast as it is now (#1288); none where Open-Meteo can't be reached, and Offline maps says so
+  const forecast = wx ? await keepForecast(wx.pts, wx.along).catch(() => null) : null;
+  const area = { id: `a${Date.now().toString(36)}`, name, created: Date.now(), bbox, keys: [...plan.tiles.keys()], tiles: list.length, bytes, failed, buffer, terrain, mml: { tiles: mmlTiles, failed: mmlFailed }, route, forecast };
   await areas.set(area.id, area);
   return area;
 }
@@ -303,7 +307,7 @@ export function openSaveOffline(payload, { onSaved, mml } = {}) {
         }, ctrl.signal);
         ctrl = null;
         closeModal();
-        toast(`Saved for offline use · ${mb(area.bytes)}${area.failed ? ` (${area.failed} tiles failed — save again to retry)` : ''}`, { ms: 5000 });
+        toast(`Saved for offline use · ${mb(area.bytes)}${area.failed ? ` (${area.failed} tiles failed — save again to retry)` : ''}${area.forecast ? '' : ' · without the forecast: Open-Meteo couldn’t be reached'}`, { ms: 5000 });
         if (onSaved) onSaved(area);
       } catch (err) {
         ctrl = null;
@@ -315,13 +319,13 @@ export function openSaveOffline(payload, { onSaved, mml } = {}) {
       }
     };
     body.append(
-      h('p', {}, 'Saves Polku’s trail map and terrain (hillshade, contours, 3D, uphill grades) along this route, with the route itself, so the map, route and profile work without signal. '
+      h('p', {}, 'Saves Polku’s trail map and terrain (hillshade, contours, 3D, uphill grades) along this route, with the route itself and its forecast as it is now, so the map, route, profile and weather work without signal. '
         + `In Finland it keeps the National Land Survey’s terrain too (bogs, rock, cliffs and the water’s marks)${mml && mml.property ? ', and property boundaries, as their layer is on' : ''}.`),
       h('label', { class: 'off-field' }, h('span', {}, 'Name'), name),
       h('div', { class: 'off-field' }, h('span', {}, 'Corridor either side'), corridor),
       h('label', { class: 'off-check' }, terrainBox, h('span', {}, 'Terrain', h('small', {}, 'Hillshade, contours, 3D and uphill grades. Half to three quarters of the size.'))),
       est, bar, status,
-      h('p', { class: 'note' }, 'Routing, search, weather, traffic and aerial maps still need a connection.'),
+      h('p', { class: 'note' }, 'Routing, search, the weather map, traffic and aerial maps still need a connection. Offline, the route’s weather says how old its forecast is.'),
       h('div', { class: 'off-actions' }, save));
     estimate();
   });
@@ -337,9 +341,11 @@ export async function renderOfflineSection(box, { open }) {
     // what it lacks of MML's terrain (#1176): saved before it was kept, in Finland, or with some of its tiles failing
     const lacks = !a.mml ? (inFinland(a.bbox) ? 'Saved without the National Land Survey’s terrain' : '')
       : !a.mml.failed ? '' : a.mml.failed < a.mml.tiles ? 'The National Land Survey’s terrain is missing in parts' : 'The National Land Survey’s terrain didn’t load';
+    // and the route's forecast (#1288): saved before it was kept, or Open-Meteo didn't answer
+    const noForecast = !a.forecast ? 'Saved without the route’s forecast' : '';
     box.append(h('div', { class: 'off-area' },
       h('div', { class: 'off-area-text' }, h('b', {}, a.name), h('small', {}, `${new Date(a.created).toLocaleDateString()} · ${mb(a.bytes)}${a.failed ? ` · ${a.failed} tiles missing` : ''}`),
-        lacks ? h('small', {}, `${lacks}: save the area again to add it.`) : null),
+        ...[lacks, noForecast].filter(Boolean).map((l) => h('small', {}, `${l}: save the area again to add it.`))),
       h('button', { type: 'button', class: 'btn', onclick: () => open(a) }, 'Open'),
       h('button', { type: 'button', class: 'tool danger', 'aria-label': `Delete ${a.name}`, title: 'Delete', html: icon('trash', 17), onclick: async (e) => {
         e.currentTarget.disabled = true;
