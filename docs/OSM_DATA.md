@@ -70,7 +70,10 @@ osm-build/venv/bin/python tools/osm_data/preview.py --release osm-build/release 
 
 Open `http://127.0.0.1:8796/`. The preview substitutes the data URL in its HTTP
 response only; the checked-in production setting stays unchanged. Its data
-path supports Range and CORS. For a browser check, use the normal smoke tool:
+path supports Range and CORS. `--manifest URL` instead of `--release DIR` points the
+app at a published release's own `manifest.json`, read where it lies on the host:
+that is how the promotion below checks a candidate without downloading it.
+For a browser check, use the normal smoke tool:
 
 ```sh
 POLKU_URL=http://127.0.0.1:8796/ python tools/smoke.py osmdata pickcard facts
@@ -132,6 +135,39 @@ environment) are:
 `OSM_ALLOW_PUBLISH=true` is supplied only by the guarded deployment jobs; for
 an approved local operation set it explicitly. No secrets, variables or
 environments were changed by this implementation.
+
+## Promotion from the public repository (Protected Polku, #115)
+
+The build is moving to a public repository of its own, `TommiContursi/polku-osm-data`,
+where its long runs cost nothing once Polku is private. It builds, checks the data and
+uploads a verified candidate into `releases/<release>/`, named in `candidates/current.json`;
+it never touches the live `current.json`, never checks out Polku and holds no token of
+Polku's. Its operations guide is `docs/OPERATIONS.md` there.
+
+**Polku OSM promotion** (`osm-promote.yml`) runs on Thursdays at 06:17 UTC, after Monday's
+build, its re-runs and its upload. It runs the public repository's code at the commit
+pinned in `OSM_DATA_COMMIT`; a change to that code reaches Polku's credentials only through
+a PR here that moves the pin.
+
+- **A candidate built after the live release** (`publish.py candidate`, public HTTP only):
+  the `check` job runs `tools/smoke.py osmdata` and `measure_browser.py --country all`
+  against `preview.py --manifest` on the candidate, without credentials. The `promote` job
+  holds only the build's code at the pin, never Polku's, no GitHub token, and this
+  repository's `osm-data-production` environment: `publish.py promote` requires the same
+  manifest bytes (by SHA-256), every file at its size and nothing else in the folder, a
+  release built after the live one, and that live geometry isn't dropped, then switches
+  `current.json` with the same guarded swap as before. The `live` job, without credentials,
+  checks polku.si in a browser (`health.py`); if that fails, the `restore` job, set up like
+  `promote`, rolls back to the saved predecessor unless another release went live meanwhile.
+  The full SHA-256 readback happened at upload, in the public repository.
+- **No newer candidate:** the live release is checked in a browser, weekly instead of daily;
+  the public repository checks its files daily without a browser.
+- **A pull request** that changes the job or the app's checks runs the checks against the
+  live release's own manifest, and never promotes.
+- **Rollback** by hand is an operation of the same workflow, in a job set up like `promote`.
+
+Until the new path has promoted a release, `osm-data.yml` below keeps building and
+publishing; then it leaves Polku.
 
 ## Publication and activation
 

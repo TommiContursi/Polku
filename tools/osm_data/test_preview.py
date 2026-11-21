@@ -117,6 +117,18 @@ class PreviewTests(unittest.TestCase):
         self.assertIn(f"OSM_DATA_MANIFEST = '{self.base}/__osm/current.json'", body.decode())
         self.assertEqual(config.read_text(), source)
 
+    def test_a_published_candidate_is_read_where_it_lies(self):
+        url = 'https://data.example/polku-osm/releases/candidate/manifest.json'
+        self.close_server()
+        self.server = HTTPServer(('127.0.0.1', 0), partial(Preview, manifest=url, directory=self.repo))
+        self.thread = Thread(target=self.server.serve_forever, daemon=True)
+        self.thread.start()
+        status, _, body = self.request('/js/config.js')
+        self.assertEqual(status, 200)
+        self.assertIn(f"OSM_DATA_MANIFEST = '{url}'", body.decode())
+        self.assertEqual(self.request('/__osm/current.json')[0], 404, 'nothing local is served as data')
+        self.assertEqual(self.request('/index.html')[2], b'Polku preview')
+
     def test_the_server_holds_a_page_of_module_requests(self):
         self.assertGreaterEqual(Server.request_queue_size, 128)
 
