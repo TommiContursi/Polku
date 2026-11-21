@@ -4,6 +4,12 @@ What's new in [Polku](https://polku.si), from the latest updates back to the fir
 
 ## 2026-11-21
 
+### Gates and barriers by kind, coloured by who may pass ([#1232](https://github.com/TommiContursi/Polku/issues/1232))
+
+- Gates and barriers now have a mark for each kind: a gate, a lift gate's boom, a chain or rope, blocks, a stile or kissing gate, a turnstile and a cycle barrier.
+- Each is coloured by who may pass: dark where OpenStreetMap doesn't say, red with a padlock where it's private, closed or locked, and green with a ✓ where it's open to everyone, or on foot or by bike.
+- They show with **Access restrictions** (Layers › Trails & difficulty), on in every land sport, instead of with **Trail details**. Fallen trees and fords stay with **Trail details**. **Map key** under Access restrictions lists every mark.
+
 ### House numbers ([#1223](https://github.com/TommiContursi/Polku/issues/1223))
 
 - From zoom 17, house numbers show on the buildings, small and in a quiet grey, so you can find an address in a town. Every other name and place wins where they would overlap.

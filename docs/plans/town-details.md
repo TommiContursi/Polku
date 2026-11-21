@@ -68,6 +68,25 @@ The order to build them is at the end.
   built from `main` in its own issue.
 - **Found while planning:** [#1224](https://github.com/TommiContursi/Polku/issues/1224), protected areas' names are hard to
   read on the Night map (2.7:1).
+- **Built, 2026-11-21,** one pull request a part, in the order below:
+  - Fewer marks (#1221): [#1266](https://github.com/TommiContursi/Polku/pull/1266). Gates from zoom 16, giving way to each other
+    and to names until 17 (`td-gates`, `td-gates-all`). On a phone in Helsinki's centre, MapLibre's placed symbols went from
+    118 (78 gates) to 40 (none) at zoom 15, and from 40 (19 gates) to 32 (11) at 16; the 165 above were counted another way.
+  - Bridges and tunnels (#1218): [#1269](https://github.com/TommiContursi/Polku/pull/1269). The edge on paths, footways, cycle
+    paths and tracks is a 1 px line whose gap is the band's own width (`line-gap-width`), so it follows every band.
+  - One-way arrows (#1217): [#1270](https://github.com/TommiContursi/Polku/pull/1270). The water's flow arrow (#1170) rather
+    than a new icon; on the Plain and Night maps the cycle paths' arrow is a darker or lighter blue than the line.
+  - Parks (#1220): [#1271](https://github.com/TommiContursi/Polku/pull/1271). City parks' names on the Night map in a lighter
+    green than the protected areas' (#1224).
+  - Car parks (#1219): [#1272](https://github.com/TommiContursi/Polku/pull/1272). MML's P is a place icon, named "Car park";
+    the area joins #1244's terrain areas, left out when a tap opens lines only.
+  - Shops and food (#1222): [#1273](https://github.com/TommiContursi/Polku/pull/1273). Names in the light purple wherever the
+    halo is dark (the Night map and the aerial photos), 8.1:1 or more on every base.
+  - House numbers (#1223): [#1274](https://github.com/TommiContursi/Polku/pull/1274). Added before the places, so every
+    other name wins.
+  - The gates' marks (#1232): [#1290](https://github.com/TommiContursi/Polku/pull/1290), as B in its mock-up, with a ✓ on open marks as the padlock on closed ones (Codex's review). The trail
+    details now load whenever Access restrictions is on; the zoom hint follows Trail details.
+  - Left: car parks beyond Finland, [#1216](https://github.com/TommiContursi/Polku/issues/1216).
 
 ## What the tiles carry
 

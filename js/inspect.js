@@ -32,7 +32,7 @@ export const isHttp = (u) => /^https?:\/\//i.test(u) ? u : /^www\./i.test(u) ? `
 // Layers a click can inspect, and the order it picks from when several are
 // under the pointer. The hover tooltip uses the same order, so it previews
 // exactly what a click opens.
-const INSPECTABLE = /^(cameras$|td-points$|td-gates$|td-gates-all$|td-way-tree$|td-way-ford$|winter-way$|winter-ski$|winter-closed$|nm-marks|nm-navline$|nm-sector|nm-restrict-fill|nm-fairway|sf-ships|sf-points|sf-lines|sf-aadt|military-fill|lipas-point|poi-outdoor|poi-minor|poi-parking|poi-shops|label-peak|lipas-route$|uphill-line|path-|track-|cycleway-|road-|water$|property-plot$|pier$|pier-area$|mml-(bog|paludified|overgrowing|shoal|rock|boulders|cliff|power|rock-point|reed|pylon|rapids|flow|jetty|open|landuse|open-forest|forest|parking|parking-p)$)/;
+const INSPECTABLE = /^(cameras$|td-points$|td-barriers$|td-gates$|td-gates-all$|td-way-tree$|td-way-ford$|winter-way$|winter-ski$|winter-closed$|nm-marks|nm-navline$|nm-sector|nm-restrict-fill|nm-fairway|sf-ships|sf-points|sf-lines|sf-aadt|military-fill|lipas-point|poi-outdoor|poi-minor|poi-parking|poi-shops|label-peak|lipas-route$|uphill-line|path-|track-|cycleway-|road-|water$|property-plot$|pier$|pier-area$|mml-(bog|paludified|overgrowing|shoal|rock|boulders|cliff|power|rock-point|reed|pylon|rapids|flow|jetty|open|landuse|open-forest|forest|parking|parking-p)$)/;
 // An official (LIPAS) route drawn over a trail is what a click there means: its card
 // links to the trail under it, and the trail's card back to the route.
 // MML's terrain (#1175): its marks and lines (and OSM's piers, #1234), after the ways, and its overgrowing water and shoals, before the

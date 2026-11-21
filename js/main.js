@@ -973,7 +973,8 @@ function configureLayers() {
   cameras.setEnabled(!!o.sfCameras);
   nautical.setEnabled(!!o.nautical);
   uphill.setEnabled(state.trailColors === 'up' || state.trailColors === 'both' || state.labelsUp);
-  details.setEnabled(!!state.trailDetails);
+  details.setEnabled(!!(state.trailDetails || o.access)); // the trail details' points are Access restrictions' gates too (#1232)
+  syncZoomHint();
 }
 
 // ------------------------------------------------------------------ activity pill
@@ -1311,7 +1312,7 @@ const KEYS = {
       keyItem(keyLine('border-top:3px dotted #2f9e44'), 'Overgrown (beside the line)'),
       keyItem(keyLine('border-top:3px dotted #1d6fd1'), 'Wet or muddy (beside the line)'),
       keyItem(keyLine('border-top:2px dashed #545454'), 'Fence (a wall solid, a hedge green)'),
-      ...[['td-tree', 'Fallen tree or log across'], ['td-gate', 'Gate or barrier'], ['td-gate-no', 'Gate, no access'], ['td-stile', 'Stile or kissing gate'], ['td-cycle', 'Cycle barrier'], ['td-ford', 'Ford (no bridge)']]
+      ...[['td-tree', 'Fallen tree or log across'], ['td-ford', 'Ford (no bridge)']]
         .map(([id, label]) => keyItem(h('img', { class: 'lg-icon', src: iconUrl(id), alt: '' }), label)),
     ] : []),
     h('h3', {}, 'Ways'),
@@ -1326,6 +1327,11 @@ const KEYS = {
       keyItem(keyLine('height:10px;background:repeating-linear-gradient(90deg,transparent 0 7px,#ff003c 7px 10px),linear-gradient(#1f1f1f,#1f1f1f) center/100% 2px no-repeat'), 'No bikes (red bars across a path or forest track)'),
       keyItem(keyLine('height:9px;border-top:3px dotted #7c3aed;border-bottom:3px dotted #7c3aed;background:linear-gradient(#1f1f1f,#1f1f1f) center/100% 2px no-repeat'), 'No entry: private or no access (dots on both sides)'),
       keyItem(keyLine('height:9px;border-top:3px dotted #7c3aed;background:linear-gradient(#1f1f1f,#1f1f1f) center/100% 2px no-repeat'), 'No walking (dots on one side)'),
+      // gates and barriers (#1232): each mark, then who may pass on the gate's
+      h('h3', {}, 'Gates and barriers (OpenStreetMap, where mapped)'),
+      ...[['gate', 'Gate'], ['lift', 'Lift gate (boom)'], ['chain', 'Chain or rope'], ['blocks', 'Blocks'], ['stile', 'Stile or kissing gate'], ['turnstile', 'Turnstile'], ['cycle', 'Cycle barrier'],
+        ['gate-closed', 'Closed: private or locked'], ['gate-open', 'Open to everyone, or on foot or by bike']]
+        .map(([m, label]) => keyItem(h('img', { class: 'lg-icon', src: iconUrl(`td-${m.includes('-') ? m : `${m}-unknown`}`), alt: '' }), label)),
     ] : []),
     state.activity === 'gravel' || state.activity === 'road' ? keyItem(keyLine('background:#fde7c1;height:6px;box-shadow:0 0 0 2px #c4842d'), 'Unpaved road') : null,
     keyItem(keyLine('background:#3f8f3f;height:2px;opacity:.7'), 'Protected area boundary'),
@@ -2381,10 +2387,11 @@ window.addEventListener('keydown', (e) => {
 });
 
 // The free vector tiles only carry the full trail network from zoom 14; the trail details, from 13 (#1128).
-const zoomHint = $('#zoom-hint');
-const syncZoomHint = () => { const z = map.getZoom(); zoomHint.hidden = !(z >= 10.5 && z < 14) || details.covers; };
+// The trail details load for Access restrictions' gates too (#1232), but draw the trails only with Trail details on, so
+// configureLayers() syncs the hint as well (a function, as it runs before this line)
+function syncZoomHint() { const z = map.getZoom(); $('#zoom-hint').hidden = !(z >= 10.5 && z < 14) || (state.trailDetails && details.covers); }
 map.on('zoomend', syncZoomHint);
-zoomHint.addEventListener('click', () => map.easeTo({ zoom: 14.2, duration: 600 }));
+$('#zoom-hint').addEventListener('click', () => map.easeTo({ zoom: 14.2, duration: 600 }));
 
 // The page itself never scrolls: focus() on a control can otherwise scroll the
 // document (it has overflow:hidden, not no-scroll) and shift the whole UI.
