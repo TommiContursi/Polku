@@ -83,11 +83,12 @@ headers a `<meta>` tag can't set (HSTS, `frame-ancestors`, `X-Frame-Options`, th
 - **The deploy id** comes from the commit Cloudflare builds (`WORKERS_CI_COMMIT_SHA`). It is
   sent as a header on every file, and stamped into every published `.js` and `.css` file but
   `sw.js`, and into `index.html` (the copyright comment carries it), so every file's hash, and
-  so its ETag, changes with every deploy, as GitHub's does today. `sw.js` is left out: the
-  browser fetches it directly, never through the worker, and a stamp would install a new worker
-  on every deploy, which forgets the open pages' deploys and saved copies (`deployOf`, `savedFor`). Otherwise an unchanged file would
-  revalidate to a 304, and Cloudflare's docs don't say whether `_headers` headers come with a
-  304: the browser could keep an older deploy's id. `sw.js` reads the deploy-id header and
+  so its ETag, changes with every deploy, as GitHub's does today. Otherwise an unchanged file
+  would revalidate to a 304, and Cloudflare's docs don't say whether `_headers` headers come
+  with a 304: the browser could keep an older deploy's id. `sw.js` is left out: the browser
+  fetches it directly, never through the worker, and a stamp would install a new worker on
+  every deploy, one that forgets the open pages' deploys and saved copies (`deployOf`,
+  `savedFor`). `sw.js` reads the deploy-id header and
   falls back to `Last-Modified`, because part 1 runs on GitHub Pages for days before the DNS
   moves (and again after a rollback to Pages); the fallback goes once part 4 has passed. The
   `startfail` check that sets saved copies' `Last-Modified` changes with it. Locally, as now,
