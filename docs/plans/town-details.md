@@ -8,12 +8,13 @@ names and bridges, with steps already done (#1181). Codex's list adds small
 green spaces and the density of marks. This plan says what the map's tiles
 carry for each, how each would look, whether it belongs in the basemap or
 in a layer of its own, how it works beyond Finland, and from which zoom it
-shows. Nothing is built yet.
+shows.
 
 ## Choices
 
-Each has one recommendation and what it costs. The screenshots show the
-recommendations together, drawn on a sketch that is never merged.
+Each had one recommendation and what it costs; on 2026-11-21 the user chose
+every recommendation, and each part's issue holds its decision. The
+screenshots show them together, drawn on a sketch that is never merged.
 
 1. **One-way arrows** ([#1217](https://github.com/TommiContursi/Polku/issues/1217)): a small grey arrow along one-way
    streets from zoom 16, everywhere. The tiles can't say whether bikes may
@@ -60,6 +61,8 @@ The order to build them is at the end.
   Jyväskylä's centres, Stockholm's Gamla stan and Tallinn's centre (nine
   zoom-14 tiles each, one zoom-13 and one zoom-12 tile), and MML's tiles at
   the three Finnish ones.
+- **Decided, 2026-11-21:** every recommendation below, in each part's
+  issue; and the gates' marks in [#1232](https://github.com/TommiContursi/Polku/issues/1232).
 - **Drawn** on the branch `claude/town-details-sketch` (at 91505ae3,
   from `main` at 1e8f70b4), which is never a pull request. Each part is
   built from `main` in its own issue.
