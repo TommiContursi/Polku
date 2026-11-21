@@ -11776,14 +11776,16 @@ def start_fails(chrome):
     pg.close()
 
     # The worker's saved copies (#481), a returning visitor on a slow network. Just after an update: the saved
-    # js/safety.js is from an older deploy (its X-Polku-Deploy isn't the page's, though its Last-Modified is) and the
-    # server's answer comes after 6 s, past the worker's 3 s: the page waits for it and opens once, all new, with no try
+    # js/safety.js is from an older deploy (its Last-Modified isn't the page's; in 'update-id' its X-Polku-Deploy isn't,
+    # though its Last-Modified is) and the server's answer comes after 6 s, past the worker's 3 s: the page waits for it and opens once, all new, with no try
     # more (main mixed the two, failed and tried again). With no update: the saved copies are the page's deploy's and
     # every js/ file hangs for good, the page itself too ('saved'): it opens from them, and says it may be an older
     # Polku. The deploy is X-Polku-Deploy where it's sent (Cloudflare), else Last-Modified (GitHub Pages, #115): 'hang'
     # gives the js/ copies the page's X-Polku-Deploy beside their own Last-Modified, 'saved' only the page's Last-Modified.
-    for case in ('update', 'hang', 'saved'):
-        name = '390x844, ' + {'update': 'an older deploy’s js/safety.js saved, the new one 6 s late', 'hang': 'every js/ file hanging, the saved copies the page’s deploy’s',
+    for case in ('update', 'update-id', 'hang', 'saved'):
+        update = case.startswith('update')
+        name = '390x844, ' + {'update': 'an older deploy’s js/safety.js saved, the new one 6 s late',
+                              'update-id': 'an older deploy’s js/safety.js saved (by X-Polku-Deploy), the new one 6 s late', 'hang': 'every js/ file hanging, the saved copies the page’s deploy’s',
                               'saved': 'the page and every js/ file hanging, the saved copies the page’s deploy’s'}[case]
         pg = chrome.page(390, 844, True)
         pg.open_app({'activity': 'mtb'})
@@ -11796,10 +11798,10 @@ def start_fails(chrome):
         if not pg.js('!!navigator.serviceWorker.controller') or not worker:
             raise RuntimeError(f'{name}: the page has no service worker')
         ws = chrome.send('Target.attachToTarget', {'targetId': worker['targetId'], 'flatten': True})['sessionId']
-        if case == 'update':
+        if update:
             pg.js("""caches.open('polku-shell-v1').then(async (c) => c.put(new URL('js/safety.js', location.href).href,
-              new Response('export class SafetyLayers {}', { headers: { 'Content-Type': 'text/javascript', 'X-Polku-Deploy': 'older',
-                'Last-Modified': (await c.match(new URL('./', location.href).href)).headers.get('last-modified') } }))).then(() => true)""")
+              new Response('export class SafetyLayers {}', { headers: { 'Content-Type': 'text/javascript', ...(ID ? { 'X-Polku-Deploy': 'older',
+                'Last-Modified': (await c.match(new URL('./', location.href).href)).headers.get('last-modified') } : { 'Last-Modified': 'Thu, 01 Jan 2026 00:00:00 GMT' }) } }))).then(() => true)""".replace('ID', 'true' if case == 'update-id' else 'false'))
             chrome.send('Fetch.enable', {'patterns': [{'urlPattern': '*js/safety.js'}]}, ws)
         else:
             # (serve.py gives each file its own time and no X-Polku-Deploy; GitHub Pages gives every file the deploy's time,
@@ -11811,7 +11813,7 @@ def start_fails(chrome):
             chrome.send('Fetch.enable', {'patterns': [{'urlPattern': BASE + 'js/*'}] + ([{'urlPattern': BASE}] if case == 'saved' else [])}, ws)
         chrome.events = [e for e in chrome.events if e.get('sessionId') != pg.s]
         chrome.send('Page.reload', {}, pg.s)
-        t0, opened, let_go = time.time(), False, case != 'update'
+        t0, opened, let_go = time.time(), False, not update
         while time.time() - t0 < 30 and not opened:
             time.sleep(0.5)
             if not let_go and time.time() - t0 > 6:  # the new js/safety.js arrives
@@ -11824,16 +11826,16 @@ def start_fails(chrome):
                 opened = pg.js('!!window.polku', timeout=3000)
             except Exception:
                 pass  # (the page loading again)
-        if case != 'update':
+        if not update:
             chrome.send('Fetch.disable', {}, ws)
         chrome.send('Target.detachFromTarget', {'sessionId': ws})
         if not opened:
             fails.append(f'{name}: Polku didn’t open in 30 s, window.polku {pg.js("!!window.polku")}, the message {"shown" if pg.js(banner) else "not shown"}')
         else:
             older = pg.js("new Promise((ok) => setTimeout(() => ok(!!document.querySelector('.offline-banner.saved-copy:not(#start-failed)')?.checkVisibility()), 1500))")
-            if case == 'update' and tries(pg) != 1:
+            if update and tries(pg) != 1:
                 fails.append(f'{name}: {tries(pg)} tries, not 1')
-            if case != 'update' and not older:
+            if not update and not older:
                 fails.append(f'{name}: opened without saying it may be an older Polku')
             fails.extend(f'{name}: console: {e[:160]}' for e in pg.errors())
         pg.js("(async () => { for (const r of await navigator.serviceWorker.getRegistrations()) await r.unregister(); return true })()")
