@@ -255,8 +255,12 @@ Each comes with click-by-click instructions in its PR or Hand-over when it is ne
 
 Later, each its own issue when chosen: the OSM archives (28 files, 11.2 GB) from OVH to
 Cloudflare R2 at `data.polku.si` (free traffic, about 0.30 $ a month for storage, faster and
-sturdier serving; it doesn't fix the build's Geofabrik download failures); a BRouter of
-Polku's own behind a Cloudflare tunnel, if a server is available.
+sturdier serving; it doesn't fix the build's Geofabrik download failures); Polku's own BRouter
+(#858) behind a Cloudflare tunnel at `route.polku.si`, so the server's address stays hidden and
+needs no open ports. It removes brouter.de's pauses but adds upkeep: the server's updates,
+BRouter's releases, the weekly refresh of the Nordic routing data, monitoring, and a fallback
+to brouter.de when it's down. It stays out of this phase: nothing in protecting the code needs
+it.
 
 **Not done:** a proxy for the outside services. Their limits are per address: through one
 proxy every user would share one limit, and brouter.de pausing one user would pause all. It
