@@ -27,11 +27,14 @@ find site -name .DS_Store -delete
 "$ESBUILD" sw.js --outfile=site/sw.js \
   --minify --legal-comments=none --charset=utf8 --log-level=warning --banner:js="/*! $COPYRIGHT */"
 
-# Search engines are welcome: Cloudflare's managed robots.txt puts its list of AI training crawlers in front of this
+# Search engines are welcome: Cloudflare's managed robots.txt puts its list of AI training crawlers in front of this.
+# Share links (any address with a query) are not: they carry positions, and opening one routes through brouter.de.
 mkdir site/.well-known
-printf 'User-agent: *\nAllow: /\n' > site/robots.txt
-# the W3C TDM Reservation Protocol: text and data mining reserved for the whole site
-printf '[{ "location": "/", "tdm-reservation": 1 }]\n' > site/.well-known/tdmrep.json
+printf 'User-agent: *\nAllow: /\nDisallow: /*?\n' > site/robots.txt
+# The W3C TDM Reservation Protocol: text and data mining reserved for the whole site, but for the two kinds of
+# material whose licences forbid any added term: the OFL fonts and the OpenStreetMap-derived outlines (ODbL 4.7).
+# The headers say the same (TDM_FREE below). The first rule that matches decides.
+printf '[{ "location": "/fonts/", "tdm-reservation": 0 }, { "location": "/data/*-coverage.geojson", "tdm-reservation": 0 }, { "location": "/", "tdm-reservation": 1 }]\n' > site/.well-known/tdmrep.json
 
 node --input-type=module - "$COPYRIGHT · $DEPLOY" "$DEPLOY" <<'EOF'
 import { readFileSync as read, writeFileSync as write, readdirSync, existsSync } from 'node:fs';
@@ -65,6 +68,9 @@ for (const f of ['sw.js', ...files('js').filter((f) => f.endsWith('.js') && !f.s
 const missing = [...new Set(wanted)].filter((f) => !existsSync(`site/${f}`));
 if (missing.length) throw new Error(`not published, but the app asks for: ${missing.join(', ')}`);
 
+// the files whose licences forbid any added term keep no tdm-reservation header (tdmrep.json above names the same)
+const TDM_FREE = ['/fonts/*', '/data/*-coverage.geojson'];
+
 // The headers (the plan's "Security headers"). The policy is report-only until the plan's part 5 enforces it;
 // serve.py --site enforces it already. Images and connections stay open to any https: address and to this computer
 // (Settings' own BRouter), and to data: and blob: (the radar's images, MapLibre's). Permissions-Policy turns off only
@@ -89,6 +95,7 @@ write('site/_headers', `/*
   Permissions-Policy: camera=(), microphone=(), payment=(), usb=(), serial=(), hid=(), bluetooth=(), midi=(), display-capture=()
   X-Frame-Options: DENY
   tdm-reservation: 1
+${TDM_FREE.map((p) => `${p}\n  ! tdm-reservation`).join('\n')}
 /LICENSE
   Content-Type: text/plain; charset=utf-8
 `); // LICENSE has no extension, so wrangler gives it no type: every file's copyright line links to it, and it should read as text

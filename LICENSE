@@ -1,28 +1,83 @@
-Polku — Proprietary License
+Polku — Proprietary Licence
 
 Copyright (c) 2026 Tommi Contursi. All rights reserved.
 
-This notice applies only to original material in this repository for which
-Tommi Contursi holds the copyright, including Polku's original application
-code and documentation.
 
-You may use the Polku service at https://polku.si, including running and
-caching the code in your browser as needed to use its features. This does
-not grant permission to reuse the source code in another product.
+1. Scope and ownership
 
-Except for that permission, rights required by applicable law, or separate
-written permission from the copyright holder, no permission is granted to
-copy, modify, distribute, sublicense, sell, or use the original material
-to create derivative works or to operate another service.
+This licence applies to all original copyright-protected material owned by
+Tommi Contursi and made available as part of the Polku project or service,
+whether distributed through a source repository, a published application,
+or https://polku.si.
 
-No permission is granted to use the original material for text and data
-mining, including to train, fine-tune or evaluate machine-learning or other
-artificial-intelligence models. The copyright holder expressly reserves this
-right under Article 4(3) of Directive (EU) 2019/790 and the national laws
-that implement it.
+Protected material includes Polku's original source code, compiled,
+bundled, transformed and minified code, stylesheets, original interface
+designs, graphics, icons, documentation and other original works.
 
-Third-party code, data and other material remain the property of their
-respective rights holders and are governed by their own licences. Nothing
-in this notice restricts rights granted by those licences or claims
-ownership of that material. See THIRD_PARTY_NOTICES.md and any notices
-accompanying the relevant files.
+All rights in such material are expressly reserved, regardless of its
+format, method of distribution or technical accessibility.
+
+
+2. Limited permission to use
+
+Permission is granted to access and use the Polku service for its intended
+purposes, including loading, executing and caching the application in a
+browser as technically necessary.
+
+This permission does not grant any right to reuse Polku's protected
+implementation in another product or service.
+
+
+3. Restrictions
+
+Except where expressly permitted by applicable law or authorised in writing
+by the copyright holder, no permission is granted to:
+
+- Copy, modify, adapt, translate or create derivative works from Polku's
+  original protected material.
+- Redistribute, sublicense, sell, republish, mirror or repackage such
+  material.
+- Incorporate such material into another application, website, commercial
+  product or hosted service.
+- Systematically extract or reproduce Polku's original protected material
+  for redistribution or reuse in another product or service.
+- Use automated tools, including web scrapers, crawlers, bots or AI agents,
+  to systematically collect, copy or extract Polku's original protected
+  material for unauthorised reproduction, redistribution, AI training or
+  reuse in another product or service.
+
+All rights not expressly granted are reserved.
+
+
+4. Text and data mining and artificial intelligence
+
+No permission is granted to use Polku's original protected material for
+text and data mining, including training, fine-tuning or evaluating
+machine-learning or other artificial-intelligence models.
+
+The copyright holder expressly reserves these rights under Article 4(3) of
+Directive (EU) 2019/790 and applicable national implementing legislation.
+
+This reservation applies to material made available through the
+repository, published application and website, in all technical formats.
+
+
+5. Third-party material
+
+Third-party software, libraries, fonts, geographic data and other material
+remain subject to their respective licences and rights.
+
+Nothing in this licence claims ownership of third-party material or limits
+rights granted by its applicable licence.
+
+See THIRD_PARTY_NOTICES.md and any notices accompanying the relevant
+material.
+
+
+6. Applicable law
+
+Nothing in this licence limits rights or exceptions that cannot lawfully be
+excluded under applicable law.
+
+No additional rights are granted by access to, possession of or technical
+ability to inspect Polku's original protected material.
