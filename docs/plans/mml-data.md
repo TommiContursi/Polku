@@ -21,8 +21,8 @@ Outside Finland the map stays as it is, on OpenFreeMap's tiles and OSM.
   in [#1155](https://github.com/TommiContursi/Polku/issues/1155).
 - **Built, 2026-11-20:** property boundaries and their plots (#1157,
   #1159), bogs (#1160), rock, cliffs, reeds and power lines (#1168),
-  the water's marks and lake depths (#1186), and heath, open forest land and
-  open ground (#1169).
+  the water's marks and lake depths (#1186), heath, open forest land and open
+  ground (#1169), and a tap on the terrain (#1175).
   What was built is in [Drawing](#drawing) and [Parts](#parts); the
   decisions made while building are in the "Decided" lists of
   [#1147](https://github.com/TommiContursi/Polku/issues/1147), [#1170](https://github.com/TommiContursi/Polku/issues/1170),
@@ -273,9 +273,21 @@ Plain and Night maps, in MTB and paddle; its PR lists what else it covered.
   opens a card with its property ID (#1159); **Plot selection** is its own
   switch for both, on at first, with a mouse and by touch (#1199). No
   transition.
-- **Tap and hover** on the terrain open no card yet: MML's terrain layers
-  aren't among the layers the map picks from (`INSPECTABLE` in
-  `js/inspect.js`), so a tap on a bog opens what's under it (#1175).
+- **Tap and hover** (#1175): a tap or a click on the terrain opens the
+  card the map's other things use, naming what it is, and the pointer's
+  tooltip says the same. A bog's card has its survey class, easier or hard
+  to cross, from zoom 13's tiles, with the survey's caveat; zoom 12's
+  classes are generalised and zoom 11's have none, so further out it says
+  to zoom in. The areas (bogs, paludified land, overgrowing water, rock, boulder
+  fields) count under the point only, and only where they're the ground
+  drawn there (not under a lake, a town, a building or OSM's own rock or
+  wetland), after the water and a property's plot
+  and before a park; the lines and marks, and overgrowing water, come
+  before the water they're drawn over. MML's lake is the water's where OSM has
+  none (a marsh OSM's lake leaves a hole for, a pond in a bog), though the
+  card's name is OSM's area around it. Nothing is outlined, as a tile's piece of a bog
+  would stop at the tile's edge: the card's pin marks the spot, a point its
+  ring. Nothing new is drawn, so there's no basemap or layer to weigh.
 
 ## Parts
 
@@ -289,11 +301,13 @@ Plain and Night maps, in MTB and paddle; its PR lists what else it covered.
 4. **Stones, shoals, rapids, flow, jetties and lake depths** ([#1170](https://github.com/TommiContursi/Polku/issues/1170)) (#1186).
 5. **Heath, clear-cuts and open ground** ([#1169](https://github.com/TommiContursi/Polku/issues/1169)): with the forest
    symbols and OSM's heath and scrub in the same looks (#1203).
-6. Later, each its own issue in Map style: paths
+6. **A tap on the terrain** ([#1175](https://github.com/TommiContursi/Polku/issues/1175)): its card and the pointer's
+   tooltip, for the water's stones, shoals and rapids too. Done.
+7. Later, each its own issue in Map style: paths
    and winter roads where OSM has none (#1171), fences, gates, ski lifts and
    masts (#1172), fire places, springs and monuments (#1173), place names
-   (#1174), a tap on the terrain (#1175), MML's tiles in offline areas
-   (#1176), and Polku's own archive (#1155).
+   (#1174), MML's tiles in offline areas (#1176), and Polku's own archive
+   (#1155).
 
 ## Not checked
 
