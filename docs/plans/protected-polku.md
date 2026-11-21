@@ -366,8 +366,6 @@ checks the result after it.
    off; the repository made private. Done when polku.si, the OSM data and the sessions still
    work, which a session checks.
 
-
-
 ## Order
 
 | Part | Who | What | Waits for | Done when |
