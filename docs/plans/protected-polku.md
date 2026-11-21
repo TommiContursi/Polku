@@ -142,7 +142,7 @@ is fixed there. The app itself requests nothing outside the allowlist (checked 2
 | `Referrer-Policy` | `strict-origin-when-cross-origin` | services see polku.si, not the route in the address |
 | `Permissions-Policy` | named features off only: camera, microphone, payment, USB, serial, HID and the like | Not report-only: it applies from the first deploy. "Everything else off" would break Share (`web-share`, `clipboard-write`, `js/planner.js:4223`, `js/cards.js:922`) and the compass (`accelerometer`, `gyroscope`, `magnetometer`, `js/heading.js:48`) |
 | frame protection | `frame-ancestors 'none'` (and `X-Frame-Options: DENY`) | nobody can wrap polku.si in their page |
-| `tdm-reservation` | `1` | the EU text and data mining opt-out, below |
+| `tdm-reservation` | `1`, on Polku's own files only | the EU text and data mining opt-out, below |
 
 **The content security policy is strict where an attack starts and open where Polku needs
 it.** Scripts: Polku's own files, unpkg's two versioned files (already loaded with integrity
@@ -203,8 +203,10 @@ enforced (the `startfail` smoke group). No other `on…=` attribute is in `index
   own file. The repository's `robots.txt` then holds only the search part, allowing search
   engines (#873 adds the sitemap), with no crawler list to keep by hand.
 - **`/.well-known/tdmrep.json`** and the `tdm-reservation: 1` header (the W3C TDM
-  Reservation Protocol): the machine-readable opt-out. Part 2 checks that the dot-folder is
-  uploaded and answers on the test address.
+  Reservation Protocol): the machine-readable opt-out, for Polku's own files only, as `LICENSE`
+  says: third-party code, fonts, open data and what's made from it keep their own licences,
+  which allow no added terms. Part 2 checks that the dot-folder is uploaded and answers on the
+  test address.
 - **Cloudflare AI Crawl Control:** known AI crawlers blocked, including those that ignore
   `robots.txt`. No header makes an AI say whom it fetches for; Cloudflare's signed-bot
   check (Web Bot Auth) and its crawler report are the closest.

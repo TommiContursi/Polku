@@ -30,11 +30,9 @@ find site -name .DS_Store -delete
 # Search engines are welcome: Cloudflare's managed robots.txt puts its list of AI training crawlers in front of this
 mkdir site/.well-known
 printf 'User-agent: *\nAllow: /\n' > site/robots.txt
-# the W3C TDM Reservation Protocol: text and data mining reserved for the whole site
-printf '[{ "location": "/", "tdm-reservation": 1 }]\n' > site/.well-known/tdmrep.json
 
 node --input-type=module - "$COPYRIGHT · $DEPLOY" "$DEPLOY" <<'EOF'
-import { readFileSync as read, writeFileSync as write, readdirSync, existsSync } from 'node:fs';
+import { readFileSync as read, writeFileSync as write, readdirSync, existsSync, statSync } from 'node:fs';
 import { createHash } from 'node:crypto';
 import { transformSync } from 'esbuild';
 
@@ -65,6 +63,15 @@ for (const f of ['sw.js', ...files('js').filter((f) => f.endsWith('.js') && !f.s
 const missing = [...new Set(wanted)].filter((f) => !existsSync(`site/${f}`));
 if (missing.length) throw new Error(`not published, but the app asks for: ${missing.join(', ')}`);
 
+// The text and data mining reservation (the W3C TDM Reservation Protocol) covers only Polku's own files, as LICENSE
+// does: third-party code, fonts, open data and what's made from it keep their own licences, which allow no added terms
+const third = ['js/vendor/', 'fonts/', 'data/', 'img/base/', 'profiles/', 'THIRD_PARTY_NOTICES.md'];
+const gone = third.filter((p) => !existsSync(`site/${p}`));
+if (gone.length) throw new Error(`third-party paths not published: ${gone.join(', ')}`);
+const own = files('site').map((f) => f.slice(5))
+  .filter((f) => statSync(`site/${f}`).isFile() && !third.some((p) => f.startsWith(p)) && f !== 'robots.txt' && !f.startsWith('.well-known/'));
+write('site/.well-known/tdmrep.json', JSON.stringify(['', ...own].map((f) => ({ location: `/${f}$`, 'tdm-reservation': 1 }))) + '\n');
+
 // The headers (the plan's "Security headers"). The policy is report-only until the plan's part 5 enforces it;
 // serve.py --site enforces it already. Images and connections stay open to any https: address and to this computer
 // (Settings' own BRouter), and to data: and blob: (the radar's images, MapLibre's). Permissions-Policy turns off only
@@ -89,6 +96,7 @@ write('site/_headers', `/*
   Permissions-Policy: camera=(), microphone=(), payment=(), usb=(), serial=(), hid=(), bluetooth=(), midi=(), display-capture=()
   X-Frame-Options: DENY
   tdm-reservation: 1
+${third.map((p) => `/${p}${p.endsWith('/') ? '*' : ''}\n  ! tdm-reservation`).join('\n')}
 /LICENSE
   Content-Type: text/plain; charset=utf-8
 `); // LICENSE has no extension, so wrangler gives it no type: every file's copyright line links to it, and it should read as text
