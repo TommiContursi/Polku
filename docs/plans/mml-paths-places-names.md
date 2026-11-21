@@ -15,11 +15,15 @@ ways to avoid it, and asks seven questions, each with one recommendation.
 
 ## Where it stands
 
-- **Plan, 2026-11-21.** The questions are below and on each issue; nothing
-  is built.
+- **Plan, 2026-11-21.** Nothing is built yet.
 - **Decided, 2026-11-21: the points are icons** in the map's style for
   places, not dots (on #1173 and #1179): [the look](#question-4-which-points).
-  The seven questions are still open.
+- **Decided, 2026-11-21: all seven recommendations below,** on the Decided
+  lists of [#1171](https://github.com/TommiContursi/Polku/issues/1171),
+  [#1173](https://github.com/TommiContursi/Polku/issues/1173),
+  [#1174](https://github.com/TommiContursi/Polku/issues/1174),
+  [#1179](https://github.com/TommiContursi/Polku/issues/1179), and the order
+  on [#181](https://github.com/TommiContursi/Polku/issues/181).
 
 ## The questions
 
