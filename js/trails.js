@@ -22,7 +22,7 @@ const RETRY = 120e3; // a failed tile is left alone for 2 minutes
 const MAX_VIEW = 12; // more tiles than this in view: zoomed out too far to load
 const MAX_KEPT = 80;
 const WAY_KEEP = ['highway', 'barrier', 'width', 'trail_visibility', 'obstacle', 'smoothness', 'sac_scale', 'informal', 'ford', 'surface', 'bridge', 'tunnel',
-  'mtb:scale', 'mtb:scale:uphill', 'bicycle', 'foot', 'horse', 'access', 'name'];
+  'mtb:scale', 'mtb:scale:uphill', 'bicycle', 'foot', 'horse', 'access', 'name', 'ice_road', 'winter_road', 'seasonal'];
 const NODE_KEEP = ['barrier', 'obstacle', 'ford', 'access', 'bicycle', 'foot', 'locked', 'name'];
 
 // What you'd have to stop for, cross or go round: the barrier values drawn as icons
@@ -411,6 +411,9 @@ export async function detailsAlong(a, { maxTiles = 40 } = {}) {
     if (t.surface === 'mud' || /mud/.test(o)) td.mud[i] = 1;
     if (/fallen.?trees?/.test(o)) td.tree[i] = 1;
     if (t.bridge === 'boardwalk') td.boardwalk[i] = 1;
+    // there only in winter (#1287): BRouter's data hasn't these tags, so it routes over them in any season
+    if (t.ice_road === 'yes') td.winter[i] = 1;
+    else if (t.winter_road === 'yes' || t.seasonal === 'winter') td.winter[i] = 2;
   }
 
   // obstacle nodes within 10 m of the route, unless the router already reported the same kind there

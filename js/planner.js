@@ -2372,7 +2372,7 @@ export class Planner {
   // on land, whether or not the map shows the layer: a fallen tree is in the way
   // of a gravel bike too.
   async loadTrail(a) {
-    const opt = () => ({ activity: this.mainSport(), wet: this.wetFor(this.styleOf(this.mainSport())) });
+    const opt = () => ({ activity: this.mainSport(), wet: this.wetFor(this.styleOf(this.mainSport())), winter: !!(this.app.winter && this.app.winter().on) });
     a.trailWarn = trailWarnings(a, opt());
     const land = !this.routeSports().every(isWater);
     a.trailAsking = land; // (What Polku looked at: being asked)

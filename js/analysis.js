@@ -320,6 +320,7 @@ function trailDetailsOf(coords, attrs, src, along) {
   const td = {
     trail: new Uint8Array(n), width: new Int8Array(n).fill(-2), vis: new Int8Array(n).fill(-2),
     veg: new Uint8Array(n), mud: new Uint8Array(n), tree: new Uint8Array(n), ford: new Uint8Array(n), boardwalk: new Uint8Array(n),
+    winter: new Uint8Array(n), // there only in winter, from the tiles (detailsAlong): 1 an ice road, 2 a winter road or seasonal=winter
     points: [],
   };
   for (let i = 0; i < n; i++) {
@@ -361,14 +362,14 @@ export function trailWarnings(a, opt = {}) {
   if (along.every((_, i) => isWater(sp(i)))) return [];
   const out = [];
   const m = (s, e) => `${Math.round(along[e] - along[s])} m`;
-  const run = (test, minLen, text, note, icon = null) => {
+  const run = (test, minLen, text, note, icon = null, tier = 'look') => {
     let s = -1;
     for (let i = 0; i <= along.length; i++) {
       const on = i < along.length && !isWater(sp(i)) && test(i);
       if (on && s < 0) s = i;
       if (!on && s >= 0) {
         const len = along[i - 1] - along[s];
-        if (len >= minLen) out.push({ at: along[s], len, text: text(s, i - 1), note: typeof note === 'function' ? note(s, i - 1) : note, lngLat: pts[s], kind: 'trail', icon, osm: true, tier: 'look', src: OSM });
+        if (len >= minLen) out.push({ at: along[s], len, text: text(s, i - 1), note: typeof note === 'function' ? note(s, i - 1) : note, lngLat: pts[s], kind: 'trail', icon, osm: true, tier, src: OSM });
         s = -1;
       }
     }
@@ -382,6 +383,12 @@ export function trailWarnings(a, opt = {}) {
   run((i) => td.mud[i], 50, (s, e) => `Wet or muddy for ${m(s, e)}`, 'surface=mud or obstacle=mud · Soft and slippery, worst after rain. On a bike you may have to walk parts of it.');
   run((i) => td.tree[i], 0, () => 'Fallen trees on the trail', 'obstacle=fallen_tree · They may have been cleared since. If not, climb over or lift the bike.', 'td-tree');
   run((i) => td.ford[i], 0, () => 'Ford: no bridge', 'ford=yes · No bridge, so you go through the water. Expect wet feet, and deeper water after rain.', 'td-ford');
+  // ways there only in winter (#1287): over the ice in winter, and outside it no way at all
+  const CHECK_ICE = 'Polku can’t see whether the ice holds: check FMI’s ice chart (Layers → Winter → Sea ice) and local reports, and never go on ice you haven’t checked.';
+  run((i) => td.winter[i] === 1, 0, (s, e) => (opt.winter ? `Over the ice for ${m(s, e)}` : `Ice road for ${m(s, e)}: open water outside winter`),
+    opt.winter ? `ice_road=yes · ${CHECK_ICE}` : 'ice_road=yes · A way over the ice, there only while it holds: open water now. Avoid it to go round.', null, 'read');
+  run((i) => td.winter[i] === 2, 0, (s, e) => `There only in winter: ${m(s, e)}`,
+    opt.winter ? `winter_road=yes or seasonal=winter · Over a bog or ice. ${CHECK_ICE}` : 'winter_road=yes or seasonal=winter · Over a bog or ice, frozen only in winter: now it may be no way at all. Avoid it to go round.', null, 'read');
   if (opt.wet) run((i) => td.boardwalk[i], 100, (s, e) => `Boardwalk for ${m(s, e)}: slippery when wet`, 'bridge=boardwalk · Wet wood is slippery, especially for tyres. Slow down and keep away from the edges.');
   for (const p of td.points) {
     if (isWater(sp(p.i))) continue;
