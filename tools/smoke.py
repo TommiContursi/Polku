@@ -8070,18 +8070,29 @@ def mml_offline(chrome):
             raise RuntimeError('the page is not controlled by the worker')
         toasts = "new MutationObserver((ms) => { for (const m of ms) if (m.target.id === 'toast') (window.__toasts ||= []).push(m.target.textContent); }).observe(document, { childList: true, subtree: true }); true"
         pg.js(toasts)
-        # the page and every worker of this origin offline: CDP's offline for the page alone leaves the worker's fetches online
+        # the page, its own workers (MapLibre's, which fetch the tiles) and every service worker of this origin offline: CDP's
+        # offline for the page alone leaves the others' fetches online, and a tile the service worker leaves alone goes out
+        # from MapLibre's worker
+        pg.c.send('Target.setAutoAttach', {'autoAttach': True, 'waitForDebuggerOnStart': False, 'flatten': True}, pg.s)
+        time.sleep(0.5)
+        own = [e['params']['sessionId'] for e in pg.c.events if e.get('method') == 'Target.attachedToTarget' and e.get('sessionId') == pg.s]
         workers = [t['targetId'] for t in chrome.send('Target.getTargets')['targetInfos'] if t['type'] == 'service_worker' and t['url'].startswith(BASE)]
-        sessions = [pg.s] + [chrome.send('Target.attachToTarget', {'targetId': t, 'flatten': True})['sessionId'] for t in workers]
-        try:
+        attached = [chrome.send('Target.attachToTarget', {'targetId': t, 'flatten': True})['sessionId'] for t in workers]
+        sessions = [pg.s] + own + attached
+
+        def network(off):
             for s_ in sessions:
-                chrome.send('Network.enable', {}, s_)
-                chrome.send('Network.emulateNetworkConditions', {'offline': True, 'latency': 0, 'downloadThroughput': 0, 'uploadThroughput': 0}, s_)
+                try:
+                    chrome.send('Network.enable', {}, s_)
+                    chrome.send('Network.emulateNetworkConditions', {'offline': off, 'latency': 0, 'downloadThroughput': 0 if off else -1, 'uploadThroughput': 0 if off else -1}, s_)
+                except RuntimeError:  # (a worker gone since)
+                    pass
+        try:
+            network(True)
             fails += [f'offline: {e}' for e in pg.js(MML_OFFLINE_MAP, timeout=60000)]
         finally:
-            for s_ in sessions:
-                chrome.send('Network.emulateNetworkConditions', {'offline': False, 'latency': 0, 'downloadThroughput': -1, 'uploadThroughput': -1}, s_)
-            for s_ in sessions[1:]:
+            network(False)
+            for s_ in attached:
                 chrome.send('Target.detachFromTarget', {'sessionId': s_})
         preview = "new Promise((ok) => { navigator.serviceWorker.addEventListener('message', (e) => e.data.type === 'offline-preview' && ok(true)); navigator.serviceWorker.controller.postMessage({ type: 'offline-preview', on: %s }); setTimeout(() => ok(false), 3000); })"
         try:
