@@ -27,10 +27,15 @@ class Built(NoCache):
         self.directory = ROOT if urlsplit(path).path.startswith('/tools/') else SITE
         return super().translate_path(path)
 
+    def guess_type(self, path):
+        # a Content-Type rule replaces the guessed type, as on Cloudflare
+        url = urlsplit(self.path).path
+        return next((v for p, n, v in RULES if n == 'Content-Type' and p.match(url)), None) or super().guess_type(path)
+
     def end_headers(self):
         path = urlsplit(self.path).path
         for pattern, name, value in RULES:
-            if pattern.match(path):
+            if pattern.match(path) and name != 'Content-Type':
                 self.send_header(name, value + ('; report-uri /__csp' if name == 'Content-Security-Policy' else ''))
         super().end_headers()
 
