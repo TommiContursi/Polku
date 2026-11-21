@@ -16176,7 +16176,7 @@ def runner(chrome):
         [t.join() for t in ts]
     if refused:
         fails.append(f'{len(refused)} of 192 connections to the dev server failed in bursts of 64 ({", ".join(sorted(set(refused)))})')
-    print(f"{'ok  ' if not fails else 'FAIL'} the runner: unknown names, a second run waiting, a group that raises, a profile in use, the server under a burst" + ''.join(f'\n     - {f}' for f in fails), flush=True)
+    print(f"{'ok  ' if not fails else 'FAIL'} the runner: unknown names, a third run waiting while two go, a group that raises, a profile in use, the server under a burst" + ''.join(f'\n     - {f}' for f in fails), flush=True)
     return not fails
 
 
