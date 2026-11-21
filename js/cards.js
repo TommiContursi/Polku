@@ -1,4 +1,3 @@
-/*! © 2026 Tommi Contursi. All rights reserved. See https://polku.si/LICENSE */
 // The cards' contents (25d, Revision 4 of #355): built from the card's parts (js/card.js) and what the planner says;
 // the planner keeps the actions. A card shows only what can be done now, editing or in the route's view alike: Done
 // and Edit decide only whether a tap on the map adds a point (#745).

@@ -1,4 +1,3 @@
-/*! © 2026 Tommi Contursi. All rights reserved. See https://polku.si/LICENSE */
 // Polku service worker: keeps the app and saved offline areas working without
 // a connection.
 //

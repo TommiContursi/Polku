@@ -1,4 +1,3 @@
-/*! © 2026 Tommi Contursi. All rights reserved. See https://polku.si/LICENSE */
 // DOM helpers, toasts and a small inline icon set.
 
 const P = {

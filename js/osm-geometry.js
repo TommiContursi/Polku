@@ -1,4 +1,3 @@
-/*! © 2026 Tommi Contursi. All rights reserved. See https://polku.si/LICENSE */
 // Local original fragments and containment seeds. Seeds are never display geometry.
 import { tileBounds, lonLatToTile } from './geo.js';
 

@@ -1,4 +1,3 @@
-/*! © 2026 Tommi Contursi. All rights reserved. See https://polku.si/LICENSE */
 // Polku — app bootstrap: map, state, panels and wiring between modules.
 
 import {

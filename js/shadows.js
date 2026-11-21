@@ -1,4 +1,3 @@
-/*! © 2026 Tommi Contursi. All rights reserved. See https://polku.si/LICENSE */
 // The shadows the hills cast at an hour (#910), and from zoom 14 the trees' and buildings' (#919). The hills' are
 // worked out from the same DEM tiles as the hillshade (the contour library's DemSource, its cache shared). The
 // trees and buildings stand on that ground: the trees' heights from Meta and WRI's canopy height map (about 1.2 m

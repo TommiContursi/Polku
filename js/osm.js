@@ -1,4 +1,3 @@
-/*! © 2026 Tommi Contursi. All rights reserved. See https://polku.si/LICENSE */
 // Overpass, the live OpenStreetMap query service: public mirrors that come and
 // go, and answers cached in IndexedDB (a week fresh; an older copy still beats
 // nothing when every mirror is down). Used by the trail details, the uphill

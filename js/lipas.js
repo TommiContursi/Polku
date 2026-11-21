@@ -1,4 +1,3 @@
-/*! © 2026 Tommi Contursi. All rights reserved. See https://polku.si/LICENSE */
 // LIPAS: Finland's national register of sports and outdoor facilities.
 // Official hiking / MTB / paddling routes and lean-tos, huts, campfire sites and
 // landing places, loaded by bounding box from the open WFS (CC BY 4.0). Also:

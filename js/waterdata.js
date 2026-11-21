@@ -1,4 +1,3 @@
-/*! © 2026 Tommi Contursi. All rights reserved. See https://polku.si/LICENSE */
 // What the paddling router keeps out of, or clear of, beyond land (js/water.js):
 //
 // - fairways: Väylävirasto's fairway areas (CC BY 4.0), shipping lanes apart

@@ -1,4 +1,3 @@
-/*! © 2026 Tommi Contursi. All rights reserved. See https://polku.si/LICENSE */
 // Weather from Open-Meteo (no key): hourly wind, gusts, temperature and
 // precipitation for many points per request. Used along planned routes and for
 // the wind/temperature/rain map overlay.

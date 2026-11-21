@@ -1,4 +1,3 @@
-/*! © 2026 Tommi Contursi. All rights reserved. See https://polku.si/LICENSE */
 // Hover details on desktop: a line or two about what a click would open, read
 // from features already drawn on the map. Never calls an API (the incline may
 // read a terrain tile); the click popup keeps the full details (OSM tags, depth…).

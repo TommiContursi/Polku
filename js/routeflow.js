@@ -1,4 +1,3 @@
-/*! © 2026 Tommi Contursi. All rights reserved. See https://polku.si/LICENSE */
 // The route's moving chevrons (#198): white chevrons drifting slowly along the route, the way
 // it goes, over the red line. They show the direction and catch the eye. MapLibre's styles
 // can't move symbols along a line without laying them out again every frame, so this is a

@@ -1,4 +1,3 @@
-/*! © 2026 Tommi Contursi. All rights reserved. See https://polku.si/LICENSE */
 // Fintraffic road weather cameras: points on the map and a modal with every
 // view of a station, a 24 h time-lapse and the nearest road weather readings.
 

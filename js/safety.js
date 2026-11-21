@@ -1,4 +1,3 @@
-/*! © 2026 Tommi Contursi. All rights reserved. See https://polku.si/LICENSE */
 // Traffic & safety layers: things worth avoiding on a ride, run or paddle.
 //
 //  • Busy roads — Digiroad average daily traffic (vehicles/day), as a heat line

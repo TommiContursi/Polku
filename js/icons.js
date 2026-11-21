@@ -1,4 +1,3 @@
-/*! © 2026 Tommi Contursi. All rights reserved. See https://polku.si/LICENSE */
 // Map icons drawn on canvas at runtime (no extra sprite sheet needed).
 // Registered lazily through the map's `styleimagemissing` event.
 

@@ -1,4 +1,3 @@
-/*! © 2026 Tommi Contursi. All rights reserved. See https://polku.si/LICENSE */
 // Which way you face: the phone's compass while you stand, the GPS's own course
 // while you move (above about 1 m/s, where a compass in a pocket is unreliable).
 // The location dot's cone and the map's facing-ahead mode both read it.

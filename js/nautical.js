@@ -1,4 +1,3 @@
-/*! © 2026 Tommi Contursi. All rights reserved. See https://polku.si/LICENSE */
 // Nautical chart layer ("merenkulkumerkit"): aids to navigation, lights and
 // light sectors, fairway areas, navigation lines with swept depths, speed
 // limit / restriction areas and waterway signs from the Finnish Transport
