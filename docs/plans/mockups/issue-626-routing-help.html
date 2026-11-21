@@ -1,0 +1,382 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Routing help</title>
+<meta name="description" content="Mock-up for #626: Other ways that say why, and offer the way you meant, in seven situations. Today beside the proposal, on a phone and a desktop.">
+<!--
+  #626, 2026-10-31: routing help. The plan and its decisions: docs/plans/issue-626-routing-help.md.
+  Not wired to the app: nothing here is loaded by Polku. The map is a drawing, not MapLibre: roads, paths,
+  water and buildings are schematic, and the distances in the words are examples, not measured.
+
+  ?v=today|new  &scene=offpath|private|gap|nearby|style|island|walk  &size=390|360|1440  &zoom=1|2  &words=en|fi
+-->
+<style>
+/* ======================================================= the page (mock-up chrome, not the design) */
+:root { --page-bg: #dfe6e0; --page-fg: #1c2420; --page-card: #fff; --page-cap: #33403a; --page-link: #1f6f4a; --switch-bg: #d4d8d5; --switch-on: #fff; --switch-fg: #2b322e; color-scheme: light; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --page-bg: #101412; --page-fg: #e8ece9; --page-card: #1b201d; --page-cap: #b7c2bb; --page-link: #56c48f; --switch-bg: #2a302c; --switch-on: #48514c; --switch-fg: #e8ece9; color-scheme: dark; } }
+:root[data-theme="dark"] { --page-bg: #101412; --page-fg: #e8ece9; --page-card: #1b201d; --page-cap: #b7c2bb; --page-link: #56c48f; --switch-bg: #2a302c; --switch-on: #48514c; --switch-fg: #e8ece9; color-scheme: dark; }
+* { box-sizing: border-box; }
+body { margin: 0; padding: 24px 16px 60px; font: 14px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; color: var(--page-fg); background: var(--page-bg); }
+button { font: inherit; color: inherit; }
+.cv { max-width: 1500px; margin: 0 auto; }
+.cv a { color: var(--page-link); }
+.cv h1 { margin: 0 0 4px; font-size: 24px; letter-spacing: -.01em; }
+.cv > p { margin: 0 0 8px; max-width: 980px; }
+.bars { position: sticky; top: 0; z-index: 30; margin: 12px -16px 0; padding: 8px 16px; background: var(--page-bg); border-bottom: 1px solid rgba(128,128,128,.25); }
+.bar { display: flex; flex-wrap: wrap; gap: 4px 10px; align-items: center; margin: 4px 0; }
+.bar > span { min-width: 74px; font-size: 12.5px; font-weight: 700; opacity: .8; }
+.sw { display: inline-flex; flex-wrap: wrap; gap: 2px; padding: 3px; border-radius: 22px; background: var(--switch-bg); }
+.sw button { min-height: 36px; padding: 0 12px; border: 0; border-radius: 999px; background: none; color: var(--switch-fg); cursor: pointer; font-weight: 600; font-size: 13px; }
+.sw button[aria-pressed="true"] { background: var(--switch-on); box-shadow: 0 1px 3px rgba(0,0,0,.15); }
+.sw button:focus-visible { outline: 2px solid var(--page-link); outline-offset: 2px; }
+#stage { margin-top: 14px; display: flex; flex-wrap: wrap; gap: 20px; align-items: flex-start; }
+.frame { flex: none; border-radius: 8px; overflow: hidden; box-shadow: 0 1px 4px rgba(0,0,0,.25); }
+.about { flex: 1 1 320px; max-width: 560px; padding: 12px 16px; border-radius: 14px; background: var(--page-card); box-shadow: 0 1px 3px rgba(16,24,20,.1); }
+.about h2 { margin: 0 0 6px; font-size: 16px; }
+.about p, .about li { margin: 4px 0; }
+.about ul { margin: 4px 0; padding-left: 18px; }
+.about .tag { display: inline-block; margin-right: 6px; padding: 0 8px; border-radius: 999px; background: var(--switch-bg); font-size: 12px; font-weight: 700; }
+
+/* ======================================================= the screen: Polku's tokens (css/app.css :root, light) */
+.screen {
+  --accent: #1f6f4a; --accent-glass: #165a3a; --accent-bg: #1f6f4a; --accent-soft: #e3f1e9; --focus: #1f6f4a;
+  --text: #141b17; --muted: #5f6b65; --muted-glass: #3b4741; --surface-solid: #fff; --surface-2: #f3f4f1; --line: rgba(28, 36, 32, .14);
+  --route: #d6006e; --route-water: #0369a1; --route-line: #9c0050; --look: #8a5a00; --look-soft: #fbf4e2;
+  --glass-read: rgba(255, 255, 255, .72); --glass-control: rgba(255, 255, 255, .84);
+  --edge: inset 0 0 0 1px rgba(255, 255, 255, .7), inset 0 1px 0 rgba(255, 255, 255, .95), 0 0 0 1px rgba(16, 24, 20, .26);
+  --shadow: 0 8px 28px rgba(16, 24, 20, .18), 0 1px 3px rgba(16, 24, 20, .1);
+  --font-small: .75rem; --font-control: .8125rem; --font-row: .9375rem; --font-title: 1.0625rem; --font-number: 1.1875rem;
+  --weight-name: 600; --weight-strong: 700; --row-h: 50px; --target: 44px;
+  --t-press: 120ms; --t-open: 180ms; --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+  position: relative; overflow: hidden; color: var(--text); font: 14px/1.4 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  background: #eef1e6; transform-origin: 0 0; color-scheme: light;
+}
+.screen svg.map { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+.glass { background: var(--glass-read); -webkit-backdrop-filter: blur(32px) saturate(105%); backdrop-filter: blur(32px) saturate(105%); box-shadow: var(--shadow), var(--edge); }
+.ic { flex: none; display: block; fill: none; stroke: currentColor; stroke-width: 1.9; stroke-linecap: round; stroke-linejoin: round; }
+.topbar { position: absolute; left: 12px; top: 12px; right: 12px; max-width: 360px; height: 44px; display: flex; align-items: center; gap: 8px; padding: 0 6px; border-radius: 999px; }
+.topbar .m { width: 32px; height: 32px; border-radius: 9px; background: var(--accent-bg); display: grid; place-items: center; color: #fff; }
+.topbar .s { flex: 1; min-width: 0; color: var(--muted-glass); font-size: 15px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.peek { position: absolute; left: 8px; right: 8px; bottom: 8px; padding: 10px 12px 12px; border-radius: 20px; }
+.peek .grip { width: 36px; height: 5px; margin: 0 auto 8px; border-radius: 3px; background: rgba(95, 107, 101, .8); }
+.peek .nums { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 16px; }
+.peek .nums b { font-size: var(--font-number); font-variant-numeric: tabular-nums; }
+.peek .nums small { color: var(--muted-glass); font-weight: 600; }
+.peek .nums .done { margin-left: auto; min-height: 44px; padding: 0 16px; border: 0; border-radius: 10px; background: var(--surface-solid); box-shadow: inset 0 0 0 1px var(--line); font-weight: 700; }
+.peek .sport { margin-top: 2px; color: var(--muted-glass); font-size: 13px; font-weight: 600; }
+.panel { position: absolute; left: 12px; top: 68px; bottom: 12px; width: 392px; padding: 14px 16px; border-radius: 18px; overflow: hidden; }
+.panel .nums { display: flex; gap: 18px; align-items: baseline; }
+.panel .nums b { font-size: 22px; font-variant-numeric: tabular-nums; }
+.panel .nums small { color: var(--muted-glass); font-weight: 600; }
+.panel .sport { margin: 4px 0 12px; color: var(--muted-glass); font-weight: 600; }
+.panel .pt { display: flex; align-items: center; gap: 10px; min-height: 44px; border-top: 1px solid var(--line); font-weight: 600; }
+.mapbtns { position: absolute; right: 12px; top: 68px; display: grid; gap: 8px; }
+.mapbtns span { width: 44px; height: 44px; border-radius: 12px; background: var(--glass-control); box-shadow: var(--shadow), var(--edge); }
+
+/* ======================================================= copied from css/app.css (keep in step: DEVELOPING, "Shared controls") */
+/* the note, and a note that asks (toast choice: the open-water question) */
+.toast { position: absolute; left: 50%; bottom: 0; z-index: 20; transform: translateX(-50%); max-width: min(520px, calc(100% - 32px)); padding: 10px 16px; border-radius: 12px; background: #111a16; color: #fff; box-shadow: var(--shadow); font-weight: 500; opacity: 0; translate: 0 10px; transition: opacity var(--t-press) var(--ease-out), translate var(--t-press) var(--ease-out); }
+.toast.show { opacity: 1; translate: none; transition-duration: var(--t-open); }
+@media (prefers-reduced-motion: reduce) { .toast { translate: none; } }
+.toast .toast-act { pointer-events: auto; margin-left: 8px; padding: 4px 10px; border-radius: 999px; border: 1px solid rgba(255,255,255,.5); background: rgba(255,255,255,.14); color: inherit; font: inherit; font-weight: 700; cursor: pointer; }
+.toast.choice { display: grid; justify-items: start; gap: 8px; }
+.toast.choice .toast-act { min-height: 44px; margin: 0; padding: 6px 14px; text-align: left; }
+.toast .toast-act:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
+.phone .toast { left: 12px; right: 12px; max-width: none; transform: none; }
+.phone .toast .toast-act { min-height: 44px; }
+/* a plain row in a rows list (25d's cards), its value in the accent colour */
+.rows { display: grid; grid-template-columns: minmax(0, 1fr); margin: 0 -8px; }
+.row { display: flex; align-items: center; gap: 12px; width: 100%; min-height: var(--row-h); padding: 6px 10px; border: 0; border-radius: 12px; background: none; color: var(--text); font: inherit; text-align: left; cursor: pointer; }
+.rows > .row + .row { box-shadow: inset 0 1px 0 var(--line); border-radius: 0; }
+.row > span:first-child { flex: none; display: grid; color: var(--text); }
+.row > span:nth-child(2) { flex: 1; min-width: 0; display: grid; gap: 1px; }
+.row b { font-size: var(--font-row); font-weight: var(--weight-name); line-height: 1.25; overflow-wrap: anywhere; }
+.row small { font-size: 13px; line-height: 1.3; color: var(--muted); overflow-wrap: anywhere; }
+.row .val { flex: none; max-width: 42%; font-size: var(--font-row); font-weight: var(--weight-name); color: var(--accent); text-align: right; overflow-wrap: break-word; }
+.row:active, .row:hover { background: var(--surface-2); }
+.row:focus-visible { outline: 2px solid var(--focus); outline-offset: -2px; }
+/* a narrow card (200 %): the value goes under the name */
+@container card (max-width: 220px) {
+  .row:has(.val) { flex-wrap: wrap; }
+  .row:has(.val) > span:nth-child(2) { flex-basis: calc(100% - 32px); }
+  .row .val { order: 3; max-width: none; margin-left: 32px; text-align: left; }
+}
+/* a small heading */
+.menu-h { font-size: var(--font-small); font-weight: var(--weight-strong); letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+
+/* ======================================================= new here: the leg's card with its ways (from #574's card, after #623) */
+.card { container: card / inline-size; position: absolute; z-index: 15; padding: 12px 14px 8px; border-radius: 18px; background: var(--surface-solid); box-shadow: var(--shadow), var(--edge); }
+.phone .card { left: 8px; right: 8px; bottom: 8px; max-height: 62%; overflow: auto; }
+.desk .card { left: 416px; top: 120px; width: 340px; }
+.card .head { display: flex; align-items: flex-start; gap: 8px; }
+.card .head b { flex: 1; font-size: var(--font-title); overflow-wrap: anywhere; }
+.card .head .x { width: 44px; height: 44px; margin: -8px -8px 0 0; border: 0; border-radius: 10px; background: none; cursor: pointer; font-size: 20px; }
+.card .why { margin: 4px 0 8px; color: var(--muted); font-size: 13px; }
+.card .menu-h { margin: 8px 0 2px; }
+.row .kind { width: 28px; height: 28px; border-radius: 8px; display: grid; place-items: center; box-shadow: inset 0 0 0 1.5px currentColor; }
+.row[aria-current="true"] { background: var(--surface-2); }
+
+/* ======================================================= the map drawing */
+.map .land { fill: #eef1e6; } .map .wood { fill: #d3e5c3; } .map .water { fill: #a9d3ee; } .map .bld { fill: #d9d2c5; stroke: #c3baa9; }
+.map .yard { fill: #f1e3e3; stroke: #b98a8a; stroke-dasharray: 3 3; }
+.map .road-c { stroke: #bdb6a8; stroke-width: 13; fill: none; stroke-linecap: round; } .map .road { stroke: #fff; stroke-width: 10; fill: none; stroke-linecap: round; }
+.map .path { stroke: #8c5f36; stroke-width: 2.2; stroke-dasharray: 6 4; fill: none; }
+.map .cyc { stroke: #fff; stroke-width: 6; fill: none; } .map .cyc-c { stroke: #9aa7c9; stroke-width: 8; fill: none; }
+.map .bridge { stroke: #6b6458; stroke-width: 15; fill: none; }
+.map .mlab { font: italic 600 11px system-ui, sans-serif; fill: #5b5448; paint-order: stroke; stroke: #fff; stroke-width: 3; }
+.map .rc { stroke: #fff; stroke-width: 9; fill: none; stroke-linecap: round; stroke-linejoin: round; }
+.map .r { stroke: var(--route); stroke-width: 5; fill: none; stroke-linecap: round; stroke-linejoin: round; }
+.map .r.fail { stroke: var(--route-line); stroke-dasharray: 10 7; }
+.map .r.before { stroke: #64748b; }
+.map .ac { stroke: #fff; stroke-width: 8; fill: none; stroke-linecap: round; stroke-linejoin: round; }
+.map .a { stroke-width: 4.5; fill: none; stroke-linecap: round; stroke-linejoin: round; transition: stroke-width var(--t-press) var(--ease-out); }
+.map .a.dash { stroke-dasharray: 9 6; }
+.map .way.lit .a { stroke-width: 7; }
+.map .way { cursor: pointer; }
+.map .lab { font: 700 12.5px system-ui, sans-serif; paint-order: stroke; stroke: #fff; stroke-width: 5px; stroke-linejoin: round; }
+.map .spot { fill: none; stroke: #141b17; stroke-width: 2; stroke-dasharray: 4 3; }
+.map .spotlab { font: 600 11px system-ui, sans-serif; fill: #141b17; paint-order: stroke; stroke: #fff; stroke-width: 3; }
+.map .pt circle { stroke-width: 3; } .map .pt text { font: 700 11px system-ui, sans-serif; text-anchor: middle; dominant-baseline: central; }
+</style>
+</head>
+<body>
+<div class="cv">
+  <h1>Routing help</h1>
+  <p>Mock-up for <a href="https://github.com/TommiContursi/Polku/issues/626">#626</a>. Other ways say why they're offered, and offer the way you probably meant beside the routed one. The plan and its decisions: <a href="../issue-626-routing-help.md">docs/plans/issue-626-routing-help.md</a>. The map is a drawing; the distances are examples.</p>
+  <div class="bars" role="group" aria-label="What to show">
+    <div class="bar"><span id="l-v">Version</span><div class="sw" data-k="v" aria-labelledby="l-v"><button data-v="today">Today</button><button data-v="new">Proposed</button></div></div>
+    <div class="bar"><span id="l-s">Situation</span><div class="sw" data-k="scene" aria-labelledby="l-s">
+      <button data-v="offpath">1 · Off-path point</button><button data-v="private">2 · Private short cut</button><button data-v="gap">3 · Short gap</button><button data-v="nearby">4 · Wrong nearby path</button><button data-v="style">5 · Another style here</button><button data-v="island">6 · An island</button><button data-v="walk">7 · Walk the bike</button></div></div>
+    <div class="bar"><span id="l-z">Screen</span><div class="sw" data-k="size" aria-labelledby="l-z"><button data-v="390">390 × 844</button><button data-v="360">360 × 740</button><button data-v="1440">1440 × 900</button></div>
+      <div class="sw" data-k="zoom" aria-label="Page zoom"><button data-v="1">100 %</button><button data-v="2">200 % (phones)</button></div>
+      <div class="sw" data-k="words" aria-label="Words"><button data-v="en">English</button><button data-v="fi">Long words (Finnish)</button></div></div>
+  </div>
+  <div id="stage"><div class="frame" id="frame"></div><section class="about" id="about" aria-live="polite"></section></div>
+</div>
+<script>
+const Q = new URLSearchParams(location.search);
+const S = { v: Q.get('v') || 'new', scene: Q.get('scene') || 'offpath', size: Q.get('size') || '390', zoom: Q.get('zoom') || '1', words: Q.get('words') || 'en' };
+const ALT = '#2563eb', CUT = '#7c3aed', WATER = '#0369a1';
+
+// The words, in English and in Finnish (Finnish only to check that long words wrap: not the final wording).
+const W = {
+  en: { thisWay: 'This way', other: 'Other ways', undo: 'Undo', took: 'This part takes the way you picked now. The way before is still on the map.', search: 'Search places' },
+  fi: { thisWay: 'Tämä reitti', other: 'Muut reitit', undo: 'Kumoa', took: 'Tämä osuus kulkee nyt valitsemaasi reittiä. Aiempi reitti näkyy yhä kartalla.', search: 'Hae paikkoja' },
+};
+
+// Each situation: the drawing (base), the route (r) and the points, today's look, and the proposal's ways, note and card.
+// Coordinates are the map drawing's pixels; the screen's middle looks at (cx, cy).
+const SCENES = {
+  offpath: {
+    sport: 'Hike · Balanced', nums: ['1.8 km', '0:24', '↑ 20 m'], cx: 800, cy: 450,
+    base: `<rect class="wood" x="560" y="300" width="480" height="150" rx="40"/>
+      <path class="road-c" d="M470 520H1130"/><path class="road" d="M470 520H1130"/><text class="mlab" x="1000" y="545">Kauppakatu</text>
+      <rect class="bld" x="900" y="545" width="80" height="60"/><rect class="bld" x="660" y="545" width="90" height="50"/>
+      <path class="path" d="M600 380C700 350 880 400 990 360"/><text class="mlab" x="700" y="355">path</text>`,
+    r: 'M620 520H830', pts: [[620, 520, 'A', 'start'], [830, 520, 'B']], spot: [822, 448],
+    today: { note: null, about: ['The router puts B on the nearest way it can use, the road, and the point jumps there (snapPoints). Dragging it back to the meadow makes it jump again.', 'Nothing says why, and no way keeps it where it was put.'] },
+    ways: [{ kind: 'straight', d: 'M830 520L822 448', dash: true, color: ALT, at: [880, 470],
+      en: ['Straight to your point', '45 m · not checked on the ground'], fi: ['Suoraan pisteeseesi', '45 m · maastossa tarkistamatta'] }],
+    note: { en: ['The router moved B 45 m, onto the road. Keep it where you put it?', ['Straight to your point · 45 m, not checked on the ground', 0], ['Leave it on the road', null]],
+            fi: ['Reititin siirsi B:n 45 m tielle. Pidetäänkö se siinä, mihin sen laitoit?', ['Suoraan pisteeseesi · 45 m, maastossa tarkistamatta', 0], ['Jätä tielle', null]] },
+    about: ['<b>On its own,</b> after the point is placed or the drag ends: B snapped more than 25 m from where it was put. A second drag to the same spot makes this the note\'s first answer.', 'No routing call: the straight part is drawn from the spot you kept. Taking it adds a shaping point on the road and a straight leg to B, so links and saves carry it already.', 'The dashed ring is where you put B; it shows only while the way is on offer.'],
+  },
+  private: {
+    sport: 'Hike · Balanced', nums: ['1.1 km', '0:15', '↑ 5 m'], cx: 800, cy: 450,
+    base: `<path class="road-c" d="M620 260V660H1000V260Z"/><path class="road" d="M620 260V660H1000V260Z"/>
+      <rect class="yard" x="680" y="470" width="260" height="140"/><text class="mlab" x="700" y="604">yard, access=private</text>
+      <rect class="bld" x="660" y="290" width="300" height="160"/><rect class="bld" x="690" y="500" width="70" height="40"/><rect class="bld" x="860" y="500" width="60" height="40"/>
+      <path class="path" d="M700 560H920"/>`,
+    r: 'M700 560H640V280H980V560H920', pts: [[700, 560, 'A', 'start'], [920, 560, 'B']],
+    today: { ways: [0], todayLabel: ['Short cut, marked private', 'saves about 640 m'], note: { en: ['Another way for this part: tap it on the map to take it'] },
+      about: ['Today\'s Other ways already offers the short cut, in violet, with its saving. The note doesn\'t say why it\'s offered, and the way can only be taken by tapping the map.'] },
+    ways: [{ kind: 'cut', d: 'M700 560H920', color: CUT, at: [810, 520], en: ['Short cut, marked private', 'saves 640 m · only where you may go'], fi: ['Oikotie, merkitty yksityiseksi', 'säästää 640 m · vain jos sinulla on lupa'] }],
+    note: { en: ['This part goes round a yard marked private. The short cut saves 640 m, if you may go there.', ['Take the short cut · only where you may go', 0], ['Keep going round', null]],
+            fi: ['Tämä osuus kiertää yksityiseksi merkityn pihan. Oikotie säästää 640 m, jos sinulla on lupa kulkea siitä.', ['Kulje oikotietä · vain luvan kanssa', 0], ['Kierrä edelleen', null]] },
+    about: ['<b>On its own,</b> as today, once #127 keeps tunnels, roadworks and cycle tracks with a sidewalk out.', 'The note says why. Where the map\'s tiles can\'t tell private from closed (zoom 14 folds them together), it says "marked private or closed" rather than suggest a usable short cut.'],
+  },
+  gap: {
+    sport: 'MTB · Flowy trails', nums: ['2.6 km', '0:14', '↑ 35 m'], cx: 800, cy: 470,
+    base: `<rect class="wood" x="560" y="330" width="480" height="200" rx="30"/>
+      <path class="road-c" d="M560 640H1040"/><path class="road" d="M560 640H1040"/><path class="road-c" d="M600 640V420M1000 640V430"/><path class="road" d="M600 640V420M1000 640V430"/>
+      <path class="path" d="M600 420H788"/><path class="path" d="M812 428C880 432 940 428 1000 430"/><text class="mlab" x="770" y="402">paths end 22 m apart</text>`,
+    r: 'M600 420V640H1000V430', pts: [[600, 420, 'A', 'start'], [1000, 430, 'B']],
+    today: { about: ['The route goes round by the roads, 1.1 km further, because the two paths aren\'t joined on the map. Today the only fix is to draw the whole leg straight.'] },
+    ways: [{ kind: 'gap', parts: [['M600 420H788', false], ['M788 420L812 428', true], ['M812 428C880 432 940 428 1000 430', false]], color: ALT, at: [800, 390],
+      en: ['Straight over the gap', '−1.1 km · 22 m not checked on the ground'], fi: ['Suoraan raon yli', '−1,1 km · 22 m maastossa tarkistamatta'] },
+      { kind: 'routed', d: 'M600 420V600H1000V430', color: ALT, at: [800, 590], en: ['Other way', '+300 m · all on roads'], fi: ['Toinen reitti', '+300 m · kaikki teillä'] }],
+    card: true,
+    about: ['<b>On request,</b> from the leg\'s card: nearby path ends alone don\'t prove you can get across, so Polku doesn\'t offer it on its own.', 'Only the gap is straight. The paths before and after it stay routed: shaping points at the gap\'s ends, a straight leg between them.', 'Check says "Straight line: not checked on the ground" for the 22 m.'],
+  },
+  nearby: {
+    sport: 'Gravel · Balanced', nums: ['3.4 km', '0:13', '↑ 10 m'], cx: 800, cy: 470,
+    base: `<path class="road-c" d="M470 470H1130"/><path class="road" d="M470 470H1130"/><text class="mlab" x="640" y="455">Tampereentie, a busy road</text>
+      <path class="cyc-c" d="M470 504H1130"/><path class="cyc" d="M470 504H1130"/><text class="mlab" x="640" y="526">cycleway</text>
+      <rect class="bld" x="620" y="380" width="70" height="50"/><rect class="bld" x="900" y="560" width="90" height="50"/>`,
+    r: 'M650 470H950', pts: [[650, 470, 'A', 'start'], [950, 470, 'B']], spot: [950, 490],
+    today: { about: ['The tap lands a few metres off, between the road and the cycleway; BRouter takes the nearest way it can use, the road, and the route follows it (#86).'] },
+    ways: [{ kind: 'nearby', d: 'M650 470L662 504H938L950 470', color: ALT, at: [800, 540], en: ['Along the cycleway', 'about as long · beside the road'], fi: ['Pyörätietä pitkin', 'yhtä pitkä · tien vieressä'] }],
+    note: { en: ['Your points went onto the road. There\'s a cycleway beside it.', ['Along the cycleway · about as long', 0], ['Keep the road', null]],
+            fi: ['Pisteesi menivät tielle. Sen vieressä on pyörätie.', ['Pyörätietä pitkin · yhtä pitkä', 0], ['Pidä tie', null]] },
+    about: ['<b>On its own</b> when a point snapped onto a road with a cycleway or footway that suits the sport within 20 m: one routing call, within today\'s pacing.', 'Part 3 also puts a tap on the path that suits the sport before routing (#86\'s fix A), so this note is for what that misses.'],
+  },
+  style: {
+    sport: 'Gravel · Gravel grinder', nums: ['6.2 km', '0:22', '↑ 60 m'], cx: 800, cy: 450,
+    base: `<rect class="wood" x="540" y="250" width="520" height="210" rx="40"/>
+      <path class="road-c" d="M470 580H1130"/><path class="road" d="M470 580H1130"/><text class="mlab" x="1010" y="603">asphalt</text>
+      <path class="path" d="M600 580V300H1000V580" style="stroke-dasharray:none;stroke:#c9b48a;stroke-width:5"/><text class="mlab" x="760" y="292">gravel road</text>`,
+    r: 'M600 580V300H1000V580', pts: [[600, 580, 'A', 'start'], [1000, 580, 'B']],
+    today: { about: ['Gravel grinder prefers gravel, so this part goes round by the gravel road: 1.2 km further. Today the way out is to change the style for the whole route, or draw the part another way by hand.'] },
+    ways: [{ kind: 'style', d: 'M600 580H1000', color: ALT, at: [800, 615], en: ['Shorter, more asphalt', '−1.2 km · 400 m asphalt, this part only'], fi: ['Lyhyempi, enemmän asfalttia', '−1,2 km · 400 m asfalttia, vain tällä osuudella'] }],
+    card: true,
+    about: ['<b>On request,</b> from the leg\'s card: it costs a routing call per style, and a style is a choice you made.', 'Taking it gives this part its own style (Balanced); the rest of the route keeps Gravel grinder. Shown when it saves 300 m or 10 % of the part.'],
+  },
+  island: {
+    sport: 'Hike · Balanced', nums: ['1.4 km', '—', '↑ 15 m'], cx: 800, cy: 450,
+    base: `<rect class="water" x="300" y="300" width="1300" height="700"/><path class="land" d="M300 0H1600V300C1300 320 1100 330 960 380C880 410 820 440 760 440C600 440 500 400 300 420Z"/>
+      <ellipse class="wood" cx="960" cy="575" rx="110" ry="70"/><path class="path" d="M900 560C930 545 960 560 990 575"/><text class="mlab" x="900" y="660">island, no bridge or ferry</text>
+      <path class="path" d="M600 320C660 380 720 420 790 438"/>`,
+    r: 'M600 320C660 380 720 420 790 438', fail: 'M790 438L990 575', pts: [[600, 320, 'A', 'start'], [990, 575, 'B']],
+    today: { about: ['B is on land, so the open-water note doesn\'t come. The leg can\'t be routed on land, and fails as a dashed straight line (not reproduced live: it may also end on the mainland shore).'] },
+    ways: [{ kind: 'water', parts: [['M600 320C660 380 720 420 790 438', false, ALT], ['M790 438C840 470 880 520 905 548', false, WATER], ['M905 548C930 552 960 562 990 575', false, ALT]], color: WATER, at: [790, 520],
+      en: ['Paddle across', '380 m on water · then on foot'], fi: ['Melo yli', '380 m vesillä · sitten jalan'] }],
+    note: { en: ['B is on an island with no bridge or ferry Polku can see. How do you get there?', ['Paddle (sea kayak) · 380 m on water, then on foot', 0], ['Swim · 380 m', 0], ['Leave it as it is', null]],
+            fi: ['B on saaressa, jolle Polku ei näe siltaa eikä lauttaa. Miten pääset sinne?', ['Meloen (merikajakki) · 380 m vesillä, sitten jalan', 0], ['Uiden · 380 m', 0], ['Jätä ennalleen', null]] },
+    about: ['<b>On its own,</b> like the open-water note, for a point on an island the land route can\'t reach (or only by a long detour). Bridges and ferries are checked first, from the map\'s tiles.', 'The crossing is for its part only: on foot to the shore, paddled across by the water router (keep-clear zones, Not checked when a source fails), on foot on the island. A point on open water keeps today\'s answer (on from there in that sport).', 'For planning, not navigation: the note doesn\'t say a crossing is safe.'],
+  },
+  walk: {
+    sport: 'MTB · Balanced', nums: ['3.4 km', '0:17', '↑ 70 m'], cx: 800, cy: 470,
+    base: `<rect class="wood" x="520" y="330" width="560" height="160" rx="30"/><path d="M690 360C760 420 840 420 910 360" style="fill:none;stroke:#7c8f6a;stroke-width:26;opacity:.35"/>
+      <text class="mlab" x="752" y="475">ravine, steps</text>
+      <path class="road-c" d="M620 400V640H980V400"/><path class="road" d="M620 400V640H980V400"/>
+      <path class="path" d="M620 400H980"/><text class="mlab" x="760" y="388">footway, bicycle=dismount</text>`,
+    r: 'M620 400V640H980V400', pts: [[620, 400, 'A', 'start'], [980, 400, 'B']],
+    today: { about: ['MTB can\'t ride the footway (bicycle=dismount), so the route goes round: 2.6 km further. Walking the bike 300 m would be quicker, but nothing offers it.'] },
+    ways: [{ kind: 'walk', d: 'M620 400H980', dash: true, color: ALT, at: [800, 430], en: ['Walk the bike', '−2.6 km · 300 m, about +6 min'], fi: ['Taluta pyörää', '−2,6 km · 300 m, noin +6 min'] }],
+    card: true,
+    about: ['<b>On request,</b> from the leg\'s card, and only where access allows walking (#220\'s check first). A hard grade alone doesn\'t prove you can walk a bike there.', 'The walking part uses walking pace in the time and the gear check knows the bike goes along: the one thing that needs a new field in saved routes and links (part 5).'],
+  },
+};
+
+const KIND_IC = {
+  straight: '<path d="M5 19L19 5" stroke-dasharray="3 3"/><circle cx="19" cy="5" r="2"/>',
+  cut: '<path d="M4 12h16M14 6l6 6-6 6"/>', gap: '<path d="M3 12h5M16 12h5"/><path d="M8 12h8" stroke-dasharray="2 2"/>',
+  routed: '<path d="M4 18c4 0 4-12 8-12s4 12 8 12"/>', nearby: '<path d="M4 9h16M4 15h16"/>', style: '<path d="M4 18l6-12 4 8 2-4 4 8"/>',
+  water: '<path d="M3 15c3-3 6 3 9 0s6 3 9 0"/>', walk: '<circle cx="12" cy="5" r="2"/><path d="M12 8v6l-3 6M12 14l3 6M9 11h6"/>',
+};
+const icon = (k) => `<svg class="ic" width="18" height="18" viewBox="0 0 24 24" aria-hidden="true">${KIND_IC[k]}</svg>`;
+const esc = (s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;');
+
+let taken = null, lit = null, dismissed = false;
+
+function mapSvg(sc, w, h, cxShift) {
+  const vb = [sc.cx + cxShift - w / 2, sc.cy - h * 0.42, w, h];
+  const neu = S.v === 'new';
+  const ways = neu ? sc.ways : (sc.today.ways || []).map((i) => ({ ...sc.ways[i], todayLabel: sc.today.todayLabel }));
+  const words = S.words;
+  let out = `<svg class="map" viewBox="${vb.join(' ')}" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
+    <rect class="land" x="-1000" y="-1000" width="3600" height="3000"/>${sc.base}`;
+  const route = taken != null ? null : sc.r;
+  // the ways on offer, under the route (style.js: route-alts under the route's own line)
+  if (!dismissed) ways.forEach((wy, i) => {
+    if (taken === i) return;
+    const parts = wy.parts || [[wy.d, !!wy.dash]];
+    out += `<g class="way${lit === i ? ' lit' : ''}" data-way="${i}">` + parts.map(([d, dash, col]) => `<path class="ac" d="${d}"/><path class="a${dash ? ' dash' : ''}" d="${d}" stroke="${col || wy.color}"/>`).join('') + '</g>';
+  });
+  if (taken != null) {
+    out += `<path class="rc" d="${sc.r}"/><path class="r before" d="${sc.r}"/>`;
+    const wy = sc.ways[taken];
+    for (const [d, dash, col] of wy.parts || [[wy.d, !!wy.dash]]) out += `<path class="rc" d="${d}"/><path class="r${dash ? ' fail' : ''}" d="${d}"${col === WATER || (!col && wy.color === WATER) ? ` style="stroke:${WATER}"` : ''}/>`;
+  } else {
+    out += `<path class="rc" d="${route}"/><path class="r" d="${route}"/>`;
+    if (sc.fail) out += `<path class="rc" d="${sc.fail}"/><path class="r fail" d="${sc.fail}"/>`;
+  }
+  // labels: each way's, and the route's own in the same form while ways are on offer
+  if (!dismissed && taken == null) ways.forEach((wy, i) => {
+    const [l1, l2] = wy.todayLabel || wy[words];
+    out += `<text class="lab" x="${wy.at[0]}" y="${wy.at[1]}" text-anchor="middle" fill="${wy.color}" data-way="${i}" style="cursor:pointer"><tspan x="${wy.at[0]}">${esc(l1)}</tspan><tspan x="${wy.at[0]}" dy="15.5">${esc(l2)}</tspan></text>`;
+  });
+  if (neu && sc.spot && !dismissed && taken == null) out += `<circle class="spot" cx="${sc.spot[0]}" cy="${sc.spot[1]}" r="11"/><text class="spotlab" x="${sc.spot[0] + (sc.spot[0] > sc.cx + 100 ? -16 : 16)}" y="${sc.spot[1] + (sc.spot[0] > sc.cx + 100 ? 26 : -10)}" text-anchor="${sc.spot[0] > sc.cx + 100 ? 'end' : 'start'}">${words === 'fi' ? 'mihin laitoit sen' : 'where you put it'}</text>`;
+  for (const [x, y, n, k] of sc.pts) {
+    const at = taken != null && n === 'B' && sc.spot && sc.ways[taken].kind === 'straight' ? sc.spot : [x, y];
+    out += `<g class="pt"><circle cx="${at[0]}" cy="${at[1]}" r="10" fill="${k ? '#23863a' : '#fff'}" stroke="${k ? '#fff' : 'var(--route)'}"/><text x="${at[0]}" y="${at[1]}" fill="${k ? '#fff' : '#141b17'}">${n}</text></g>`;
+  }
+  return out + '</svg>';
+}
+
+function noteHtml(sc) {
+  const w = W[S.words];
+  if (taken != null) return `<div class="toast show" role="status">${esc(w.took)} <button class="toast-act" data-act="undo">${w.undo}</button></div>`;
+  if (dismissed) return '';
+  if (S.v === 'today') {
+    const n = sc.today.note && sc.today.note.en;
+    return n ? `<div class="toast show" role="status">${esc(n[0])}</div>` : '';
+  }
+  if (!sc.note) return '';
+  const [q, ...answers] = sc.note[S.words];
+  return `<div class="toast choice show" role="alertdialog" aria-label="${esc(q)}"><span>${esc(q)}</span>${answers.map(([label, i]) => `<button class="toast-act" data-act="${i == null ? 'dismiss' : 'take'}" data-way="${i ?? ''}">${esc(label)}</button>`).join('')}</div>`;
+}
+
+function cardHtml(sc) {
+  if (S.v !== 'new' || !sc.card || taken != null || dismissed) return '';
+  const w = W[S.words], fi = S.words === 'fi';
+  const rows = sc.ways.map((wy, i) => {
+    const [name, line] = wy[S.words];
+    const [val, ...rest] = line.split(' · ');
+    return `<button class="row" data-act="take" data-way="${i}"${lit === i ? ' aria-current="true"' : ''}><span class="kind" style="color:${wy.color}">${icon(wy.kind)}</span><span><b>${esc(name)}</b><small>${esc(rest.join(' · '))}</small></span><span class="val">${esc(val)}</span></button>`;
+  }).join('');
+  return `<div class="card" role="dialog" aria-label="${fi ? 'Osuus A–B' : 'A to B'}"><div class="head"><b>${fi ? 'Osuus A–B' : 'A to B'}</b><button class="x" data-act="dismiss" aria-label="${fi ? 'Sulje' : 'Close'}">✕</button></div>
+    <div class="why">${esc(fi ? 'Reitti ei ole valitsemasi reitti? Nämä kulkevat toisin.' : 'Not the way you meant? These go another way.')}</div>
+    <div class="menu-h">${w.other}</div><div class="rows">${rows}</div></div>`;
+}
+
+function render() {
+  for (const sw of document.querySelectorAll('.sw')) for (const b of sw.querySelectorAll('button')) b.setAttribute('aria-pressed', String(S[sw.dataset.k] === b.dataset.v));
+  history.replaceState(null, '', '?' + new URLSearchParams(S));
+  const sc = SCENES[S.scene], desk = S.size === '1440';
+  const zoom = desk ? 1 : +S.zoom;
+  const W0 = desk ? 1440 : +S.size, H0 = desk ? 900 : S.size === '360' ? 740 : 844;
+  const w = W0 / zoom, h = H0 / zoom; // the page's CSS size at this zoom
+  const fit = Math.min(1, (document.getElementById('stage').clientWidth - 4) / W0);
+  const fr = document.getElementById('frame');
+  fr.style.width = `${W0 * fit}px`; fr.style.height = `${H0 * fit}px`;
+  const words = W[S.words];
+  const peek = desk ? `<div class="panel glass"><div class="nums"><b>${sc.nums[0]}</b><b>${sc.nums[1]}</b><small>${sc.nums[2]}</small></div><div class="sport">${esc(sc.sport)}</div><div class="pt">🟢 A</div><div class="pt">⚪ B</div></div>`
+    : `<div class="peek glass" id="peek"><div class="grip"></div><div class="nums"><b>${sc.nums[0]}</b><b>${sc.nums[1]}</b><small>${sc.nums[2]}</small><button class="done">Done</button></div><div class="sport">${esc(sc.sport)}</div></div>`;
+  fr.innerHTML = `<div class="screen ${desk ? 'desk' : 'phone'}" style="width:${w}px;height:${h}px;transform:scale(${zoom * fit})">
+    ${mapSvg(sc, w, h, desk ? -210 : 0)}
+    <div class="topbar glass"><span class="m"><svg class="ic" width="18" height="18" viewBox="0 0 24 24"><path d="M5 19c4-2 3-7 7-8s4-5 7-6" stroke-dasharray="3 3"/></svg></span><span class="s">${words.search}</span></div>
+    <div class="mapbtns"><span></span><span></span></div>
+    ${peek}<div id="note" style="position:absolute;left:0;right:0;bottom:${desk ? 24 : 0}px;${desk ? 'left:404px;' : ''}">${noteHtml(sc)}</div>${cardHtml(sc)}</div>`;
+  // the note sits just above the peek, as css/app.css puts it (--sheet-h)
+  const pk = fr.querySelector('#peek'), note = fr.querySelector('#note');
+  if (pk) note.style.bottom = `${pk.offsetHeight + 20}px`;
+  if (fr.querySelector('.card') && !desk) note.style.display = 'none';
+  const lines = S.v === 'new' ? sc.about : sc.today.about;
+  document.getElementById('about').innerHTML = `<h2>${S.v === 'new' ? 'Proposed' : 'Today'}: ${esc(document.querySelector(`[data-k="scene"] [data-v="${S.scene}"]`).textContent.replace(/^\d · /, ''))}</h2>${lines.map((p) => `<p>${p}</p>`).join('')}
+    ${S.v === 'new' ? '<p><span class="tag">Try</span>Point at or focus an answer or a row to light its way; take it, then Undo. Every way can also be tapped on the map.</p>' : ''}`;
+}
+
+document.addEventListener('click', (e) => {
+  const b = e.target.closest('.sw button');
+  if (b) { S[b.closest('.sw').dataset.k] = b.dataset.v; taken = null; lit = null; dismissed = false; render(); return; }
+  const t = e.target.closest('[data-act], .way, .lab');
+  if (!t || !t.closest('.screen')) return;
+  const act = t.dataset.act || 'take';
+  if (act === 'take') { taken = +t.dataset.way || 0; lit = null; }
+  if (act === 'dismiss') dismissed = true;
+  if (act === 'undo') taken = null;
+  render();
+});
+// an answer or a row lights its way while pointed at or focused, as Check's rows light their stretch
+const light = (e) => { const t = e.target.closest && e.target.closest('[data-way]'); const i = t && t.dataset.way !== '' ? +t.dataset.way : null; if (i === lit) return; lit = i;
+  for (const g of document.querySelectorAll('.map .way')) g.classList.toggle('lit', +g.dataset.way === lit); };
+document.addEventListener('pointerover', light); document.addEventListener('focusin', light);
+document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !dismissed && taken == null) { dismissed = true; render(); } });
+addEventListener('resize', render);
+render();
+</script>
+</body>
+</html>
