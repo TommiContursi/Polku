@@ -2053,6 +2053,13 @@ def osm_points(chrome):
       if(m.style.tileManagers.mml.getIds().length)return ['MML was asked for tiles at zoom 10'];""" + MML_FIXTURES + """
       const O=await import('/js/osm-data.js'), {lonLatToTile}=await import('/js/geo.js'), {makeIcon}=await import('/js/icons.js'), {PLACE_KINDS}=await import('/js/config.js');
       for(const k of Object.keys(PLACE_KINDS)){const img=makeIcon(`place-${k}`); if(!img||!img.data.some((v,i)=>i%4===3&&v>0))errs.push(`no icon for ${k}`);}
+      // where the points didn't load (today: a release without the product), Outdoor places says so, not an empty map; with them, nothing
+      const {OSM_DATA_MANIFEST}=await import('/js/config.js'), has=!!(await new O.StaticOSM(OSM_DATA_MANIFEST).ready()).manifest.datasets.points;
+      polku.set({quickTiles:{...polku.state.quickTiles,hike:['pois']}}); m.jumpTo({center:[29.8,63.09],zoom:15}); await settle();
+      document.querySelector('#btn-layers').click();
+      let said=''; for(let k=0;k<40;k++){await wait(250); const el=document.querySelector('#quick-layers .qt[data-id="pois"] .qt-l small'); said=el&&!el.hidden?el.textContent:''; if(/didn’t load/.test(said)!==has)break;}
+      if(/didn’t load/.test(said)===has)errs.push(`Outdoor places says ${JSON.stringify(said)} with ${has?'':'no '}points in the release`);
+      document.querySelector('#btn-layers').click();
       // OSM's points, seeded at Seitseminen, 60 m apart in a row
       O.holdHosted('points');
       const c=[23.5,61.94], at=(i)=>[c[0]+i*0.0012,c[1]], node=(id,i,tags)=>({type:'node',id,lon:at(i)[0],lat:at(i)[1],tags});

@@ -507,7 +507,7 @@ function restyleTrails() { if (state.trailDetails) map.setStyle(buildStyle(state
 const lipas = new LipasLayer(map, (routes, points) => { setData('lipasRoutes', routes); setData('lipasPoints', points); });
 const winterWays = new WinterWays(map, (fc) => setData('winterWays', fc));
 const reedbeds = new HostedLayer(map, OSM_DATA_MANIFEST, 'wetlands', (fc) => setData('reedbeds', fc)); // OSM's reedbeds on the vector base maps (#1144)
-const osmPoints = new HostedLayer(map, OSM_DATA_MANIFEST, 'points', (fc) => setData('osmPoints', fc)); // and its fire places, springs, caves… (#1179)
+const osmPoints = new HostedLayer(map, OSM_DATA_MANIFEST, 'points', (fc) => setData('osmPoints', fc), () => refreshQuickSoon()); // and its fire places, springs, caves… (#1179)
 // (a tile that comes in may end "No data now" on the Lit ways tile)
 const litWays = new LitWays(map, { onData: (fc, cover) => { setData('litWays', fc); setData('litCover', cover); }, onStatus: refreshLitStatus });
 const retryLit = () => { drawTogether(); litWays.retry(); }; // (Try again's answer is never held)
@@ -1748,6 +1748,7 @@ function tileFailing(id) {
   const src = TILE_SOURCES[id];
   return !!src && src.every((s) => sourceStatus(s));
 }
+const POINTS_DOWN = 'Springs and fire places didn’t load';
 function tileStatus(id) {
   const out = outside(id); // (on or off: before you turn it on, too)
   if (out) return out;
@@ -1755,12 +1756,14 @@ function tileStatus(id) {
   if (QUICK_TILE[id].winter && !state.winterOn) return 'Shows in winter';
   if (map.getZoom() < tileZoom(id)) return 'Zoom in to see';
   if (id === 'lit') return litStatus().tile;
+  // (springs are water someone may count on: where they didn't load, the tile says so, not an empty map, #1179)
+  if (id === 'pois' && osmPoints.failing) return POINTS_DOWN;
   return tileFailing(id) ? 'No data now' : '';
 }
 function tileSmall(id) {
   const status = tileStatus(id), note = id === 'trailColors' ? COLOR_KIND[state.trailColors] : QUICK_TILE[id].note;
   if (id === 'depths') return { text: status ? `${status} · not for navigation` : note, warn: status === 'No data now' };
-  return { text: status || note || '', warn: status === 'No data now' || (id === 'lit' && tileFailing(id)) };
+  return { text: status || note || '', warn: status === 'No data now' || status === POINTS_DOWN || (id === 'lit' && tileFailing(id)) };
 }
 function litStatus() {
   const { loaded, total, pending, failed, limited, slow } = litWays.progress;
