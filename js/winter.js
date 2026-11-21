@@ -7,12 +7,13 @@
 // - ploughing on cycleways and paths: snowplowing / winter_service = yes, or no / limited;
 // - no access in winter (bicycle:winter / foot:winter / mtb:winter = no), usually
 //   a ski track's base;
-// - ski tracks (piste:type=nordic), and ways there only in winter (seasonal=winter).
+// - ski tracks (piste:type=nordic), and ways there only in winter (seasonal=winter, ice_road, winter_road);
+// - thin ice (hazard=thin_ice, mostly areas), for Heads-up only.
 //
 // BRouter's data has none of these tags, so they come from Overpass, one query
 // per z12 tile (about 5 km), cached a week, and only while winter is on.
 
-import { lonLatToTile, tileBounds, dist } from './geo.js';
+import { lonLatToTile, tileBounds, dist, inPolygon } from './geo.js';
 import { cachedOverpass } from './osm.js';
 import { hostedTile, forgetHostedFailures } from './osm-data.js';
 import { OSM_DATA_MANIFEST } from './config.js';
@@ -97,13 +98,14 @@ export function snowNear(list, ll, km = 60) {
 export const WINTER_Z = 12;
 export const WINTER_MIN_ZOOM = 11;
 const RETRY = 120e3;
-const KEEP = ['highway', 'mtb:winter', 'snowplowing', 'winter_service', 'bicycle:winter', 'foot:winter', 'seasonal', 'piste:type', 'piste:grooming', 'piste:name', 'name', 'lit', 'bicycle', 'foot', 'access'];
+const KEEP = ['highway', 'mtb:winter', 'snowplowing', 'winter_service', 'bicycle:winter', 'foot:winter', 'seasonal', 'ice_road', 'winter_road', 'hazard', 'piste:type', 'piste:grooming', 'piste:name', 'name', 'lit', 'bicycle', 'foot', 'access'];
 
 export function winterQuery(x, y) {
   const [w, s, e, n] = tileBounds(x, y, WINTER_Z);
   const bb = `${s.toFixed(6)},${w.toFixed(6)},${n.toFixed(6)},${e.toFixed(6)}`;
   return `[out:json][timeout:25];(way["mtb:winter"](${bb});way[~"^(snowplowing|winter_service)$"~"."](${bb});`
-    + `way[~"^(bicycle|foot):winter$"~"."](${bb});way[seasonal=winter](${bb});way["piste:type"="nordic"](${bb}););out tags geom qt;`;
+    + `way[~"^(bicycle|foot):winter$"~"."](${bb});way[seasonal=winter](${bb});way[ice_road=yes](${bb});way[winter_road=yes](${bb});`
+    + `way[hazard=thin_ice](${bb});way["piste:type"="nordic"](${bb}););out tags geom qt;`;
 }
 
 const pick = (t = {}) => { const o = {}; for (const k of KEEP) if (t[k] != null) o[k] = t[k]; return o; };
@@ -119,7 +121,7 @@ export function slimWinter(json) {
  * 'closed' no access in winter (a ski track's base, usually), 'ski' a ski track and only that,
  * 'groomed' a ski track on a way still open to walking and cycling,
  * 'ploughed' maintained in winter, 'unploughed' not, 'open1' / 'open2' / 'open3' how soon
- * it opens after snow, 'seasonal' there only in winter; null: nothing said.
+ * it opens after snow, 'seasonal' there only in winter (an ice road or a winter road too); null: nothing said (thin ice too).
  */
 export function winterClass(t) {
   const no = (v) => /^(no|private)$/.test(String(v || ''));
@@ -135,7 +137,7 @@ export function winterClass(t) {
   if (m === '1') return 'open1';
   if (m === '2' || m === 'yes') return 'open2';
   if (m === '3') return 'open3';
-  if (t.seasonal === 'winter') return 'seasonal';
+  if (t.seasonal === 'winter' || t.ice_road === 'yes' || t.winter_road === 'yes') return 'seasonal';
   return null;
 }
 
@@ -169,7 +171,7 @@ export function winterTile(x, y) {
   if ((failed.get(key) || 0) > Date.now()) return Promise.reject(new Error('Overpass busy'));
   const entry = { data: null };
   entry.promise = hostedTile(OSM_DATA_MANIFEST, 'winter', WINTER_Z, [x, y],
-    () => cachedOverpass(`winter1/${WINTER_Z}/${key}`, winterQuery(x, y), slimWinter, { oneRound: true, timeoutMs: 30000 }), { slim: slimWinter })
+    () => cachedOverpass(`winter2/${WINTER_Z}/${key}`, winterQuery(x, y), slimWinter, { oneRound: true, timeoutMs: 30000 }), { slim: slimWinter })
     .then((data) => { entry.data = data; for (const fn of listeners) fn(key); return data; })
     .catch((err) => { tiles.delete(key); failed.set(key, Date.now() + RETRY); throw err; });
   tiles.set(key, entry);
@@ -281,10 +283,17 @@ export async function winterAlong(a, { maxTiles = 24 } = {}) {
   const got = await Promise.allSettled(list.map(([x, y]) => winterTile(x, y)));
   // segments of the classed ways, in a coarse grid
   const CELL = 0.0006, grid = new Map(), key = (x, y) => `${Math.floor(x / CELL)},${Math.floor(y / (CELL / 2))}`;
+  const thin = []; // thin ice's areas (#1287)
   for (const [x, y] of list) {
     const d = (tiles.get(`${x}/${y}`) || {}).data;
     if (!d) continue;
     for (const [, t, flat] of d.w) {
+      if (t.hazard === 'thin_ice') {
+        const ring = [];
+        for (let i = 0; i < flat.length; i += 2) ring.push([flat[i], flat[i + 1]]);
+        thin.push({ type: 'Polygon', coordinates: [ring] });
+        continue;
+      }
       const cls = winterClass(t);
       if (!cls) continue;
       for (let i = 2; i < flat.length; i += 2) {
@@ -307,6 +316,7 @@ export async function winterAlong(a, { maxTiles = 24 } = {}) {
     }
     out[i] = cls;
   });
+  out.thin = a.pts.map((pt) => thin.some((g) => inPolygon(pt, g))); // (in a thin-ice area)
   out.lost = got.filter((r) => r.status === 'rejected' && !(r.reason || {}).held).length;
   return out;
 }

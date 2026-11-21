@@ -687,10 +687,42 @@ ALONG_TRACK = """(async () => {
     T.seedTile(x, y, { v: 1, w: [[1, { highway: 'path', width: '0.4' }, line(3)], [2, { highway: 'track' }, line(1)]], n: [] });
   const n = pts.length, by = () => new Uint8Array(n);
   const a = { pts, along: pts.map((p) => G.dist(pts[0], p)), attr: pts.map(() => ({ tags: { highway: 'path' } })),
-    td: { trail: by(), width: new Int8Array(n).fill(-1), vis: new Int8Array(n).fill(-1), veg: by(), mud: by(), tree: by(), ford: by(), boardwalk: by(), points: [] } };
+    td: { trail: by(), width: new Int8Array(n).fill(-1), vis: new Int8Array(n).fill(-1), veg: by(), mud: by(), tree: by(), ford: by(), boardwalk: by(), winter: by(), points: [] } };
   if (!await T.detailsAlong(a)) return ['no trail details along the route'];
   const narrow = [...a.td.width].filter((w) => w === 0).length;
   return narrow === n ? [] : [`${narrow} of ${n} samples have the path's width (0.4 m): the others matched the track beside it`];
+})()"""
+
+# Ways over the ice (#1287): a recorded BRouter route 7.2 km over Vesijärvi in Lahti, MTB, along way 1241369986
+# (highway=track and ice_road=yes: BRouter's data hasn't the tag, so it routes on it in any season), and that way in the
+# trail tiles, as the hosted data has it. With winter Off, Check warns that it's open water, under Read before you go,
+# with Avoid it; in winter, that Polku can't see whether the ice holds. Before, Check said only that it was dark.
+ICE_ROAD = """(async () => {
+  const p = polku.planner, wait = (ms) => new Promise((r) => setTimeout(r, ms)), errs = [];
+  const T = await import(location.origin + '/js/trails.js'), A = await import(location.origin + '/js/analysis.js');
+  const fx = await (await fetch(location.origin + '/tools/fixtures/route-vesijarvi-ice-mtb.json')).json();
+  const way = await (await fetch(location.origin + '/tools/fixtures/trails-vesijarvi-ice.json')).json();
+  T.holdFetches();
+  for (const [x, y] of T.tilesIn([25.39, 61.105, 25.52, 61.145])) T.seedTile(x, y, way);
+  p.checkWet = async () => {};
+  p.wet = { on: false, mm: 0, at: Date.now() };
+  p.setActive(true);
+  p.restoreSnapshot(fx);
+  const t0 = Date.now();
+  while (!(p.analysis && p.analysis.trailMore) && Date.now() - t0 < 30000) await wait(250);
+  const a = p.analysis;
+  if (!a || !a.trailMore) return ['the trail details along the route never came in'];
+  const ice = (list) => list.filter((w) => /ice/i.test(w.text));
+  const now = ice(p.headsUp().read);
+  if (now.length !== 1 || !/^Ice road for 72\\d\\d m: open water outside winter$/.test(now[0].text)) errs.push(`with winter Off, Read before you go says: ${p.headsUp().read.map((w) => w.text).join(' / ') || 'nothing'}`);
+  else {
+    const act = p.itemActions({ g: 'read', w: now[0] }).main;
+    if (!act || act.label !== 'Avoid it') errs.push(`the ice road's action: ${act ? act.label : 'none'}`);
+  }
+  const cold = ice(A.trailWarnings(a, { activity: 'mtb', winter: true }));
+  if (cold.length !== 1 || !/^Over the ice for 72\\d\\d m$/.test(cold[0].text) || !/can’t see whether the ice holds/.test(cold[0].note)) errs.push(`in winter: ${cold.map((w) => `${w.text} · ${w.note}`).join(' / ') || 'no ice road'}`);
+  p.clear();
+  return errs;
 })()"""
 
 
@@ -2268,8 +2300,13 @@ def trails(chrome):
     fails += [f'route beside a track: {e}' for e in pg.js(ALONG_TRACK)]
     fails += [f'console: {e[:160]}' for e in pg.errors()]
     pg.close()
+    pg = chrome.page(1440, 900, False)
+    pg.open_app({'activity': 'mtb'}, {'polku:plannerDock': '"left"', 'polku:winter': '"off"'}, '#12/61.125/25.45')
+    fails += [f'over the ice: {e}' for e in pg.js(ICE_ROAD, timeout=60000)]
+    fails += [f'console: {e[:160]}' for e in pg.errors()]
+    pg.close()
     fails += trail_card(chrome)
-    print(f"{'ok  ' if not fails else 'FAIL'} trail details, every track from zoom 13 (#1128), a trail's card on phones (#435)" + ''.join(f'\n     - {f}' for f in fails), flush=True)
+    print(f"{'ok  ' if not fails else 'FAIL'} trail details, every track from zoom 13 (#1128), a route over an ice road (#1287), a trail's card on phones (#435)" + ''.join(f'\n     - {f}' for f in fails), flush=True)
     return not fails
 
 
@@ -5562,11 +5599,15 @@ HEADS = """(async () => {
     [[/^Unpaved/, 'look', 'map', 'OpenStreetMap', /^surface=gravel, highway=track, highway=path · /], [/^Marked private/, 'look', 'map', 'OpenStreetMap'], [/^Freehand/, 'look', 'calculated', 'how you drew it', /^Drawn straight between waypoints/]]);
   expect('findWarnings, on foot', A.findWarnings(along, flat, attrs('hike', [[0, 20, { highway: 'path', foot: 'no' }]]), pts, 'hike'), [[/^Marked no walking/, 'read', 'map', 'OpenStreetMap']]);
   // the trail details (from the router's tags here)
-  const td = { trail: new Uint8Array(n).fill(1), width: new Int8Array(n).fill(-1), vis: new Int8Array(n).fill(-1), veg: new Uint8Array(n), mud: new Uint8Array(n), tree: new Uint8Array(n), ford: new Uint8Array(n), boardwalk: new Uint8Array(n), points: [{ i: 50, at: 500, ll: pts[50], kind: 'barrier', barrier: 'fence' }] };
+  const td = { trail: new Uint8Array(n).fill(1), width: new Int8Array(n).fill(-1), vis: new Int8Array(n).fill(-1), veg: new Uint8Array(n), mud: new Uint8Array(n), tree: new Uint8Array(n), ford: new Uint8Array(n), boardwalk: new Uint8Array(n), winter: new Uint8Array(n), points: [{ i: 50, at: 500, ll: pts[50], kind: 'barrier', barrier: 'fence' }] };
   for (let i = 0; i < 12; i++) { td.vis[i] = 2; td.veg[i + 12] = 1; td.mud[i + 24] = 1; }
+  for (let i = 52; i < 56; i++) { td.winter[i] = 1; td.winter[i + 4] = 2; } // an ice road, then a winter road (#1287)
   td.tree[40] = 1; td.ford[45] = 1;
   expect('trailWarnings', A.trailWarnings({ along, pts, td, attr: attrs('mtb', []) }, { activity: 'mtb' }),
-    [[/^Hard to follow/, 'look', 'map', 'OpenStreetMap', /^trail_visibility=bad · /], [/^Overgrown/, 'look', 'map', 'OpenStreetMap', /^obstacle=vegetation · /], [/^Wet or muddy/, 'look', 'map', 'OpenStreetMap', /^surface=mud or obstacle=mud · /], [/^Fallen trees/, 'look', 'map', 'OpenStreetMap', /^obstacle=fallen_tree · /], [/^Ford/, 'look', 'map', 'OpenStreetMap', /^ford=yes · /]]);
+    [[/^Hard to follow/, 'look', 'map', 'OpenStreetMap', /^trail_visibility=bad · /], [/^Overgrown/, 'look', 'map', 'OpenStreetMap', /^obstacle=vegetation · /], [/^Wet or muddy/, 'look', 'map', 'OpenStreetMap', /^surface=mud or obstacle=mud · /], [/^Fallen trees/, 'look', 'map', 'OpenStreetMap', /^obstacle=fallen_tree · /], [/^Ford/, 'look', 'map', 'OpenStreetMap', /^ford=yes · /],
+     [/^Ice road for 30 m: open water outside winter/, 'read', 'map', 'OpenStreetMap', /^ice_road=yes · /], [/^There only in winter/, 'read', 'map', 'OpenStreetMap', /^winter_road=yes or seasonal=winter · .*now it may be no way/]]);
+  expect('trailWarnings in winter', A.trailWarnings({ along, pts, td, attr: attrs('mtb', []) }, { activity: 'mtb', winter: true }),
+    [[/^Over the ice for 30 m/, 'read', 'map', 'OpenStreetMap', /^ice_road=yes · Polku can’t see whether the ice holds/], [/^There only in winter/, 'read', 'map', 'OpenStreetMap', /^winter_road=yes or seasonal=winter · Over a bog or ice\. Polku can’t see/]]);
   // Fintraffic: its caches seeded for the route's box, so nothing is fetched
   const S = polku.safety, road = { highway: 'primary' }, line = (c) => ({ type: 'LineString', coordinates: c });
   const ra = { pts, along, attr: pts.map(() => ({ sport: 'mtb', tags: road })), tAt: new Float32Array(n), activity: 'mtb', start: Date.now() / 1000 };
@@ -5608,11 +5649,12 @@ HEADS = """(async () => {
   // winter: snow, snowing, the cold, slippery, the ways' winter tags, the ice season
   const fill = (v) => new Float32Array(n).fill(v), F = ['estimate', 'the forecast'], T = ['map', 'winter tags'];
   const cls = Array.from({ length: n }, (_, i) => ['closed', 'groomed', 'unploughed', 'open3'][Math.floor(i / 15)]);
+  cls.thin = Array.from({ length: n }, (_, i) => i >= 50 && i < 55); // in a thin-ice area (#1287)
   const wa = { along, pts, tAt, start: Date.now() / 1000, activity: 'mtb', attr: attrs('mtb', []), snow: { cm: fill(15) }, winterCls: cls, snowSec: 0,
     wind: { temp: Float32Array.from({ length: n }, (_, i) => (i < 30 ? 0 : -30)), precip: Float32Array.from({ length: n }, (_, i) => (i < 30 ? 0.5 : 0)), speed: fill(10), head: fill(10), cross: fill(0), snowfall: fill(5), snow: fill(15) } };
   const wt = { app: { winter: () => ({ on: true, setting: 'on' }) } };
   expect('winterWarnings', p.winterWarnings.call(wt, wa), [[/^Snow on the way/, 'look', ...F], [/^Snowing on the way/, 'look', ...F], [/^Slippery/, 'read', ...F], [/^Frostbite risk/, 'read', ...F],
-    [/^No access in winter/, 'read', ...T], [/^Beside a ski track/, 'look', ...T], [/^Not ploughed/, 'look', ...T], [/^Opens slowly/, 'look', ...T]]);
+    [/^No access in winter/, 'read', ...T], [/^Beside a ski track/, 'look', ...T], [/^Not ploughed/, 'look', ...T], [/^Opens slowly/, 'look', ...T], [/^Thin ice: 50 m/, 'read', ...T, /^hazard=thin_ice · /]]);
   expect('winterWarnings, very cold', p.winterWarnings.call(wt, { ...wa, snow: null, winterCls: null, wind: { ...wa.wind, temp: fill(-14), precip: fill(0), snowfall: fill(0), speed: fill(4), head: fill(4) } }), [[/^Very cold/, 'read', ...F]]);
   // the cold by the wind's direction (#869): at −10 °C riding 20 km/h in 4 m/s of wind, very cold against it, not with it behind you
   const ride = { ...wa, snow: null, winterCls: null, tAt: Float32Array.from({ length: n }, (_, i) => i * 1.8) }, cold = { ...wa.wind, temp: fill(-10), precip: fill(0), snowfall: fill(0), speed: fill(4) };

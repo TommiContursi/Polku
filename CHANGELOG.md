@@ -4,6 +4,12 @@ What's new in [Polku](https://polku.si), from the latest updates back to the fir
 
 ## 2026-11-21
 
+### Ice roads and thin ice on the route ([#1287](https://github.com/TommiContursi/Polku/issues/1287))
+
+- A route that follows an ice road or a winter road now says so under **Warnings**, with its length and **Avoid it**. The router doesn't know these ways are there only in winter, so a summer route could cross a lake on one with no word. Outside winter Check says it's open water or a bog; in winter, that Polku can't see whether the ice holds.
+- In winter, thin ice mapped on the route gets a warning of its own, and with **Winter ways** on, ice roads and winter roads are drawn as ways there only in winter. In Finland, Sweden, Norway and Estonia these two come with the next update of Polku's map data.
+- They come from OpenStreetMap, so they work wherever it has them, and not every ice road is mapped. An ice road mapped as a road rather than a track or a path isn't named on the route yet. **Polku can't see the ice: check it yourself before you go.**
+
 ### Avoid it on a wide river's rapids ([#1239](https://github.com/TommiContursi/Polku/issues/1239))
 
 - **Avoid it** on a rapids warning now closes the river to the route from bank to bank where it went through them, however wide the river, so the route carries round on land. It used to move the route a little way across the river and through the rapids again.
