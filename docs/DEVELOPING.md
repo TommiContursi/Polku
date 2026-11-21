@@ -29,6 +29,7 @@ Read the section the task needs, not the whole file. The files after a section a
   - [Cards](#cards): `js/card.js`, `js/cards.js`, `js/facts.js`, `js/ways.js`, `js/pick.js`, `css/app.css`, `js/config.js`
   - [The planner's states, sports and Settings](#the-planners-states-sports-and-settings): `js/planner.js`, `js/main.js`
   - [Hover and colours](#hover-and-colours): `js/hover.js`, `css/app.css`
+- [The backup to Bitbucket](#the-backup-to-bitbucket): `.github/workflows/backup.yml`
 - [Known limits](#known-limits)
 - [The free services: limits and quirks](#the-free-services-limits-and-quirks)
 - [Files](#files)
@@ -341,6 +342,25 @@ An explicit path or trail/winter/water/lighting retry resets only a failed share
 The data build adds exact existing query subsets: non-highway barrier ways and standalone obstacle/ford nodes, ski-only and mapped maintenance ways, water hazard points/ways, and overnight nodes/ways/relations. Place centres are indexed for nearby searches; incomplete referenced place geometry fails the candidate build. New datasets do not appear in production merely because a reader supports them: publication remains separately guarded by the protected workflow described in OSM_DATA.md.
 
 `tools/osm_data/maintenance.py` tracks publisher-owned retention metadata separately from immutable archives. Approved publication protects live/predecessor/latest-two releases and 28 days of successful publications, prunes only validated old owned files, and checks the 80 GiB service budget before upload. Resume targets remain protected. The registered rollback smoke check covers retention pins; full retention tests run in the existing OSM Python CI discovery, and `test-host` exercises the pruner inside its disposable directory.
+
+## The backup to Bitbucket
+
+`.github/workflows/backup.yml` runs weekly (Sundays, 04:41 UTC) and by hand (Actions → Polku backup → Run workflow), about two minutes a run. GitHub holds the only copy of the code, the issues (where every decision lives) and the PRs, and Cloudflare keeps only built versions of the site, so the workflow copies them to a private Bitbucket repository:
+
+- **The code:** every branch except `pr-screenshots` (about 800 MB of images, never fetched) and every tag, pushed with `--force`. A branch deleted on GitHub stays in the backup.
+- **The issues:** the branch `github-export` of the same Bitbucket repository, one commit a week (none when nothing changed), holding `issues.json` (the PRs' own entries included), `pulls.json`, `issue-comments.json`, `pr-review-comments.json`, `milestones.json` and `labels.json`. They come from the workflow's own `GITHUB_TOKEN`, which has `contents`, `issues` and `pull-requests` read only. Not exported: the PRs' reviews (their summary text; the line comments are in), the issues' event timeline, and **the Project's order**, because the workflow's token can't read a user's Project.
+- **One credential:** the secret `BITBUCKET_TOKEN`, a Bitbucket repository access token (scopes Repository Read and Write, for that one repository), and the variable `BITBUCKET_REPOSITORY` (`workspace/repository`). The workflow uses no third-party action, so nothing else can read the token. A run fails, and GitHub emails the failure, if either is missing, a file comes out empty, or the push is refused. The token's expiry date is the one thing to watch: put a reminder before it.
+
+**To restore** (the code and the issues are separate branches, so a clone holds both):
+
+```bash
+git clone https://x-token-auth:<token>@bitbucket.org/<workspace>/<repository>.git polku-restore
+cd polku-restore
+git log --oneline -3 origin/main                # the code
+git show origin/github-export:issues.json | jq '.[] | select(.number == 115) | .title'
+```
+
+To bring the code back to a new GitHub repository, push the branches and tags from the clone (`git push <new-url> 'refs/remotes/origin/*:refs/heads/*' --tags`). The issues' JSON is a record to read and search, not a format GitHub imports: opening them again on a new repository would be a script of its own.
 
 ## Known limits
 
