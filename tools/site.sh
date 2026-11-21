@@ -89,6 +89,8 @@ write('site/_headers', `/*
   Permissions-Policy: camera=(), microphone=(), payment=(), usb=(), serial=(), hid=(), bluetooth=(), midi=(), display-capture=()
   X-Frame-Options: DENY
   tdm-reservation: 1
-`);
+/LICENSE
+  Content-Type: text/plain; charset=utf-8
+`); // LICENSE has no extension, so wrangler gives it no type: every file's copyright line links to it, and it should read as text
 EOF
 echo "site/ built for $ORIGIN, deploy $DEPLOY"
