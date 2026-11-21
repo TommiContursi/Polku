@@ -1,4 +1,3 @@
-/*! © 2026 Tommi Contursi. All rights reserved. See https://polku.si/LICENSE */
 // FMI's lightning (#182): the strikes of the last hour in a box, the view's corners rounded out to 0.1°, so a request
 // says which part of the map is on screen and never a position. Through request(), FMI's source in Settings.
 

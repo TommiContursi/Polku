@@ -1,4 +1,3 @@
-/*! © 2026 Tommi Contursi. All rights reserved. See https://polku.si/LICENSE */
 // The trip's times (#956): every time on a route counts from one start, the minute it was timed from (`a.start`, set
 // by the planner each time it times the route), with the wind's times once the forecast is in. Go, the list, the
 // cards, the days, the profile, the warnings and the GPX all read them here, so they never disagree.

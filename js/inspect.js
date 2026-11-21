@@ -1,4 +1,3 @@
-/*! © 2026 Tommi Contursi. All rights reserved. See https://polku.si/LICENSE */
 // Click-to-inspect: what a tap on the map opens with the planner put away. Ways, places, LIPAS's routes and places, the water
 // and a park open on the planner's card (25d part 6: openSpot()), and so do road works, sea marks and the map's other things
 // (#564: openThing(), with thingOf() here); ships and cameras keep their own live card and modal.

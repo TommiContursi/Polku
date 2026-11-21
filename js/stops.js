@@ -1,4 +1,3 @@
-/*! © 2026 Tommi Contursi. All rights reserved. See https://polku.si/LICENSE */
 // Stops on a route: a break at a waypoint ("Lunch, 1 h") or a night ("go on at
 // 08:00"), the days a trip with nights falls into, places to sleep near a
 // point (LIPAS and OpenStreetMap), and the gear check: a bike or a boat left at

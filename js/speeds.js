@@ -1,4 +1,3 @@
-/*! © 2026 Tommi Contursi. All rights reserved. See https://polku.si/LICENSE */
 // My speeds: what the time estimate assumes, per sport, in the user's own terms.
 // Normal is the model's default; Easy and Fast scale it; Custom is yours.
 // Stored on this device only (never in share links).

@@ -1,4 +1,3 @@
-/*! © 2026 Tommi Contursi. All rights reserved. See https://polku.si/LICENSE */
 // Immutable OSM releases: only the selected tiles are downloaded, through the app's network door.
 import { request } from './net.js';
 import { idb } from './idb.js';

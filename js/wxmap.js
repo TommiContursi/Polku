@@ -1,4 +1,3 @@
-/*! © 2026 Tommi Contursi. All rights reserved. See https://polku.si/LICENSE */
 // Timeline + weather overlay. The timeline (48 h, opened with the Weather button)
 // is the app's clock: it moves the weather layers, the planned route's
 // departure, road works and road conditions. The weather layers — in the

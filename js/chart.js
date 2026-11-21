@@ -1,4 +1,3 @@
-/*! © 2026 Tommi Contursi. All rights reserved. See https://polku.si/LICENSE */
 // Elevation profile on canvas (or, for paddling, wind along the route). The
 // fill is coloured by the selected mode, hover is synced both ways with the
 // map, and dragging across the chart zooms into a stretch.

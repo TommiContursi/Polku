@@ -1,4 +1,3 @@
-/*! © 2026 Tommi Contursi. All rights reserved. See https://polku.si/LICENSE */
 // The deployed release notes, fetched only when Settings → What's new opens.
 // A small Markdown subset, built with DOM nodes: no HTML from the document runs.
 import { h } from './ui.js';

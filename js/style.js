@@ -1,4 +1,3 @@
-/*! © 2026 Tommi Contursi. All rights reserved. See https://polku.si/LICENSE */
 // Builds the complete MapLibre style from app state. The same function is used
 // for every change (activity, base map, overlays) and applied with diff:true,
 // so only the parts that actually changed are touched.

@@ -1,4 +1,3 @@
-/*! © 2026 Tommi Contursi. All rights reserved. See https://polku.si/LICENSE */
 // Open-water routing for kayak / canoe / SUP.
 //
 // Road routers can't cross lakes, so we build our own: a hidden MapLibre map

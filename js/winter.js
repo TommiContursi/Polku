@@ -1,4 +1,3 @@
-/*! © 2026 Tommi Contursi. All rights reserved. See https://polku.si/LICENSE */
 // Winter: whether it's winter where you look, the snow FMI measures at its
 // stations, and what OpenStreetMap says about ways in winter, drawn the way
 // Trailmap's winter map does (wiki.trailmap.fi, "Trailmap MTB Talvikartta"):

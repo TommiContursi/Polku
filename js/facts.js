@@ -1,4 +1,3 @@
-/*! © 2026 Tommi Contursi. All rights reserved. See https://polku.si/LICENSE */
 // The facts a card shows (25d). Pure: read from the route's analysis and what the planner says of a point, so a
 // missing one says so in its place, in the same words on every card. 1b adds the route's, by sport.
 import { fmtDist, fmtDuration } from './geo.js';

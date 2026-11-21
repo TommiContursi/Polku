@@ -1,4 +1,3 @@
-/*! © 2026 Tommi Contursi. All rights reserved. See https://polku.si/LICENSE */
 // Offline areas: Polku's trail map and terrain along a planned route, saved in
 // the browser so the map, the route, its profile and uphill grades work with no
 // signal. Tiles go into Cache Storage, where the service worker (sw.js) finds

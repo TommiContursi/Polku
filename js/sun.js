@@ -1,4 +1,3 @@
-/*! © 2026 Tommi Contursi. All rights reserved. See https://polku.si/LICENSE */
 // Sunrise, sunset and civil twilight from the solar position (the sunrise
 // equation, as in NOAA's calculator): no service to ask, a few lines of maths.
 // Good to a minute or two in Finland; in the far north it says when the sun

@@ -1,4 +1,3 @@
-/*! © 2026 Tommi Contursi. All rights reserved. See https://polku.si/LICENSE */
 // Segment routing. Each leg between two waypoints is routed on its own so that
 // legs can mix modes (auto / straight / water) and be cached independently;
 // runs of legs that all need routing go to BRouter in one call (routeRun).

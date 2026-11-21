@@ -1,4 +1,3 @@
-/*! © 2026 Tommi Contursi. All rights reserved. See https://polku.si/LICENSE */
 // One card at a time for what's on the map (25d, #345): a point, and in later parts a stretch, a warning, a spot.
 // Phones with the planner open show it in the planner's peek, at the thumb; elsewhere it floats at its spot, its
 // corner at the point, opening the other way near an edge. Opening a card is a step of history, so the phone's

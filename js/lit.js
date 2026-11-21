@@ -1,4 +1,3 @@
-/*! © 2026 Tommi Contursi. All rights reserved. See https://polku.si/LICENSE */
 // Lit ways: which ways OpenStreetMap says are lit after dark (lit=yes and the
 // like), and which it says aren't (lit=no). A way it says nothing about gets no
 // line: unknown isn't unlit. OpenFreeMap's tiles don't carry `lit`, so it comes
