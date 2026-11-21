@@ -21,8 +21,9 @@ The clickable mock-up is
 
 ## Choices
 
-Each has one recommendation and what it costs. The user chooses; each
-choice goes into #121's Decided list.
+Each came with one recommendation and its cost. On 2026-11-21 all six
+recommendations were chosen, and #121's Decided list holds them; what
+wasn't chosen stays under each for reference.
 
 1. **Layers' Places: every kind its own switch, under its group's
    heading** (the mock-up's A). Places in the full Layers panel lists its
@@ -33,7 +34,7 @@ choice goes into #121's Decided list.
    group, which works as the Depths tile does: off turns the group's kinds
    off, on brings back the ones you had. *Cost:* medium; no new control.
    The full panel is long (31 switches), as All layers is meant to hold
-   everything. *Instead* (B): a switch per group, with its kinds opening
+   everything. *Not chosen* (B): a switch per group, with its kinds opening
    in place under it. Seven rows, but a group's switch that is on while
    only some of its kinds are is a new kind of control, proposed here
    rather than taken as given.
@@ -44,30 +45,30 @@ choice goes into #121's Decided list.
    Map key, not under a switch. Today most are behind **Outdoor places**,
    which Road and Run have off. *Cost:* small; Road and Run gain these
    marks from their zooms (guideposts from 15, car parks from 15.5).
-   *Instead:* a Landmarks group under Places, with its switch per sport.
+   *Not chosen:* a Landmarks group under Places, with its switch per sport.
 3. **Search by kind, near the map's middle or along the route.** Typing a
    kind ("water", "toilet", "hospital") lists the nearest places of that
    kind with their distance; with a route drawn, **Near the map · Along the
    route** chooses where. With the field empty, a row of chips searches the
    kinds people look for most with one tap. No search settings panel: what
-   #121 asked of one is in these two. *Cost:* medium. *Instead:* a ⚙ in the
+   #121 asked of one is in these two. *Cost:* medium. *Not chosen:* a ⚙ in the
    search with what to search, where and how far.
 4. **Check lists water, toilets and food shops on the way,** each with its
    distance along the route, in every land sport, and landing places and
    water on the water. It lists them whatever Layers shows, as Check is for
-   reading before you go. *Cost:* medium. *Instead:* Check lists the kinds
+   reading before you go. *Cost:* medium. *Not chosen:* Check lists the kinds
    you have on in Layers, so one choice sets both.
 5. **LIPAS's places become rows of the same kinds,** not a switch of their
    own: a lean-to is a lean-to whether LIPAS or OpenStreetMap has it, and
    where both have it within 80 m LIPAS's is shown (the rule `staysNear()`
    already has). **Huts & lean-tos** goes, and with it the kinds it hid per
    sport. *Cost:* medium; the stored choices move (see "What changes for
-   saved settings"). *Instead:* LIPAS keeps its switch, beside the kinds.
+   saved settings"). *Not chosen:* LIPAS keeps its switch, beside the kinds.
 6. **Pharmacies move from Shops and food to Help,** where people look for
    them when something is wrong. This changes #1222's decision: as Help is
    on in every sport, a pharmacy would show from zoom 15 in every sport,
    where today it shows from 17 in Road, Gravel, Run and Hike. *Cost:*
-   small. *Instead:* pharmacies stay in Shops and food, as #1222 decided.
+   small. *Not chosen:* pharmacies stay in Shops and food, as #1222 decided.
 
 The rest follows from #1222's and #1179's decisions, which go into the
 table as rows rather than questions: shops and food from zoom 17 with their
@@ -85,6 +86,8 @@ way whatever you're doing, so they're drawn as the map's own marks
 
 ## Where it stands
 
+- **Chosen, 2026-11-21:** the six recommendations under Choices, in
+  #121's Decided list.
 - **Planned, 2026-11-21**, from #121, #1275's items 1, 2 and 4, the town's
   details plan (#1222) and the plan for MML's points beside OSM's (#1179).
 - **The map's tiles checked** on 2026-11-21: OpenFreeMap's `poi` layer at
