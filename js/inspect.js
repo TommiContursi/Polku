@@ -84,6 +84,13 @@ export function areaUnder(map, pt) {
   return at(['water', 'mml-lake']) ? 'water' : at(['park-fill']) || at(['lc-grass'], (f) => ['park', 'recreation_ground'].includes(f.properties.subclass)) ? 'park' : null;
 }
 
+// What a tap or the pointer at `pt` names: open ground and the forest's marks give way to a park they lie in, so a tap on
+// Pallas' fells opens the national park; a bog or rock doesn't (#1175, #1234)
+export function pickAt(map, pt, feats) {
+  const f = pickFeature(feats);
+  return f && /^mml-(open|landuse|open-forest|forest)$/.test(f.layer.id) && areaUnder(map, pt) === 'park' ? null : f;
+}
+
 export function pickFeature(feats) {
   for (const re of PRIORITY) {
     const f = feats.find((x) => re.test(x.layer.id));
@@ -110,7 +117,7 @@ export function initInspector(map, app) {
     if (leg && app.openRoute) { app.openRoute(leg.properties.leg, e.lngLat); return; }
     const feats = featuresAt(map, e.point, box, inspectLayers(map));
     // (nothing else there: a lake or a park is picked too, #574; a property's plot only after them, #1148)
-    const top = pickFeature(feats), plot = top && top.layer.id === 'property-plot';
+    const top = pickAt(map, e.point, feats), plot = top && top.layer.id === 'property-plot';
     const f = (!plot && top) || (areaUnder(map, e.point) && { layer: { id: 'area' } }) || top;
     if (!f) return;
     // cameras and ships open their own modal / live card

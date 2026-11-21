@@ -9,6 +9,7 @@ What's new in [Polku](https://polku.si), from the latest updates back to the fir
 - In Finland, a tap or a click on the National Land Survey's flow arrows beside rivers, jetties, heath, open forest land (mostly clear-cuts), meadows, open shores, fields, sand and the forest's marks now opens a card that names it, and on a desktop resting the pointer on one says the same. A flow arrow's card says which way the river flows, such as "Flows to the SW".
 - A tap on OpenStreetMap's piers says what they are everywhere.
 - Open ground counts only where the map shows it, as the bogs do, and a bog under one of the forest's marks is still the bog.
+- In a park, such as a national park, open ground and the forest's marks give way to the park, so a tap on Pallas' fells opens the national park's card. A bog or rock in a park is still the bog or the rock.
 
 ### A tap on the National Land Survey's terrain says what it is ([#1175](https://github.com/TommiContursi/Polku/issues/1175))
 
