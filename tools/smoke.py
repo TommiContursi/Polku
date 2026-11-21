@@ -26888,14 +26888,6 @@ def shard_check():
     return shards, '.github/smoke-shards.json: ' + '; '.join(problems) + '. Every group and size goes in exactly one job.' if problems else ''
 
 
-def try_lock(f):
-    try:
-        fcntl.flock(f, fcntl.LOCK_EX | fcntl.LOCK_NB)
-        return True
-    except BlockingIOError:
-        return False
-
-
 def main():
     args = sys.argv[1:]
     if args == ['--list']:
@@ -26919,17 +26911,23 @@ def main():
     os.makedirs(os.path.dirname(SLOTS[0]), exist_ok=True)
     locks, said = [open(p, 'a+') for p in SLOTS], False
     while True:
-        slot = next((k for k, f in enumerate(locks) if try_lock(f)), None)
-        if slot is not None:
-            break
-        if not said:
-            holders = []
-            for f in locks:
-                f.seek(0)
-                holders.append(f.read().strip() or 'which one is unknown')
-            print(f'Waiting for one of the other two smoke runs to end ({"; ".join(holders)}): this one starts then.', flush=True)
-            said = True
-        time.sleep(2)
+        for slot, f in enumerate(locks):
+            try:
+                fcntl.flock(f, fcntl.LOCK_EX | fcntl.LOCK_NB)
+                break
+            except BlockingIOError:
+                pass
+        else:  # both taken: say by which runs, once, and try again
+            if not said:
+                holders = []
+                for f in locks:
+                    f.seek(0)
+                    holders.append(f.read().strip() or 'which one is unknown')
+                print(f'Waiting for one of the other two smoke runs to end ({"; ".join(holders)}): this one starts then.', flush=True)
+                said = True
+            time.sleep(2)
+            continue
+        break
     lock = locks[slot]
     if slot:
         cdp.PROFILE += f'-{slot + 1}'  # a profile of its own, so both runs keep their cached tiles
