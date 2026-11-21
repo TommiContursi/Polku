@@ -137,9 +137,8 @@ conversation again
   models and designs are free to learn from, and Polku builds its own,
   better where it can. Their code, icons, graphics, style and rule files and
   text are copied only under a licence that allows it in Polku (LICENSE
-  reserves all rights, so GPL code and NonCommercial or NoDerivatives
-  material never do). Name a real licence risk exactly, and don't let
-  copyright stop a common or useful feature.
+  reserves all rights, so GPL code never does). Name a real licence risk
+  exactly, and don't let copyright stop a common or useful feature.
 - **Evidence before fixes.** Observe the failure and test a falsifiable
   hypothesis before changing code. Fix the demonstrated cause, not the
   symptom, and check the failure before and after the fix.
