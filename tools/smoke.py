@@ -2030,7 +2030,6 @@ def mml_names(chrome):
       let got=new Set(); for(let k=0;k<20&&!got.size;k++){got=new Set(m.queryRenderedFeatures({layers:['mml-name']}).map((f)=>f.properties.lajikoodi)); if(!got.size)await wait(250);}
       // (MML's names give way to each other too, by their priority: which of them show depends on the view)
       if(got.size<2||[...got].some((k)=>!takes(k)))errs.push(`Yyteri: names of kinds ${[...got]} drawn`);
-      for(const id of osmLabels)m.setLayoutProperty(id,'visibility','visible');
       for(const base of ['aerial','maasto']){polku.set({base}); await settle(); if(m.getLayer('mml-name'))errs.push(`MML's names on the ${base} base`);}
       return errs;
     })()""", timeout=120000)
@@ -2060,16 +2059,14 @@ def osm_points(chrome):
       let said=''; for(let k=0;k<40;k++){await wait(250); const el=document.querySelector('#quick-layers .qt[data-id="pois"] .qt-l small'); said=el&&!el.hidden?el.textContent:''; if(/didn’t load/.test(said)!==has)break;}
       if(/didn’t load/.test(said)===has)errs.push(`Outdoor places says ${JSON.stringify(said)} with ${has?'':'no '}points in the release`);
       document.querySelector('#btn-layers').click();
-      // OSM's points, seeded at Seitseminen, 60 m apart in a row
+      // OSM's points, seeded near Seitseminen where no name is placed over them, 60 m apart in a row
       O.holdHosted('points');
-      const c=[23.5,61.94], at=(i)=>[c[0]+i*0.0012,c[1]], node=(id,i,tags)=>({type:'node',id,lon:at(i)[0],lat:at(i)[1],tags});
+      const c=[23.45,61.925], at=(i)=>[c[0]+i*0.0012,c[1]], node=(id,i,tags)=>({type:'node',id,lon:at(i)[0],lat:at(i)[1],tags});
       const [x,y]=lonLatToTile(...c,O.HOSTED_Z).map(Math.floor);
       O.seedHosted('points',x,y,{schema:1,elements:[node(1,0,{leisure:'firepit'}),node(2,1,{natural:'spring',drinking_water:'yes',name:'Lähde'}),node(3,2,{natural:'cave_entrance'}),
         {type:'way',id:4,tags:{military:'bunker',building:'bunker'},nodes:[10,11],geometry:[{lon:at(3)[0],lat:at(3)[1]},{lon:at(3)[0]+1e-4,lat:at(3)[1]}],center:{lon:at(3)[0],lat:at(3)[1]}},
         node(5,4,{historic:'tar_kiln'}),node(6,5,{amenity:'shelter',fireplace:'yes'})]});
       const kinds=(id)=>new Set(m.queryRenderedFeatures({layers:[id]}).map((f)=>f.properties.subclass));
-      // (the names hidden meanwhile, OSM's and MML's: a name is placed first and may hide an icon at 14, as it should)
-      const osmLabels=m.getLayersOrder().filter((id)=>/^(label-|mml-name$)/.test(id)); for(const id of osmLabels)m.setLayoutProperty(id,'visibility','none');
       m.jumpTo({center:at(2.5),zoom:14}); await settle();
       for(let k=0;k<20&&!kinds('poi-fire').size;k++)await wait(250);
       if(!kinds('poi-fire').has('firepit'))errs.push('no fire place at 14');
@@ -2080,7 +2077,6 @@ def osm_points(chrome):
       for(const k of ['spring','cave','bunker','tarpit'])if(!got.has(k))errs.push(`no ${k} drawn at 16 (${[...got]})`);
       if(got.has('fireplace')||kinds('poi-fire').has('fireplace'))errs.push('a shelter with a fire place drawn as one');
       for(const k of ['spring','cave','bunker','tarpit','firepit'])if(!m.hasImage(`place-${k}`))errs.push(`place-${k} isn't on the map`);
-      for(const id of osmLabels)m.setLayoutProperty(id,'visibility','visible');
       // the cards: a spring's says its water is drinkable; a shelter beside a fire place's record says it has one
       const card=async(pt,f)=>{ if(f)polku.planner.openPlaceCard(f,pt); else polku.planner.openSpotCard(pt,{pt:m.project(pt)}); let c=null; for(let k=0;k<20&&!(c=polku.planner.cards.current);k++)await wait(100);
         await wait(300); const el=[...document.querySelectorAll('.pl-way.card')].find((e)=>e.getClientRects().length), r={title:c&&c.title,text:el?el.textContent:'',img:!!(el&&el.querySelector('img'))}; polku.planner.cards.close(); await wait(200); return r; };
