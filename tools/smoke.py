@@ -10346,11 +10346,15 @@ def changelog(chrome):
         })()""")
         fails += [f'{w}: {e}' for e in errs]
         if pg.js('!!document.querySelector(".modal-changelog[open]")'):
+            # Tab never reaches the page behind. Past the dialog's last control it may leave the page for the browser's own,
+            # as a native modal dialog does: with the repository's links as text (#115) the dialog has only a few controls
             for _ in range(12):
                 chrome.send('Input.dispatchKeyEvent', {'type': 'rawKeyDown', 'key': 'Tab', 'code': 'Tab', 'windowsVirtualKeyCode': 9}, pg.s)
-                if not pg.js('document.querySelector(".modal-changelog").contains(document.activeElement)'):
-                    fails.append(f'{w}: Tab escaped the native dialog')
+                behind = pg.js('(() => { const a = document.activeElement; return a && a !== document.body && !document.querySelector(".modal-changelog").contains(a) ? a.outerHTML.slice(0, 80) : "" })()')
+                if behind:
+                    fails.append(f'{w}: Tab escaped the native dialog to {behind}')
                     break
+            pg.js('document.querySelector(".modal-changelog .changelog-notes").focus(); true')  # (back in the dialog, for Escape)
             chrome.send('Input.dispatchKeyEvent', {'type': 'rawKeyDown', 'key': 'Escape', 'code': 'Escape', 'windowsVirtualKeyCode': 27}, pg.s)
             pg.js('new Promise(r => setTimeout(r,100))')
             if not pg.js('!document.querySelector(".modal-changelog").open && document.activeElement === notesOpener && !document.querySelector("#settings-panel").hidden && notesSnapshot() === notesBefore'):
