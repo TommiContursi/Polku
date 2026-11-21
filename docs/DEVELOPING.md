@@ -111,7 +111,7 @@ POLKU_URL=http://localhost:8771/ python3 tools/smoke.py startfail changelog
 
 ### In-app release notes
 
-- **In-app release notes** (`js/changelog.js`): Settings opens the shared native dialog and requests the deployed `CHANGELOG.md` through `request('polku', …)` only on opening or Retry. The service worker may supply its saved copy, so the view shows the notes’ latest date and an explicit saved-copy label when offline. Headings, paragraphs, bullets, bold text, code and HTTP(S) links are built as DOM nodes; HTML and unsafe URL schemes never execute. Relative links point to the repository. Closing aborts a pending request and restores focus; dialog key events stay out of the map shortcuts.
+- **In-app release notes** (`js/changelog.js`): Settings opens the shared native dialog and requests the deployed `CHANGELOG.md` through `request('polku', …)` only on opening or Retry. The service worker may supply its saved copy, so the view shows the notes’ latest date and an explicit saved-copy label when offline. Headings, paragraphs, bullets, bold text, code and HTTP(S) links are built as DOM nodes; HTML and unsafe URL schemes never execute. Links into the repository, relative ones included, show as plain text, since the repository is private; links elsewhere stay links. Closing aborts a pending request and restores focus; dialog key events stay out of the map shortcuts.
 
 ### The map: style, grades, terrain and trails
 
