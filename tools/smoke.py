@@ -1409,7 +1409,8 @@ def town_parking(chrome):
         const order=m.getLayersOrder();
         if(!(order.indexOf('mml-parking-p')>order.indexOf('poi-parking')&&order.indexOf('mml-parking-p')>order.indexOf('poi-parking-all')))errs.push(`${base}: OSM's P placed before MML's`);
       }
-      polku.set({base:'trail'}); m.jumpTo({center:tileMid(14,9273,4618),zoom:16}); await settle();
+      // (a car park inside the recorded tile: at 16 the view is under half the tile)
+      polku.set({base:'trail'}); m.jumpTo({center:[23.76489,61.49324],zoom:16}); await settle();
       if(!drawn('mml-parking-p'))errs.push('no P on the car parks at 16');
       if(takes('poi-minor',{class:'parking',name:'P-Ratina'},1))errs.push('car parks still in poi-minor');
       if(!takes('poi-parking',{class:'parking',name:'P-Ratina'},1)||takes('poi-parking',{class:'parking'},1))errs.push("poi-parking isn't the named car parks");
