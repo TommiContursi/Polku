@@ -206,7 +206,9 @@ five minutes. Every Geofabrik download after the snapshot step also retries
 any error, a 404 included, up to three times 30 seconds apart. No retry gets
 past a refused connection: Geofabrik refuses whole /24 networks, two of
 GitHub's runner networks among them, and a job keeps its runner's address
-(#1043). So when every failed job of a build on `main` was refused,
+(#1043), and some it leaves unanswered: a request times out with no bytes
+received (#1262). So when every failed job of a build on `main` was refused,
+or unanswered,
 **Polku OSM alerts** re-runs the failed jobs on new runners, up to 15 attempts
 in all, unless a newer build exists. A re-run that succeeds goes on to publish.
 The checksum and polygon come from beside the file actually served: Geofabrik is moving

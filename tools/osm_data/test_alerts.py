@@ -15,6 +15,7 @@ from tools.osm_data import alerts
 REPO='TommiContursi/Polku'
 WORKFLOW=Path(__file__).resolve().parents[2]/'.github/workflows/osm-data-alerts.yml'
 REFUSED="curl: (7) Failed to connect to download.geofabrik.de port 443 after 685 ms: Couldn't connect to server"
+SILENT="curl: (28) Operation timed out after 8002 milliseconds with 0 bytes received\nhttps://download.geofabrik.de/europe-261120.osm.pbf.md5 HTTP 000 (curl 28)"
 # Stand-ins for the retry job: gh answers the API from JSON files through jq and records re-runs, curl serves job logs
 FAKE_GH='''#!/bin/bash
 if [ "$1 $2" = 'run rerun' ]; then echo "$*" >> "$FAKE/reruns"; exit 0; fi
@@ -101,6 +102,8 @@ class AlertTests(unittest.TestCase):
     def test_retry_reruns_the_build_only_when_geofabrik_refused_every_failed_job(self):
         _,script=retry_job()
         for case,newest,failed,expected in [('every failed job refused',900,{1:REFUSED,2:REFUSED},True),
+            ('a refusal and a silent timeout',900,{1:REFUSED,2:SILENT},True),
+            ('a timeout after bytes came',900,{1:'curl: (28) Operation timed out after 1800000 milliseconds with 912 out of 1350 bytes received'},False),
             ('one failed job had a bad checksum',900,{1:REFUSED,2:'MD5 mismatch for estonia-261118.osm.pbf'},False),
             ('a newer build exists',901,{1:REFUSED},False),('no failed job',900,{},False)]:
             with self.subTest(case),tempfile.TemporaryDirectory() as fake:
