@@ -2259,7 +2259,8 @@ MARKED_JS = """(() => {
         const q10 = at(10 * s), q30 = at(30 * s), q50 = at(50 * s);
         const top = I.pickFeature(map.queryRenderedFeatures(I.hitBox(touch ? q10 : P, touch), { layers: I.inspectLayers(map) }));
         if (!top || top.layer.id !== 'lipas-route' || keyOf(top.properties) !== key) continue;
-        if (!(touch ? ok(q10) && ok(q30) && !near(q30, 17) : ok(q50) && !near(q50, 20))) continue;
+        // (a mouse's spot off the route has nothing a click opens, not even open ground, #1234: its cursor is the plain one)
+        if (!(touch ? ok(q10) && ok(q30) && !near(q30, 17) : ok(q50) && !near(q50, 20) && !I.pickFeature(I.featuresAt(map, q50, I.hitBox(q50, false), I.inspectLayers(map))))) continue;
         // a mouse: also two vertices 50 px apart (and their midpoint on the line) for a route of yours drawn over it
         let plan = null;
         if (!touch) {
