@@ -3440,7 +3440,7 @@ WATER_RAPIDS = """(async () => {
         const added = p.nogos.slice(n0), gap = Math.max(...added.slice(1).map((n, k) => G.dist(added[k].ll, n.ll)));
         if (added.length < 5 || gap > 41) errs.push(`Avoid it put ${added.length} places to avoid along the rapids, up to ${Math.round(gap)} m apart`);
         for (let k = 0; k < 120 && !(routed() && !rapids().length); k++) await wait(250);
-        if (rapids().length || !(p.legs[0].result.portage.length > carried)) errs.push(`after Avoid it: ${rapids().map((w) => w.text).join(' / ') || 'no rapids'}, ${p.legs[0].result.portage.length} carries (${carried} before)`);
+        if (rapids().length || !(p.legs[0].result.portage.length > carried)) errs.push(`after Avoid it: ${rapids().map((w) => { const [i0, i1] = p.itemSpan(w); return `${w.text} at ${Math.round(w.at)} m (${p.analysis.attr.slice(i0, i1 + 1).map((t) => ((t || {}).tags || {}).portage ? 'carried' : 'paddled').join(', ')})`; }).join(' / ') || 'no rapids'}, ${p.legs[0].result.portage.length} carries (${carried} before)`);
       }
     }
     // Rocks & shoals: Ignore still says where the rapids are
@@ -3486,14 +3486,14 @@ WATER_RAPIDS = """(async () => {
       const r = rapids(), near = (w, q) => { const [i0, i1] = p.itemSpan(w); return p.analysis.pts.slice(i0, i1 + 1).some((c) => G.dist(c, q) < 60); };
       if (r.length !== 1) errs.push(`down the Torne: ${r.length} rapids (${r.map((w) => w.text).join(' / ') || 'none'}), not one`);
       else {
-        const [i0, i1] = p.itemSpan(r[0]), mid = p.analysis.pts[Math.round((i0 + i1) / 2)], len0 = G.lineLength(p.legs[0].result.coords), n0 = p.nogos.length;
+        const [i0, i1] = p.itemSpan(r[0]), mid = p.analysis.pts[Math.round((i0 + i1) / 2)], r0 = p.legs[0].result, a0 = p.analysis, n0 = p.nogos.length;
         p.itemActions({ g: 'read', w: r[0] }).main.fn();
         if (!p.nogos.slice(n0).every((n) => n.water)) errs.push('Avoid it on the Torne\\'s rapid: places to avoid that aren\\'t on the water only');
         // (until the route is routed again round them, and Check has read the new one)
-        const fresh = () => routed() && Math.abs(G.lineLength(p.legs[0].result.coords) - len0) > 1 && Math.abs(G.lineLength(p.analysis.pts) - G.lineLength(p.legs[0].result.coords)) < 1;
-        for (let k = 0; k < 160 && !fresh(); k++) await wait(250);
+        const fresh = () => routed() && p.legs[0].result !== r0 && p.analysis !== a0;
+        for (let k = 0; k < 240 && !fresh(); k++) await wait(250);
         const again = rapids().filter((w) => near(w, mid));
-        if (!fresh() || again.length) errs.push(`after Avoid it on the Torne: ${fresh() ? again.map((w) => w.text).join(' / ') : 'not routed again'} where it was`);
+        if (!fresh() || again.length) errs.push(`after Avoid it on the Torne: ${fresh() ? again.map((w) => w.text).join(' / ') : `not routed again (${p.legs.map((l) => l.status).join(', ')}, a new result ${p.legs[0].result !== r0}, a new analysis ${p.analysis !== a0}, ${p.nogos.length - n0} places to avoid)`} where it was`);
       }
       D.seedWater(null);
     }

@@ -163,7 +163,7 @@ async function rasteriseNow(bounds) {
 // for the map): fairways by class into one (red small-boat route, green harbour,
 // blue shipping lane), keep-clear zones (red), avoided places (green) and water
 // near a shallow sounding (blue) into another, and where Syke surveyed into a
-// third, with the rapids. Read back as grid.fair (0 none, 1 small, 2 harbour, 3 ship), grid.haz, grid.nogo,
+// third, with the rapids. Read back as grid.fair (0 none, 1 small, 2 harbour, 3 ship), grid.haz, grid.nogo (2: on the water only),
 // grid.shallow and grid.surveyed (the last two with depths only) and grid.rapids (with rapids only).
 function rasteriseCosts(grid, { fairways, hazards, nogos, depths, rapids }) {
   const { W, H, res } = grid;
@@ -263,7 +263,7 @@ function rasteriseCosts(grid, { fairways, hazards, nogos, depths, rapids }) {
   if (rapid) grid.rapids = new Uint8Array(n);
   for (let i = 0, j = 0; i < n; i++, j += 4) {
     grid.haz[i] = hd[j] > 128 ? 1 : 0;
-    grid.nogo[i] = hd[j + 1] > 128 || (sd && sd[j + 1] > 128 && grid.type[i] !== 0) ? 1 : 0;
+    grid.nogo[i] = sd && sd[j + 1] > 128 && grid.type[i] !== 0 ? 2 : hd[j + 1] > 128 ? 1 : 0; // (2: closed, on the water only)
     grid.fair[i] = grid.haz[i] ? 0 : fd[j + 2] > 128 ? 3 : fd[j + 1] > 128 ? 2 : fd[j] > 128 ? 1 : 0;
     if (grid.shallow) { grid.shallow[i] = hd[j + 2] > 128 ? 1 : 0; grid.surveyed[i] = sd[j] > 128 ? 1 : 0; }
     if (grid.rapids) grid.rapids[i] = sd[j + 2] > 128 ? 1 : 0;
@@ -492,7 +492,8 @@ function lineOfSight(grid, a, b, water) {
   let err = dx + dy;
   for (;;) {
     const t = type[y0 * W + x0];
-    if (water ? t !== 1 : false) return false;
+    // (a carry's line on land mustn't cut over water a place to avoid closed, #1239)
+    if (water ? t !== 1 : grid.nogo && grid.nogo[y0 * W + x0] === 2) return false;
     // near the shore: a straight line mustn't cut out across open water either
     if (water && grid.nearCells && grid.shore[y0 * W + x0] > grid.nearCells * 1.3) return false;
     if (x0 === x1 && y0 === y1) return true;
@@ -511,7 +512,7 @@ function stringPull(grid, path) {
     const runChanged = w !== isWater(path[anchor]);
     // with costs (fairways, keep-clear zones, wind) a straight line may not cost more than the way A* found
     const dearer = () => grid.special && lineCost(grid, path[anchor], path[k]) > (grid.g[path[k]] - grid.g[path[anchor]]) * 1.03 + 0.5;
-    const blocked = !runChanged && w && (!lineOfSight(grid, path[anchor], path[k], true) || dearer());
+    const blocked = !runChanged && (w ? !lineOfSight(grid, path[anchor], path[k], true) || dearer() : !lineOfSight(grid, path[anchor], path[k], false));
     if (runChanged || blocked) {
       anchor = k - 1;
       out.push({ i: path[anchor], water: isWater(path[anchor]) });
