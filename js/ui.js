@@ -93,6 +93,7 @@ const P = {
   cone: '<path d="M9.5 4h5l4 15h-13Z"/><path d="M7.3 12h9.4M3 19h18"/>',
   camera: '<rect x="3" y="7" width="13" height="10" rx="2"/><path d="m16 11 5-3v8l-5-3"/>',
   pin: '<path d="M12 21s-7-6.2-7-11.5a7 7 0 0 1 14 0C19 14.8 12 21 12 21Z"/><circle cx="12" cy="9.5" r="2.5"/>',
+  shop: '<path d="M5 8h14l-1.2 12H6.2L5 8Z"/><path d="M9 10V6a3 3 0 0 1 6 0v4"/>',
   flake: '<path d="M12 2v20M3.5 7l17 10M20.5 7l-17 10"/><path d="m9.5 3.8 2.5 2 2.5-2M9.5 20.2l2.5-2 2.5 2"/>',
   parcels: '<path d="M4 5h16v14H4zM4 12h9M13 5v14M13 10h7"/>', // property boundaries
   zone: '<circle cx="12" cy="12" r="8.5" stroke-dasharray="3 2.4"/><path d="m8 8 8 8"/>',

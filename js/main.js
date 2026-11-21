@@ -1219,6 +1219,7 @@ const OVERLAY_LABEL = {
   lipasRoutes: 'Official routes (LIPAS)',
   lipasPoints: 'Lean-tos, huts, campfire & landing sites (LIPAS)',
   pois: 'OSM outdoor places',
+  shops: 'Shops and food',
   propertyLines: 'Property boundaries',
   access: 'Access restrictions',
   lit: 'Lit ways',
@@ -1229,6 +1230,7 @@ const OVERLAY_NOTE = {
   lipasRoutes: 'LIPAS, Finland',
   lipasPoints: 'LIPAS, Finland',
   pois: 'OpenStreetMap',
+  shops: 'Shops, cafés, restaurants, bars and pharmacies · OpenStreetMap · zoom 17+',
   propertyLines: 'National Land Survey · Finland · zoom 14+, property IDs at 16+',
   access: 'No bikes, no entry and no walking, where OpenStreetMap marks them · zoom 14+ · routes keep off them in their sports either way',
 };
@@ -1270,7 +1272,7 @@ map.on('moveend', () => {
 const LAYER_GROUPS = [
   { id: 'dark', title: 'After dark', ids: ['lit'] },
   { id: 'routes', title: 'Marked routes', ids: ['lipasRoutes', 'wmtHiking', 'wmtMtb', 'wmtCycling'] },
-  { id: 'places', title: 'Places', ids: ['lipasPoints', 'pois'] },
+  { id: 'places', title: 'Places', ids: ['lipasPoints', 'pois', 'shops'] },
   { id: 'water', title: 'Water & nautical', ids: ['nautical', 'depthAreas', 'depthContours', 'soundings', 'fairways', 'sfShips'] },
   { id: 'safety', title: 'Traffic & safety', ids: Object.keys(SAFETY_OVERLAYS).filter((id) => id !== 'sfShips') },
   { id: 'roads', title: 'Roads (Digiroad)', ids: ['drPaved', 'drPrivate', 'drSpeed'] },
