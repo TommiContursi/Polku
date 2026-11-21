@@ -26718,27 +26718,29 @@ def license_text(chrome):
 
 
 def tdm_scope(chrome):
-    """The text and data mining reservation covers Polku's own files only, in the header and in tdmrep.json; third-party
-    code, fonts and open data keep their own licences (#115)."""
+    """Text and data mining is reserved for the whole site, in the header and in tdmrep.json, but for the OFL fonts and
+    the OpenStreetMap-derived outlines, whose licences forbid any added term; crawlers stay off share links (#115)."""
     import urllib.request
-    own = ['', 'index.html', 'js/main.js', 'css/app.css', 'sw.js', 'LICENSE']
-    third = ['js/vendor/pmtiles-4.5.0.js', 'fonts/atkinson-hyperlegible-next.woff2', 'data/finland-coverage.geojson',
-             'img/base/maasto.jpg', 'profiles/polku-mtb.brf', 'THIRD_PARTY_NOTICES.md']
+    reserved = ['', 'index.html', 'js/main.js', 'css/app.css', 'sw.js', 'LICENSE', 'js/vendor/pmtiles-4.5.0.js',
+                'profiles/polku-mtb.brf', 'img/base/trail.jpg', 'data/depths/573-286.json', 'THIRD_PARTY_NOTICES.md']
+    free = ['fonts/atkinson-hyperlegible-next.woff2', 'data/finland-coverage.geojson']
     fails, built = [], False
-    for f in own + third:
+    for f in reserved + free:
         with urllib.request.urlopen(BASE + f, timeout=10) as r:
             built, got = built or bool(r.headers.get('X-Polku-Deploy')), r.headers.get_all('tdm-reservation') or []
-        if built and got != (['1'] if f in own else []):
+        if built and got != (['1'] if f in reserved else []):
             fails.append(f'/{f} sends tdm-reservation {got or "none"}')
     if built:
         with urllib.request.urlopen(BASE + '.well-known/tdmrep.json', timeout=10) as r:
             rules = json.load(r)
-        def reserved(path):  # TDMRep: the first rule whose pattern matches the path ('*' any run, '$' the end) decides
-            rule = next((x for x in rules if re.match(re.escape(x['location']).replace(r'\*', '.*').replace(r'\$', '$'), path)), None)
-            return rule and rule['tdm-reservation'] == 1
-        fails += [f'tdmrep.json {"leaves out" if f in own else "reserves"} /{f}' for f in own + third
-                  if bool(reserved('/' + f)) != (f in own)]
-    print(f"{'ok  ' if not fails else 'FAIL'} text and data mining reserved for Polku's own files only"
+        def first(path):  # TDMRep: the first rule whose pattern matches the path ('*' any run, '$' the end) decides
+            return next((x['tdm-reservation'] for x in rules
+                         if re.match(re.escape(x['location']).replace(r'\*', '.*').replace(r'\$', '$'), path)), None)
+        fails += [f'tdmrep.json gives /{f} {first("/" + f)}' for f in reserved + free if first('/' + f) != (f in reserved)]
+        with urllib.request.urlopen(BASE + 'robots.txt', timeout=10) as r:
+            if 'Disallow: /*?' not in r.read().decode():
+                fails.append('robots.txt lets crawlers open share links')
+    print(f"{'ok  ' if not fails else 'FAIL'} text and data mining reserved but for the OFL fonts and the ODbL outlines; crawlers off share links"
           + ('' if built else ' (the checkout: nothing to check)') + ''.join(f'\n     - {f}' for f in fails), flush=True)
     return not fails
 
@@ -26749,7 +26751,7 @@ GROUPS = [
     ('radar', [radar], 'fixed FMI rain-rate units, palette order, dry/no-data and reflectivity fallback (recorded/mocked)'),
     ('weather', [weather_requests, timeline_reading, timeline_phone, timeline_mouse, timeline_open, weather_menu, towns_weather, weather_layers, clouds, thunder, no_radar, radar_past, weather_card, best_time, best_time_snow, strip_arrows, timeline_trip, timeline_zoom, trip_fold], 'forecast requests: cold zoom-out waits, cached and pending cells do not consume the budget (#298); the timeline\'s reading whole in its box on phones and a desktop, in a gale too (#243, #457); a note above it on a desktop (#343); the wind still with reduced motion (#925); the weather layers as buttons and ⋯ on a desktop, a phone and a narrow window with a mouse, nothing moving, the knob under the needle and the skeleton while the forecast comes (#869); the legend over the map, the rain\'s steps and Effects (#182); the towns\' weather at every zoom, a press pinning the reading there and naming the place (#916, #1028); the weather\'s layers in Layers and Settings, and the legend\'s fold; the clouds\' veil, the thunder, the hatch where no radar reaches and the radar\'s last 90 minutes (#182); the trip\'s box and the weather card: missing, late and partial forecasts in words, feels like known and not, the dark (#869); the timeline zoomed to your trip: the switch still, where you\'ll be, the weather card\'s hours and lanes to Your trip and back, ‹ › through the card\'s notes, missing and late forecasts, a day at a time, past 48 hours, a phone\'s room: the planner folded and the reading on one line (#869), a second lane folding it again (#1015), the weather card back where it was scrolled (#869), the turn of the hour (#1004); the timeline at 200 % on a phone between the top bar and the screen\'s foot (#590); Your trip\'s fold: 48 hours after a lane, Back and ✕ (#1015), left by an hour outside it and by Weather here (#1018), the planner yours after On the profile (#1017)'),
     ('changelog', [changelog], 'release notes, retry, safe rendering, keyboard, route preservation and real worker offline'),
-    ('site', [license_text, tdm_scope], 'the built site: LICENSE sent as text, since every file\'s copyright line links to it; the text and data mining reservation on Polku\'s own files only (#115); against the checkout it checks nothing'),
+    ('site', [license_text, tdm_scope], 'the built site: LICENSE sent as text, since every file\'s copyright line links to it; text and data mining reserved but for the OFL fonts and the ODbL outlines, and crawlers off share links (#115); against the checkout it checks nothing'),
     ('pacing', [pacing, paced_legs, net_fails], 'calls made together go out paced and counted (mocked services, a fake clock); legs refused for a slot follow at it (#78); the calls that failed, in Data sources (#687)'),
     ('loading', [loading, routing_edits], 'cancel obsolete routing, edits/Undo/Clear, shared subscribers, refusal/recovery, deadlines, terrain slots and LIPAS viewport/cache (mocked)'),
     ('layers', [layers, layer_coverage, cycleway_style, cycling_restrictions, waterway_style, property_lines, property_plots, wetland_style, reedbed_style, mml_bogs, mml_rock, mml_water, mml_open, osm_cliffs, saddles, mml_cards, town_gates, town_bridges, town_oneway, town_parks, town_parking, town_shops, town_housenumbers], 'the Layers panel in every sport'),
