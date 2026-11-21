@@ -36,7 +36,7 @@ concurrency:
 env:
   # The build's code that runs here with Polku's credentials, pinned: a change to it is a PR here
   OSM_DATA_REPOSITORY: TommiContursi/Polku
-  OSM_DATA_COMMIT: c51868058344e036f171b2d4fb1fea436c0d5729
+  OSM_DATA_COMMIT: 01acdae00f10f3341bec7693efff5c3787a1eeea
 
 jobs:
   check:
@@ -64,16 +64,28 @@ jobs:
         id: candidate
         env:
           OSM_PUBLIC_URL: ${{ vars.OSM_PUBLIC_URL }}
+          PULL_REQUEST: ${{ github.event_name == 'pull_request' }}
         run: |
           mkdir -p osm-check
           python osm/tools/osm_data/publish.py candidate "$OSM_PUBLIC_URL" > osm-check/candidate.json
           cat osm-check/candidate.json
-          python -c 'import json,os; c=json.load(open("osm-check/candidate.json")); open(os.environ["GITHUB_OUTPUT"],"a").write("".join(f"{k}={c[k]}\n" for k in ("release","manifest","sha256") if k in c))'
+          python - <<'PY'
+          import json, os
+          candidate = json.load(open('osm-check/candidate.json'))
+          if not candidate and os.environ['PULL_REQUEST'] == 'true':
+              # A pull request without a candidate checks the live release's own manifest the same way; it never promotes
+              from urllib.request import Request, urlopen
+              url = os.environ['OSM_PUBLIC_URL']
+              live = json.load(urlopen(Request(url + '/current.json', headers={'User-Agent': 'Mozilla/5.0'}), timeout=60))
+              candidate = {'manifest': url + '/releases/' + live['release'] + '/manifest.json'}
+          with open(os.environ['GITHUB_OUTPUT'], 'a') as output:
+              output.write(''.join(f'{key}={candidate[key]}\n' for key in ('release', 'manifest', 'sha256') if key in candidate))
+          PY
       - name: Fixture dependencies of the osmdata group
-        if: steps.candidate.outputs.release
+        if: steps.candidate.outputs.manifest
         run: python -m pip install -r tools/osm_data/requirements.txt
       - name: The app's checks against the candidate, read where it lies on the host
-        if: steps.candidate.outputs.release
+        if: steps.candidate.outputs.manifest
         env:
           CANDIDATE: ${{ steps.candidate.outputs.manifest }}
           POLKU_URL: http://127.0.0.1:8765/
@@ -88,7 +100,7 @@ jobs:
           python tools/smoke.py osmdata
           python tools/osm_data/measure_browser.py --country all > osm-check/browser-measurements.json
       - name: Without a newer candidate, the live release in a browser
-        if: ${{ !steps.candidate.outputs.release }}
+        if: ${{ !steps.candidate.outputs.manifest }}
         env:
           OSM_PUBLIC_URL: ${{ vars.OSM_PUBLIC_URL }}
           POLKU_CHROME: ${{ github.workspace }}/.github/chrome.sh
@@ -106,7 +118,8 @@ jobs:
     needs: check
     if: needs.check.outputs.release != '' && github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
     runs-on: ubuntu-24.04
-    timeout-minutes: 30
+    # A failed live check rolls back, reading every file of the predecessor over SFTP: 23 minutes on 2026-11-20
+    timeout-minutes: 60
     environment: osm-data-production
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1

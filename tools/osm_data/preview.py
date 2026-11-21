@@ -117,7 +117,6 @@ if __name__ == '__main__':
     parser.add_argument('--port', type=int, default=8796)
     args = parser.parse_args()
     handler = partial(Preview, release=args.release and args.release.resolve(strict=True), manifest=args.manifest)
-    ThreadingHTTPServer.request_queue_size = 128  # as serve.py's: macOS resets a module burst over 5 (#409)
     with ThreadingHTTPServer(('127.0.0.1', args.port), handler) as server:
         print(f'Polku preview: http://127.0.0.1:{server.server_port}/', flush=True)
         server.serve_forever()
