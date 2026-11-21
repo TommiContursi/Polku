@@ -113,6 +113,15 @@
         ],
         "createdAt": "2026-11-19T07:39:33.195Z",
         "reason": "Claude: the finding is .route-bar > i in css/app.css (line 1056), the planner's indeterminate progress bar; it shows only while .sheet.busy (a route is being drawn), after 300 ms, and pulses instead with reduced motion: a progress indicator, not auto-scrolling content"
+      },
+      {
+        "rule": "marquee",
+        "value": "*",
+        "files": [
+          "docs/plans/mockups/places-by-kind.html"
+        ],
+        "createdAt": "2026-11-21T17:39:27.448Z",
+        "reason": "Claude: the mock-up links css/app.css, whose .route-bar > i (the planner's progress bar, already ignored there) is the only animation it pulls in, and the mock-up never draws it; nothing in the mock-up itself animates or auto-scrolls (its kinds chips, .side-x, move only under a finger)"
       }
     ]
   }
