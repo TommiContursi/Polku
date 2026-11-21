@@ -73,7 +73,7 @@ const TIPS = {
 // (Warnings: what's a warning and what isn't checked; Good to know: Check's lighter ones and a changeover's gear)
 export const LIST_SHOWS = [['warnings', 'Warnings'], ['look', 'Good to know'], ['drawing', 'Drawing mode'], ['dark', 'Darkness'], ['weather', 'Weather'], ['speed', 'Speed']];
 // the places a tap or a hold shows instead of adding a point (25d part 5), and how near the line a spot is on it
-const PLACE_LAYERS = ['poi-outdoor', 'poi-minor', 'label-peak', 'lipas-point', 'td-points'];
+const PLACE_LAYERS = ['poi-outdoor', 'poi-minor', 'label-peak', 'lipas-point', 'td-points', 'td-gates', 'td-gates-all'];
 const NEAR_LINE = 30;
 // a tap just beside the route is still the route's, not a point at the end (#725): the box around the spot, which with
 // half the line's casing (9.5–11 px wide at z14–16) reaches about 24 px from its middle by touch and 16 px by mouse

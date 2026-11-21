@@ -598,7 +598,7 @@ TRAILS = """(async () => {
   }
   m.jumpTo({ center: [25.7652, 62.2290], zoom: 17.2 });
   await wait(800); await idle();
-  const pts = m.queryRenderedFeatures({ layers: ['td-points'] });
+  const pts = m.queryRenderedFeatures({ layers: ['td-points', 'td-gates-all'] });
   if (!pts.some((f) => f.properties.kind === 'tree') || !pts.some((f) => f.properties.kind === 'gate-no')) errs.push(`icons: ${pts.map((f) => f.properties.kind).join(', ') || 'none'}`);
   if (!m.queryRenderedFeatures({ layers: ['td-fence'] }).length) errs.push('no fences drawn');
   if (m.getPaintProperty('td-fence', 'line-color').at(-1) !== '#545454') errs.push('fences are no longer grey, apart from the brown footways (#1163)');
@@ -21223,7 +21223,7 @@ def route_card(chrome):
 # 22 px off too (some 50 m at z14, past legNear()'s 40 m): its card's Add a waypoint here adds one on the line.
 NL_SPOT = """(async (off) => {
   const p = polku.planner, m = polku.map, c = p.legs[0].result.coords, a = c[0], b = c[c.length - 1], ll = [a[0] + (b[0] - a[0]) * 0.25, a[1]];
-  for (const id of ['poi-outdoor', 'poi-minor', 'label-peak', 'lipas-point', 'td-points']) if (m.getLayer(id)) m.setLayoutProperty(id, 'visibility', 'none');
+  for (const id of ['poi-outdoor', 'poi-minor', 'label-peak', 'lipas-point', 'td-points', 'td-gates', 'td-gates-all']) if (m.getLayer(id)) m.setLayoutProperty(id, 'visibility', 'none');
   const v = p.viewPadding(0);
   m.jumpTo({ center: ll, zoom: 14, offset: [(v.left - v.right) / 2, (v.top - v.bottom) / 2] });
   await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
@@ -21300,7 +21300,7 @@ SC_HELP = """(() => {
     if (el !== m.getCanvas()) return no(`under ${el && (el.id || String(el.className.baseVal ?? el.className))}`);
     const box = (d) => [[q.x - d, q.y - d], [q.x + d, q.y + d]], layers = (ids) => ids.filter((id) => m.getLayer(id));
     if (line && layers(['route-casing']).length && m.queryRenderedFeatures(box(line), { layers: ['route-casing'] }).length) return no('on the route');
-    if (m.queryRenderedFeatures(box(16), { layers: layers(['poi-outdoor', 'poi-minor', 'label-peak', 'lipas-point', 'td-points']) }).length) return no('on a place');
+    if (m.queryRenderedFeatures(box(16), { layers: layers(['poi-outdoor', 'poi-minor', 'label-peak', 'lipas-point', 'td-points', 'td-gates', 'td-gates-all']) }).length) return no('on a place');
     return { x, y, ll: m.unproject(q).toArray() };
   };
   // (the map's middle as the finger went down and as it lifted: whether the gesture moved it, whatever moves it after)
@@ -21341,7 +21341,7 @@ SC_HELP = """(() => {
     },
     at: (ll, opts) => clear(ll, opts),
     // the map's places hidden (or back), so a hold or a tap on the free map is never on one, whatever the tiles have
-    places: (on) => { for (const id of ['poi-outdoor', 'poi-minor', 'label-peak', 'lipas-point', 'td-points']) if (m.getLayer(id)) m.setLayoutProperty(id, 'visibility', on ? 'visible' : 'none'); return true; },
+    places: (on) => { for (const id of ['poi-outdoor', 'poi-minor', 'label-peak', 'lipas-point', 'td-points', 'td-gates', 'td-gates-all']) if (m.getLayer(id)) m.setLayoutProperty(id, 'visibility', on ? 'visible' : 'none'); return true; },
     // the map at a share of its width and height, if it's free there
     spotAt(fx, fy, opts) { const r = R(); return clear(m.unproject([r.width * fx, r.height * fy]).toArray(), opts); },
     // a way under the screen at a share of its height (a tap there shows its card with the planner put away), clear of the places
@@ -25322,7 +25322,7 @@ PICK_SEED = """(async () => {
   const W = await import(location.origin + '/js/ways.js'), fx = await (await fetch(location.origin + '/tools/fixtures/ways-tampere.json')).json();
   W.holdWays();
   // (no place's icon, and no road works, under a tap: the ways are what's tapped)
-  for (const id of ['poi-outdoor', 'poi-minor', 'label-peak', 'lipas-point', 'td-points', 'sf-points', 'sf-lines']) if (polku.map.getLayer(id)) polku.map.setLayoutProperty(id, 'visibility', 'none');
+  for (const id of ['poi-outdoor', 'poi-minor', 'label-peak', 'lipas-point', 'td-points', 'td-gates', 'td-gates-all', 'sf-points', 'sf-lines']) if (polku.map.getLayer(id)) polku.map.setLayoutProperty(id, 'visibility', 'none');
   for (const [k, d] of Object.entries(fx.tiles)) { const [x, y] = k.split('/').map(Number); W.seedWays(x, y, d); }
   window.__fx = fx;
   return true;

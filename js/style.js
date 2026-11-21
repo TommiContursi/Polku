@@ -1157,8 +1157,8 @@ function addRoads(s, P, hc, layers, ctx) {
   }
 
   // Trail details beside and on the line: overgrown (green dots) on one side,
-  // wet or muddy (blue dots) on the other; fallen trees, gates, stiles, cycle
-  // barriers and fords as icons from zoom 15.
+  // wet or muddy (blue dots) on the other; fallen trees, stiles, cycle barriers
+  // and fords as icons from zoom 15, gates from 16.
   if (s.trailDetails) {
     // fences, walls and hedges (the vector tiles have none): where you can't go through
     add({
@@ -1190,7 +1190,12 @@ function addRoads(s, P, hc, layers, ctx) {
       id: 'td-way-ford', type: 'symbol', source: 'trailWays', minzoom: 15, filter: ['==', ['get', 'wayford'], true],
       layout: { 'symbol-placement': 'line-center', 'icon-image': 'td-ford', ...icon },
     });
-    add({ id: 'td-points', type: 'symbol', source: 'trailPoints', minzoom: 15, layout: { 'icon-image': ['concat', 'td-', ['get', 'kind']], ...icon } });
+    // gates from 16 (#1221): a town's courtyard gates covered a phone's streets at 15 (130 of 165 marks in Helsinki's centre); at 16
+    // they give way to each other and to names, and from 17 every one is drawn
+    const gate = ['in', ['get', 'kind'], ['literal', ['gate', 'gate-no']]], tdIcon = ['concat', 'td-', ['get', 'kind']];
+    add({ id: 'td-points', type: 'symbol', source: 'trailPoints', minzoom: 15, filter: ['!', gate], layout: { 'icon-image': tdIcon, ...icon } });
+    add({ id: 'td-gates', type: 'symbol', source: 'trailPoints', minzoom: 16, maxzoom: 17, filter: gate, layout: { 'icon-image': tdIcon, ...icon, 'icon-allow-overlap': false } });
+    add({ id: 'td-gates-all', type: 'symbol', source: 'trailPoints', minzoom: 17, filter: gate, layout: { 'icon-image': tdIcon, ...icon } });
   }
 }
 

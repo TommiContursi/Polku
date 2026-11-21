@@ -4,6 +4,12 @@ What's new in [Polku](https://polku.si), from the latest updates back to the fir
 
 ## 2026-11-21
 
+### Fewer gates on a town's map ([#1221](https://github.com/TommiContursi/Polku/issues/1221))
+
+- With **Trail details** on, gates now show from zoom 16 instead of 15. In a town most of them are courtyard gates on the pavements, which covered the streets: on a phone in Helsinki's centre they were 130 of the 165 marks at zoom 15.
+- At zoom 16, gates that would overlap each other or a name give way, and from zoom 17 every gate is drawn. Fallen trees, stiles, cycle barriers and fords still show from zoom 15.
+- A route through a closed gate still gets its **Heads-up** item, whatever the zoom.
+
 ### A tap on a river's flow arrow, a jetty or open ground says what it is ([#1234](https://github.com/TommiContursi/Polku/issues/1234))
 
 - In Finland, a tap or a click on the National Land Survey's flow arrows beside rivers, jetties, heath, open forest land (mostly clear-cuts), meadows, open shores, fields, sand and the forest's marks now opens a card that names it, and on a desktop resting the pointer on one says the same. A flow arrow's card says which way the river flows, such as "Flows to the SW".
