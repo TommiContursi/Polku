@@ -4,6 +4,12 @@ What's new in [Polku](https://polku.si), from the latest updates back to the fir
 
 ## 2026-11-21
 
+### Names of bogs, forests and capes ([#1174](https://github.com/TommiContursi/Polku/issues/1174))
+
+- In Finland, the map now names the bogs, forests, fields, meadows, capes, isthmuses, shores, hollows and other places in the terrain from the National Land Survey's map, as well as stones and shoals in the water and rapids, in italics. Each comes in at the zoom the survey's own map shows it.
+- A name is in Finnish, or in Swedish where the place has no Finnish name, and a place's Sámi names are on lines of their own below it.
+- Where a name from OpenStreetMap and one of these would overlap, OpenStreetMap's shows. Lakes, islands, hills and villages keep OpenStreetMap's names.
+
 ### Winter roads and guideposts on the map ([#1171](https://github.com/TommiContursi/Polku/issues/1171), [#1179](https://github.com/TommiContursi/Polku/issues/1179))
 
 - In Finland, **Winter ways** now also shows the winter roads on the National Land Survey's map, tracks for snowmobiles and off-road vehicles, from zoom 13 and only while it's winter. They're drawn like OpenStreetMap's ways that are there only in winter, and a marked snowmobile route along one is drawn over it.

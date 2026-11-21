@@ -33,6 +33,14 @@ ways to avoid it, and asks seven questions, each with one recommendation.
   [#1179](https://github.com/TommiContursi/Polku/issues/1179), and the order
   on [#181](https://github.com/TommiContursi/Polku/issues/181).
 
+- **Built, part 2: names, first stage.** `mml-name` draws MML's names of
+  the terrain areas (forests, bogs, fields, meadows, boulder fields), capes,
+  isthmuses, shores, hollows, lost dwelling places, other terrain places, and
+  in the water stones, shoals and rapids, by `lajikoodi` (read from MML's
+  geographic names API, 2026-11-21). Big stones on land and named trees
+  (`Maaston yksityiskohdat`, 1030105 and 1030110) weren't in the decided
+  kinds and are left out.
+
 ## The questions
 
 | # | Question | Recommended | Cost |

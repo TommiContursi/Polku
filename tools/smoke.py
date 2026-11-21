@@ -1996,6 +1996,49 @@ def mml_winter_roads(chrome):
     return not fails
 
 
+
+# #1174: MML's names in Finland, first stage, from a recorded tile (Yyteri, tools/fixtures/mml-taustakartta-14-9171-4611.pbf), never
+# live MML: only the kinds OpenFreeMap's tiles don't name (a forest, a shore, a
+# stone in the water, rapids…; no lake, island, hill, village or house), the water's in its colour, italic, under OSM's labels
+# so OSM's win; Finnish, else Swedish, the first of two spellings, Sámi names on lines of their own; on the vector bases only.
+def mml_names(chrome):
+    pg = chrome.page(1440, 900, False)
+    pg.open_app({'activity': 'hike', 'base': 'trail'}, None, '#10/61.55/21.6')
+    fails = pg.js("""(async () => {
+      const errs=[], m=polku.map, FX=['14/9171/4611'], wait=(ms)=>new Promise((r)=>setTimeout(r,ms));
+      const settle=async()=>{await wait(300);await Promise.race([new Promise(r=>{m.once('idle',r);m.triggerRepaint();}),wait(10000)]);await wait(300);};
+      if(m.style.tileManagers.mml.getIds().length)return ['MML was asked for tiles at zoom 10'];""" + MML_FIXTURES + """
+      const L=()=>m.style.getLayer('mml-name'), takes=(k)=>L()._featureFilter.filter({zoom:14},{type:1,properties:{lajikoodi:k}});
+      const text=(props)=>String(L().layout.get('text-field').evaluate({type:1,properties:props},{}));
+      if(!L())return ['no layer mml-name on the Trail map'];
+      // the kinds: terrain and the water's details in, what OpenFreeMap's tiles name (or stage 2 will) out
+      for(const k of [1020105,1020205,1020305,1020405,1020505,1010120,1010125,1010130,1010305,1999905,1999999,1010115,1010405,2020115])if(!takes(k))errs.push(`names of kind ${k} left out`);
+      for(const k of [2010210,2010110,1010105,1010110,1010205,1010210,2020105,3010105,3020105,3030105,4010125,4030105,8030115,1030105])if(takes(k))errs.push(`names of kind ${k} drawn`);
+      // the language and the spellings
+      for(const [props,want] of [[{nimi_fin:'Fatijärvenmaa'},'Fatijärvenmaa'],[{nimi_fin:'Sundholm',nimi_swe:'Sundholmen'},'Sundholm'],[{nimi_swe:'Käldöfjärden eller Käldö fjärden'},'Käldöfjärden'],
+          [{nimi_fin:'Yyterin uimaranta eli Yyterinsannat'},'Yyterin uimaranta'],[{nimi_fin:'Kaamasjoki',nimi_sme:'Gámasjohka'},'Kaamasjoki\\nGámasjohka'],
+          [{nimi_fin:'Ivalojoki',nimi_sme:'Avviljohka',nimi_smn:'Avveeljuuhâ'},'Ivalojoki\\nAvviljohka\\nAvveeljuuhâ']])
+        if(text(props)!==want)errs.push(`${JSON.stringify(props)} reads ${JSON.stringify(text(props))}, not ${JSON.stringify(want)}`);
+      const color=(k)=>L().paint.get('text-color').evaluate({type:1,properties:{lajikoodi:k}},{}).toString();
+      if(color(2020115)===color(1020105))errs.push('rapids named in the terrain colour');
+      if(L().layout.get('text-font').evaluate({type:1,properties:{}},{}).join()!==m.style.getLayer('label-water').layout.get('text-font').evaluate({type:1,properties:{}},{}).join())errs.push("MML's names not in the italic of the water's names");
+      const order=m.getLayersOrder(), at=(id)=>order.indexOf(id);
+      for(const id of ['label-water','label-waterway','label-island','label-place-minor','label-peak'])if(!(at('mml-name')<at(id)))errs.push(`MML's names over ${id}: OSM's must be placed first`);
+      // drawn from the recorded tiles (OSM's labels hidden meanwhile: they're placed first and may win, as they should)
+      const osmLabels=order.filter((id)=>/^label-/.test(id)); for(const id of osmLabels)m.setLayoutProperty(id,'visibility','none');
+      m.jumpTo({center:tileMid(14,9171,4611),zoom:14.6}); await settle();
+      let got=new Set(); for(let k=0;k<20&&!got.size;k++){got=new Set(m.queryRenderedFeatures({layers:['mml-name']}).map((f)=>f.properties.lajikoodi)); if(!got.size)await wait(250);}
+      // (MML's names give way to each other too, by their priority: which of them show depends on the view)
+      if(got.size<2||[...got].some((k)=>!takes(k)))errs.push(`Yyteri: names of kinds ${[...got]} drawn`);
+      for(const id of osmLabels)m.setLayoutProperty(id,'visibility','visible');
+      for(const base of ['aerial','maasto']){polku.set({base}); await settle(); if(m.getLayer('mml-name'))errs.push(`MML's names on the ${base} base`);}
+      return errs;
+    })()""", timeout=120000)
+    fails += [f'console: {e[:160]}' for e in pg.errors()]
+    pg.close()
+    print(f"{'ok  ' if not fails else 'FAIL'} MML's names of the terrain and the water's details (#1174)" + ''.join(f'\n     - {f}' for f in fails), flush=True)
+    return not fails
+
 # #1179: guideposts from zoom 15 with an icon of their own (a post with two signs on a brown disc), not the information
 # board's, at Nuuksio from OpenFreeMap's live tiles; their place's card shows the same icon.
 def guideposts(chrome):
@@ -26824,7 +26867,7 @@ GROUPS = [
     ('site', [license_text], 'the built site: LICENSE sent as text, since every file\'s copyright line links to it (#115); against the checkout it checks nothing'),
     ('pacing', [pacing, paced_legs, net_fails], 'calls made together go out paced and counted (mocked services, a fake clock); legs refused for a slot follow at it (#78); the calls that failed, in Data sources (#687)'),
     ('loading', [loading, routing_edits], 'cancel obsolete routing, edits/Undo/Clear, shared subscribers, refusal/recovery, deadlines, terrain slots and LIPAS viewport/cache (mocked)'),
-    ('layers', [layers, layer_coverage, cycleway_style, cycling_restrictions, waterway_style, property_lines, property_plots, wetland_style, reedbed_style, mml_bogs, mml_rock, mml_water, mml_open, osm_cliffs, saddles, mml_cards, mml_winter_roads, guideposts, town_gates, town_bridges, town_oneway, town_parks, town_parking, town_shops, town_housenumbers], 'the Layers panel in every sport'),
+    ('layers', [layers, layer_coverage, cycleway_style, cycling_restrictions, waterway_style, property_lines, property_plots, wetland_style, reedbed_style, mml_bogs, mml_rock, mml_water, mml_open, osm_cliffs, saddles, mml_cards, mml_winter_roads, guideposts, mml_names, town_gates, town_bridges, town_oneway, town_parks, town_parking, town_shops, town_housenumbers], 'the Layers panel in every sport'),
     ('raster', [raster_maps, aerial_fallback, aerial_labels], 'terrain and aerial detail, bounded high-density WMS symbols, depth boundaries and missing aerial detail (#649, #650, #653); the map\'s words on the aerial photos at 4.5:1 on their halo (#554)'),
     ('coarse', [coarse], 'a coarse map underneath (#1091): the base map\'s tile four zoom levels up stands in for one that hasn\'t come, at 1440 and 390'),
     ('offline', [mml_offline], 'Save offline keeps the National Land Survey\'s tiles (#1176): its terrain at zooms 11–14 and property boundaries while on, under addresses without the key, two at a time and ten a second at most; what Offline maps says an area lacks; offline, with the real worker, the bogs drawn from the saved tile and no message'),

@@ -80,6 +80,10 @@ PALETTES.ortofi = PALETTES.aerial;
 PALETTES.mml = { ...PALETTES.trail, hillshade: false };
 PALETTES.maasto = PALETTES.mml;
 export const isAerial = (base) => base === 'aerial' || base === 'ortofi';
+// MML's names by their kind (`nimisto`'s lajikoodi, #1174), besides its terrain areas (1020000–1029999: forests, bogs, fields,
+// meadows, boulder fields): capes, isthmuses, shores, hollows, lost dwelling places and other terrain places; in the water, stones
+// and shoals, and rapids
+const MML_TERRAIN_NAMES = [1010120, 1010125, 1010130, 1010305, 1999905, 1999999], MML_WATER_NAMES = [1010115, 1010405, 2020115];
 // Winter ways' lines (js/winter.js), MML's winter roads in the look of OSM's ways there only in winter (#1171)
 const WINTER_WIDTH = zi(11, 1.6, 14, 3.4, 18, 6), WINTER_CASING = zi(11, 3, 14, 6, 18, 10), WINTER_SEASONAL = '#0891b2', WINTER_SEASONAL_DASH = [0.6, 1.4];
 export const isTopo = (base) => base === 'mml' || base === 'maasto';
@@ -711,7 +715,7 @@ export function buildStyle(s, ctx) {
     add({ id: 'cameras', type: 'symbol', source: 'cameras', minzoom: 7, layout: { 'icon-image': 'camera', 'icon-size': zi(7, 0.5, 12, 0.8, 16, 1), 'icon-allow-overlap': ['step', ['zoom'], false, 11, true] } });
   }
 
-  addLabels(s, P, hc, layers);
+  addLabels(s, P, hc, layers, !!sources.mml);
 
   // ---- Places to avoid (route planner no-go areas) ------------------------
   add({ id: 'nogo-fill', type: 'fill', source: 'nogo', paint: { 'fill-color': '#dc2626', 'fill-opacity': 0.14 } });
@@ -1281,11 +1285,31 @@ function addRoads(s, P, hc, layers, ctx) {
 // ---------------------------------------------------------------------------
 // Labels
 
-function addLabels(s, P, hc, layers) {
+function addLabels(s, P, hc, layers, mml) {
   const topo = isTopo(s.base);
   // On the MML rasters only our own overlays get labels; the map has the rest.
   const add = (l) => { if (!topo || /^(contour|lipas)/.test(l.id)) layers.push(l); };
   const halo = { 'text-halo-color': P.halo, 'text-halo-width': hc ? 2 : 1.4, 'text-halo-blur': 0.3 };
+
+  // MML's names in Finland (#1174), first stage: the kinds OpenFreeMap's tiles don't name, from the zoom MML gives each (11–14).
+  // Italic, as MML's map prints them: the terrain's in the map's text colour, the water's (stones and shoals in it, rapids) in
+  // the water's. Before OSM's labels, so OSM's are placed first and win where both would show. Finnish, else Swedish, the
+  // first of two spellings ("X eli Y"), and the place's Sámi names on lines of their own.
+  if (mml) {
+    const k = ['get', 'lajikoodi'];
+    const first = (n) => ['let', 'n', n, ['let', 'i', ['index-of', ' eli ', ['var', 'n']], 'j', ['index-of', ' eller ', ['var', 'n']],
+      ['case', ['>=', ['var', 'i'], 0], ['slice', ['var', 'n'], 0, ['var', 'i']], ['>=', ['var', 'j'], 0], ['slice', ['var', 'n'], 0, ['var', 'j']], ['var', 'n']]]];
+    const sami = ['nimi_sme', 'nimi_smn', 'nimi_sms'].map((key) => ['case', ['has', key], ['concat', '\n', first(['get', key])], '']);
+    add({
+      id: 'mml-name', type: 'symbol', source: 'mml', 'source-layer': 'nimisto',
+      filter: ['any', ['in', k, ['literal', [...MML_TERRAIN_NAMES, ...MML_WATER_NAMES]]], ['all', ['>=', k, 1020000], ['<', k, 1030000]]],
+      layout: {
+        'symbol-sort-key': ['get', 'prioriteetti'], 'text-field': ['concat', first(['coalesce', ['get', 'nimi_fin'], ['get', 'nimi_swe']]), ...sami],
+        'text-font': FONT_I, 'text-size': ['step', ['get', 'prioriteetti'], 12, 8, 11], 'text-max-width': 8,
+      },
+      paint: { 'text-color': ['case', ['in', k, ['literal', MML_WATER_NAMES]], P.waterText, P.text], ...halo },
+    });
+  }
 
   add({ id: 'label-waterway', type: 'symbol', source: 'ofm', 'source-layer': 'waterway', minzoom: 12, filter: ['has', 'name'], layout: { 'symbol-placement': 'line', 'text-pitch-alignment': 'viewport', 'text-field': ['get', 'name'], 'text-font': FONT_I, 'text-size': 11, 'text-letter-spacing': 0.1 }, paint: { 'text-color': P.waterText, ...halo } });
   add({ id: 'label-water', type: 'symbol', source: 'ofm', 'source-layer': 'water_name', minzoom: 6, filter: ['all', ['has', 'name'], ['==', ['geometry-type'], 'Point']], layout: { 'text-field': ['get', 'name'], 'text-font': FONT_I, 'text-size': zi(6, 10, 12, 13, 15, 15), 'text-max-width': 6, 'text-letter-spacing': 0.08 }, paint: { 'text-color': P.waterText, ...halo } });
