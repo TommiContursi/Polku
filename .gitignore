@@ -19,3 +19,7 @@ __pycache__/
 
 # Generated OSM releases and build intermediates never belong in app history.
 osm-build/
+
+# The built site (tools/site.sh) and its build tool
+site/
+node_modules/
