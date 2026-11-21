@@ -4,11 +4,13 @@
 // them; the list of areas (with the routed line itself) lives in IndexedDB.
 //
 // Only sources whose terms allow it are saved: OpenFreeMap vector tiles and
-// Mapterhorn terrain. Aerial imagery (Esri doesn't allow offline caching) and the
-// Kapsi raster maps (a volunteer-run service) are left out.
+// Mapterhorn terrain, and in Finland the National Land Survey's (MML) vector tiles,
+// whose CC BY 4.0 licence allows copies (its service's terms say nothing on storing
+// them, so they're asked for gently, #1176). Aerial imagery (Esri doesn't allow
+// offline caching) and the Kapsi raster maps (a volunteer-run service) are left out.
 
-import { OFM_TILEJSON, OFM_SPRITE, OFM_GLYPHS, DEM_URL } from './config.js';
-import { densify, lonLatToTile, fmtDist } from './geo.js';
+import { OFM_TILEJSON, OFM_SPRITE, OFM_GLYPHS, DEM_URL, MML_TERRAIN_TILES, MML_PROPERTY_TILES, FINLAND_BOUNDS, mmlApiKey } from './config.js';
+import { densify, lonLatToTile, tileBounds, fmtDist } from './geo.js';
 import { idb } from './idb.js';
 import { openModal, closeModal } from './modal.js';
 import { h, icon, toast } from './ui.js';
@@ -18,8 +20,13 @@ const SHELL = 'polku-shell-v1';
 const FLAG = '/__polku/offline-preview';
 const OFM_TILE = /^https:\/\/tiles\.openfreemap\.org\/planet\/[^/]+\/(\d+)\/(\d+)\/(\d+)\.pbf$/;
 const ofmKey = (url) => url.replace(OFM_TILE, 'https://tiles.openfreemap.org/planet/offline/$1/$2/$3.pbf'); // same as sw.js
-// typical tile bytes per zoom, for the estimate (low zooms are big, a z14 trail tile is small)
-const SIZE = { ofm: (z) => (z <= 9 ? 250e3 : z <= 11 ? 130e3 : z === 12 ? 70e3 : 40e3), dem: (z) => (z <= 9 ? 110e3 : 65e3) };
+// MML's tiles are kept under their address without the API key (as sw.js), so your own key added or removed later finds them
+const keyless = (url) => url.split('?')[0];
+const isMml = (kind) => kind === 'mml' || kind === 'property';
+const inFinland = ([w, s, e, n]) => e > FINLAND_BOUNDS[0] && w < FINLAND_BOUNDS[2] && n > FINLAND_BOUNDS[1] && s < FINLAND_BOUNDS[3];
+// typical tile bytes per zoom, for the estimate (low zooms are big, a z14 trail tile is small; MML's z13 is its biggest, #1176)
+const SIZE = { ofm: (z) => (z <= 9 ? 250e3 : z <= 11 ? 130e3 : z === 12 ? 70e3 : 40e3), dem: (z) => (z <= 9 ? 110e3 : 65e3),
+  mml: (z) => (z <= 11 ? 60e3 : z === 12 ? 30e3 : z === 13 ? 100e3 : 40e3), property: () => 7e3 };
 const MAX_TILES = 8000;
 const ZOOMS = [5, 14]; // vector tiles stop at 14 (overzoomed beyond); 512 px terrain at 14 serves map zoom 15+
 const FONTS = ['Noto Sans Regular', 'Noto Sans Bold', 'Noto Sans Italic'];
@@ -38,11 +45,18 @@ let tilejson = null;
 /** OpenFreeMap's tile URL, from its TileJSON (as the map's), asked for once. */
 export const ofmTemplate = () => (tilejson ||= fetch(OFM_TILEJSON).then((r) => r.json()).then((j) => j.tiles[0]).catch((e) => { tilejson = null; throw e; }));
 
-/** Tiles covering `buffer` metres either side of the line, zoom 5–14. */
-export async function planArea(line, { buffer = 1000, terrain = true } = {}) {
+/** Tiles covering `buffer` metres either side of the line, zoom 5–14; MML's in Finland with `mml` ({ key, property }:
+ * your own key or none, and whether property boundaries are on). */
+export async function planArea(line, { buffer = 1000, terrain = true, mml = null } = {}) {
   const tiles = new Map(); // cache key -> { url, kind }
-  const sources = [[await ofmTemplate(), 'ofm']];
-  if (terrain) sources.push([DEM_URL, 'dem']);
+  const sources = [[await ofmTemplate(), 'ofm', 5]];
+  if (terrain) sources.push([DEM_URL, 'dem', 5]);
+  // at their sources' zooms (js/style.js): the terrain from 11, property boundaries at 14 while their layer is on
+  if (mml) {
+    const key = `?api-key=${encodeURIComponent(mmlApiKey(mml.key))}`;
+    sources.push([MML_TERRAIN_TILES + key, 'mml', 11]);
+    if (mml.property) sources.push([MML_PROPERTY_TILES + key, 'property', 14]);
+  }
   const pts = densify(line, Math.max(80, buffer / 2)).pts;
   for (let z = ZOOMS[0]; z <= ZOOMS[1]; z++) {
     const ranges = new Set();
@@ -55,9 +69,11 @@ export async function planArea(line, { buffer = 1000, terrain = true } = {}) {
     }
     for (const xy of ranges) {
       const [x, y] = xy.split('/');
-      for (const [tpl, kind] of sources) {
+      const fi = inFinland(tileBounds(+x, +y, z));
+      for (const [tpl, kind, minzoom] of sources) {
+        if (z < minzoom || (isMml(kind) && !fi)) continue;
         const url = tpl.replace('{z}', z).replace('{x}', x).replace('{y}', y);
-        tiles.set(kind === 'ofm' ? ofmKey(url) : url, { url, kind, z });
+        tiles.set(kind === 'ofm' ? ofmKey(url) : isMml(kind) ? keyless(url) : url, { url, kind, z });
       }
     }
   }
@@ -85,18 +101,20 @@ async function saveShell() {
 }
 
 // ------------------------------------------------------------------ saving
-export async function saveArea({ name, line, bbox, route }, { buffer, terrain }, onProgress, signal) {
-  const plan = await planArea(line, { buffer, terrain });
+export async function saveArea({ name, line, bbox, route }, { buffer, terrain, mml }, onProgress, signal) {
+  const plan = await planArea(line, { buffer, terrain, mml });
   if (plan.tiles.size > MAX_TILES) throw new Error('This area is too big to save. Try a narrower corridor.');
   if (navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(() => {});
   await saveShell();
   const cache = await caches.open(TILES);
   const list = [...plan.tiles];
   const fresh = [];
-  let next = 0, done = 0, bytes = 0, failed = 0;
-  const worker = async () => {
-    while (next < list.length && !signal.aborted) {
-      const [key, t] = list[next++];
+  let done = 0, bytes = 0, failed = 0, mmlFailed = 0;
+  // `gap`: at least this many ms between one worker's requests
+  const worker = async (queue, gap = 0) => {
+    for (let item; !signal.aborted && (item = queue.pop());) {
+      const [key, t] = item, asked = Date.now();
+      const fail = () => { failed++; if (t.kind === 'mml') mmlFailed++; };
       try {
         const hit = await cache.match(key);
         if (hit) bytes += +(hit.headers.get('x-size') || 0);
@@ -106,21 +124,26 @@ export async function saveArea({ name, line, bbox, route }, { buffer, terrain },
             const n = await keep(cache, key, res); // (not `bytes += await …`: six workers would overwrite each other's sums)
             bytes += n;
             fresh.push(key);
-          } else if (res.status !== 404) failed++; // 404: no terrain there (sea)
+          } else if (res.status !== 404) fail(); // 404: no terrain there (sea)
+          if (gap) await new Promise((r) => setTimeout(r, gap - (Date.now() - asked)));
         }
       } catch {
         if (signal.aborted) break;
-        failed++;
+        fail();
       }
       onProgress(++done, list.length, bytes);
     }
   };
-  await Promise.all(Array.from({ length: 6 }, worker));
+  // MML's tiles two at a time, ten a second at most, beside the rest: its open service is shared by everyone without a
+  // key of their own (#1176)
+  const others = list.filter(([, t]) => !isMml(t.kind)), mmls = list.filter(([, t]) => isMml(t.kind));
+  await Promise.all([...Array.from({ length: 6 }, () => worker(others)), ...Array.from({ length: 2 }, () => worker(mmls, 200))]);
   if (signal.aborted) {
     await dropUnused(fresh);
     throw new DOMException('Cancelled', 'AbortError');
   }
-  const area = { id: `a${Date.now().toString(36)}`, name, created: Date.now(), bbox, keys: [...plan.tiles.keys()], tiles: list.length, bytes, failed, buffer, terrain, route };
+  const mmlTiles = list.filter(([, t]) => t.kind === 'mml').length;
+  const area = { id: `a${Date.now().toString(36)}`, name, created: Date.now(), bbox, keys: [...plan.tiles.keys()], tiles: list.length, bytes, failed, buffer, terrain, mml: { tiles: mmlTiles, failed: mmlFailed }, route };
   await areas.set(area.id, area);
   return area;
 }
@@ -231,8 +254,8 @@ export async function initOfflineStatus() {
 // ------------------------------------------------------------------ UI
 const mb = (b) => (b >= 1e9 ? `${(b / 1e9).toFixed(1)} GB` : b >= 1e6 ? `${(b / 1e6).toFixed(b < 1e7 ? 1 : 0)} MB` : `${Math.max(1, Math.round(b / 1e3))} kB`);
 
-/** The "Save offline" dialog for a planned route. payload: { name, line, bbox, route, km } */
-export function openSaveOffline(payload, { onSaved } = {}) {
+/** The "Save offline" dialog for a planned route. payload: { name, line, bbox, route, km }; mml: as planArea()'s */
+export function openSaveOffline(payload, { onSaved, mml } = {}) {
   if (!offlineSupported()) { toast('This browser can’t save maps for offline use'); return; }
   let buffer = 1000;
   let terrain = true;
@@ -255,7 +278,7 @@ export function openSaveOffline(payload, { onSaved } = {}) {
     const estimate = async () => {
       const my = ++seq;
       try {
-        const p = await planArea(payload.line, { buffer, terrain });
+        const p = await planArea(payload.line, { buffer, terrain, mml });
         if (my !== seq) return;
         const big = p.tiles.size > MAX_TILES;
         est.textContent = big ? `${p.tiles.size.toLocaleString()} tiles — too big. Try a narrower corridor.` : `${p.tiles.size.toLocaleString()} tiles · about ${mb(p.bytes)}`;
@@ -268,7 +291,7 @@ export function openSaveOffline(payload, { onSaved } = {}) {
       bar.hidden = false;
       for (const el of [name, terrainBox, ...corridor.children]) el.disabled = true;
       try {
-        const area = await saveArea({ ...payload, name: name.value.trim() || payload.name }, { buffer, terrain }, (done, total, bytes) => {
+        const area = await saveArea({ ...payload, name: name.value.trim() || payload.name }, { buffer, terrain, mml }, (done, total, bytes) => {
           bar.max = total;
           bar.value = done;
           status.textContent = `${done.toLocaleString()} / ${total.toLocaleString()} tiles · ${mb(bytes)}`;
@@ -287,16 +310,21 @@ export function openSaveOffline(payload, { onSaved } = {}) {
       }
     };
     body.append(
-      h('p', {}, 'Saves Polku’s trail map and terrain (hillshade, contours, 3D, uphill grades) along this route, with the route itself, so the map, route and profile work without signal.'),
+      h('p', {}, 'Saves Polku’s trail map and terrain (hillshade, contours, 3D, uphill grades) along this route, with the route itself, so the map, route and profile work without signal. '
+        + `In Finland it keeps the National Land Survey’s terrain too (bogs, rock, cliffs and the water’s marks)${mml && mml.property ? ', and property boundaries, as their layer is on' : ''}.`),
       h('label', { class: 'off-field' }, h('span', {}, 'Name'), name),
       h('div', { class: 'off-field' }, h('span', {}, 'Corridor either side'), corridor),
-      h('label', { class: 'off-check' }, terrainBox, h('span', {}, 'Terrain', h('small', {}, 'Hillshade, contours, 3D and uphill grades. About three quarters of the size.'))),
+      h('label', { class: 'off-check' }, terrainBox, h('span', {}, 'Terrain', h('small', {}, 'Hillshade, contours, 3D and uphill grades. Half to three quarters of the size.'))),
       est, bar, status,
       h('p', { class: 'note' }, 'Routing, search, weather, traffic and aerial maps still need a connection.'),
       h('div', { class: 'off-actions' }, save));
     estimate();
   });
 }
+
+// What a saved area lacks of MML's terrain (#1176): one saved before it was kept, in Finland, or one whose tiles failed
+const lacks = (a) => (!a.mml ? (inFinland(a.bbox) ? 'Saved without the National Land Survey’s terrain' : '')
+  : !a.mml.failed ? '' : a.mml.failed < a.mml.tiles ? 'The National Land Survey’s terrain is missing in parts' : 'The National Land Survey’s terrain didn’t load');
 
 /** The Offline maps section in Layers. */
 export async function renderOfflineSection(box, { open }) {
@@ -306,7 +334,8 @@ export async function renderOfflineSection(box, { open }) {
   if (!list.length) box.append(h('p', { class: 'note', html: `Plan a route, then press ${icon('offline', 14)} <b>Save offline</b> in the route panel. The trail map, terrain and the route then work without signal.` }));
   for (const a of list) {
     box.append(h('div', { class: 'off-area' },
-      h('div', { class: 'off-area-text' }, h('b', {}, a.name), h('small', {}, `${new Date(a.created).toLocaleDateString()} · ${mb(a.bytes)}${a.failed ? ` · ${a.failed} tiles missing` : ''}`)),
+      h('div', { class: 'off-area-text' }, h('b', {}, a.name), h('small', {}, `${new Date(a.created).toLocaleDateString()} · ${mb(a.bytes)}${a.failed ? ` · ${a.failed} tiles missing` : ''}`),
+        lacks(a) ? h('small', {}, `${lacks(a)}: save the area again to add it.`) : null),
       h('button', { type: 'button', class: 'btn', onclick: () => open(a) }, 'Open'),
       h('button', { type: 'button', class: 'tool danger', 'aria-label': `Delete ${a.name}`, title: 'Delete', html: icon('trash', 17), onclick: async (e) => {
         e.currentTarget.disabled = true;

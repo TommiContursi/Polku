@@ -630,7 +630,7 @@ const planner = new Planner(map, {
   saveOffline: () => {
     const p = planner.offlinePayload();
     if (!p) { toast('Plan a route first — the area along it is what gets saved'); return; }
-    openSaveOffline(p, { onSaved: () => renderSettingsPanel() });
+    openSaveOffline(p, { onSaved: () => renderSettingsPanel(), mml: { key: state.mmlKey, property: !!state.overlays.propertyLines } });
   },
   onActiveChange: (on) => {
     syncPlanButton(on);
