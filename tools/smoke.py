@@ -8020,7 +8020,7 @@ MML_OFFLINE_SAVE = r"""
     asked.length = 0;
     const whole = await save('smoke-mml', { key: 'own-test', property: true });
     if (whole.mml.failed || !whole.mml.tiles) f.push(`saved whole, the area says ${JSON.stringify(whole.mml)} of MML's terrain tiles failed`);
-    if (!mmlKeys(whole).some((k) => k.includes('/kiinteistojaotus/v3/WGS84_Pseudo-Mercator/14/'))) f.push('property boundaries not kept with their layer on');
+    if (!mmlKeys(whole).some((k) => k.includes('/kiinteistojaotus/default/v3/WGS84_Pseudo-Mercator/14/'))) f.push('property boundaries not kept with their layer on');
     if (mmlKeys(whole).some((k) => k.includes('?'))) f.push(`MML's tiles kept under an address with its key: ${mmlKeys(whole).find((k) => k.includes('?'))}`);
     if (asked.some(([, u]) => new URL(u).searchParams.get('api-key') !== 'own-test')) f.push('your own key not used for MML\'s tiles');
     // paced: two at a time, ten in any second at most
@@ -8037,14 +8037,15 @@ MML_OFFLINE_SAVE = r"""
 # Offline, with this commit's worker: MML's bogs from the saved tile, asked for with Polku's key (saved with your own)
 MML_OFFLINE_MAP = r"""
 (async () => {
-  const f = [], m = polku.map, wait = (ms) => new Promise((r) => setTimeout(r, ms));
+  const f = [], m = polku.map, wait = (ms) => new Promise((r) => setTimeout(r, ms)), failed = [];
+  m.on('error', (e) => { if (e.sourceId === 'mml') failed.push(e.tile ? e.tile.tileID.canonical.toString() : String(e.error && e.error.message)); });
   m.jumpTo({ center: [(9260.5 / 2 ** 14) * 360 - 180, Math.atan(Math.sinh(Math.PI * (1 - (2 * 4578.5) / 2 ** 14))) * 180 / Math.PI], zoom: 14.5 });
   const bogs = () => m.queryRenderedFeatures({ layers: ['mml-bog'] }).length;
   for (let k = 0; k < 60 && !(bogs() && m.areTilesLoaded()); k++) await wait(250);
   await wait(1500);
   if (!bogs()) f.push('offline, no bogs drawn from the saved tile');
   const said = (window.__toasts || []).filter((t) => t.includes('National Land Survey'));
-  if (said.length) f.push(`offline in the saved area: ${said[0]}`);
+  if (said.length) f.push(`offline in the saved area: ${said[0]} (MML's tiles that failed: ${failed.join(' ')})`);
   return f;
 })()
 """
