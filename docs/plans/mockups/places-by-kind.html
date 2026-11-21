@@ -58,6 +58,9 @@ body.mk { margin: 0; padding: 20px 16px 60px; font: 14px/1.45 var(--face-text); 
 .mk-phone .qd { z-index: 12; left: 0; right: 0; bottom: 0; width: auto; max-height: calc(100% - 64px); padding: 4px 16px 16px; border-radius: 20px 20px 0 0; box-shadow: 0 -6px 28px rgba(16, 24, 20, .2), var(--edge); }
 .mk-phone .tg, .mk-phone .qd-opts .tg { min-height: 48px; }
 .mk-phone .topbar { gap: 8px; }
+.mk-phone .topbar .brand { display: none; }
+/* (app.css's narrow window, max-width: 314px: with its results open the search spans the top bar) */
+.mk-narrow .search:is(:focus-within, :has(> #search-results:not([hidden]))) { position: absolute; inset: 0 0 auto; z-index: 1; }
 .mk-frame.desk .panel { bottom: 12px; max-height: calc(100% - 88px); }
 .mk-frame.desk .qd { bottom: 76px; }
 .mk-frame .topbar { width: min(730px, calc(100% - 24px)); }
@@ -85,14 +88,15 @@ body.mk { margin: 0; padding: 20px 16px 60px; font: 14px/1.45 var(--face-text); 
 .pk-g + .bt[hidden] { display: none; }
 /* search: a kind's results with where (Near the map · Along the route), and the kinds' chips with the field empty */
 #search-results li.r-where { cursor: default; padding: 4px 10px 6px; background: none; }
-#search-results li.r-where .seg { width: 100%; }
-#search-results li.r-where .seg button { flex: 1 1 0; min-width: 0; }
+#search-results li.r-where .seg { width: 100%; flex-wrap: wrap; height: auto; }
+#search-results li.r-where .seg button { flex: 1 1 auto; min-width: 0; white-space: normal; } /* (where both don't fit, one above the other, as a drawer's switch does at 200 %) */
 #search-results li.r-kinds { cursor: default; padding: 4px 0 8px; background: none; }
 #search-results li.r-kinds .side-x { display: flex; gap: 6px; padding: 0 10px; overflow-x: auto; scrollbar-width: none; }
 #search-results li.r-kinds .chip { flex: none; display: inline-flex; align-items: center; gap: 6px; }
 #search-results li.r-kinds .chip .pk-ic { width: 20px; height: 20px; }
 #search-results li .r-row { display: flex; align-items: center; gap: 10px; min-width: 0; }
-#search-results li .r-row > span:last-child { min-width: 0; display: flex; flex-direction: column; overflow-wrap: anywhere; }
+#search-results li .r-row > span:last-child { min-width: 0; display: flex; flex-direction: column; overflow-wrap: anywhere; hyphens: auto; }
+.mk-narrow #search-results li .r-row > .pk-ic { display: none; } /* (at 200 % the mark gives way to the name, as a card's mark does in the folded line) */
 #search-results li.r-gap { cursor: default; background: none; color: var(--muted); font-size: 12px; }
 </style>
 </head>
@@ -199,7 +203,7 @@ const SWITCHES = [
   ['route', 'Route', { none: 'None', drawn: 'Drawn' }, () => S.view === 'search'],
   ['frame', 'Frame', { 390: '390 × 844', 200: '390 at 200 %', 1440: '1440 × 900' }],
   ['sport', 'Sport', SPORTS],
-  ['data', 'Words', { usual: 'Usual', worst: 'Long Finnish words' }],
+  ['data', 'Words', { usual: 'Usual', worst: 'Long words (a layout test)' }],
   ['look', 'Look', { light: 'Light', dark: 'Dark' }],
 ];
 function renderBar() {
@@ -274,11 +278,11 @@ function layersPanel() {
 // ------------------------------------------------------------------ the quick drawer
 const TILES = {
   hike: [['wmtHiking', 'Waymarked hiking', SVG.sign, 1], ['lipasRoutes', 'Official routes', SVG.flag, 1], ['places:sleep', null, null, 0], ['trailDetails', 'Trail details', SVG.details, 1], ['wx:rain', 'Rain radar', SVG.rain, 0]],
-  mtb: [['trailColors', 'Trail colours', SVG.trail, 1, 'Difficulty'], ['trailDetails', 'Trail details', SVG.details, 1], ['lipasRoutes', 'Official routes', SVG.flag, 1], ['places:rest', null, null, 0], ['wx:rain', 'Rain radar', SVG.rain, 0]],
-  road: [['sfTraffic', 'Busy roads', SVG.car, 1], ['sfRoadworks', 'Road works', SVG.cone, 1], ['places:food', null, null, 0], ['wmtCycling', 'Waymarked cycling', SVG.sign, 1], ['wx:wind', 'Wind', SVG.wind, 0]],
+  mtb: [['trailColors', 'Trail colours', SVG.trail, 1, 'Difficulty'], ['trailDetails', 'Trail details', SVG.details, 1], ['lipasRoutes', 'Official routes', SVG.flag, 1], ['wmtMtb', 'Waymarked MTB', SVG.sign, 0], ['wx:rain', 'Rain radar', SVG.rain, 0]],
+  road: [['sfTraffic', 'Busy roads', SVG.car, 1], ['sfRoadworks', 'Road works', SVG.cone, 1], ['sfRoadcond', 'Road conditions', SVG.car, 1], ['wmtCycling', 'Waymarked cycling', SVG.sign, 1], ['wx:wind', 'Wind', SVG.wind, 0]],
   paddle: [['nautical', 'Nautical marks', SVG.buoy, 1], ['depths', 'Depths', SVG.depth, 1, 'Not for navigation'], ['sfShips', 'Ships', SVG.ship, 1, 'Live AIS'], ['places:boat', null, null, 0], ['wx:wind', 'Wind', SVG.wind, 0]],
 };
-const MAIN_TILE = { hike: ['lipasPoints', 'Huts & lean-tos'], mtb: ['sfRoadcond', 'Rain radar'], road: ['sfRoadcond', 'Road conditions'], paddle: ['lipasPoints', 'Landing sites & lean-tos'] };
+const MAIN_TILE = { hike: 'Huts & lean-tos', paddle: 'Landing sites & lean-tos' }; // (today's Places tile, where a sport has one)
 function tile([id, name, ic, on, small]) {
   if (id.startsWith('places:')) {
     const g = GROUPS.find((x) => x.id === id.slice(7)), n = g.kinds.filter((k) => kindsOn().has(k[0])).length;
@@ -331,7 +335,7 @@ function results() {
   return `<ul id="search-results" role="listbox">
     <li class="r-group" role="presentation">${worst() && S.q === 'water' ? 'Juomavesi ja juomakelpoiset lähteet' : r.title} ${w === 'along' ? 'along the route' : 'nearby'}</li>
     ${route ? `<li class="r-where" role="presentation"><div class="seg small" role="group" aria-label="Where"><button type="button" data-where="near" aria-pressed="${w === 'near'}">Near the map</button><button type="button" data-where="along" aria-pressed="${w === 'along'}">Along the route</button></div></li>` : ''}
-    ${list.map(([n, kind, d, g, c], i) => `<li role="option" class="${i === 0 ? 'active' : ''}"><span class="r-row">${disc(g, c, 24)}<span><span class="r-name">${n || kind.split(' · ')[0]}</span><span class="r-sub">${n ? kind : 'No name'} · ${d}</span></span></span></li>`).join('')}
+    ${list.map(([n, kind, d, g, c], i) => `<li role="option" class="${i === 0 ? 'active' : ''}"><span class="r-row">${disc(g, c, 24)}<span><span class="r-name" ${n ? 'lang="fi"' : ''}>${n || kind.split(' · ')[0]}</span><span class="r-sub">${n ? kind : 'No name'} · ${d}</span></span></span></li>`).join('')}
     ${w === 'along' ? '<li class="r-gap" role="presentation">Not checked from 9.8 km to the end: the map’s data didn’t load there.</li>' : ''}
     <li class="r-group" role="presentation">Places</li>${r.names.map(([n, s]) => `<li role="option"><span class="r-name">${n}</span><span class="r-sub">${s}</span></li>`).join('')}
   </ul>`;
@@ -354,7 +358,7 @@ function render() {
   const avail = Math.min(stage.parentElement.clientWidth, 1500) - 2;
   const z = desk ? Math.min(1, avail / 1440) : S.frame === '200' ? Math.min(2, avail / 195) : Math.min(1, avail / 390);
   stage.innerHTML = `<div class="mk-zoom" style="width:${w}px;height:${hgt}px;transform:scale(${z});margin:0 ${w * z - w}px ${hgt * z - hgt}px 0">
-    <div class="mk-frame ${desk ? 'desk' : 'mk-phone'}" style="width:${w}px;height:${hgt}px;--mk-h:${hgt}px;background-image:url(${desk ? BG.desk : BG.phone})">${body}</div></div>`;
+    <div class="mk-frame ${desk ? 'desk' : 'mk-phone'} ${S.frame === '200' ? 'mk-narrow' : ''}" style="width:${w}px;height:${hgt}px;--mk-h:${hgt}px;background-image:url(${desk ? BG.desk : BG.phone})">${body}</div></div>`;
   const places = stage.querySelector('[data-group="places"]');
   const pb = stage.querySelector('.panel-body');
   if (places && pb) pb.scrollTop = (places.getBoundingClientRect().top - pb.getBoundingClientRect().top) / z - 4;
@@ -363,11 +367,13 @@ function render() {
 function renderNotes() {
   const n = {
     layers: {
-      a: ['<b>A, recommended (question 1):</b> every kind its own switch, under its group’s small heading (<code>menu-h</code>), its mark from the map before its name. 31 switches in seven groups.', 'The count beside Places (<code>lg-count</code>) is the kinds on. <b>Back to Hike’s places</b> (<code>btn small quiet</code>) shows only once you’ve changed a switch: try one.', '<b>Map key</b> lists the landmarks drawn in the basemap in every sport, with no switch (question 2).', 'LIPAS’s lean-tos, huts, campsites, lodges, fire places, landing places and beaches are rows of their kinds, not a switch of their own (question 5).', 'Pharmacies are in Help, moved from Shops and food.'],
+      a: ['<b>A, recommended (question 1):</b> every kind its own switch, under its group’s small heading (<code>menu-h</code>), its mark from the map before its name. 31 switches in seven groups.', 'The count beside Places (<code>lg-count</code>) is the kinds on. <b>Back to Hike’s places</b> (<code>btn small quiet</code>) shows only once you’ve changed a switch: try one.', '<b>Map key</b> lists the landmarks drawn in the basemap in every sport, with no switch (question 2).', 'LIPAS’s lean-tos, huts, campsites, lodges, fire places, landing places and beaches are rows of their kinds, not a switch of their own (question 5).', 'Pharmacies are in Help, moved from Shops and food (question 6).'],
       b: ['<b>B:</b> a switch per group, with ⌄ opening its kinds in place under it (the faint box, <code>bt</code>). Seven rows; Water and toilets is open.', 'A group’s switch is on while any of its kinds is, and says “2 of 3” when not all are: that state is <b>a new kind of control</b>, proposed here, not one of DEVELOPING’s shared controls.', 'Turning a group off turns its kinds off; on again brings back the ones you had, as the Depths tile does.'],
       main: ['<b>Today</b> on main at 7b2fe3be: three switches, each hiding which kinds it holds; LIPAS’s switch changes its kinds and its words with the sport (Road: campfire sites only; Paddle: landing sites and lean-tos).', 'Outdoor places hides car parks, guideposts and toilets with the rest; Road and Run have it off.'],
     }[S.v],
-    drawer: ['A tile per group, in place of today’s <b>' + MAIN_TILE[S.sport][1] + '</b> where a sport had one; MTB and Road gain one. It works as the Depths tile does: off turns the group off and remembers which kinds were on.', 'The tile’s › opens the group’s kinds, the full panel’s own switches (<code>qd-opts</code>): try it.', 'A tile with only some kinds on says “2 of 3” under its name, as a tile’s small line does today (<code>qt-l small</code>).'],
+    drawer: MAIN_TILE[S.sport]
+      ? ['A tile per group: <b>' + (S.sport === 'hike' ? 'Sleep and shelter' : 'On the water') + '</b> takes the place of today’s <b>' + MAIN_TILE[S.sport] + '</b> (Run’s <b>Outdoor places</b> becomes <b>Water and toilets</b>). It works as the Depths tile does: off turns the group off and remembers which kinds were on.', 'The tile’s › opens the group’s kinds, the full panel’s own switches (<code>qd-opts</code>): try it.', 'A tile with only some kinds on says “2 of 3” under its name, as a tile’s small line does today (<code>qt-l small</code>).']
+      : [SPORTS[S.sport] + ' keeps its five tiles from main, which have no Places tile; <b>Edit</b> adds any group’s tile (switch to Hike or Paddle to see one).'],
     search: S.q === 'empty'
       ? ['<b>Question 3:</b> with the field empty, chips search the kinds people look for most with one tap (<code>chip</code> in a row that scrolls sideways where it doesn’t fit). Recent stays under them.', 'A chip types its kind into the field, as if you had: try one.', '(For the build: the chips sit in the results list; a screen reader needs them as a group outside the listbox.)']
       : ['Typing a kind lists the nearest of that kind first, with its distance; Photon’s names come under it as today (<code>r-group</code>, <code>r-name</code>, <code>r-sub</code>, each with its mark).', 'A place with no name says its kind, and “No name”.', S.route === 'drawn' ? 'With a route drawn, <b>Near the map · Along the route</b> (<code>seg small</code>) chooses where; along the route each says how far from the start, and a stretch the data didn’t reach says so.' : 'Draw a route (above) to see <b>Near the map · Along the route</b>.', 'Reading Polku’s own tiles sends only which tiles; beyond them Photon gets the map’s middle rounded to about a kilometre, as search does today.'],

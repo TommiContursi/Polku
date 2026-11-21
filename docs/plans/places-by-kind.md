@@ -63,14 +63,25 @@ choice goes into #121's Decided list.
    already has). **Huts & lean-tos** goes, and with it the kinds it hid per
    sport. *Cost:* medium; the stored choices move (see "What changes for
    saved settings"). *Instead:* LIPAS keeps its switch, beside the kinds.
+6. **Pharmacies move from Shops and food to Help,** where people look for
+   them when something is wrong. This changes #1222's decision: as Help is
+   on in every sport, a pharmacy would show from zoom 15 in every sport,
+   where today it shows from 17 in Road, Gravel, Run and Hike. *Cost:*
+   small. *Instead:* pharmacies stay in Shops and food, as #1222 decided.
 
 The rest follows from #1222's and #1179's decisions, which go into the
 table as rows rather than questions: shops and food from zoom 17 with their
 names in purple and their defaults per sport (#1222); guideposts' own icon
 from zoom 15, OSM's springs drawn above MML's, and a shelter with a fire
-place keeping its own icon with its card saying so (#1179). One change to
-#1222 goes with choice 1's groups: **pharmacies move from Shops and food to
-Help**, where people look for them when something is wrong.
+place keeping its own icon with its card saying so (#1179).
+
+**Why the services are layers and the landmarks aren't:** what you look
+for changes with the trip and the sport (a road cyclist wants cafés and
+pumps, a paddler landing places), and a town at zoom 17 would be covered in
+every service at once, so each kind has a switch and each sport its
+defaults. Landmarks are few, belong to the terrain and help you find your
+way whatever you're doing, so they're drawn as the map's own marks
+(choice 2).
 
 ## Where it stands
 
@@ -79,11 +90,15 @@ Help**, where people look for them when something is wrong.
 - **The map's tiles checked** on 2026-11-21: OpenFreeMap's `poi` layer at
   Helsinki's centre and Nuuksio (zoom 14), to know what the map can fall
   back on beyond Polku's own data (the table's last column).
-- **The mock-up checked** at 390 × 844, at 200 % (195 px) and 1440 × 900,
-  light and dark, with long Finnish words: at 200 % a long kind's name
-  takes up to three lines beside its mark, breaking at its soft hyphens
-  as the app's labels do (so the build's labels carry them), and nothing
-  overflows.
+- **The mock-up checked** on 2026-11-21: every view, version and sport at
+  390 × 844, at 200 % (195 px) and at 1440 × 900, with usual and long
+  words (150 combinations, none cut off at the side), and by eye at 200 %
+  and in dark. At 200 % a long kind's name takes up to three lines beside
+  its mark, breaking at its soft hyphens as the app's labels do (so the
+  build's labels carry them); in search the field spans the top bar as it
+  does on main, **Near the map · Along the route** goes one above the
+  other, a result's mark gives way to its name, and a long Finnish name
+  breaks between syllables when its language is set (`lang="fi"`).
 - **Waiting for #1179's points** (part 3 of the MML package under #1171,
   being built): the table's first part moves them in after it merges.
 
@@ -150,9 +165,13 @@ counts what's mapped in the four countries before it settles them.
 | Fuel station | `amenity=fuel` | 16 | 5 | opening hours, toilets | `fuel` | a pump |
 | Other shops | `shop=*` not above (#1222's clothes, alcohol, hairdresser, laundry) | 17 | 7 | opening hours | `shop`, `clothing_store`, `alcohol_shop`, `laundry` | a bag |
 
-None upstairs or indoors (#1222's rule, so a shopping centre's shops don't
-pile up on its roof). All of OpenFreeMap's ranks inside a kind stay as its
-order where they crowd.
+**Drawn from OpenFreeMap's tiles, as #1222 built them,** not from Polku's
+own data: their `rank` decides which comes first where they crowd, and only
+named ones show, none upstairs or indoors, so a shopping centre's shops
+don't pile up on its roof. Polku's own data has no such rank. Its build
+carries groceries and fuel stations only, for search and Check, which never
+draw them on the map, so each shop is drawn once. Their layer lies under
+the places layer, so every other kind wins a crowded spot.
 
 **Sleep and shelter** (a layer; brown and green discs, as LIPAS's)
 
@@ -161,7 +180,7 @@ order where they crowd.
 | Wilderness hut | `tourism=wilderness_hut`, `alpine_hut` | 302 | 12 | 2 | fee, fire place, toilets, beds, booking | `lodging` (alpine hut) | Maastokartta's hut |
 | Lean-to and kota | `amenity=shelter` with `shelter_type=lean_to` or `basic_hut` | 301 | 12 | 2 | fire place, toilets, drinking water | `shelter` | Maastokartta's laavu (today's `laavu`) |
 | Campsite | `tourism=camp_site` | 202 | 13 | 3 | toilets, drinking water, fee | `campsite` | the road sign's tent |
-| Outdoor lodge | | 304 | 13 | 3 | LIPAS's | | today's `hut` |
+| Outdoor lodge | | 304 | 13 | 3 | LIPAS's | none: LIPAS is Finland's (#1200) | today's `hut` |
 | Other shelter | `amenity=shelter` (picnic and weather shelters) | | 15 | 5 | shelter type, fire place | `shelter` | a roof |
 | Hotel and hostel | `tourism=hotel`, `hostel`, `guest_house`, `motel`, `chalet` | | 16 | 6 | phone, website | `lodging` | a bed |
 
@@ -187,7 +206,7 @@ order where they crowd.
 |---|---|---|---|---|---|---|---|
 | Landing place | `leisure=slipway`, `canoe=put_in` | 205 | 11 in Paddle, 14 | 2 | access, seasons | none | today's `landing` |
 | Harbour | `leisure=marina`, `harbour=yes` | | 12 in Paddle, 14 | 3 | fuel, water, toilets, fee | `harbor` | INT 1's harbour (an anchor) |
-| Boating service point | | 203 | 12 | 3 | LIPAS's | | today's `anchor` |
+| Boating service point | | 203 | 12 | 3 | LIPAS's | none: LIPAS is Finland's (#1200) | today's `anchor` |
 | Beach and swimming place | `leisure=swimming_area`, `leisure=bathing_place` | 3220, 3230 | 11 in Swim, 14 | 3 | water temperature from SYKE with its station and date (#121's note, 2026-10-18) | `swimming` | today's `swim` |
 
 **Landmarks** (the basemap, no switch)
@@ -229,7 +248,7 @@ standard, as #181's rule has it:
 
 Today each group of places is its own symbol layer, and LIPAS's points are
 drawn even where they overlap (`icon-allow-overlap`). One order needs one
-layer: every OSM and LIPAS place goes into one GeoJSON source (`places`),
+layer: every OSM and LIPAS place but the shops goes into one GeoJSON source (`places`),
 drawn by one symbol layer whose `symbol-sort-key` is the kind's rank, so a
 hospital keeps its spot over a café wherever they meet. LIPAS's points take
 their place in that order rather than overlapping everything. A kind's
@@ -239,7 +258,11 @@ that draws it checks which reads better), or the layer is split in two at
 that zoom with the same sort key. MML's springs and tar pits stay their own
 layer under OSM's, so OSM's win where both have one (#1179). The same place
 from LIPAS and OSM within 80 m shows once, LIPAS's (`staysNear()`'s rule).
-Shops keep their purple names in the same layer, coloured by group.
+Beyond the four countries the fallback (below) is a vector source, so it
+can't join the GeoJSON layer: it is a layer of its own under the places
+layer, drawing only outside the countries Polku's data covers (a `within`
+filter on their outline), so a place near the edge isn't drawn twice and
+Polku's own wins where both reach.
 
 ### One home for the table
 
@@ -257,14 +280,18 @@ product (zoom 12) holds only places to stay today (`is_stay()`), and the
 `inspection` product (zoom 14) keeps objects with `amenity`, `tourism`,
 `leisure`, `natural`, `barrier`, `ford`, `man_made` or `historic`, which
 leaves out `shop`, `emergency`, `healthcare` and `military`. The table's
-second part makes `places` hold every OSM kind of the table (nodes, ways
-and relations as their centres, with their tags), in Finland, Sweden,
-Norway and Estonia. #1179's part adds a small product for its points; the
-second part folds those into `places` or builds on that product, whichever
-is simpler once it has merged. The weekly build publishes it from `main`
-on its own (docs/OSM_DATA.md); the app reads the new kinds only from a
-manifest that says it has them, and until then draws what OpenFreeMap's
-tiles have, as today.
+second part adds a new product, `pois` (zoom 12), holding every OSM kind of
+the table but the shops drawn from OpenFreeMap's tiles (nodes, ways and
+relations as their centres, with their tags), in Finland, Sweden, Norway
+and Estonia. It is a new product rather than a wider `places`, because
+`osmStays()` trusts every object in `places` to be somewhere to sleep: a
+hospital added there would show as a shelter in **Places to sleep** before
+the app could tell it apart. When `staysNear()` reads `pois` (part 3),
+`places` goes. #1179's part adds a small product for its points; `pois`
+takes them in, or builds on that product, whichever is simpler once it has
+merged. The weekly build publishes it from `main` on its own
+(docs/OSM_DATA.md); the app reads `pois` only from a manifest that has it,
+and until then draws what OpenFreeMap's tiles have, as today.
 
 **Beyond the four countries,** the map falls back on OpenFreeMap's `poi`
 layer, which covers the world but has fixed classes and only at zoom 14
@@ -320,7 +347,7 @@ sources.
   Photon's names: the nearest places of that kind, five at most, each with
   its name (or the kind's when it has none) and its distance; a tap opens
   its card as a place found by name does.
-- **Where:** near the map's middle, within 10 km, from the `places`
+- **Where:** near the map's middle, within 10 km, from the `pois`
   tiles around it (zoom 12, as `staysNear()` reads `osmStays()`); with a
   route drawn, **Near the map · Along the route** (`seg small`) switches to
   places within 500 m of the route, in order along it with their distance
@@ -332,6 +359,9 @@ sources.
   map does); beyond them, Photon's search gets the map's middle rounded to
   about a kilometre, PRODUCT.md's rule for nearby search, as search does
   today.
+- **At 200 %** the results' marks give way to the names, and a name from
+  Finland carries `lang="fi"` with `hyphens: auto`, so a long one breaks
+  between syllables rather than anywhere.
 - **Words:** each row's `words` in English, the app's language; the
   Finnish ones that people type anyway ("laavu", "kota", "wc") too.
 
@@ -350,7 +380,7 @@ A group in Check, **On the way** (choice 4): drinking water, toilets and
 groceries within 300 m of the route on land, and landing places, harbours
 and drinking water on the water, each a row with its distance from the
 start and, where the route has times, when you'd reach it; a tap opens its
-card. The kinds are the table's `along`. Where the `places` tiles failed or
+card. The kinds are the table's `along`. Where the `pois` tiles failed or
 the route goes beyond Polku's own data, Check says which stretch it
 couldn't read ("Not checked"), never that there's no water. Long gaps
 between water are worth saying too ("No drinking water mapped for 34 km");
@@ -393,13 +423,14 @@ as AGENTS.md has them.
    `PLACE_WANTS`, `PLACE_LAYERS`, `INSPECTABLE` and the LIPAS point types
    read from it. Nothing changes on the screen; the smoke groups `layers`,
    `cards` and `quick` show it. *Strongest model, high.*
-2. **The data:** the `places` product holds every OSM kind in the table,
-   with the JSON and its drift test, built and published by the weekly
+2. **The data:** the new `pois` product with every OSM kind in the table,
+   the JSON and its drift test, built and published by the weekly
    build (or a manual run of it), and the app's reader. *Strongest model,
    high* (saved data's source, the build).
 3. **Layers and the map:** the groups and switches of choice 1, the one
    `places` layer with its ranks and zooms, landmarks in the basemap
-   (choice 2), LIPAS in the kinds (choice 5), the fallback beyond the four
+   (choice 2), LIPAS in the kinds (choice 5), pharmacies' group (choice 6),
+   `staysNear()` moved to `pois` and `places` dropped, the fallback beyond the four
    countries, the stored choices moved, the quick drawer's tiles. Checked
    beside the mock-up at 390 × 844 and 1440 × 900. *Strongest model,
    high.*
@@ -420,4 +451,6 @@ as AGENTS.md has them.
   at zoom 14).
 - Photon's `osm_tag` filter's answers outside the four countries, and its
   terms for such use.
-- Whether the zoom filter's whole-zoom limit is still MapLibre 5.24's.
+- Whether the zoom filter's whole-zoom limit is still MapLibre 5.24's, and
+  whether its `within` works for points (a note from #1147 says it fails
+  for polygons in 5.24).
