@@ -2127,7 +2127,8 @@ def mml_paths(chrome):
       m.setTransformRequest((url)=>({url: url.startsWith('https://avoin-karttakuva.maanmittauslaitos.fi/vectortiles/') ? url.replace(/^https:/,'mmltest:')
         : /^https:\\/\\/tiles\\.openfreemap\\.org\\/planet\\/[^/]+\\/14\\/9171\\/4611\\.pbf/.test(url) ? 'ofmtest://14/9171/4611' : url}));
       const {missingPieces}=await import('/js/mmlpaths.js'), I=await import('/js/inspect.js');
-      const pieces=async()=>{for(let k=0;k<40;k++){const f=m.querySourceFeatures('mmlPaths'); if(f.length)return f; await wait(250);} return [];};
+      // (the source's own data: querySourceFeatures would give the pieces cut and repeated by the GeoJSON source's tiles)
+      const pieces=async()=>{for(let k=0;k<40;k++){const f=(await m.getSource('mmlPaths').getData()).features; if(f.length)return f; await wait(250);} return [];};
       const kx=111320*Math.cos(61.6*Math.PI/180), metres=(a,b)=>Math.hypot((a[0]-b[0])*kx,(a[1]-b[1])*110574), len=(c)=>c.reduce((s,p,i)=>i?s+metres(c[i-1],p):0,0);
       m.jumpTo({center:tileMid(14,9171,4611),zoom:13.6}); await settle();
       if(m.queryRenderedFeatures({layers:['mml-path']}).length)errs.push('paths drawn under zoom 14');
