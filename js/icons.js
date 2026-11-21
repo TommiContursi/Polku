@@ -463,9 +463,7 @@ function windArrow() {
 
 // Trail details (js/trails.js): what's in the way, on a small disc. Brown for
 // fallen trees, slate for barriers, red for a gate you may not pass, blue for fords.
-const TRAIL_ICONS = {
-  tree: '#a16207', gate: '#334155', 'gate-no': '#dc2626', stile: '#334155', cycle: '#334155', ford: '#0284c7',
-};
+const TRAIL_ICONS = { tree: '#a16207', ford: '#0284c7' };
 function trailIcon(kind) {
   const [c, ctx] = canvas(22, 22);
   ctx.beginPath();
@@ -475,8 +473,6 @@ function trailIcon(kind) {
   ctx.lineWidth = 1.6;
   ctx.strokeStyle = '#ffffff';
   ctx.stroke();
-  ctx.strokeStyle = '#ffffff';
-  ctx.fillStyle = '#ffffff';
   ctx.lineCap = 'round';
   ctx.lineJoin = 'round';
   const line = (pts, w = 1.8) => {
@@ -489,18 +485,6 @@ function trailIcon(kind) {
     line([[5, 14.5], [17, 9]], 3.4); // the trunk, lying across
     line([[9.5, 12.4], [8.5, 8.6]], 1.4); // two branches
     line([[13.2, 10.7], [13.6, 6.8]], 1.4);
-  } else if (kind === 'gate' || kind === 'gate-no') {
-    line([[6.5, 6], [6.5, 16]]);
-    line([[15.5, 6], [15.5, 16]]);
-    line([[6.5, 9], [15.5, 9]], 1.5);
-    line([[6.5, 13], [15.5, 13]], 1.5);
-  } else if (kind === 'stile') {
-    line([[6, 16.5], [11, 5.5], [16, 16.5]], 1.6);
-    line([[7.6, 13], [14.4, 13]], 1.4);
-    line([[9.2, 9.4], [12.8, 9.4]], 1.4);
-  } else if (kind === 'cycle') {
-    line([[5, 9], [13, 9]], 2);
-    line([[9, 13.5], [17, 13.5]], 2);
   } else if (kind === 'ford') {
     const wave = (y) => line([[4.5, y], [7, y - 1.8], [9.5, y], [12, y - 1.8], [14.5, y], [17, y - 1.8]], 1.6);
     wave(10);
@@ -508,6 +492,88 @@ function trailIcon(kind) {
   }
   return ctx.getImageData(0, 0, c.width, c.height);
 }
+
+// Gates and barriers (#1232): a mark for each kind on a disc coloured by who may pass, `td-<mark>-<unknown|closed|open>`. A closed
+// one also has a white padlock out of its lower right corner, on a canvas 4 px larger each side, so the disc stays on the point.
+const WHO = { unknown: '#334155', closed: '#dc2626', open: '#15803d' };
+function barrierIcon(mark, who) {
+  const pad = who === 'closed' ? 4 : 0, [c, ctx] = canvas(22 + 2 * pad, 22 + 2 * pad);
+  ctx.translate(pad, pad);
+  ctx.beginPath();
+  ctx.arc(11, 11, 9.8, 0, Math.PI * 2);
+  ctx.fillStyle = WHO[who];
+  ctx.fill();
+  ctx.lineWidth = 1.6;
+  ctx.strokeStyle = '#ffffff';
+  ctx.stroke();
+  ctx.fillStyle = '#ffffff';
+  ctx.lineCap = 'round';
+  ctx.lineJoin = 'round';
+  const line = (pts, w = 1.8) => {
+    ctx.lineWidth = w;
+    ctx.beginPath();
+    pts.forEach(([x, y], i) => (i ? ctx.lineTo(x, y) : ctx.moveTo(x, y)));
+    ctx.stroke();
+  };
+  if (mark === 'gate') { // two posts and two rails
+    line([[6.5, 6], [6.5, 16]]);
+    line([[15.5, 6], [15.5, 16]]);
+    line([[6.5, 9], [15.5, 9]], 1.5);
+    line([[6.5, 13], [15.5, 13]], 1.5);
+  } else if (mark === 'lift') { // a post, a short counterweight and the boom, with two of its stripes
+    line([[6.5, 9.5], [6.5, 17]], 2);
+    line([[3.6, 9.5], [6.5, 9.5]], 3.2);
+    line([[6.5, 9.5], [18, 9.5]], 2.4);
+    ctx.strokeStyle = WHO[who];
+    ctx.lineCap = 'butt';
+    line([[10.4, 9.5], [11.9, 9.5]], 2.8);
+    line([[14.1, 9.5], [15.6, 9.5]], 2.8);
+  } else if (mark === 'chain') { // two posts and the chain sagging between them
+    line([[5.5, 7], [5.5, 16]], 2);
+    line([[16.5, 7], [16.5, 16]], 2);
+    ctx.lineWidth = 1.4;
+    ctx.setLineDash([1.6, 1.2]);
+    ctx.beginPath();
+    ctx.moveTo(5.5, 8.5);
+    ctx.quadraticCurveTo(11, 15, 16.5, 8.5);
+    ctx.stroke();
+    ctx.setLineDash([]);
+  } else if (mark === 'blocks') {
+    for (const x of [4.6, 9.6, 14.6]) ctx.fillRect(x, 9, 2.8, 5.5);
+  } else if (mark === 'stile') {
+    line([[6, 16.5], [11, 5.5], [16, 16.5]], 1.6);
+    line([[7.6, 13], [14.4, 13]], 1.4);
+    line([[9.2, 9.4], [12.8, 9.4]], 1.4);
+  } else if (mark === 'turnstile') { // from above: the rotor's ring and its three arms
+    ctx.lineWidth = 1.4;
+    ctx.beginPath();
+    ctx.arc(11, 11, 5.8, 0, Math.PI * 2);
+    ctx.stroke();
+    for (const a of [-90, 30, 150]) line([[11, 11], [11 + 5.8 * Math.cos(a * Math.PI / 180), 11 + 5.8 * Math.sin(a * Math.PI / 180)]], 1.6);
+  } else if (mark === 'cycle') {
+    line([[5, 9], [13, 9]], 2);
+    line([[9, 13.5], [17, 13.5]], 2);
+  }
+  if (who === 'closed') {
+    ctx.fillStyle = '#ffffff';
+    ctx.strokeStyle = WHO.closed;
+    ctx.lineWidth = 1.2;
+    ctx.beginPath();
+    ctx.arc(19.5, 19.5, 5.6, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+    ctx.fillStyle = WHO.closed;
+    ctx.beginPath();
+    ctx.roundRect(16.9, 19, 5.2, 3.9, 0.8);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.arc(19.5, 19, 1.8, Math.PI, 0);
+    ctx.stroke();
+  }
+  return ctx.getImageData(0, 0, c.width, c.height);
+}
+// the trail details' kinds, as Heads-up names them: a gate with no access is a closed gate
+const KIND_MARK = { gate: ['gate', 'unknown'], 'gate-no': ['gate', 'closed'], stile: ['stile', 'unknown'], cycle: ['cycle', 'unknown'] };
 
 /** An icon as an image URL, for keys and lists (the same drawing the map uses). */
 export function iconUrl(id) {
@@ -608,6 +674,9 @@ export function makeIcon(id) {
   if (id.startsWith('strike-')) return strike(id.slice(7));
   if (id === 'uphill-arrow') return doubleChevron();
   if (id.startsWith('td-') && TRAIL_ICONS[id.slice(3)]) return trailIcon(id.slice(3));
+  if (id.startsWith('td-') && KIND_MARK[id.slice(3)]) return barrierIcon(...KIND_MARK[id.slice(3)]);
+  const barrier = /^td-(gate|lift|chain|blocks|stile|turnstile|cycle)-(unknown|closed|open)$/.exec(id);
+  if (barrier) return barrierIcon(barrier[1], barrier[2]);
   if (id.startsWith('lipas-')) {
     const name = id.slice(6);
     const type = Object.values(LIPAS_TYPES).find((t) => t.icon === name);

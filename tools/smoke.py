@@ -1245,7 +1245,7 @@ def town_gates(chrome):
     fails = pg.js("""(async () => {
       const errs=[], m=polku.map, wait=(ms)=>new Promise((r)=>setTimeout(r,ms));
       const settle=async()=>{await wait(800);await Promise.race([new Promise(r=>{m.once('idle',r);m.triggerRepaint();}),wait(10000)]);await wait(400);};
-      const TD=['td-points','td-gates','td-gates-all'].filter((id)=>m.getLayer(id)), lifts=[1860369450,9713885733,9713885737];
+      const TD=['td-points','td-barriers','td-gates','td-gates-all'].filter((id)=>m.getLayer(id)), lifts=[1860369450,9713885733,9713885737];
       const drawn=()=>m.queryRenderedFeatures({layers:TD});
       const gates=()=>drawn().filter((f)=>/^gate/.test(f.properties.kind));
       const tap=async(f)=>{const point=m.project(f.geometry.coordinates);m.fire('click',{point,lngLat:m.unproject(point),originalEvent:new MouseEvent('click')});await wait(400);
@@ -1515,6 +1515,47 @@ def town_housenumbers(chrome):
     fails += [f'console: {e[:160]}' for e in pg.errors()]
     pg.close()
     print(f"{'ok  ' if not fails else 'FAIL'} house numbers from zoom 17, giving way to every other name (#1223)" + ''.join(f'\n     - {f}' for f in fails), flush=True)
+    return not fails
+
+
+# #1232: gates and barriers by kind, coloured by who may pass, from the recorded trail details at Tykkikallio: a lift gate's mark
+# not mapped, blocks open to bikes and on foot, a locked gate closed, each drawn; with Access restrictions off no barrier but
+# the fallen tree (Trail details'); with Trail details off the gates still load and draw, and the key lists every mark.
+def town_gate_marks(chrome):
+    pg = chrome.page(1440, 900, False)
+    pg.open_app({'activity': 'mtb', 'base': 'trail'}, None, '#12/62.2383/25.7547')
+    pg.js(SEED_TRAILS)
+    fails = pg.js("""(async () => {
+      const errs=[], m=polku.map, wait=(ms)=>new Promise((r)=>setTimeout(r,ms));
+      const settle=async()=>{await wait(800);await Promise.race([new Promise(r=>{m.once('idle',r);m.triggerRepaint();}),wait(10000)]);await wait(400);};
+      const BARRIERS=['td-barriers','td-gates','td-gates-all'], drawn=(ids)=>m.queryRenderedFeatures({layers:ids.filter((id)=>m.getLayer(id))});
+      m.jumpTo({center:[25.75467,62.238343],zoom:17.5}); await settle();
+      for(let t=0;t<40&&!drawn(BARRIERS).length;t++)await wait(250);
+      const pts=(await m.getSource('trailPoints').getData()).features, icon=(osm)=>(pts.find((f)=>f.properties.osm===osm)||{properties:{}}).properties.icon;
+      for(const [osm,want] of [[1860369450,'td-lift-unknown'],[8792824646,'td-blocks-open'],[13286967323,'td-gate-closed'],[7891535782,'td-gate-unknown'],[2884128302,'td-tree']])
+        if(icon(osm)!==want)errs.push(`${osm}: ${icon(osm)}, not ${want}`);
+      const lifts=drawn(['td-gates-all']).filter((f)=>f.properties.icon==='td-lift-unknown');
+      if(lifts.length<3)errs.push(`${lifts.length} lift gates drawn at 17.5`);
+      if(!m.hasImage('td-lift-unknown'))errs.push("the lift gate's mark wasn't made");
+      const {makeIcon}=await import('/js/icons.js'), closed=makeIcon('td-gate-closed'), plain=makeIcon('td-gate-unknown');
+      if(!closed||!plain||closed.width<=plain.width)errs.push("a closed mark has no room for its padlock");
+      // Access restrictions off: no barrier, the fallen tree still (Trail details')
+      polku.set({overlays:{...polku.state.overlays,access:false}}); m.jumpTo({center:[25.7652,62.2289],zoom:17.5}); await settle();
+      if(BARRIERS.some((id)=>m.getLayer(id)))errs.push('barriers drawn with Access restrictions off');
+      if(!drawn(['td-points']).some((f)=>f.properties.kind==='tree'))errs.push('no fallen tree with Access restrictions off');
+      // Trail details off, Access restrictions on: the gates load and draw, no fallen tree
+      polku.set({trailDetails:false,overlays:{...polku.state.overlays,access:true}}); m.jumpTo({center:[25.75467,62.238343],zoom:17.5}); await settle();
+      for(let t=0;t<40&&!drawn(['td-gates-all']).length;t++)await wait(250);
+      if(!drawn(['td-gates-all']).length)errs.push('no gates with Trail details off');
+      if(m.getLayer('td-points'))errs.push('trail details drawn while off');
+      document.querySelector('#btn-layers').click(); await wait(500); document.querySelector('#quick-layers .qt-more').click(); await wait(800);
+      const key=[...document.querySelectorAll('#layers-body .lg-key')].map((k)=>k.textContent).join(' ');
+      for(const w of ['Lift gate (boom)','Chain or rope','Blocks','Turnstile','Closed: private or locked'])if(!key.includes(w))errs.push(`the key has no ${w}`);
+      return errs;
+    })()""")
+    fails += [f'console: {e[:160]}' for e in pg.errors()]
+    pg.close()
+    print(f"{'ok  ' if not fails else 'FAIL'} gates and barriers by kind, coloured by who may pass, with Access restrictions (#1232)" + ''.join(f'\n     - {f}' for f in fails), flush=True)
     return not fails
 
 
@@ -21487,7 +21528,7 @@ def route_card(chrome):
 # 22 px off too (some 50 m at z14, past legNear()'s 40 m): its card's Add a waypoint here adds one on the line.
 NL_SPOT = """(async (off) => {
   const p = polku.planner, m = polku.map, c = p.legs[0].result.coords, a = c[0], b = c[c.length - 1], ll = [a[0] + (b[0] - a[0]) * 0.25, a[1]];
-  for (const id of ['poi-outdoor', 'poi-minor', 'label-peak', 'lipas-point', 'td-points', 'td-gates', 'td-gates-all', 'poi-parking', 'poi-parking-all', 'poi-shops']) if (m.getLayer(id)) m.setLayoutProperty(id, 'visibility', 'none');
+  for (const id of ['poi-outdoor', 'poi-minor', 'label-peak', 'lipas-point', 'td-points', 'td-barriers', 'td-gates', 'td-gates-all', 'poi-parking', 'poi-parking-all', 'poi-shops']) if (m.getLayer(id)) m.setLayoutProperty(id, 'visibility', 'none');
   const v = p.viewPadding(0);
   m.jumpTo({ center: ll, zoom: 14, offset: [(v.left - v.right) / 2, (v.top - v.bottom) / 2] });
   await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
@@ -21564,7 +21605,7 @@ SC_HELP = """(() => {
     if (el !== m.getCanvas()) return no(`under ${el && (el.id || String(el.className.baseVal ?? el.className))}`);
     const box = (d) => [[q.x - d, q.y - d], [q.x + d, q.y + d]], layers = (ids) => ids.filter((id) => m.getLayer(id));
     if (line && layers(['route-casing']).length && m.queryRenderedFeatures(box(line), { layers: ['route-casing'] }).length) return no('on the route');
-    if (m.queryRenderedFeatures(box(16), { layers: layers(['poi-outdoor', 'poi-minor', 'label-peak', 'lipas-point', 'td-points', 'td-gates', 'td-gates-all', 'poi-parking', 'poi-parking-all', 'poi-shops']) }).length) return no('on a place');
+    if (m.queryRenderedFeatures(box(16), { layers: layers(['poi-outdoor', 'poi-minor', 'label-peak', 'lipas-point', 'td-points', 'td-barriers', 'td-gates', 'td-gates-all', 'poi-parking', 'poi-parking-all', 'poi-shops']) }).length) return no('on a place');
     return { x, y, ll: m.unproject(q).toArray() };
   };
   // (the map's middle as the finger went down and as it lifted: whether the gesture moved it, whatever moves it after)
@@ -21605,7 +21646,7 @@ SC_HELP = """(() => {
     },
     at: (ll, opts) => clear(ll, opts),
     // the map's places hidden (or back), so a hold or a tap on the free map is never on one, whatever the tiles have
-    places: (on) => { for (const id of ['poi-outdoor', 'poi-minor', 'label-peak', 'lipas-point', 'td-points', 'td-gates', 'td-gates-all', 'poi-parking', 'poi-parking-all', 'poi-shops']) if (m.getLayer(id)) m.setLayoutProperty(id, 'visibility', on ? 'visible' : 'none'); return true; },
+    places: (on) => { for (const id of ['poi-outdoor', 'poi-minor', 'label-peak', 'lipas-point', 'td-points', 'td-barriers', 'td-gates', 'td-gates-all', 'poi-parking', 'poi-parking-all', 'poi-shops']) if (m.getLayer(id)) m.setLayoutProperty(id, 'visibility', on ? 'visible' : 'none'); return true; },
     // the map at a share of its width and height, if it's free there
     spotAt(fx, fy, opts) { const r = R(); return clear(m.unproject([r.width * fx, r.height * fy]).toArray(), opts); },
     // a way under the screen at a share of its height (a tap there shows its card with the planner put away), clear of the places
@@ -25586,7 +25627,7 @@ PICK_SEED = """(async () => {
   const W = await import(location.origin + '/js/ways.js'), fx = await (await fetch(location.origin + '/tools/fixtures/ways-tampere.json')).json();
   W.holdWays();
   // (no place's icon, and no road works, under a tap: the ways are what's tapped)
-  for (const id of ['poi-outdoor', 'poi-minor', 'label-peak', 'lipas-point', 'td-points', 'td-gates', 'td-gates-all', 'poi-parking', 'poi-parking-all', 'poi-shops', 'sf-points', 'sf-lines']) if (polku.map.getLayer(id)) polku.map.setLayoutProperty(id, 'visibility', 'none');
+  for (const id of ['poi-outdoor', 'poi-minor', 'label-peak', 'lipas-point', 'td-points', 'td-barriers', 'td-gates', 'td-gates-all', 'poi-parking', 'poi-parking-all', 'poi-shops', 'sf-points', 'sf-lines']) if (polku.map.getLayer(id)) polku.map.setLayoutProperty(id, 'visibility', 'none');
   for (const [k, d] of Object.entries(fx.tiles)) { const [x, y] = k.split('/').map(Number); W.seedWays(x, y, d); }
   window.__fx = fx;
   return true;
@@ -26726,7 +26767,7 @@ GROUPS = [
     ('site', [license_text], 'the built site: LICENSE sent as text, since every file\'s copyright line links to it (#115); against the checkout it checks nothing'),
     ('pacing', [pacing, paced_legs, net_fails], 'calls made together go out paced and counted (mocked services, a fake clock); legs refused for a slot follow at it (#78); the calls that failed, in Data sources (#687)'),
     ('loading', [loading, routing_edits], 'cancel obsolete routing, edits/Undo/Clear, shared subscribers, refusal/recovery, deadlines, terrain slots and LIPAS viewport/cache (mocked)'),
-    ('layers', [layers, layer_coverage, cycleway_style, cycling_restrictions, waterway_style, property_lines, property_plots, wetland_style, reedbed_style, mml_bogs, mml_rock, mml_water, mml_open, osm_cliffs, saddles, mml_cards, town_gates, town_bridges, town_oneway, town_parks, town_parking, town_shops, town_housenumbers], 'the Layers panel in every sport'),
+    ('layers', [layers, layer_coverage, cycleway_style, cycling_restrictions, waterway_style, property_lines, property_plots, wetland_style, reedbed_style, mml_bogs, mml_rock, mml_water, mml_open, osm_cliffs, saddles, mml_cards, town_gates, town_bridges, town_oneway, town_parks, town_parking, town_shops, town_housenumbers, town_gate_marks], 'the Layers panel in every sport'),
     ('raster', [raster_maps, aerial_fallback, aerial_labels], 'terrain and aerial detail, bounded high-density WMS symbols, depth boundaries and missing aerial detail (#649, #650, #653); the map\'s words on the aerial photos at 4.5:1 on their halo (#554)'),
     ('coarse', [coarse], 'a coarse map underneath (#1091): the base map\'s tile four zoom levels up stands in for one that hasn\'t come, at 1440 and 390'),
     ('offline', [mml_offline], 'Save offline keeps the National Land Survey\'s tiles (#1176): its terrain at zooms 11–14 and property boundaries while on, under addresses without the key, two at a time and ten a second at most; what Offline maps says an area lacks; offline, with the real worker, the bogs drawn from the saved tile and no message'),

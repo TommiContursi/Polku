@@ -161,6 +161,18 @@ export function obstacleKind(t) {
   return null;
 }
 
+// A barrier's mark on the map (#1232): a mark for each kind, coloured by who may pass (closed: no or private access, or locked;
+// open: open to all, or to bikes or people on foot; else not mapped), as `td-<mark>-<who>`; fallen trees and fords as `td-<kind>`
+const MARK = { gate: 'gate', swing_gate: 'gate', sliding_gate: 'gate', wicket_gate: 'gate', hampshire_gate: 'gate', bump_gate: 'gate', lift_gate: 'lift', bar: 'lift',
+  chain: 'chain', rope: 'chain', block: 'blocks', stile: 'stile', kissing_gate: 'stile', horse_stile: 'stile', turnstile: 'turnstile', 'full-height_turnstile': 'turnstile',
+  cycle_barrier: 'cycle', motorcycle_barrier: 'cycle' };
+export function markOf(t, kind) {
+  const mark = kind !== 'tree' && kind !== 'ford' && MARK[t.barrier];
+  if (!mark) return `td-${kind}`;
+  const open = (v) => ['yes', 'designated', 'permissive'].includes(v);
+  return `td-${mark}-${kind === 'gate-no' || ['no', 'private'].includes(t.access) || t.locked === 'yes' ? 'closed' : [t.access, t.bicycle, t.foot].some(open) ? 'open' : 'unknown'}`;
+}
+
 // width factors for the halo (band) and the dashed centre line
 const HALO_W = [0.62, 1, 1.32, 1.6];
 const CENTRE_W = [0.8, 1, 1.35, 1.6];
@@ -201,7 +213,7 @@ function featuresOf(data) {
       ways: data.w.map(([id, t, g]) => (t.highway ? wayFeature(id, t, g) : fenceFeature(id, t, g))),
       points: data.n.map(([id, lon, lat, t]) => ({ id, kind: obstacleKind(t), lon, lat, t })).filter((p) => p.kind).map((p) => ({
         type: 'Feature', id: p.id, geometry: { type: 'Point', coordinates: [p.lon, p.lat] },
-        properties: { osm: p.id, kind: p.kind, barrier: p.t.barrier, obstacle: p.t.obstacle, ford: p.t.ford, access: p.t.access, name: p.t.name },
+        properties: { osm: p.id, kind: p.kind, icon: markOf(p.t, p.kind), barrier: p.t.barrier, obstacle: p.t.obstacle, ford: p.t.ford, access: p.t.access, bicycle: p.t.bicycle, foot: p.t.foot, locked: p.t.locked, name: p.t.name },
       })),
     };
     built.set(data, f);

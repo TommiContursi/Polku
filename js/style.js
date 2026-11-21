@@ -1223,8 +1223,9 @@ function addRoads(s, P, hc, layers, ctx) {
   }
 
   // Trail details beside and on the line: overgrown (green dots) on one side,
-  // wet or muddy (blue dots) on the other; fallen trees, stiles, cycle barriers
-  // and fords as icons from zoom 15, gates from 16.
+  // wet or muddy (blue dots) on the other; fallen trees and fords as icons from
+  // zoom 15. Gates and barriers are Access restrictions' (below).
+  const tdIcon = { 'icon-size': zi(15, 0.72, 18, 1), 'icon-allow-overlap': true, 'icon-rotation-alignment': 'viewport', 'icon-pitch-alignment': 'viewport' };
   if (s.trailDetails) {
     // fences, walls and hedges (the vector tiles have none): where you can't go through
     add({
@@ -1247,21 +1248,24 @@ function addRoads(s, P, hc, layers, ctx) {
       id: 'td-wet', type: 'line', source: 'trailWays', minzoom: 14, filter: ['==', ['get', 'mud'], true], layout: { 'line-cap': 'round' },
       paint: { 'line-color': darkBase ? '#7cb4ff' : '#1d5fe0', 'line-offset': side(-1), ...dots },
     });
-    const icon = { 'icon-size': zi(15, 0.72, 18, 1), 'icon-allow-overlap': true, 'icon-rotation-alignment': 'viewport', 'icon-pitch-alignment': 'viewport' };
     add({
       id: 'td-way-tree', type: 'symbol', source: 'trailWays', minzoom: 15, filter: ['==', ['get', 'tree'], true],
-      layout: { 'symbol-placement': 'line', 'symbol-spacing': zi(15, 70, 18, 140), 'icon-image': 'td-tree', ...icon },
+      layout: { 'symbol-placement': 'line', 'symbol-spacing': zi(15, 70, 18, 140), 'icon-image': 'td-tree', ...tdIcon },
     });
     add({
       id: 'td-way-ford', type: 'symbol', source: 'trailWays', minzoom: 15, filter: ['==', ['get', 'wayford'], true],
-      layout: { 'symbol-placement': 'line-center', 'icon-image': 'td-ford', ...icon },
+      layout: { 'symbol-placement': 'line-center', 'icon-image': 'td-ford', ...tdIcon },
     });
-    // gates from 16 (#1221): a town's courtyard gates covered a phone's streets at 15 (130 of 165 marks in Helsinki's centre); at 16
-    // they give way to each other and to names, and from 17 every one is drawn
-    const gate = ['in', ['get', 'kind'], ['literal', ['gate', 'gate-no']]], tdIcon = ['concat', 'td-', ['get', 'kind']];
-    add({ id: 'td-points', type: 'symbol', source: 'trailPoints', minzoom: 15, filter: ['!', gate], layout: { 'icon-image': tdIcon, ...icon } });
-    add({ id: 'td-gates', type: 'symbol', source: 'trailPoints', minzoom: 16, maxzoom: 17, filter: gate, layout: { 'icon-image': tdIcon, ...icon, 'icon-allow-overlap': false } });
-    add({ id: 'td-gates-all', type: 'symbol', source: 'trailPoints', minzoom: 17, filter: gate, layout: { 'icon-image': tdIcon, ...icon } });
+    add({ id: 'td-points', type: 'symbol', source: 'trailPoints', minzoom: 15, filter: ['in', ['get', 'kind'], ['literal', ['tree', 'ford']]], layout: { 'icon-image': ['get', 'icon'], ...tdIcon } });
+  }
+  // Gates and barriers with Access restrictions (#1232): a mark for each kind, coloured by who may pass (js/trails.js markOf()).
+  // Stiles and cycle barriers from 15; gates from 16 (#1221): a town's courtyard gates covered a phone's streets at 15 (130 of
+  // 165 marks in Helsinki's centre); at 16 they give way to each other and to names, and from 17 every one is drawn
+  if (accessOn) {
+    const gate = ['in', ['get', 'kind'], ['literal', ['gate', 'gate-no']]], mark = { 'icon-image': ['get', 'icon'], ...tdIcon };
+    add({ id: 'td-barriers', type: 'symbol', source: 'trailPoints', minzoom: 15, filter: ['in', ['get', 'kind'], ['literal', ['stile', 'cycle']]], layout: mark });
+    add({ id: 'td-gates', type: 'symbol', source: 'trailPoints', minzoom: 16, maxzoom: 17, filter: gate, layout: { ...mark, 'icon-allow-overlap': false } });
+    add({ id: 'td-gates-all', type: 'symbol', source: 'trailPoints', minzoom: 17, filter: gate, layout: mark });
   }
 }
 
