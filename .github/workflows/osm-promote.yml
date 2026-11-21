@@ -36,8 +36,8 @@ concurrency:
 
 env:
   # The build's code that runs here with Polku's credentials, pinned: a change to it is a PR here
-  OSM_DATA_REPOSITORY: TommiContursi/Polku
-  OSM_DATA_COMMIT: 439c0916d9cb7a0887b657b1e36426199e7b0b7b
+  OSM_DATA_REPOSITORY: TommiContursi/polku-osm-data
+  OSM_DATA_COMMIT: 560aa98e976d721be56f175451b4651de1540664
 
 jobs:
   check:
