@@ -270,8 +270,9 @@ Plain and Night maps, in MTB and paddle; its PR lists what else it covered.
   Night and the aerial maps), from zoom 14, property IDs from zoom 16, in
   the Layers panel under Terrain, off by default, with an **Opacity**
   slider. A plot is tinted under the mouse pointer and when picked, which
-  opens a card with its property ID (#1159); **Plot under the pointer** is
-  its own switch, on at first. No transition.
+  opens a card with its property ID (#1159); **Property details** is its own
+  switch for both, on at first, with a mouse and by touch (#1199). No
+  transition.
 - **Tap and hover** (#1175): a tap or a click on the terrain opens the
   card the map's other things use, naming what it is, and the pointer's
   tooltip says the same. A bog's card has its survey class, easier or hard

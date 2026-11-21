@@ -1045,12 +1045,13 @@ def property_lines(chrome):
     return not fails
 
 
-# #1148: with Property boundaries on (and its Plot under the pointer, on at first), the plot under the pointer is tinted, and a click on a plot opens its card with its ID
-# and tints it more, by its id (all its tiles' pieces), until the card closes.
+# #1148: with Property boundaries on (and its Property details switch, on at first), the plot under the pointer is tinted, and a click on a plot opens its card with its ID
+# and tints it more, by its id (all its tiles' pieces), until the card closes. #1199: with Property details off, no plot is tinted or
+# picked by a mouse, a hold or a tap, and the switch is there by touch too.
 def property_plots(chrome):
     pg = chrome.page(1440, 900, False)
     pg.open_app({'activity': 'mtb', 'overlaysByActivity': {'mtb': {'propertyLines': True}}}, None, '#16.5/62.2415/25.748')
-    fails = pg.js("""(async () => {
+    r = pg.js("""(async () => {
       const errs=[], m=polku.map, wait=(ms)=>new Promise(r=>setTimeout(r,ms)), frame=()=>new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)));
       const t0=performance.now();
       while(performance.now()-t0<30000&&!m.queryRenderedFeatures({layers:['property-plot']}).length)await wait(250);
@@ -1058,7 +1059,8 @@ def property_plots(chrome):
       const {inspectLayers,pickFeature,hitBox}=await import(location.origin+'/js/inspect.js');
       let spot=null;
       for(let y=200;y<800&&!spot;y+=23)for(let x=200;x<1200&&!spot;x+=29){const f=pickFeature(m.queryRenderedFeatures(hitBox({x,y},false),{layers:inspectLayers(m)}));if(f&&f.layer.id==='property-plot'&&f.id!=null)spot={x,y,f};}
-      if(!spot)return ['no spot at Jyväskylä where a click picks a plot'];
+      if(!spot)return {errs:['no spot at Jyväskylä where a click picks a plot']};
+      const ll=m.unproject([spot.x,spot.y]).toArray();
       const st=(id)=>m.getFeatureState({source:'ov-propertyLines',sourceLayer:'PalstanSijaintitiedot',id});
       const cv=m.getCanvas(), R=cv.getBoundingClientRect();
       const ev=(type)=>cv.dispatchEvent(new MouseEvent(type,{bubbles:true,cancelable:true,clientX:R.left+spot.x,clientY:R.top+spot.y,button:0,buttons:type==='mouseup'?0:1}));
@@ -1095,26 +1097,106 @@ def property_plots(chrome):
         else if(/^Property /.test(c.title))errs.push('a click in a park opened the property under it, not the park');
         polku.planner.cards.close(); await frame();
       }
-      // Plot under the pointer, under the switch in Layers: off, the pointer tints nothing, and a click still picks the plot
+      // Property details, under the switch in Layers (#1199): off, the pointer, a click and a hold pick no plot, and what's under it
+      // opens as without the layer; the plot whose card is open as it goes off is no longer tinted, and its card closes
+      const idle=()=>Promise.race([new Promise(r=>{m.once('idle',r);m.triggerRepaint();}),wait(5000)]);
+      const tinted=()=>m.getLayer('property-plot')&&m.queryRenderedFeatures([spot.x,spot.y],{layers:['property-plot']}).some(f=>f.id===spot.f.id)&&(st(spot.f.id).lit||st(spot.f.id).hover);
+      const move=(dx)=>cv.dispatchEvent(new PointerEvent('pointermove',{bubbles:true,pointerType:'mouse',clientX:R.left+spot.x+dx,clientY:R.top+spot.y,buttons:0}));
+      ev('mousedown'); ev('mouseup'); ev('click'); await wait(600);
+      if(!/^Property \\d/.test(polku.planner.cards.current?.title||''))errs.push('before Property details goes off, a click on the plot opens no card of it');
       document.querySelector('#btn-layers').click(); await frame();
       [...document.querySelectorAll('button')].find(b=>/^More: all layers/.test(b.getAttribute('aria-label')||''))?.click(); await frame();
-      const sub=[...document.querySelectorAll('[data-group=terrain] input[role=switch]')].find(i=>i.closest('label')?.textContent.includes('Plot under the pointer'));
-      if(!sub)errs.push('no Plot under the pointer switch under Property boundaries');
+      const sub=[...document.querySelectorAll('[data-group=terrain] input[role=switch]')].find(i=>i.closest('label')?.textContent.includes('Property details'));
+      if(!sub)errs.push('no Property details switch under Property boundaries');
       else {
-        if(!sub.checked)errs.push('Plot under the pointer is off at first');
-        sub.click(); await frame(); polku.set({}); await frame();
-        cv.dispatchEvent(new PointerEvent('pointermove',{bubbles:true,pointerType:'mouse',clientX:R.left+spot.x+1,clientY:R.top+spot.y,buttons:0})); await frame(); await frame();
-        if(st(spot.f.id).hover)errs.push('the plot is tinted with Plot under the pointer off');
-        if(polku.state.plotHover!==false)errs.push('Plot under the pointer stays on after its switch');
+        if(!sub.checked)errs.push('Property details is off at first');
+        if(!/^Property /.test(polku.planner.cards.current?.title||''))errs.push("the plot's card closed as Layers opened");
+        sub.click(); await idle();
+        if(polku.state.plotSelect!==false)errs.push('Property details stays on after its switch');
+        if(tinted())errs.push('the picked plot stays tinted after Property details goes off');
+        if(polku.planner.cards.current)errs.push(`the plot's card stays open after Property details goes off: ${polku.planner.cards.current.title}`);
+        polku.planner.cards.close(); await frame();
+        move(1); await frame(); await frame();
+        if(tinted())errs.push('the plot under the pointer is tinted with Property details off');
+        if(cv.style.cursor==='pointer')errs.push('the pointer cursor over a plot with Property details off');
         ev('mousedown'); ev('mouseup'); ev('click'); await wait(600);
-        if(!st(spot.f.id).lit)errs.push('with Plot under the pointer off, a click no longer picks the plot');
+        let c=polku.planner.cards.current;
+        if(c)errs.push(`with Property details off, a click on a plot with nothing else there opened ${c.title}`);
+        polku.planner.cards.close(); await frame();
+        // a hold (the right button, whose contextmenu MapLibre passes on at its mouseup): the spot's card, not the property's
+        for(const t of ['mousedown','contextmenu','mouseup'])cv.dispatchEvent(new MouseEvent(t,{bubbles:true,cancelable:true,clientX:R.left+spot.x,clientY:R.top+spot.y,button:2,buttons:t==='mousedown'?2:0}));
+        await wait(600); c=polku.planner.cards.current;
+        if(!c)errs.push('with Property details off, a hold on a plot opens no card');
+        else if(/^Property /.test(c.title))errs.push(`with Property details off, a hold on a plot opens ${c.title}`);
+        polku.planner.cards.close(); await frame();
+        if(park){
+          for(const t of ['mousedown','mouseup','click'])cv.dispatchEvent(new MouseEvent(t,{bubbles:true,cancelable:true,clientX:R.left+park.x,clientY:R.top+park.y,button:0,buttons:t==='mousedown'?1:0}));
+          await wait(800); c=polku.planner.cards.current;
+          if(!c||/^Property /.test(c.title))errs.push(`with Property details off, a click in the park opened ${c?c.title:'no card'}`);
+          polku.planner.cards.close(); await frame();
+        }
+        // on again: the plot under the pointer tinted, and a click opens its card
+        sub.click(); await idle();
+        move(0); await frame(); await frame();
+        if(!tinted())errs.push('the plot under the pointer is not tinted with Property details back on');
+        ev('mousedown'); ev('mouseup'); ev('click'); await wait(600);
+        c=polku.planner.cards.current;
+        if(!c||!/^Property \\d/.test(c.title))errs.push(`with Property details back on, a click on the plot opened ${c?c.title:'no card'}`);
         polku.planner.cards.close();
       }
-      return errs;
+      return {errs, ll};
     })()""", timeout=90000)
+    fails, ll = r['errs'], r.get('ll')
     fails += [f'console: {e[:160]}' for e in pg.errors()]
     pg.close()
-    print(f"{'ok  ' if not fails else 'FAIL'} a property's plot tinted under the pointer and picked (#1148)" + ''.join(f'\n     - {f}' for f in fails), flush=True)
+    # by touch, at a phone's size (#1199): Property details is there too, and with it off a tap on the plot opens nothing
+    # (at the plot the mouse picked: the phone's view of the centre is all park)
+    pg = chrome.page(390, 844, True)
+    pg.open_app({'activity': 'mtb', 'overlaysByActivity': {'mtb': {'propertyLines': True}}}, None, f'#17/{ll[1]:.6f}/{ll[0]:.6f}' if ll else '#17/62.2415/25.748')
+    at = pg.js("""(async () => {
+      const m=polku.map, wait=(ms)=>new Promise(r=>setTimeout(r,ms)), t0=performance.now();
+      while(performance.now()-t0<30000&&!(m.isSourceLoaded('ov-propertyLines')&&m.queryRenderedFeatures({layers:['property-plot']}).length))await wait(250);
+      const {inspectLayers,pickFeature,hitBox,areaUnder}=await import(location.origin+'/js/inspect.js'), R=m.getCanvas().getBoundingClientRect();
+      for(let y=200;y<560;y+=17)for(let x=40;x<350;x+=19){const f=pickFeature(m.queryRenderedFeatures(hitBox({x,y},true),{layers:inspectLayers(m)}));if(f&&f.layer.id==='property-plot'&&!areaUnder(m,[x,y]))return [R.left+x,R.top+y];}
+      return null;
+    })()""", timeout=40000)
+    title = "new Promise(r=>setTimeout(()=>r(polku.planner.cards.current?.title||''),800))"
+    if not at:
+        fails.append('by touch: no spot at Jyväskylä where a tap picks a plot')
+    else:
+        pg.quick_tap(*at)
+        t = pg.js(title)
+        if not t.startswith('Property '):
+            fails.append(f'by touch: before Property details goes off, a tap on the plot opened {t or "no card"}')
+        sw = pg.js("""(async () => {
+          const frame=()=>new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)));
+          polku.planner.cards.close(); await frame();
+          if (document.querySelector('#layers-panel').hidden) { document.querySelector('#btn-layers').click(); await frame(); document.querySelector('#quick-layers .qt-more').click(); await frame(); }
+          const sub=[...document.querySelectorAll('[data-group=terrain] input[role=switch]')].find(i=>i.closest('label')?.textContent.includes('Property details'));
+          if(!sub)return 'no Property details switch under Property boundaries';
+          sub.closest('label').scrollIntoView({block:'center'}); await new Promise(r=>setTimeout(r,400));
+          const r=(sub.offsetWidth?sub:sub.closest('label')).getBoundingClientRect();
+          return [r.left+r.width/2, r.top+r.height/2];
+        })()""")
+        if isinstance(sw, list):
+            pg.quick_tap(*sw)  # (the switch as a finger finds it)
+            sw = pg.js("""(async () => {
+          if(polku.state.plotSelect!==false)return "a tap on Property details doesn't turn it off";
+          document.querySelector('#layers-panel').dispatchEvent(new KeyboardEvent('keydown',{key:'Escape',bubbles:true}));
+          document.querySelector('#quick-layers').dispatchEvent(new KeyboardEvent('keydown',{key:'Escape',bubbles:true}));
+          await new Promise(r=>setTimeout(r,600));
+          return !document.querySelector('#layers-panel').hidden||document.querySelector('#quick-layers.open') ? 'Layers stays open after Escape' : '';
+        })()""")
+        if sw:
+            fails.append(f'by touch: {sw}')
+        else:
+            pg.quick_tap(*at)
+            t = pg.js(title)
+            if t:
+                fails.append(f'by touch: with Property details off, a tap on a plot with nothing else there opened {t}')
+    fails += [f'by touch, console: {e[:160]}' for e in pg.errors()]
+    pg.close()
+    print(f"{'ok  ' if not fails else 'FAIL'} a property's plot tinted under the pointer and picked, and Property details off by mouse and touch (#1148, #1199)" + ''.join(f'\n     - {f}' for f in fails), flush=True)
     return not fails
 
 
