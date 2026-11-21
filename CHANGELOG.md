@@ -10,6 +10,22 @@ What's new in [Polku](https://polku.si), from the latest updates back to the fir
 - **A tap on a way** chooses what a tap on a street, a trail or a cycleway picks: **The whole way**, as before; **The piece**, from junction to junction, with that piece's length and profile; or **Off**, where a tap on a way opens nothing.
 - Holding the map, or a right-click, still opens the spot's card whatever you choose, with the way's piece when you've chosen **The piece**. Search and links to a spot open their cards as before.
 
+### Arrows on one-way streets ([#1217](https://github.com/TommiContursi/Polku/issues/1217))
+
+- From zoom 16, a small grey arrow along a one-way street shows which way traffic goes, in Finland and beyond. One-way cycle paths get the same arrow in blue. Where an arrow and a name would overlap, the name wins.
+- The arrow is for traffic: the map can't tell whether bikes may ride both ways, and many one-way streets in towns let them. Tap the street: its card says whether bikes may ride both ways.
+
+### Bridges stand out ([#1218](https://github.com/TommiContursi/Polku/issues/1218))
+
+- A road on a bridge now has a dark edge from zoom 14 (a light one on the Night map), so a bridge reads as one over a road, a railway or a valley, not only over water. From zoom 15, paths, footways, cycle paths and tracks on a bridge get the same edge, and bridge decks mapped as areas are drawn with it.
+- Footways, steps and paths in a tunnel or an underpass are drawn at half strength, as cycle paths and roads in tunnels already were.
+
+### Fewer gates on a town's map ([#1221](https://github.com/TommiContursi/Polku/issues/1221))
+
+- With **Trail details** on, gates now show from zoom 16 instead of 15. In a town most of them are courtyard gates on the pavements, which covered the streets: on a phone in Helsinki's centre they were 130 of the 165 marks at zoom 15.
+- At zoom 16, gates that would overlap each other or a name give way, and from zoom 17 every gate is drawn. Fallen trees, stiles, cycle barriers and fords still show from zoom 15.
+- A route through a closed gate still gets its **Heads-up** item, whatever the zoom.
+
 ### Reeds in the water look the same everywhere ([#1248](https://github.com/TommiContursi/Polku/issues/1248))
 
 - On the Trail, Plain and Night maps, reeds in the water are reed tufts on the water's blue, whether they come from OpenStreetMap's reedbeds or, in Finland, from the National Land Survey's overgrowing water. Before, the same reedy shore could be tufts on a pale ground, which read as land, or blue dashes on the water. Blue dashes now mean bogs and wetlands only.
