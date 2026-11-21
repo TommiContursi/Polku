@@ -72,7 +72,8 @@ headers a `<meta>` tag can't set (HSTS, `frame-ancestors`, `X-Frame-Options`, th
   minifies, writes the deploy id and the headers. Cloudflare runs it to publish, and a session
   runs it to test the built site (below); the app itself keeps running from the repository as
   it is, with no build step. `wrangler.jsonc` names the Worker and points it at `site/`;
-  Cloudflare's build runs `npm ci`, `tools/site.sh` and then `npx wrangler deploy`. A session
+  Cloudflare's build runs `npm ci`, `tools/site.sh` and then `npx wrangler deploy`, with
+  wrangler pinned in the same lockfile as esbuild, so a new release can't change a deploy. A session
   runs `npm ci` once in its worktree; `node_modules/` and `site/` stay out of git. GitHub's
   smoke suite keeps testing the repository as it is.
 - **Minified with esbuild**, pinned with its integrity hash in a lockfile (`package.json`

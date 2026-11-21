@@ -82,7 +82,7 @@ The `otherways` quick-point check schedules its edit in the same turn as the fir
 polku.si publishes a built copy of the app (#115, [the plan](plans/protected-polku.md)), made by `tools/site.sh` into `site/`; the app itself runs from the checkout, with no build step. Cloudflare's build runs `npm ci && tools/site.sh`, then `npx wrangler deploy` (`wrangler.jsonc`). Locally:
 
 ```bash
-npm ci                          # once per worktree: esbuild, pinned in package-lock.json
+npm ci                          # once per worktree: esbuild and wrangler, pinned in package-lock.json
 tools/site.sh                   # → site/, about a second
 python3 serve.py 8771 --site    # the built site, as Cloudflare serves it, with the policy enforced
 POLKU_URL=http://localhost:8771/ python3 tools/smoke.py startfail changelog
