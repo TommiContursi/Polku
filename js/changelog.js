@@ -101,7 +101,7 @@ export function openChangelog(opener = document.activeElement) {
       retry.hidden = true;
     } catch (e) {
       if (controller.signal.aborted) return;
-      status.textContent = navigator.onLine ? 'Release notes could not be loaded. Try again, or open the full changelog on GitHub.' : 'You’re offline and no saved release notes are available. Reconnect, then try again.';
+      status.textContent = navigator.onLine ? 'Release notes could not be loaded. Try again.' : 'You’re offline and no saved release notes are available. Reconnect, then try again.';
       retry.hidden = false;
     } finally {
       if (!controller.signal.aborted) { retry.disabled = false; content.removeAttribute('aria-busy'); }
