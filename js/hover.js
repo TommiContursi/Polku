@@ -41,7 +41,6 @@ export function initHover(map, app) {
   let route = false; // showing the planner's route readout
   let current = null; // what the tooltip shows
 
-  const plots = () => !app.plotHover || app.plotHover(); // Property boundaries' Plot under the pointer (#1148)
   let glowing = false; // a leg of your route glows brighter because the pointer rests on it
   let drawn = false; // the way under the pointer drawn on the map (#574)
   const hide = () => {
@@ -70,7 +69,7 @@ export function initHover(map, app) {
     if (enrich) detailTimer = 0; else timer = 0;
     if (!at || !app.enabled() || map.isMoving() || map.getContainer().querySelector('.polku-popup')) return;
     const planning = app.isPlanning();
-    const layers = inspectLayers(map).filter((id) => id !== 'water' && !id.endsWith('-halo') && !id.startsWith('road-tunnel') && (id !== 'property-plot' || plots()));
+    const layers = inspectLayers(map).filter((id) => id !== 'water' && !id.endsWith('-halo') && !id.startsWith('road-tunnel'));
     if (planning) layers.push(...['route-casing', 'nogo-fill', ...ALT_LAYERS].filter((id) => map.getLayer(id)));
     const [x, y] = at;
     const feats = featuresAt(map, { x, y }, [[x - RADIUS, y - RADIUS], [x + RADIUS, y + RADIUS]], layers);
@@ -129,7 +128,7 @@ export function initHover(map, app) {
     if (!at || app.isDrawing()) { pointer = false; light(null); return; }
     // what a click picks first is what's lit: your route's line, an alternative route (#1029) and a place's icon win over
     // a LIPAS route (inspect.js)
-    const layers = [...inspectLayers(map).filter((id) => id !== 'property-plot' || plots()), ...['route-casing', 'heads-icon', 'heads-on-icon', ...ALT_LAYERS].filter((id) => map.getLayer(id))];
+    const layers = [...inspectLayers(map), ...['route-casing', 'heads-icon', 'heads-on-icon', ...ALT_LAYERS].filter((id) => map.getLayer(id))];
     const feats = featuresAt(map, { x: at[0], y: at[1] }, hitBox({ x: at[0], y: at[1] }, false), layers);
     const hit = feats.some((f) => f.layer.id !== 'route-casing' || f.properties.kind !== 'gap');
     pointer = hit; canvas.style.cursor = hit ? 'pointer' : '';
