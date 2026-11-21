@@ -9355,7 +9355,7 @@ OFF_FC_SAVE = """(async () => {
   const a = await O.saveArea(p.offlinePayload(), { buffer: 500, terrain: true }, () => {}, new AbortController().signal);
   const kept = Object.values(a.forecast || {});
   if (kept.length < 2) f.push(`the area keeps ${kept.length} forecast points, not the route's 2 or more`);
-  if (kept.some((v) => !(Date.now() - v.at < 3600e3 && v.s.time.length === 100))) // (a fresh copy: an hour old at most) f.push(`the forecast kept: ${kept.map((v) => `${v.s.time.length} hours from ${new Date(v.at).toISOString()}`).join(', ')}`);
+  if (kept.some((v) => !(Date.now() - v.at < 3600e3 && v.s.time.length === 100))) f.push(`the forecast kept: ${kept.map((v) => `${v.s.time.length} hours from ${new Date(v.at).toISOString()}`).join(', ')}`);
   const back = 48 * 3600;
   for (const v of kept) { v.at -= back * 1000; v.s.time = v.s.time.map((t) => t - back); }
   await idb('offline').set(a.id, a);
