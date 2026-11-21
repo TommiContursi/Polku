@@ -177,6 +177,23 @@ reach. Each finding is filed; each fix gets a smoke check that fails before it.
 - **Accounts:** two-step sign-in, a passkey where offered, on GitHub, Cloudflare and OVH, and
   the transfer lock on polku.si at OVH. These are Tomba's; the check lists them.
 
+## A backup outside GitHub
+
+Today the code, the issues (where every decision lives) and the PRs exist only on GitHub and
+in local clones. Cloudflare is no backup: it keeps built versions of the site, not the source.
+
+- **A weekly workflow** pushes `main`, the other branches and the tags to a private
+  repository on Bitbucket, which Tomba already has. `pr-screenshots` is left out: `main`'s whole
+  history is about 13 MiB (a bare clone, 2026-11-21), while GitHub reports about 800 MB for the
+  repository, nearly all of it screenshots. Bitbucket's free plan allows 1 GB a workspace.
+- **The same workflow exports the issues, PRs, comments and milestones** as JSON with the
+  workflow's own token, and pushes them to a branch of their own in that repository (or a
+  second one), so one Bitbucket credential is enough.
+- **A restore is tried once** when it's set up: a clone from Bitbucket, and the JSON opened.
+- A few minutes a week of Actions time.
+- Tomba's step: the Bitbucket repository and an access token with write access to it only,
+  stored as a secret in GitHub.
+
 ## Tomba's steps
 
 Each comes with click-by-click instructions in its PR or Hand-over when it is next.
@@ -191,6 +208,8 @@ Each comes with click-by-click instructions in its PR or Hand-over when it is ne
 4. GitHub Pro, a monthly Actions budget that stops runs when reached, a check that Codex's
    and Claude's GitHub access include the repository, GitHub Pages off, and the repository
    made private.
+5. A private Bitbucket repository for the backup and an access token for it, stored as a
+   GitHub secret.
 
 ## Order
 
@@ -204,6 +223,7 @@ Each comes with click-by-click instructions in its PR or Hand-over when it is ne
 | 6 | session, Tomba | The OSM data build moved (step 3) | can start after this plan's review |
 | 7 | session | The security check and its fixes | can start after this plan's review |
 | 8 | Tomba | Pro, budget, private (step 4) | parts 4 and 6 |
+| 9 | session, Tomba | The backup to Bitbucket (step 5) | can start after this plan's review |
 
 Later, each its own issue when chosen: the OSM archives (28 files, 11.2 GB) from OVH to
 Cloudflare R2 at `data.polku.si` (free traffic, about 0.30 $ a month for storage, faster and
