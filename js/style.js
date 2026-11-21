@@ -947,11 +947,11 @@ function addRoads(s, P, hc, layers, ctx) {
   const noBikeMark = ['any', ['all', noBike, ['any', ['!', closed], allows('foot')]], ['all', closed, allows('foot'), ['!', allows('bicycle')]]];
   // No bikes (#1137): short red bars across the line, the trail's halo wide plus 2 px a side,
   // drawn over the centre line, so the marks beside the line (overgrown, wet, private) keep their sides.
-  const noBikeBars = (id, source, filter, maxzoom = 24) => {
+  const noBikeBars = (id, source, filter) => {
     if (!accessOn) return;
     const bar = (halo) => (source === 'trailWays' ? ['+', ['*', halo, ['get', 'wf']], 4] : halo + 4);
     add({
-      id, type: 'line', source, ...(source === 'trailWays' ? {} : { 'source-layer': 'transportation' }), minzoom: 13.3, maxzoom,
+      id, type: 'line', source, ...(source === 'trailWays' ? {} : { 'source-layer': 'transportation' }), minzoom: 13.3,
       filter: ['all', filter, ['!=', ['get', 'subclass'], 'footway']],
       paint: {
         'line-color': '#ff003c',
@@ -1015,14 +1015,14 @@ function addRoads(s, P, hc, layers, ctx) {
     }
 
     // Tracks (forest roads, metsäautotie-ish): long dashes like the Finnish terrain map. OpenFreeMap's zoom 13
-    // tiles hold only some, so from 13 to 14 the trail details draw them inside their tiles (#1128), and the
-    // tiles' own are hidden there (a filter's zoom is the tile's); from 14 the tiles draw them all.
-    const trackLayers = (id, source, filter, idx, zooms = {}) => {
+    // tiles hold only some, so the trail details draw them inside their tiles at every zoom (#1128, #1192),
+    // and the tiles' own are hidden there.
+    const trackLayers = (id, source, filter, idx) => {
       const src = source === 'trailWays' ? { source } : { source, 'source-layer': 'transportation' };
       const haloW = zi(11, 2, 14, 4 * k, 16, 7 * k, 18, 12 * k);
-      if (!zooms.maxzoom) bridgeEdge(`${id}-edge`, src, filter, haloW);
+      bridgeEdge(`${id}-edge`, src, filter, haloW);
       add({
-        id: `${id}-halo`, type: 'line', ...src, minzoom: 11, ...zooms, filter,
+        id: `${id}-halo`, type: 'line', ...src, minzoom: 11, filter,
         layout: { 'line-cap': 'round', 'line-join': 'round' },
         paint: {
           'line-color': diffOn
@@ -1033,7 +1033,7 @@ function addRoads(s, P, hc, layers, ctx) {
         },
       });
       add({
-        id, type: 'line', ...src, minzoom: 10, ...zooms, filter,
+        id, type: 'line', ...src, minzoom: 10, filter,
         paint: {
           'line-color': P.track,
           'line-width': zi(10, 0.6, 14, 1.4 * k, 16, 2.6 * k, 18, 4.5 * k),
@@ -1041,11 +1041,11 @@ function addRoads(s, P, hc, layers, ctx) {
           'line-opacity': zi(10, 0, 10.5, 0.8 * roadsDim, 14, roadsDim),
         },
       });
-      noBikeBars(`${id}-nobike`, source, ['all', filter, noBikeMark], zooms.maxzoom);
+      noBikeBars(`${id}-nobike`, source, ['all', filter, noBikeMark]);
     };
     const isTrack = ['all', ['==', ['get', 'class'], 'track'], bf];
-    trackLayers(`track-${brunnel}`, 'ofmTrails', covered ? ['all', isTrack, ['!', ['all', ['<', ['zoom'], 14], ['within', ctx.trailCoverage]]]] : isTrack, MTB_IDX);
-    if (s.trailDetails) trackLayers(`track-osm-${brunnel}`, 'trailWays', isTrack, ['get', 'mtb'], { minzoom: 13, maxzoom: 14 });
+    trackLayers(`track-${brunnel}`, 'ofmTrails', covered ? ['all', isTrack, ['!', ['within', ctx.trailCoverage]]] : isTrack, MTB_IDX);
+    if (s.trailDetails) trackLayers(`track-osm-${brunnel}`, 'trailWays', isTrack, ['get', 'mtb']);
 
     // Paths: a difficulty-coloured halo (MTB) under a black dashed centre line.
     // With trail details on, the trails inside the loaded detail tiles are
