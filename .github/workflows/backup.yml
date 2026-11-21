@@ -66,3 +66,12 @@ jobs:
           git add -A
           git diff --cached --quiet || git commit -q -m "GitHub export $(date -u +%F)"
           git push "$bb" github-export
+
+      - name: Restore check (a fresh clone from Bitbucket)
+        run: |
+          git clone -q "https://x-token-auth:${BITBUCKET_TOKEN}@bitbucket.org/${BITBUCKET_REPOSITORY}.git" restore
+          cd restore
+          want=$(git -C ../code rev-parse refs/heads/main)
+          test "$(git rev-parse origin/main)" = "$want" || { echo "::error::main in Bitbucket is not GitHub's main"; exit 1; }
+          git show origin/github-export:issues.json | jq -e 'map(select(.number == 115)) | length == 1' > /dev/null
+          echo "main $want restored; issues.json holds $(git show origin/github-export:issues.json | jq length) entries"
