@@ -10,12 +10,16 @@ on:
         description: 'Only these groups and sizes, in one job (empty: the full suite)'
         required: false
         default: ''
+      site:
+        description: 'The built site (tools/site.sh, the policy enforced) in place of the checkout'
+        type: boolean
+        default: false
 
 permissions:
   contents: read
 
 concurrency:
-  group: smoke-${{ github.ref }}
+  group: smoke-${{ github.ref }}-${{ inputs.site }}-${{ inputs.groups }}
   cancel-in-progress: true
 
 jobs:
@@ -76,9 +80,15 @@ jobs:
           sudo apt-get install -y -qq fonts-inter
           fc-match Inter
 
+      - name: Built site
+        if: inputs.site
+        run: npm ci --no-audit --no-fund && tools/site.sh
+
       - name: Dev server
+        env:
+          SITE: ${{ inputs.site && '--site' || '' }}
         run: |
-          python3 serve.py 8765 > serve.log 2>&1 &
+          python3 serve.py 8765 $SITE > serve.log 2>&1 &
           for i in $(seq 30); do curl -sf -o /dev/null http://localhost:8765/index.html && exit 0; sleep 1; done
           echo "The dev server didn't answer"; exit 1
 
@@ -129,6 +139,10 @@ jobs:
           [ -f smoke.log ] || { echo "## Smoke suite: didn't run" >> "$GITHUB_STEP_SUMMARY"; exit 0; }
           python3 .github/smoke_summary.py smoke.log --netlog "$RUNNER_TEMP/netlog" --save-hosts hosts.tsv > summary.md
           cat summary.md >> "$GITHUB_STEP_SUMMARY"
+          # the built site's policy violations, which serve.py --site prints (a blocked image or request may fail no check)
+          if grep -q 'CSP violation' serve.log 2>/dev/null; then
+            { echo '### Policy violations'; echo '```'; grep 'CSP violation' serve.log | sort | uniq -c | sort -rn | head -50; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
+          fi
 
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: always()

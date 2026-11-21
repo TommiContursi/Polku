@@ -90,8 +90,8 @@ function tufts(ctx, colour, feet) {
   ctx.stroke();
 }
 
-// a reedbed's fill: tufts on the wetland colour, so it covers the dashes under it (#1144). `reedbed-<fill>-<reeds>`,
-// both hex without '#'
+// reeds in the water, OSM's reedbeds (#1144) and MML's overgrowing water: tufts on an opaque ground, the water's colour
+// (#1248). `reedbed-<fill>-<reeds>`, both hex without '#'
 function reedbed(id) {
   const [, fill, reed] = id.split('-');
   const [c, ctx] = canvas(12, 12);
