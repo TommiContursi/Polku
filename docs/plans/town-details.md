@@ -236,7 +236,8 @@ streets, not a layer of gate marks.
   zoom 15).
 - **The marks themselves** are [#1232](https://github.com/TommiContursi/Polku/issues/1232): a mark for each kind of
   gate and barrier (a lift gate's boom of its own), coloured by who may
-  pass, decided on 2026-11-21. Which switch draws them is still open there.
+  pass, drawn with **Access restrictions** instead of Trail details, all
+  decided on 2026-11-21.
 
 ### House numbers
 
