@@ -11,7 +11,7 @@
 // re-samples the grid. Particle canvases render at 1× pixel density.
 
 import { measuredSnow } from './winter.js';
-import { forecastCells, cellSize, latticePoint, alignSeries, uncached, skyKind, sampleAt, windClass, forecastKnown } from './weather.js';
+import { forecastCells, cellSize, latticePoint, alignSeries, uncached, skyKind, sampleAt, windClass, forecastKnown, fetchedAt } from './weather.js';
 import { compass, dist } from './geo.js';
 import { strikesIn } from './lightning.js';
 import { STRIKE_COLOURS } from './icons.js';
@@ -1732,9 +1732,9 @@ export class WeatherOverlay {
       const g = this.grid;
       const st = sourceStatus('openmeteo');
       const problem = (z && !w && this.trip.a.windError ? 'The forecast along your route couldn’t be loaded' : null)
-        || (w && w.stale ? `Showing the forecast from ${hhmm(w.from)} — Open-Meteo couldn’t be reached.` : null)
+        || (w && w.stale ? `Showing the forecast from ${fetchedAt(w.from)} — Open-Meteo couldn’t be reached.` : null)
         || (this.status && !this.loading ? this.status
-          : g && g.stale ? `Showing the forecast from ${hhmm(g.from)} — Open-Meteo couldn’t be reached${st ? `; trying again at ${hhmm(st.until)}` : ''}.` : null);
+          : g && g.stale ? `Showing the forecast from ${fetchedAt(g.from)} — Open-Meteo couldn’t be reached${st ? `; trying again at ${hhmm(st.until)}` : ''}.` : null);
       this.noteEl.classList.toggle('warn', !!problem);
       if (problem || !z) this.noteEl.textContent = problem ? `⚠ ${problem}` : `${this.rideOn() ? 'The shaded band is your ride. ' : ''}Road works and road conditions follow this time too.`;
       else if (!this.noteEl.querySelector('.wx-key')) this.noteEl.innerHTML = `Wind on the way, under the hours: ${BAND_KEY}`; // (once, not on every frame of Play)

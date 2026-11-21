@@ -19,7 +19,8 @@ const rad = (d) => (d * Math.PI) / 180;
 // again zoomed in, and the other way round. A cell stays
 // fresh for an hour (the models update hourly), in memory and in IndexedDB so
 // it survives reloads; copies up to a day old stand in when Open-Meteo can't
-// be reached. Open-Meteo counts every location as a call, so this is what
+// be reached, and past that the forecast kept with an area saved for offline
+// use (#1288). Open-Meteo counts every location as a call, so this is what
 // keeps Polku under its limits.
 const LON0 = 0.05;
 const LAT0 = 0.025;
@@ -30,6 +31,7 @@ const cells = new Map(); // "L/i/j" -> { at, s }
 const inflight = new Map(); // "L/i/j" -> Promise of the request fetching it
 const store = idb('weather');
 store.prune((v) => v && Date.now() - v.at < KEEP).catch(() => {});
+const areas = idb('offline'); // areas saved for offline use (js/offline.js), each with its route's forecast: keepForecast()
 
 export const cellSize = (L) => [LON0 * 2 ** L, LAT0 * 2 ** L];
 /** The nearest lattice point at level L. */
@@ -114,6 +116,17 @@ export async function forecastCells(list, { long = false } = {}) {
   const settled = await Promise.allSettled([...new Set(waits)]);
   const failed = settled.find((r) => r.status === 'rejected');
   const error = failed ? failed.reason : null;
+  // nothing fresh: the forecast kept with an area saved for offline use stands in too, at any age, where it's the newest
+  // copy (its ten days serve the 49 hours' cells as well: keyed by the cell's place alone)
+  const lost = [...new Set(need.map((n) => keys[n]))].filter((k) => !(cells.get(k) && Date.now() - cells.get(k).at < FRESH));
+  if (lost.length) {
+    for (const a of await areas.all().catch(() => [])) {
+      for (const k of lost) {
+        const v = a.forecast && a.forecast[k.slice(2)], f = fallback.get(k);
+        if (v && !(f && f.at >= v.at)) fallback.set(k, v);
+      }
+    }
+  }
   for (const n of need) {
     const c = cells.get(keys[n]);
     if (c && Date.now() - c.at < FRESH) out[n] = c.s;
@@ -216,6 +229,29 @@ export function sampleAt(s, t) {
   };
 }
 
+// one forecast point per ~4 km, up to 12 (≈ every 10–20 km on long rides): the samples whose cells windAlong() asks for
+const forecastIdx = (n, total) => {
+  const k = Math.max(2, Math.min(12, Math.ceil(total / 4000) + 1));
+  return Array.from({ length: k }, (_, j) => Math.round((j / (k - 1)) * (n - 1)));
+};
+
+/**
+ * The ten-day forecast at a route's forecast points (`windAlong()`'s), kept with an area saved for offline use (#1288):
+ * { 'i/j': { at, s } }, each by its level-0 cell's place and when it was fetched. `forecastCells()` falls back to it.
+ */
+export async function keepForecast(pts, along) {
+  const list = forecastIdx(pts.length, along[pts.length - 1] || 1).map((i) => cellAt(pts[i], 0));
+  const got = await forecastCells(list, { long: true });
+  return Object.fromEntries(list.map((c, n) => [keyOf(c).slice(2), { at: got.stale ? got.from : cells.get(keyOf(c, true))?.at ?? Date.now(), s: got[n] }]));
+}
+
+/** When an older forecast standing in was fetched: the time, with its day where that isn't today (a saved one may be
+ *  days old, #1288). */
+export const fetchedAt = (ms) => new Date(ms).toLocaleString([], new Date(ms).toDateString() === new Date().toDateString()
+  ? { hour: '2-digit', minute: '2-digit' } : { weekday: 'short', day: 'numeric', month: 'numeric', hour: '2-digit', minute: '2-digit' });
+/** The route's and a spot's words for an older forecast standing in. */
+export const olderForecast = (from) => `Older forecast${from ? ` (from ${fetchedAt(from)})` : ''}: Open-Meteo couldn’t be reached.`;
+
 /**
  * Wind along a route at the time each part is reached.
  * @param pts   sampled route points
@@ -226,9 +262,7 @@ export function sampleAt(s, t) {
 export async function windAlong(pts, along, tAt, startSec) {
   const n = pts.length;
   const total = along[n - 1] || 1;
-  // one forecast point per ~4 km, up to 12 (≈ every 10–20 km on long rides)
-  const k = Math.max(2, Math.min(12, Math.ceil(total / 4000) + 1));
-  const idx = Array.from({ length: k }, (_, j) => Math.round((j / (k - 1)) * (n - 1)));
+  const idx = forecastIdx(n, total), k = idx.length;
   // a trip that ends more than two days from now (nights on the way): the long forecast
   const now = Date.now() / 1000;
   const long = startSec + (tAt[n - 1] || 0) > now + 46 * 3600;

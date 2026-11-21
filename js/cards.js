@@ -15,6 +15,7 @@ import { STYLES, styleName } from './styles.js';
 import { fmtDist, fmtDuration, compass, bearing, lineLength } from './geo.js';
 import { isNight, staysNear, DEFAULT_BREAK, DEFAULT_ON, MAX_NIGHTS, hhmm, parseHhmm } from './stops.js';
 import { dayOf } from './trip.js';
+import { olderForecast } from './weather.js';
 
 // the point's own marker, as the map draws it
 export function pointMark(pl, i) {
@@ -726,8 +727,6 @@ function weatherGroup(pick) {
   if (w.stale) g.splice(1, 0, failed(olderForecast(w.from))); // (under its heading)
   return g;
 }
-// as the route's notice says it
-const olderForecast = (from) => `Older forecast${from ? ` (from ${new Date(from).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })})` : ''}: Open-Meteo couldn’t be reached.`;
 // LIPAS's places at the spot, each its own card
 function placesGroup(pl, pick) {
   if (!pick.places || !pick.places.length) return [];
