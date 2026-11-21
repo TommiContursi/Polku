@@ -26351,10 +26351,11 @@ def license_text(chrome):
     """The built site sends LICENSE as text: it has no extension, and every file's copyright line links to it (#115)."""
     import urllib.request
     with urllib.request.urlopen(BASE + 'LICENSE', timeout=10) as r:
-        if not r.headers.get('X-Polku-Deploy'):
-            return []  # the checkout, not the built site: its headers are serve.py's own
-        kind = r.headers.get_all('Content-Type') or []
-    return [] if kind == ['text/plain; charset=utf-8'] else [f'LICENSE is sent as {kind or "no type"}, not text']
+        built, kind = r.headers.get('X-Polku-Deploy'), r.headers.get_all('Content-Type') or []
+    fails = [f'LICENSE is sent as {kind or "no type"}, not text'] if built and kind != ['text/plain; charset=utf-8'] else []
+    print(f"{'ok  ' if not fails else 'FAIL'} LICENSE as text" + ('' if built else ' (the checkout: nothing to check)')
+          + ''.join(f'\n     - {f}' for f in fails), flush=True)
+    return not fails
 
 
 GROUPS = [
