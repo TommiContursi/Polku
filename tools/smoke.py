@@ -3440,7 +3440,7 @@ WATER_RAPIDS = """(async () => {
         const added = p.nogos.slice(n0), gap = Math.max(...added.slice(1).map((n, k) => G.dist(added[k].ll, n.ll)));
         if (added.length < 5 || gap > 41) errs.push(`Avoid it put ${added.length} places to avoid along the rapids, up to ${Math.round(gap)} m apart`);
         for (let k = 0; k < 120 && !(routed() && !rapids().length); k++) await wait(250);
-        if (rapids().length || !(p.legs[0].result.portage.length > carried)) errs.push(`after Avoid it: ${rapids().map((w) => w.text).join(' / ') || 'no rapids'}, ${p.legs[0].result.portage.length} carries (${carried} before)`);
+        if (rapids().length || !(p.legs[0].result.portage.length > carried)) errs.push(`after Avoid it: ${rapids().map((w) => { const [i0, i1] = p.itemSpan(w); return `${w.text} at ${Math.round(w.at)} m (${p.analysis.attr.slice(i0, i1 + 1).map((t) => ((t || {}).tags || {}).portage ? 'carried' : 'paddled').join(', ')})`; }).join(' / ') || 'no rapids'}, ${p.legs[0].result.portage.length} carries (${carried} before)`);
       }
     }
     // Rocks & shoals: Ignore still says where the rapids are
@@ -3468,6 +3468,34 @@ WATER_RAPIDS = """(async () => {
       const beside = await W.routeWater(a, [b[0], b[1] + 1e-6], { at: 0, wind: 'ignore' }); // (another leg: the router keeps the first)
       D.seedWater(null);
       if (!beside.water.events.some((e) => e.kind === 'rapids')) errs.push(`a rapid's line 32 m beside the leg isn't a rapid on it: ${beside.water.events.map((e) => e.kind).join(', ') || 'no events'} (its segment ${Math.round(len)} m)`);
+    }
+    { // a wide river (#1239): Kukkolankoski on the Torne, 300 to 700 m wide round an island, with two of MML's rapids
+      // seeded, one across the east channel below the island and one in the west channel. Avoid it on the first blocks
+      // the river bank to bank there, on the water only: the route no longer goes through it beside the places to avoid
+      // (before, it moved 17 m sideways and went through it again)
+      const fc = (features) => ({ type: 'FeatureCollection', features });
+      const line = (c) => ({ type: 'Feature', properties: { kind: 'rapids', src: 'mml' }, geometry: { type: 'LineString', coordinates: c } });
+      const rap = fc([line([[24.0505, 65.97522], [24.04968, 65.97412], [24.04893, 65.97336], [24.04765, 65.97248], [24.04648, 65.97192], [24.04532, 65.9715], [24.0437, 65.97101]]),
+        line([[24.03737, 65.98104], [24.03655, 65.98039], [24.03595, 65.98006], [24.03501, 65.97965]])]);
+      D.seedWater(() => ({ fairways: fc([]), hazards: fc([]), rapids: rap, mml: null, depths: null, wind: null, missing: [], skipped: [] }));
+      while (p.nogos.length) p.removeNogo(0);
+      p.clear();
+      p.addPoint([24.052, 65.985]);
+      p.addPoint([24.044, 65.9675]);
+      for (let k = 0; k < 120 && !(routed() && rapids().length); k++) await wait(250);
+      const r = rapids(), near = (w, q) => { const [i0, i1] = p.itemSpan(w); return p.analysis.pts.slice(i0, i1 + 1).some((c) => G.dist(c, q) < 60); };
+      if (r.length !== 1) errs.push(`down the Torne: ${r.length} rapids (${r.map((w) => w.text).join(' / ') || 'none'}), not one`);
+      else {
+        const [i0, i1] = p.itemSpan(r[0]), mid = p.analysis.pts[Math.round((i0 + i1) / 2)], r0 = p.legs[0].result, a0 = p.analysis, n0 = p.nogos.length;
+        p.itemActions({ g: 'read', w: r[0] }).main.fn();
+        if (!p.nogos.slice(n0).every((n) => n.water)) errs.push('Avoid it on the Torne\\'s rapid: places to avoid that aren\\'t on the water only');
+        // (until the route is routed again round them, and Check has read the new one)
+        const fresh = () => routed() && p.legs[0].result !== r0 && p.analysis !== a0;
+        for (let k = 0; k < 240 && !fresh(); k++) await wait(250);
+        const again = rapids().filter((w) => near(w, mid));
+        if (!fresh() || again.length) errs.push(`after Avoid it on the Torne: ${fresh() ? again.map((w) => w.text).join(' / ') : `not routed again (${p.legs.map((l) => l.status).join(', ')}, a new result ${p.legs[0].result !== r0}, a new analysis ${p.analysis !== a0}, ${p.nogos.length - n0} places to avoid)`} where it was`);
+      }
+      D.seedWater(null);
     }
     // OSM's rapids are rapids, not a rock's zone
     const osm = await D.waterInputs([18.04, 59.31, 18.06, 59.33], { hazards: true, rapids: true }, 0);
@@ -4486,7 +4514,7 @@ AVOID_ROUTER = """(() => {
 })()"""
 AVOID_HELPERS = """const wait = (ms) => new Promise((r) => setTimeout(r, ms)), p = polku.planner;
   const routed = async (n) => { for (let k = 0; k < 100 && !(p.legs.length === n && p.legs.every((l) => l.status === 'ok') && p.analysis); k++) await wait(200); return p.legs.length === n && p.legs.every((l) => l.status === 'ok'); };
-  const circles = (list) => (list || []).map((c) => `${c.ll[0]},${c.ll[1]},${c.r}`).join(' ') || 'none';
+  const circles = (list) => (list || []).map((c) => `${c.ll[0]},${c.ll[1]},${c.r}${c.water ? ' on the water' : ''}`).join(' ') || 'none';
   const drawn = async () => { const s = polku.map.getSource('nogo'); const d = s && (s.getData ? await s.getData() : s._data); return d ? d.features.length : 0; };
   const toastSays = () => { const t = document.querySelector('#toast'); return t && !t.hidden ? t.textContent : ''; };"""
 AVOID_SHARE = """(async () => {
@@ -4499,13 +4527,15 @@ AVOID_SHARE = """(async () => {
   // the places first, the route then: each leg is routed once, around them
   p.addNogo([24.9401234, 60.1754321], 40, 'Avoided place');
   p.addNogos([{ ll: [24.962, 60.1781], r: 25, label: 'Fallen tree' }, { ll: [24.96251, 60.17826], r: 137.4, label: 'Fallen tree' }]);
+  // one on the water only, as a rapid's (#1239): kept in the link and the saved route, never sent to the land router
+  p.addNogos([{ ll: [24.9655, 60.1772], r: 40, water: true, label: 'Rapids' }]);
   for (const q of [[24.930, 60.170], [24.950, 60.180], [24.975, 60.175]]) p.addPoint(q);
   if (!(await routed(2))) errs.push(`the route: ${p.legs.map((l) => l.status).join(', ')}`);
   if (!window.routerCalls.some((u) => /[?&]nogos=/.test(u))) errs.push('no circle in the first page\\'s router calls');
   const url = p.shareUrl(), bad = new URL(url);
   if (!new URL(url).searchParams.get('av')) errs.push(`no places to avoid in the share link: ${url.split('?')[1]}`);
   bad.searchParams.set('av', 'nonsense,24.9_60.1');
-  return { errs, url, bad: bad.toString(), sent: p.nogos.map((n) => ({ ll: n.ll, r: n.r })) };
+  return { errs, url, bad: bad.toString(), sent: p.nogos.map((n) => ({ ll: n.ll, r: n.r, water: n.water })) };
 })()"""
 # a point put inside a place to avoid, on the last page (the bad link's 3 points): the leg can't be routed, and the note says why in Polku's words, not BRouter's (#893)
 AVOID_INSIDE = """(async () => {
@@ -4523,12 +4553,12 @@ AVOID_INSIDE = """(async () => {
 # the link in a clean page: the circles at 5 decimals (about 1 m), each in a router call
 AVOID_OPENED = """(async (sent) => {
   """ + AVOID_HELPERS + """
-  const errs = [], want = sent.map((n) => ({ ll: n.ll.map((v) => +v.toFixed(5)), r: n.r }));
+  const errs = [], want = sent.map((n) => ({ ll: n.ll.map((v) => +v.toFixed(5)), r: n.r, water: n.water }));
   if (!(await routed(2))) errs.push(`the route from the link: ${p.legs.map((l) => l.status).join(', ') || 'no legs'}`);
   if (circles(p.nogos) !== circles(want)) errs.push(`circles from the link: ${circles(p.nogos)}, not ${circles(want)}`);
   if (await drawn() !== want.length) errs.push(`${await drawn()} circles drawn on the map, not ${want.length}`);
   const got = new Set(window.routerCalls.filter((u) => /[?&]lonlats=/.test(u)).flatMap((u) => (new URL(u).searchParams.get('nogos') || '').split('|')));
-  for (const n of want) { const k = `${n.ll[0].toFixed(6)},${n.ll[1].toFixed(6)},${n.r}`; if (!got.has(k)) errs.push(`the router never got ${k}`); }
+  for (const n of want) { const k = `${n.ll[0].toFixed(6)},${n.ll[1].toFixed(6)},${n.r}`; if (got.has(k) === !!n.water) errs.push(n.water ? `the land router got ${k}, a place to avoid on the water only` : `the router never got ${k}`); }
   if (window.routerCalls.some((u) => /valhalla/.test(u))) errs.push('Valhalla was asked');
   if (/couldn/.test(toastSays())) errs.push(`a good link says: ${toastSays()}`);
   // a link from before av=: the same route, no circles
@@ -4554,7 +4584,7 @@ AVOID_OPENED = """(async (sent) => {
 # a reload: the saved route keeps them
 AVOID_RELOADED = """(async (sent) => {
   """ + AVOID_HELPERS + """
-  const want = sent.map((n) => ({ ll: n.ll.map((v) => +v.toFixed(5)), r: n.r }));
+  const want = sent.map((n) => ({ ll: n.ll.map((v) => +v.toFixed(5)), r: n.r, water: n.water }));
   return circles(p.nogos) !== circles(want) ? [`after a reload: ${circles(p.nogos)}, not ${circles(want)}`] : [];
 })"""
 # a link whose circles can't be read: it opens, says so, and shares without av=

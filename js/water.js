@@ -49,7 +49,8 @@ function waterStyle() {
 const CLEAR = { danger: 45, cardinal: 55, shift: 35, point: 25, above: 15, edge: 15 };
 const SHALLOW_M = 20; // round a sounding under 0.5 m (#1184)
 const RAPIDS_M = 40; // either side of a rapid's line: MML's and OSM's lines and the river's lie apart, on a wide river tens of metres (#153)
-const EMPTY_FC = { type: 'FeatureCollection', features: [] };
+const CHORD_M = 1500; // a place to avoid on the water only blocks the river across it up to this far either way (#1239)
+const EMPTY_FC ={ type: 'FeatureCollection', features: [] };
 const OFFLINE = 'Routing over water needs a connection.';
 
 function ensureHidden() {
@@ -162,7 +163,7 @@ async function rasteriseNow(bounds) {
 // for the map): fairways by class into one (red small-boat route, green harbour,
 // blue shipping lane), keep-clear zones (red), avoided places (green) and water
 // near a shallow sounding (blue) into another, and where Syke surveyed into a
-// third, with the rapids. Read back as grid.fair (0 none, 1 small, 2 harbour, 3 ship), grid.haz, grid.nogo,
+// third, with the rapids. Read back as grid.fair (0 none, 1 small, 2 harbour, 3 ship), grid.haz, grid.nogo (2: on the water only),
 // grid.shallow and grid.surveyed (the last two with depths only) and grid.rapids (with rapids only).
 function rasteriseCosts(grid, { fairways, hazards, nogos, depths, rapids }) {
   const { W, H, res } = grid;
@@ -199,11 +200,12 @@ function rasteriseCosts(grid, { fairways, hazards, nogos, depths, rapids }) {
     }
   }
   hc.fillStyle = '#00ff00';
-  for (const n of nogos || []) { const [x, y] = xy(n.ll); disc(hc, x, y, Math.max(1.5, n.r / res)); }
+  for (const n of nogos || []) { if (n.water) continue; const [x, y] = xy(n.ll); disc(hc, x, y, Math.max(1.5, n.r / res)); }
+  const wn = (nogos || []).filter((n) => n.water);
   // lake depths: a tile's cells are squares in Web Mercator, as the grid is (half a cell more each side, so the
   // shore's water isn't left out where Syke's shoreline and the map's differ)
   const rapid = rapids && rapids.features.length;
-  const sc = ((depths && depths.length) || rapid) && canvas();
+  const sc = ((depths && depths.length) || rapid || wn.length) && canvas();
   if (sc) sc.globalCompositeOperation = 'lighter'; // where Syke surveyed (red) and the rapids (blue) add up
   if (depths && depths.length) {
     hc.fillStyle = '#0000ff';
@@ -230,6 +232,26 @@ function rasteriseCosts(grid, { fairways, hazards, nogos, depths, rapids }) {
       sc.beginPath(); g.coordinates.forEach((ll, k) => { const [x, y] = xy(ll); if (k) sc.lineTo(x, y); else sc.moveTo(x, y); }); sc.stroke();
     }
   }
+  // a place to avoid on the water only (a rapid's, #1239): its circle and the river across it, bank to bank, along
+  // the narrowest of twelve chords through it (one that finds no bank within CHORD_M either way isn't one)
+  if (wn.length) {
+    sc.fillStyle = sc.strokeStyle = '#00ff00';
+    sc.lineCap = 'butt';
+    const wet = (x, y) => x >= 0 && y >= 0 && x < W && y < H && grid.type[(y | 0) * W + (x | 0)] !== 0, far = CHORD_M / res;
+    const reach = (x, y, dx, dy) => { let t = 0; while (t < far && wet(x + dx * t, y + dy * t)) t += 0.5; return t < far ? t : Infinity; };
+    for (const n of wn) {
+      const [x, y] = xy(n.ll);
+      disc(sc, x, y, px(n.r));
+      let best = null;
+      for (let k = 0; k < 12; k++) {
+        const dx = Math.cos((k * Math.PI) / 12), dy = Math.sin((k * Math.PI) / 12), a = reach(x, y, dx, dy), b = reach(x, y, -dx, -dy);
+        if (a + b < (best ? best.len : Infinity)) best = { len: a + b, a: [x + dx * a, y + dy * a], b: [x - dx * b, y - dy * b] };
+      }
+      if (!best) continue;
+      sc.lineWidth = 2 * px(n.r);
+      sc.beginPath(); sc.moveTo(...best.a); sc.lineTo(...best.b); sc.stroke();
+    }
+  }
   const fd = fc.getImageData(0, 0, W, H).data, hd = hc.getImageData(0, 0, W, H).data, sd = sc && sc.getImageData(0, 0, W, H).data;
   const n = W * H;
   grid.fair = new Uint8Array(n);
@@ -241,7 +263,7 @@ function rasteriseCosts(grid, { fairways, hazards, nogos, depths, rapids }) {
   if (rapid) grid.rapids = new Uint8Array(n);
   for (let i = 0, j = 0; i < n; i++, j += 4) {
     grid.haz[i] = hd[j] > 128 ? 1 : 0;
-    grid.nogo[i] = hd[j + 1] > 128 ? 1 : 0;
+    grid.nogo[i] = sd && sd[j + 1] > 128 && grid.type[i] !== 0 ? 2 : hd[j + 1] > 128 ? 1 : 0; // (2: closed, on the water only)
     grid.fair[i] = grid.haz[i] ? 0 : fd[j + 2] > 128 ? 3 : fd[j + 1] > 128 ? 2 : fd[j] > 128 ? 1 : 0;
     if (grid.shallow) { grid.shallow[i] = hd[j + 2] > 128 ? 1 : 0; grid.surveyed[i] = sd[j] > 128 ? 1 : 0; }
     if (grid.rapids) grid.rapids[i] = sd[j + 2] > 128 ? 1 : 0;
@@ -470,7 +492,8 @@ function lineOfSight(grid, a, b, water) {
   let err = dx + dy;
   for (;;) {
     const t = type[y0 * W + x0];
-    if (water ? t !== 1 : false) return false;
+    // (a carry's line on land mustn't cut over water a place to avoid closed, #1239)
+    if (water ? t !== 1 : grid.nogo && grid.nogo[y0 * W + x0] === 2) return false;
     // near the shore: a straight line mustn't cut out across open water either
     if (water && grid.nearCells && grid.shore[y0 * W + x0] > grid.nearCells * 1.3) return false;
     if (x0 === x1 && y0 === y1) return true;
@@ -489,7 +512,7 @@ function stringPull(grid, path) {
     const runChanged = w !== isWater(path[anchor]);
     // with costs (fairways, keep-clear zones, wind) a straight line may not cost more than the way A* found
     const dearer = () => grid.special && lineCost(grid, path[anchor], path[k]) > (grid.g[path[k]] - grid.g[path[anchor]]) * 1.03 + 0.5;
-    const blocked = !runChanged && w && (!lineOfSight(grid, path[anchor], path[k], true) || dearer());
+    const blocked = !runChanged && (w ? !lineOfSight(grid, path[anchor], path[k], true) || dearer() : !lineOfSight(grid, path[anchor], path[k], false));
     if (runChanged || blocked) {
       anchor = k - 1;
       out.push({ i: path[anchor], water: isWater(path[anchor]) });
@@ -673,7 +696,7 @@ export async function routeWater(from, to, { allowPortage = true, shore, carry, 
     } catch { /* routed without */ }
   }
   const tWind = Math.round(performance.now() - t0);
-  const key = JSON.stringify([from, to, allowPortage, shore, carry, fairways, hazards, wind, craft, windKey, nogos.map((n) => [n.ll, n.r])]);
+  const key = JSON.stringify([from, to, allowPortage, shore, carry, fairways, hazards, wind, craft, windKey, nogos.map((n) => [n.ll, n.r, !!n.water])]);
   if (memo.has(key)) { const m = memo.get(key); m.water.at = want.wind ? at : null; return m; } // (the same route, for this departure's wind)
   const route = async () => {
     let best = await attempt(from, to, 0.35, allowPortage, style, inputsOf);
