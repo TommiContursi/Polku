@@ -14,6 +14,7 @@
   Now: today's four marks (js/icons.js trailIcon()). A and B: a mark for each kind, coloured by who may pass, as decided
   on #1232 on 2026-11-21; they differ only in the plain gate: A a farm gate (a post, two rails and a brace), B today's
   posts and rails.
+  Chosen, 2026-11-21: B; the page opens on it.
   ?marks=now|a|b  &map=trail|night  &place=town|park  &f=390|desk
   Tap a mark for what its card says. The words are a sketch, not decided.
 -->
@@ -79,7 +80,7 @@ h2 { margin: 28px 0 8px; font-size: 16px; }
   <li>Decided on 2026-11-21: a mark for each kind of barrier; coloured by who may pass: dark where nothing is mapped, red where it's closed (<code>access=no</code> or <code>private</code>, or <code>locked=yes</code>), green where it's open (<code>access=yes</code>, or open to bikes or people on foot); drawn with <b>Access restrictions</b>, not Trail details.</li>
   <li>A closed mark also has a padlock, so it isn't told by its colour alone. An open one differs from an unmapped one by colour; its card says which.</li>
   <li>Which kinds share a mark: a gate (gates, swing, sliding, wicket, hampshire and bump gates), a lift gate (lift gates and bars), a chain (chains and ropes), blocks, a stile (stiles, kissing gates and horse stiles), a turnstile (turnstiles of both heights), a cycle barrier (cycle and motorcycle barriers).</li>
-  <li>Open in this round: A or B for the plain gate. In the town most marks are courtyard gates, so the plain gate is the mark people see most.</li>
+  <li>Chosen on 2026-11-21: B, the plain gate keeps today's posts and rails.</li>
   <li>Not drawn here: whether a point is open to bikes or on foot, which Polku's trail details don't keep yet (#1232 adds <code>bicycle</code> and <code>foot</code>); the gates giving way at zoom 16 (#1221).</li>
 </ul>
 </main>
@@ -142,7 +143,7 @@ const words = (barrier, status) => ({ title: `${NAME[barrier] || 'Gate'}${status
   line: status === 'closed' ? 'Private or closed · OpenStreetMap' : status === 'open' ? 'Open to everyone · OpenStreetMap' : 'Who may pass isn’t mapped · OpenStreetMap' });
 
 const S = Object.fromEntries(new URLSearchParams(location.search));
-const st = { marks: S.marks || 'a', map: S.map || 'trail', place: S.place || 'town', f: S.f || (innerWidth < 700 ? '390' : 'desk') };
+const st = { marks: S.marks || 'b', map: S.map || 'trail', place: S.place || 'town', f: S.f || (innerWidth < 700 ? '390' : 'desk') };
 function draw() {
   for (const sw of document.querySelectorAll('.sw')) for (const b of sw.querySelectorAll('button')) b.setAttribute('aria-pressed', String(b.dataset.v === st[sw.dataset.k]));
   const P = PLACES[st.place], map = document.getElementById('map');
