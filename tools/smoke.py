@@ -2068,6 +2068,8 @@ def osm_points(chrome):
         {type:'way',id:4,tags:{military:'bunker',building:'bunker'},nodes:[10,11],geometry:[{lon:at(3)[0],lat:at(3)[1]},{lon:at(3)[0]+1e-4,lat:at(3)[1]}],center:{lon:at(3)[0],lat:at(3)[1]}},
         node(5,4,{historic:'tar_kiln'}),node(6,5,{amenity:'shelter',fireplace:'yes'})]});
       const kinds=(id)=>new Set(m.queryRenderedFeatures({layers:[id]}).map((f)=>f.properties.subclass));
+      // (OSM's labels hidden meanwhile: a lake's name is placed first and may hide an icon at 14, as it should)
+      const osmLabels=m.getLayersOrder().filter((id)=>/^label-/.test(id)); for(const id of osmLabels)m.setLayoutProperty(id,'visibility','none');
       m.jumpTo({center:at(2.5),zoom:14}); await settle();
       for(let k=0;k<20&&!kinds('poi-fire').size;k++)await wait(250);
       if(!kinds('poi-fire').has('firepit'))errs.push('no fire place at 14');
@@ -2078,6 +2080,7 @@ def osm_points(chrome):
       for(const k of ['spring','cave','bunker','tarpit'])if(!got.has(k))errs.push(`no ${k} drawn at 16 (${[...got]})`);
       if(got.has('fireplace')||kinds('poi-fire').has('fireplace'))errs.push('a shelter with a fire place drawn as one');
       for(const k of ['spring','cave','bunker','tarpit','firepit'])if(!m.hasImage(`place-${k}`))errs.push(`place-${k} isn't on the map`);
+      for(const id of osmLabels)m.setLayoutProperty(id,'visibility','visible');
       // the cards: a spring's says its water is drinkable; a shelter beside a fire place's record says it has one
       const card=async(pt,f)=>{ if(f)polku.planner.openPlaceCard(f,pt); else polku.planner.openSpotCard(pt,{pt:m.project(pt)}); let c=null; for(let k=0;k<20&&!(c=polku.planner.cards.current);k++)await wait(100);
         await wait(300); const el=[...document.querySelectorAll('.pl-way.card')].find((e)=>e.getClientRects().length), r={title:c&&c.title,text:el?el.textContent:'',img:!!(el&&el.querySelector('img'))}; polku.planner.cards.close(); await wait(200); return r; };
