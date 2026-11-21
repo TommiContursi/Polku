@@ -478,7 +478,7 @@ export function buildStyle(s, ctx) {
   if (s.winterOn && s.overlays.winterWays && sources.mml) {
     const road = { source: 'mml', 'source-layer': 'liikenne', minzoom: 13, filter: ['==', ['get', 'kohdeluokka'], 12312], layout: { 'line-join': 'round', 'line-cap': 'round' } };
     add({ id: 'mml-winter-road-casing', type: 'line', ...road, paint: { 'line-color': '#ffffff', 'line-opacity': 0.8, 'line-width': WINTER_CASING } });
-    add({ id: 'mml-winter-road', type: 'line', ...road, paint: { 'line-color': WINTER_SEASONAL, 'line-width': WINTER_WIDTH, 'line-dasharray': ['literal', WINTER_SEASONAL_DASH] } });
+    add({ id: 'mml-winter-road', type: 'line', ...road, paint: { 'line-color': WINTER_SEASONAL, 'line-width': WINTER_WIDTH, 'line-dasharray': WINTER_SEASONAL_DASH } });
   }
 
   // ---- Official routes (LIPAS) -----------------------------------------
