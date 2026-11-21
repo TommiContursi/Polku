@@ -20,6 +20,11 @@ What's new in [Polku](https://polku.si), from the latest updates back to the fir
 - At zoom 16, gates that would overlap each other or a name give way, and from zoom 17 every gate is drawn. Fallen trees, stiles, cycle barriers and fords still show from zoom 15.
 - A route through a closed gate still gets its **Heads-up** item, whatever the zoom.
 
+### Reeds in the water look the same everywhere ([#1248](https://github.com/TommiContursi/Polku/issues/1248))
+
+- On the Trail, Plain and Night maps, reeds in the water are reed tufts on the water's blue, whether they come from OpenStreetMap's reedbeds or, in Finland, from the National Land Survey's overgrowing water. Before, the same reedy shore could be tufts on a pale ground, which read as land, or blue dashes on the water. Blue dashes now mean bogs and wetlands only.
+- Reedbeds that OpenStreetMap maps inside a lake now show. Before, the lake covered them.
+
 ### A tap on a river's flow arrow, a jetty or open ground says what it is ([#1234](https://github.com/TommiContursi/Polku/issues/1234))
 
 - In Finland, a tap or a click on the National Land Survey's flow arrows beside rivers, jetties, heath, open forest land (mostly clear-cuts), meadows, open shores, fields, sand and the forest's marks now opens a card that names it, and on a desktop resting the pointer on one says the same. A flow arrow's card says which way the river flows, such as "Flows to the SW".

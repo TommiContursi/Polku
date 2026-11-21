@@ -1420,7 +1420,8 @@ def saddles(chrome):
     return not fails
 
 
-# #1144: reedbeds from Polku's own OSM data, as reed tufts over the wetland dashes, on the vector bases only.
+# #1144: reedbeds from Polku's own OSM data, as reed tufts on the vector bases only: on the water's colour, over the water
+# (#1248; mml_bogs checks paddling's).
 def reedbed_style(chrome):
     pg = chrome.page(1440, 900, False)
     pg.open_app({'activity': 'mtb', 'base': 'trail'}, hash_='#15.5/62.2335/25.7905')
@@ -1443,10 +1444,12 @@ def reedbed_style(chrome):
         for(let t=0;t<40&&!here();t++)await new Promise(r=>setTimeout(r,250));
         const layers=m.getStyle().layers, i=layers.findIndex(l=>l.id==='lc-reedbed'), l=layers[i];
         if(!l){errs.push(`${base}: no reedbed layer`);continue;}
-        if(i<layers.findIndex(l=>l.id==='lc-wetland-pattern'))errs.push(`${base}: reedbeds under the wetland dashes`);
-        const fill=m.getPaintProperty('lc-wetland','fill-color'), id=l.paint['fill-pattern'], [,f,reed]=/^reedbed-([0-9a-f]{6})-([0-9a-f]{6})$/.exec(id||'')||[];
+        // over the water, so a reedbed in a lake shows, and under the shore's line
+        const pos=(id)=>layers.findIndex(l=>l.id===id);
+        if(!(pos('water')<i&&i<pos('water-shore')))errs.push(`${base}: reedbeds not drawn over the water and under its shore`);
+        const fill=m.getPaintProperty('water','fill-color'), id=l.paint['fill-pattern'], [,f,reed]=/^reedbed-([0-9a-f]{6})-([0-9a-f]{6})$/.exec(id||'')||[];
         if(!f){errs.push(`${base}: reedbed pattern is ${id}`);continue;}
-        if('#'+f!==fill)errs.push(`${base}: the pattern's ground #${f} isn't the wetland colour ${fill}`);
+        if('#'+f!==fill)errs.push(`${base}: the pattern's ground #${f} isn't the water's colour ${fill}`);
         if(!m.hasImage(id))errs.push(`${base}: ${id} wasn't drawn on the map`);
         const img=makeIcon(id), px=(x,y)=>hex(img.data,(y*img.width+x)*4);
         // 2 px per CSS pixel: a tuft's middle stroke at x 3, y 1-5.5; open ground in the corner and beside it
@@ -1527,16 +1530,17 @@ def mml_bogs(chrome):
         }
         for(const k of [39110,39120,34100,36200,38300])if(bog()._featureFilter.filter({zoom:14},as(k)))errs.push(`${base}: class ${k} drawn as a bog`);
         // MML's lake over OSM's wetlands, so a marsh OSM cut out of a lake isn't a pale patch in it (Rautpohja); its
-        // overgrowing water over OSM's lake, which would hide it, in the water's own blue (paddling's too)
+        // overgrowing water over OSM's lake, which would hide it, and its reedbeds, the same reed tufts on the water's own
+        // blue (paddling's too, #1248)
         if(at('mml-lake')<0||at('mml-overgrowing')<0){errs.push(`${base}: no layer for MML's lakes or overgrowing water`);continue;}
         if(!(at('lc-wetland-pattern')<at('mml-lake')&&at('mml-lake')<at('mml-bog')))errs.push(`${base}: MML's lakes not drawn over OSM's wetlands and under the bogs`);
         if(!drawn('mml-lake').has(36200))errs.push(`${base}: no lake drawn from the recorded tile`);
         if(m.getPaintProperty('mml-lake','fill-color')!=='#'+water)errs.push(`${base}: MML's lakes in ${m.getPaintProperty('mml-lake','fill-color')}, OSM's in #${water}`);
-        if(!(at('water')<at('mml-overgrowing')&&at('mml-overgrowing')<at('water-shore')))errs.push(`${base}: overgrowing water not drawn over OSM's lakes`);
-        const ow=m.getPaintProperty('mml-overgrowing','fill-pattern');
-        if(ow!==`wetland-${water}-${dash}`)errs.push(`${base}: overgrowing water drawn as ${ow}, not wetland-${water}-${dash}`);
+        if(!(at('water')<at('lc-reedbed')&&at('lc-reedbed')<at('mml-overgrowing')&&at('mml-overgrowing')<at('water-shore')))errs.push(`${base}: overgrowing water not drawn over OSM's lakes and reedbeds`);
+        const ow=m.getPaintProperty('mml-overgrowing','fill-pattern'), reeds=m.getPaintProperty('lc-reedbed','fill-pattern');
+        if(ow!==reeds||!ow.startsWith(`reedbed-${water}-`))errs.push(`${base}: overgrowing water drawn as ${ow}, OSM's reedbeds as ${reeds}, on water #${water}`);
         if(base==='trail'){polku.set({activity:'paddle'}); await settle(); const w=m.getPaintProperty('water','fill-color').slice(1), o=m.getPaintProperty('mml-overgrowing','fill-pattern');
-          if(o!==`wetland-${w}-${dash}`||m.getPaintProperty('mml-lake','fill-color')!=='#'+w)errs.push(`paddling: overgrowing water ${o} and MML's lakes ${m.getPaintProperty('mml-lake','fill-color')} on water #${w}`);
+          if(o!==m.getPaintProperty('lc-reedbed','fill-pattern')||!o.startsWith(`reedbed-${w}-`)||m.getPaintProperty('mml-lake','fill-color')!=='#'+w)errs.push(`paddling: overgrowing water ${o} and MML's lakes ${m.getPaintProperty('mml-lake','fill-color')} on water #${w}`);
           polku.set({activity:'mtb'}); await settle();}
         for(const id of new Set(Object.values(want))) {
           const d=makeIcon(id).data;
@@ -16462,13 +16466,14 @@ def weather_menu(chrome):
             fails.append(f"the timeline's time cut on a desktop: “{t['text']}” (#990)")
         pg.c.send('Emulation.setEmulatedMedia', {'features': [{'name': 'prefers-reduced-motion', 'value': 'reduce'}]}, pg.s)
         fails += pg.js(WX_STILL, timeout=30000)
-        # reduced motion turned off with the still wind shown: it moves again, without a move of the map (Codex on #1021)
+        # reduced motion turned off with the still wind shown: it moves again, without a move of the map (Codex on #1021).
+        # The media query's change event can take a second on a busy runner (971 ms in run 44898066118), so it waits for the loop
         wind = "document.querySelector('#wx-bar .tl-layers [data-k=wind]').click(); true"
         pg.js(wind)
         time.sleep(1)
         stopped = pg.js('polku.weather.anim')
         pg.c.send('Emulation.setEmulatedMedia', {'features': [{'name': 'prefers-reduced-motion', 'value': 'no-preference'}]}, pg.s)
-        moves = pg.js("(async () => { const cv = polku.weather.windCv, px = () => cv.getContext('2d').getImageData(0, 0, cv.width, cv.height).data, wait = (ms) => new Promise((r) => setTimeout(r, ms)); await wait(400); const a = px(); await wait(400); const b = px(); return !!polku.weather.anim && a.some((v, i) => v !== b[i]); })()")
+        moves = pg.js("(async () => { const cv = polku.weather.windCv, px = () => cv.getContext('2d').getImageData(0, 0, cv.width, cv.height).data, wait = (ms) => new Promise((r) => setTimeout(r, ms)); for (let t = 0; t < 3000 && !polku.weather.anim; t += 100) await wait(100); await wait(400); const a = px(); await wait(400); const b = px(); return !!polku.weather.anim && a.some((v, i) => v !== b[i]); })()")
         if stopped or not moves:
             fails.append(f'reduced motion turned off with the still wind shown: the loop stopped before {not stopped}, the wind moving after {moves}')
         pg.js(wind)
