@@ -494,6 +494,7 @@ def upload(directory, resume=False):
         if 'candidates' not in maintenance.children(ftp):
             ftp.mkd('candidates')
         replace_pointer(ftp, raw, 'candidates/current.json')
+        require(get(config[-2] + '/candidates/current.json') == raw, 'Public candidate pointer differs')
         print(f'Candidate {release}: {config[-2]}/{final}/manifest.json', flush=True)
 
 
@@ -640,6 +641,10 @@ def verify_access():
     config = settings()
     with connection(config) as ftp:
         ftp.nlst()
+        try:
+            above = bool(ftp.nlst('..'))
+        except OSError:
+            above = False
     request = urllib.request.Request(config[-2] + '/current.json', method='HEAD',
                                     headers={'Origin': 'https://polku.si', 'User-Agent': 'Mozilla/5.0'})
     try:
@@ -647,7 +652,8 @@ def verify_access():
     except HTTPError as error:
         response = error
     with response:
-        return {'sftp_read_access': True, 'public_status': response.status,
+        # A login whose root folder is the OSM directory can't list the website around it
+        return {'sftp_read_access': True, 'lists_above_root': above, 'public_status': response.status,
                 'public_cors': response.headers.get('Access-Control-Allow-Origin') == '*'}
 
 

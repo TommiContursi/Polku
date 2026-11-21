@@ -524,6 +524,11 @@ class PublishTests(unittest.TestCase):
         self.assertNotIn(ROOT + '/releases/new-release/_upload.json', self.host.files)
         self.assertIsNone(publish.candidate(PUBLIC), 'the candidate is live')
 
+    def test_upload_fails_when_the_public_candidate_pointer_is_cached(self):
+        self.host.pointer_cache = 'public, max-age=31536000, immutable'
+        with self.assertRaisesRegex(RuntimeError, 'current.json must disable caching'):
+            publish.upload(self.release_dir)
+
     def test_promotion_refuses_a_candidate_that_changed_or_is_not_newer(self):
         publish.upload(self.release_dir)
         sha256 = hashlib.sha256(encoded(self.new)).hexdigest()
@@ -906,6 +911,7 @@ class PublishTests(unittest.TestCase):
         with patch.dict('os.environ', {'OSM_ALLOW_PUBLISH': ''}):
             result = publish.verify_access()
         self.assertTrue(result['sftp_read_access'])
+        self.assertTrue(result['lists_above_root'], 'the fake host lets the login list its parent')
         self.assertEqual(result['public_status'], 200)
         self.assertEqual((self.host.files, self.host.dirs), (files, dirs))
         self.assertEqual(self.host.pointer_writes, 0)
