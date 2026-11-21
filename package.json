@@ -2,8 +2,10 @@
   "name": "polku",
   "private": true,
   "type": "module",
+  "scripts": {
+    "deploy": "npx --yes wrangler@4.166.0 deploy"
+  },
   "devDependencies": {
-    "esbuild": "0.28.2",
-    "wrangler": "4.166.0"
+    "esbuild": "0.28.2"
   }
 }
