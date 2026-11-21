@@ -22,7 +22,7 @@ import { LipasLayer, lipasPlace, rideOf } from './lipas.js';
 import { prefetchWater } from './waterdata.js';
 import { initInspector } from './inspect.js';
 import { initHover, hoverCapable } from './hover.js';
-import { registerServiceWorker, initOfflineStatus, openSaveOffline, renderOfflineSection, saveOverview } from './offline.js';
+import { registerServiceWorker, initOfflineStatus, openSaveOffline, renderOfflineSection, saveOverview, savedOnly } from './offline.js';
 import { initSearch, recentSearches, clearRecentSearches } from './search.js';
 import { parseTrackFile } from './gpx.js';
 import { lineLength, bbox, fmtDist, compass as side, finlandInView, polygonInView, shipsInView, boxesMeet } from './geo.js';
@@ -630,7 +630,7 @@ const planner = new Planner(map, {
   saveOffline: () => {
     const p = planner.offlinePayload();
     if (!p) { toast('Plan a route first — the area along it is what gets saved'); return; }
-    openSaveOffline(p, { onSaved: () => renderSettingsPanel() });
+    openSaveOffline(p, { onSaved: () => renderSettingsPanel(), mml: { key: state.mmlKey, property: !!state.overlays.propertyLines } });
   },
   onActiveChange: (on) => {
     syncPlanButton(on);
@@ -1799,14 +1799,21 @@ map.on('data', (e) => {
 });
 // MML's terrain (#1147) has no tile of its own: where its tiles don't load, OSM's wetlands, rock and cliffs show in their
 // place, and power lines, the water's marks and the lakes' depths (#1170) are missing, and a message says so once, until
-// one of its tiles comes again
+// one of its tiles comes again. Not while the map has only what's saved (#1176): the view reaches past a saved area's
+// corridor, and the offline message says what's missing there; Offline maps says what a saved area lacks.
 let mmlDown = false;
 map.on('error', (e) => {
-  if (e.sourceId !== 'mml' || mmlDown || (e.error && e.error.name === 'AbortError')) return;
+  if (e.sourceId !== 'mml' || mmlDown || savedOnly() || (e.error && e.error.name === 'AbortError')) return;
   mmlDown = true;
   toast('The National Land Survey’s terrain didn’t load: the map shows OpenStreetMap’s wetlands, rock and cliffs, without power lines, stones and rapids in the water, or lake depths.', { ms: 6000 });
 });
-map.on('data', (e) => { if (e.sourceId === 'mml' && e.dataType === 'source' && e.tile) mmlDown = false; });
+// (a tile a saved area keeps isn't MML coming back, #1176: the worker answers its saved copy when the network fails while
+// the device says it's online; saved under the tile's address without the key, js/offline.js)
+map.on('data', async (e) => {
+  if (e.sourceId !== 'mml' || e.dataType !== 'source' || !e.tile || !mmlDown) return;
+  const { z, x, y } = e.tile.tileID.canonical, url = map.getSource('mml').tiles[0].split('?')[0];
+  if (!(window.caches && await caches.match(url.replace('{z}', z).replace('{x}', x).replace('{y}', y)))) mmlDown = false;
+});
 onStatus(() => refreshQuickSoon());
 // LIPAS back after a pause: Marked routes lists the view again (A)
 onStatus((src, s) => { if (src === 'lipas' && (!s || s.retry)) planner.lipasBack(); });

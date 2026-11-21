@@ -4,7 +4,7 @@
 
 import {
   OFM_TILEJSON, OFM_SPRITE, OFM_GLYPHS, ESRI_IMAGERY, DEM_MAXZOOM, DEM_TILESIZE,
-  DIFF_COLORS, MTB_COLORS, MTB_GRADES, ROUTE_COLORS, RASTER_OVERLAYS, RASTER_RATIO, LIPAS_TYPES, mmlTiles, MML_KEY, MML_PROPERTY_TILES, MML_TERRAIN_TILES, FINLAND_BOUNDS, kapsiTiles, groupOf,
+  DIFF_COLORS, MTB_COLORS, MTB_GRADES, ROUTE_COLORS, RASTER_OVERLAYS, RASTER_RATIO, LIPAS_TYPES, mmlTiles, mmlApiKey, MML_PROPERTY_TILES, MML_TERRAIN_TILES, FINLAND_BOUNDS, kapsiTiles, groupOf,
   isWater, isLipasRoute, WARN_COLORS,
 } from './config.js';
 import { warnMarkId } from './icons.js';
@@ -106,7 +106,7 @@ export function buildStyle(s, ctx) {
   const topoBase = isTopo(s.base);
   const raised = s.terrain3d && s.raiseHills; // the hills raised in 3D, or 3D flat, only tilted
   // MML's tiles (#1147, #1148): your own key, or Polku's unscrambled (config.js)
-  const mmlKey = s.mmlKey || [...atob(MML_KEY)].map((c, i) => String.fromCharCode(c.charCodeAt(0) ^ 'polku'.charCodeAt(i % 5))).join('');
+  const mmlKey = mmlApiKey(s.mmlKey);
   const sources = {
     ofm: { type: 'vector', url: OFM_TILEJSON },
     // the same tiles again (from the HTTP cache), for the trail and track lines alone: with trail details on,

@@ -8462,6 +8462,191 @@ def coarse(chrome):
     return not fails
 
 
+# #1176: Save offline keeps MML's tiles, MML answered by the page from its recorded tile (14/9260/4578, Seitseminen; an
+# empty tile elsewhere), never live: how many it asks for at once and in a second, with whose key, and what it keeps.
+# Saved first with every MML tile failing (the pace held through failures too), then with MML's zoom 13 failing (Polku's
+# key, property boundaries off), then whole (your own key, property boundaries on). Offline maps says what each lacks,
+# beside two areas saved before MML's tiles were kept.
+MML_OFFLINE_SAVE = r"""
+(async () => {
+  const f = [], off = await import(location.origin + '/js/offline.js'), { idb } = await import(location.origin + '/js/idb.js');
+  const fx = await (await fetch('/tools/fixtures/mml-taustakartta-14-9260-4578.pbf')).arrayBuffer(), real = window.fetch, asked = [];
+  let now = 0, most = 0, failing = null;
+  window.fetch = async (u, o) => {
+    const url = String((u && u.url) || u);
+    if (!url.startsWith('https://avoin-karttakuva.maanmittauslaitos.fi/')) return real(u, o);
+    asked.push([Date.now(), url]); most = Math.max(most, ++now);
+    try {
+      await new Promise((r) => setTimeout(r, 30));
+      if (failing && failing.test(url)) throw new TypeError('Failed to fetch');
+      return new Response(url.includes('/14/4578/9260.pbf') ? fx.slice(0) : new ArrayBuffer(0));
+    } finally { now--; }
+  };
+  const line = [[23.474, 61.92], [23.481, 61.921]], save = (name, mml) => off.saveArea({ name, line, bbox: [23.474, 61.92, 23.481, 61.921], route: null }, { buffer: 1000, terrain: false, mml }, () => {}, new AbortController().signal);
+  const mmlKeys = (a) => a.keys.filter((k) => k.startsWith('https://avoin-karttakuva.maanmittauslaitos.fi/'));
+  // paced: two at a time, ten in any second at most
+  const paced = (what) => {
+    const peak = Math.max(...asked.map(([t]) => asked.filter(([s]) => s >= t && s < t + 1000).length));
+    if (most > 2 || peak > 10) f.push(`${what}, MML asked for ${most} tiles at once and ${peak} in a second`);
+    if (asked.length < 12) f.push(`(the test) ${what}, only ${asked.length} MML tiles asked for: too few to see the pace`);
+  };
+  try {
+    failing = /./;
+    const down = await save('smoke-down', { key: '', property: false });
+    if (!(down.mml && down.mml.tiles && down.mml.failed === down.mml.tiles)) f.push(`with every MML tile failing, the area says ${JSON.stringify(down.mml)} of MML's terrain tiles failed`);
+    paced('with every tile failing');
+    asked.length = 0; most = 0;
+    failing = /\/taustakartta\/.+\/13\/\d+\/\d+\.pbf/;
+    const part = await save('smoke-part', { key: '', property: false });
+    failing = null;
+    const z = (a) => [...new Set(mmlKeys(a).filter((k) => k.includes('/taustakartta/')).map((k) => +k.split('/').at(-3)))].sort((x, y) => x - y).join();
+    if (z(part) !== '11,12,13,14') f.push(`MML's terrain kept at zooms ${z(part)}, not 11–14`);
+    if (mmlKeys(part).some((k) => k.includes('/kiinteistojaotus/'))) f.push('property boundaries kept with their layer off');
+    if (!(part.mml && part.mml.failed > 0 && part.mml.failed < part.mml.tiles)) f.push(`with MML's zoom 13 failing, the area says ${JSON.stringify(part.mml)} of MML's terrain tiles failed`);
+    if (asked.some(([, u]) => !new URL(u).searchParams.get('api-key'))) f.push('MML asked for tiles without a key');
+    // what Offline maps says of each
+    await idb('offline').set('smoke-old', { id: 'smoke-old', name: 'smoke-old', created: 1, bbox: [23.47, 61.91, 23.49, 61.93], keys: [], bytes: 1, failed: 0 });
+    await idb('offline').set('smoke-oslo', { id: 'smoke-oslo', name: 'smoke-oslo', created: 2, bbox: [10.7, 59.9, 10.8, 59.95], keys: [], bytes: 1, failed: 0 });
+    const box = document.createElement('div');
+    await off.renderOfflineSection(box, { open: () => {} });
+    const said = Object.fromEntries([...box.querySelectorAll('.off-area-text')].map((el) => [el.querySelector('b').textContent, el.textContent]));
+    if (!/National Land Survey’s terrain is missing in parts: save the area again/.test(said['smoke-part'])) f.push(`an area whose MML tiles failed in part says: ${said['smoke-part']}`);
+    if (!/National Land Survey’s terrain didn’t load: save the area again/.test(said['smoke-down'])) f.push(`an area whose MML tiles all failed says: ${said['smoke-down']}`);
+    if (!/Saved without the National Land Survey’s terrain: save the area again/.test(said['smoke-old'])) f.push(`an area in Finland saved before MML's tiles were kept says: ${said['smoke-old']}`);
+    if (/National Land Survey/.test(said['smoke-oslo'])) f.push(`an area in Oslo says: ${said['smoke-oslo']}`);
+    for (const id of ['smoke-old', 'smoke-oslo', part.id, down.id]) await off.removeArea(id);
+    asked.length = 0; most = 0;
+    const whole = await save('smoke-mml', { key: 'own-test', property: true });
+    if (!whole.mml || whole.mml.failed || !whole.mml.tiles) f.push(`saved whole, the area says ${JSON.stringify(whole.mml)} of MML's terrain tiles failed`);
+    if (!mmlKeys(whole).some((k) => k.includes('/kiinteistojaotus/default/v3/WGS84_Pseudo-Mercator/14/'))) f.push('property boundaries not kept with their layer on');
+    if (mmlKeys(whole).some((k) => k.includes('?'))) f.push(`MML's tiles kept under an address with its key: ${mmlKeys(whole).find((k) => k.includes('?'))}`);
+    if (asked.some(([, u]) => new URL(u).searchParams.get('api-key') !== 'own-test')) f.push('your own key not used for MML\'s tiles');
+    paced('saved whole');
+    const c = await caches.open('polku-offline-tiles');
+    if (!await c.match('https://avoin-karttakuva.maanmittauslaitos.fi/vectortiles/taustakartta/wmts/1.0.0/taustakartta/default/v21/WGS84_Pseudo-Mercator/14/4578/9260.pbf')) f.push('the recorded tile isn\'t kept');
+  } finally { window.fetch = real; }
+  return f;
+})()
+"""
+
+# Offline and in Preview offline, with this commit's worker: MML's bogs from the saved tile, asked for with Polku's key
+# (saved with your own), and no message that MML's terrain didn't load, though the view reaches past the corridor
+MML_OFFLINE_MAP = r"""
+(async () => {
+  const f = [], m = polku.map, wait = (ms) => new Promise((r) => setTimeout(r, ms)), failed = [];
+  m.on('error', (e) => { if (e.sourceId === 'mml') failed.push(e.tile ? e.tile.tileID.canonical.toString() : String(e.error && e.error.message)); });
+  m.jumpTo({ center: [(9260.5 / 2 ** 14) * 360 - 180, Math.atan(Math.sinh(Math.PI * (1 - (2 * 4578.5) / 2 ** 14))) * 180 / Math.PI], zoom: 14.5 });
+  const bogs = () => m.queryRenderedFeatures({ layers: ['mml-bog'] }).length;
+  for (let k = 0; k < 60 && !(bogs() && m.areTilesLoaded()); k++) await wait(250);
+  await wait(1500);
+  if (!bogs()) f.push('no bogs drawn from the saved tile');
+  const said = (window.__toasts || []).filter((t) => t.includes('National Land Survey'));
+  if (said.length) f.push(`in the saved area: ${said[0]} (MML's tiles that failed: ${failed.join(' ')})`);
+  return f;
+})()
+"""
+
+# MML out of reach with the device still online (a signal without data): zoomed out through the saved zooms, the message
+# comes once, not again each time a saved tile loads after one that failed
+MML_UNREACHABLE = r"""
+(async () => {
+  const f = [], m = polku.map, wait = (ms) => new Promise((r) => setTimeout(r, ms));
+  const center = [(9260.5 / 2 ** 14) * 360 - 180, Math.atan(Math.sinh(Math.PI * (1 - (2 * 4578.5) / 2 ** 14))) * 180 / Math.PI];
+  for (const zoom of [14.5, 13.5, 12.5, 11.5]) {
+    m.jumpTo({ center, zoom });
+    for (let k = 0; k < 40 && !m.areTilesLoaded(); k++) await wait(250);
+    await wait(800);
+  }
+  const said = (window.__toasts || []).filter((t) => t.includes('National Land Survey'));
+  if (!navigator.onLine) f.push('(the test) the device says it\'s offline');
+  else if (said.length !== 1) f.push(`the message that MML's terrain didn't load came ${said.length} times, not once`);
+  return f;
+})()
+"""
+
+
+def mml_offline(chrome):
+    """Save offline keeps MML's terrain at its zooms, property boundaries while their layer is on, under addresses
+    without the key, paced (#1176); offline, with the real worker and the network off, the map draws them from there."""
+    fails = []
+    pg = chrome.page(390, 844, True)
+    try:
+        # (zoom 10: under the source's zoom 11, so the map asks MML for nothing)
+        pg.open_app({'activity': 'mtb', 'base': 'trail'}, hash_='#10/61.92/23.478')
+        fails += pg.js(MML_OFFLINE_SAVE, timeout=120000)
+        pg.c.send('Network.setBypassServiceWorker', {'bypass': False}, pg.s)
+        # this commit's worker, not one an earlier run on the port left in the profile (#1134)
+        pg.js("(async () => { for (const r of await navigator.serviceWorker.getRegistrations()) await r.unregister(); return true })()")
+        pg.js("Promise.race([navigator.serviceWorker.register('./sw.js').then(() => navigator.serviceWorker.ready), new Promise((_, no) => setTimeout(() => no(new Error('service worker not ready after 15 s')), 15000))]).then(() => true)", timeout=20000)
+        pg.reload()
+        if not pg.js('!!navigator.serviceWorker.controller'):
+            raise RuntimeError('the page is not controlled by the worker')
+        toasts = "new MutationObserver((ms) => { for (const m of ms) if (m.target.id === 'toast') (window.__toasts ||= []).push(m.target.textContent); }).observe(document, { childList: true, subtree: true }); true"
+        pg.js(toasts)
+        # the page, its own workers (MapLibre's, which fetch the tiles) and every service worker of this origin offline: CDP's
+        # offline for the page alone leaves the others' fetches online, and a tile the service worker leaves alone goes out
+        # from MapLibre's worker
+        pg.c.send('Target.setAutoAttach', {'autoAttach': True, 'waitForDebuggerOnStart': False, 'flatten': True}, pg.s)
+        time.sleep(0.5)
+        own = [e['params']['sessionId'] for e in pg.c.events if e.get('method') == 'Target.attachedToTarget' and e.get('sessionId') == pg.s]
+        workers = [t['targetId'] for t in chrome.send('Target.getTargets')['targetInfos'] if t['type'] == 'service_worker' and t['url'].startswith(BASE)]
+        attached = [chrome.send('Target.attachToTarget', {'targetId': t, 'flatten': True})['sessionId'] for t in workers]
+        sessions = [pg.s] + own + attached
+
+        def network(off):
+            for s_ in sessions:
+                try:
+                    chrome.send('Network.enable', {}, s_)
+                    chrome.send('Network.emulateNetworkConditions', {'offline': off, 'latency': 0, 'downloadThroughput': 0 if off else -1, 'uploadThroughput': 0 if off else -1}, s_)
+                except RuntimeError:  # (a worker gone since)
+                    pass
+        try:
+            network(True)
+            fails += [f'offline: {e}' for e in pg.js(MML_OFFLINE_MAP, timeout=60000)]
+            # a saved property tile, asked for with another key
+            fails += pg.js("""(async () => {
+              const { listAreas } = await import(location.origin + '/js/offline.js'), a = (await listAreas()).find((x) => x.name === 'smoke-mml');
+              const k = a && a.keys.find((u) => u.includes('/kiinteistojaotus/'));
+              if (!k) return ['offline: no property tile kept to ask for'];
+              const r = await fetch(k + '?api-key=another').catch(() => null);
+              return r && r.ok ? [] : [`offline: a saved property tile not answered: ${k}`];
+            })()""")
+        finally:
+            network(False)
+        pg.reload()
+        pg.js(toasts)
+        time.sleep(0.5)
+        sessions += [e['params']['sessionId'] for e in pg.c.events if e.get('method') == 'Target.attachedToTarget' and e.get('sessionId') == pg.s and e['params']['sessionId'] not in sessions]
+
+        def block(urls):
+            for s_ in sessions:
+                try:
+                    chrome.send('Network.setBlockedURLs', {'urls': urls}, s_)
+                except RuntimeError:
+                    pass
+        try:
+            block(['*avoin-karttakuva.maanmittauslaitos.fi*'])
+            fails += [f'MML out of reach: {e}' for e in pg.js(MML_UNREACHABLE, timeout=90000)]
+        finally:
+            block([])
+            for s_ in attached:
+                chrome.send('Target.detachFromTarget', {'sessionId': s_})
+        preview = "new Promise((ok) => { navigator.serviceWorker.addEventListener('message', (e) => e.data.type === 'offline-preview' && ok(true)); navigator.serviceWorker.controller.postMessage({ type: 'offline-preview', on: %s }); setTimeout(() => ok(false), 3000); })"
+        try:
+            pg.js(preview % 'true')
+            pg.reload()
+            pg.js(toasts)
+            fails += [f'Preview offline: {e}' for e in pg.js(MML_OFFLINE_MAP, timeout=60000)]
+        finally:
+            pg.js(preview % 'false')
+        pg.js("(async () => { const off = await import(location.origin + '/js/offline.js'); for (const a of await off.listAreas()) if (a.name === 'smoke-mml') await off.removeArea(a.id); return true })()")
+        fails += [f'console: {e[:160]}' for e in pg.errors()]
+    finally:
+        pg.close()
+    print(f"{'ok  ' if not fails else 'FAIL'} MML's tiles in offline areas: kept at its zooms, paced, without the key, drawn offline by the worker (#1176)" + ''.join(f'\n     - {f}' for f in fails), flush=True)
+    return not fails
+
+
 # Polku's own layers come in together (#1091): Väylävirasto's tiles and Digitraffic's faults answered by the page (an
 # empty chart, so no request leaves), before Polku loads: window.__nmDelay ms after they're asked for, or, while
 # window.__nmHeld is a list, once window.__nmRelease() is called
@@ -25670,6 +25855,7 @@ GROUPS = [
     ('layers', [layers, layer_coverage, cycleway_style, cycling_restrictions, waterway_style, property_lines, property_plots, wetland_style, reedbed_style, mml_bogs, mml_rock, mml_water, mml_open, osm_cliffs, saddles, mml_cards], 'the Layers panel in every sport'),
     ('raster', [raster_maps, aerial_fallback, aerial_labels], 'terrain and aerial detail, bounded high-density WMS symbols, depth boundaries and missing aerial detail (#649, #650, #653); the map\'s words on the aerial photos at 4.5:1 on their halo (#554)'),
     ('coarse', [coarse], 'a coarse map underneath (#1091): the base map\'s tile four zoom levels up stands in for one that hasn\'t come, at 1440 and 390'),
+    ('offline', [mml_offline], 'Save offline keeps the National Land Survey\'s tiles (#1176): its terrain at zooms 11–14 and property boundaries while on, under addresses without the key, two at a time and ten a second at most; what Offline maps says an area lacks; offline, with the real worker, the bogs drawn from the saved tile and no message'),
     ('together', [together], 'Polku\'s own layers come in together after the map stops, 500 ms at most (#1091)'),
     ('fadein', [fadein], 'what comes after the map stops fades in, 0.2–0.4 s by how much it changes (#1091): after a move by mouse or touch and a search result\'s flight, never from the keys, ended by a touch, no picture over a moving map'),
     ('trails', [trails, uphill_late, mtb_grades], 'recorded trail details/card, late uphill colors, and consistent MTB 0−/S0 display (#435, #673)'),
