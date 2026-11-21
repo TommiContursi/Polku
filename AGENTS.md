@@ -133,20 +133,20 @@ conversation again
   more than one way and the readings lead to different work, name them and
   ask, rather than picking one silently. When a simpler way would do, or the
   task as asked looks wrong, say so before building.
-- **Learn from others, reuse what fits.** Study competing products and
-  open-source projects as part of the work, with no one's OK needed, and
-  adopt proven approaches and the conventions people expect from maps and
-  navigation rather than reinventing them. Ideas, functionality and
-  documented behaviour aren't protected; code, artwork and other original
-  expression are (Directive 2009/24/EC, art. 1(2) and 5(3); CJEU C-406/10).
-  Reuse libraries, components and code whose licence allows it in Polku,
-  with their notices in THIRD_PARTY_NOTICES.md (a new dependency still
-  takes the issue at the top). Where a licence doesn't (GPL, since LICENSE
-  reserves all rights), build Polku's own or run it as a separate program
-  Polku talks to.
-  Name a real licence risk exactly, with a practical way round it, and
-  never let ordinary research or familiar functionality become a legal
-  obstacle.
+- **Learn from others, reuse what fits.** Study competing products as part
+  of the work, with no one's OK needed, and adopt the conventions people
+  expect from maps and navigation rather than reinventing them. Actively
+  study GPL and other open-source projects for ideas, functionality,
+  architecture and proven approaches. Do not treat a project's licence as a
+  barrier to research or independent implementation. Ideas, functionality
+  and documented behaviour aren't protected; code, artwork and other
+  original expression are (Directive 2009/24/EC, art. 1(2) and 5(3); CJEU
+  C-406/10). Reuse libraries, components and code whose licence allows it
+  in Polku, with their notices in THIRD_PARTY_NOTICES.md (a new dependency
+  still takes the issue at the top). When reusing actual code or
+  integrating software, check licence compatibility and propose a
+  compliant approach. Raise only concrete licensing risks, with practical
+  alternatives.
 - **Evidence before fixes.** Observe the failure and test a falsifiable
   hypothesis before changing code. Fix the demonstrated cause, not the
   symptom, and check the failure before and after the fix.
