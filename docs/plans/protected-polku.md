@@ -97,12 +97,18 @@ it.** Scripts: Polku's own files, unpkg's two versioned files (already loaded wi
 hashes), and the two inline scripts in `index.html` by their hashes, computed in the build
 after minifying; MapLibre's workers from `blob:`. Connections stay open to any `https:`
 address and to this computer, because Settings' own BRouter address can be anything
-(`brouterUrl`, `js/router.js`). Images and tiles likewise. `object-src 'none'`, `base-uri
+(`brouterUrl`, `js/router.js`). Images and tiles likewise. Images and connections also allow
+`data:` and `blob:`: the rain radar and the no-radar hatch are drawn in the app and handed to
+MapLibre as `data:` URLs (`toDataURL()` in `js/radar.js` and `js/wxmap.js`), and MapLibre
+loads images both as image elements and through `fetch`. The service list in step 1 below is
+therefore built from the code's `fetch`, image and worker uses too, not only `config.js` and
+`SOURCES`. `object-src 'none'`, `base-uri
 'none'`, `form-action 'none'`.
 
 **Rolled out so routing can't break:**
 
-1. The policy is built from every service in `js/config.js` and `js/net.js`'s `SOURCES`.
+1. The policy is built from every service in `js/config.js` and `js/net.js`'s `SOURCES`, and
+   from every image, `data:`/`blob:` URL and worker the code makes (searched for, not assumed).
 2. It is sent first as `Content-Security-Policy-Report-Only`: it reports, blocks nothing.
    On the test address, then on polku.si for a week.
 3. During that week every feature is walked through with the console open: routing in every
@@ -142,12 +148,25 @@ opt-out) and practical (the background hidden), not technical.
 It has been the biggest variable cost, and it already stands apart: it publishes files to a
 host, and Polku reads them from `OSM_DATA_MANIFEST`.
 
-- **Moves:** `tools/osm_data/` except the app's reader tests, the `osm-data.yml` and
-  `osm-data-alerts.yml` workflows, the `osm-data-production` environment, its secrets and
-  variables. The new repository starts without Polku's history.
+- **Moves:** `tools/osm_data/` except the app's reader tests and the app checks below
+  (`preview.py`, `measure_browser.py`, `smoke_checks.js`), the build and publish parts of the
+  `osm-data.yml` and `osm-data-alerts.yml` workflows, the `osm-data-production` environment, its
+  secrets and variables. Polku keeps an environment with the publishing secrets too, for
+  promotion. The new repository starts without Polku's history.
 - **Stays in Polku:** `js/osm-data.js`, `js/osm-geometry.js`, `client.test.mjs`,
   `geometry.test.mjs`, `tools/fixtures/osm-*`, the `osmdata` smoke group, and a small job that
   runs the reader tests when those files change.
+- **The release checks that need the app stay in Polku.** Today the build's checks start the
+  app (`preview.py` serves it from the checkout with `js/config.js` pointed at the candidate),
+  run `tools/smoke.py osmdata`, and measure it in a browser (`measure_browser.py`, which imports
+  `tools/cdp.py` and `tools/smoke.py`); the daily health check measures too
+  (`osm-data.yml`, lines 180–186, 387 and 460). Those need Polku's private code, so the split
+  is: the public repository builds, checks the data on its own (hashes, schema, its Python
+  tests) and uploads an unpromoted candidate; it then starts a job in Polku (a repository
+  dispatch, with a token limited to that), which runs the app's checks against the candidate
+  and promotes it. The daily health check runs in Polku. The public repository never checks out
+  Polku. Part 6 measures these jobs' minutes first, since they run in the private repository;
+  the build itself, the costly part, stays free.
 - **The contract** is the manifest and the archives' format. A change to it needs a PR in
   each repository: the build's first, then Polku's reader with new fixtures.
 - **Secrets can't be copied out of GitHub.** Tomba re-enters them in the new repository from
@@ -202,8 +221,13 @@ Each comes with click-by-click instructions in its PR or Hand-over when it is ne
    test address checked by a session.
 2. DNSSEC off at OVH, then a day's wait (the DS record's time to live is 2 hours; a day is
    safe). Nameservers to Cloudflare after checking that the MX, SPF and any DKIM records were
-   copied. `polku.si` and `www` added to the project. DNSSEC on again at Cloudflare, with its
-   DS record added at OVH. AI Crawl Control on. A test e-mail sent and received.
+   copied. `polku.si` and `www` added to the project. **Then a second wait:** until public
+   resolvers (1.1.1.1, 8.8.8.8, 9.9.9.9) all return Cloudflare's nameservers and Cloudflare
+   shows the zone active, and at least the old NS records' time to live after the change. Only
+   then DNSSEC on at Cloudflare, with its DS record added at OVH: a resolver still asking OVH's
+   nameservers would get a DS that doesn't match their keys, and polku.si and its mail would
+   fail for it ([Cloudflare's guidance](https://developers.cloudflare.com/learning-paths/dns-best-practices/concepts/phase-4/)).
+   AI Crawl Control on. A test e-mail sent and received.
 3. The new public repository for the OSM data build, its environment and secrets.
 4. GitHub Pro, a monthly Actions budget that stops runs when reached, a check that Codex's
    and Claude's GitHub access include the repository, GitHub Pages off, and the repository
