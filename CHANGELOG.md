@@ -11,6 +11,7 @@ What's new in [Polku](https://polku.si), from the latest updates back to the fir
 ### Forest tracks stay on the map as you zoom in ([#1192](https://github.com/TommiContursi/Polku/issues/1192))
 
 - With **Trail details** on, forest tracks no longer blink out for a moment when you zoom in past 14: they're drawn from the trail details at every zoom.
+- An area of trail details saved for offline use before 2026-11-20 has no forest tracks of its own, so there it shows none until you save it again.
 
 ### House numbers ([#1223](https://github.com/TommiContursi/Polku/issues/1223))
 
