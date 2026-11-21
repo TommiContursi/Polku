@@ -581,6 +581,20 @@ export function buildStyle(s, ctx) {
     // and a P on each of MML's car parks in Finland from 15, placed before them, so OSM's P on the same car park gives way
     if (vectorFills) add({ id: 'mml-parking-p', type: 'symbol', source: 'mml', 'source-layer': 'liikenne', minzoom: 15, filter: ['all', ['==', ['get', 'kohdeluokka'], 32421], ['==', ['geometry-type'], 'Polygon']], layout: { 'icon-image': 'parking', 'icon-size': hc ? 1.05 : 0.8, 'icon-padding': 12 }, paint: { 'icon-opacity': s.base === 'night' ? 0.85 : 1 } });
   }
+  // Shops and food (#1222), a layer of its own: from 17, the tiles' rank first where they crowd; none upstairs or indoors, where
+  // a shopping centre's shops would pile up on its roof. Names in OSM's standard map's purple, apart from the outdoor places.
+  if (s.overlays.shops) {
+    add({
+      id: 'poi-shops', type: 'symbol', source: 'ofm', 'source-layer': 'poi', minzoom: 17,
+      filter: ['all', ['in', ['get', 'class'], ['literal', ['shop', 'grocery', 'clothing_store', 'alcohol_shop', 'bakery', 'restaurant', 'cafe', 'fast_food', 'bar', 'beer', 'ice_cream', 'pharmacy', 'hairdresser', 'laundry']]],
+        ['has', 'name'], ['!', ['has', 'indoor']], ['<=', ['coalesce', ['get', 'level'], 0], 0]],
+      layout: {
+        'symbol-sort-key': ['get', 'rank'], 'icon-image': ['coalesce', ['image', ['get', 'class']], ['image', 'shop']], 'icon-size': hc ? 1 : 0.75,
+        'text-field': ['get', 'name'], 'text-font': FONT, 'text-size': 10.5, 'text-offset': [0, 0.9], 'text-anchor': 'top', 'text-optional': true, 'text-max-width': 7,
+      },
+      paint: { 'text-color': s.base === 'night' ? '#d6b8e6' : '#7a2e8a', 'text-halo-color': P.halo, 'text-halo-width': 1.2, 'icon-opacity': s.base === 'night' ? 0.85 : 1 },
+    });
+  }
   if (s.overlays.lipasPoints || s.overlays.restricted) {
     add({
       id: 'lipas-point', type: 'symbol', source: 'lipasPoints', minzoom: 10,

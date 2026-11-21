@@ -417,14 +417,14 @@ export const SAFETY_OVERLAYS = {
 // Defaults per activity; the user's choices are remembered per activity.
 export const ACTIVITY_OVERLAYS = {
   // winterWays, lipasWinter and seaIce draw only while it's winter (js/winter.js): on by default where they matter
-  mtb: { access: true, lipasRoutes: true, lipasPoints: true, pois: true, wmtMtb: false, restricted: true, winterWays: true, lipasWinter: true },
-  gravel: { access: true, lipasRoutes: false, lipasPoints: true, pois: true, drPaved: false, sfTraffic: true, sfRoadworks: true, sfIncidents: true, sfCameras: true, winterWays: true, lipasWinter: true },
-  road: { access: true, lipasRoutes: false, lipasPoints: false, pois: false, wmtCycling: true, sfTraffic: true, sfRoadworks: true, sfIncidents: true, sfRoadcond: true, sfCameras: true, winterWays: true },
-  hike: { access: true, lipasRoutes: true, lipasPoints: true, pois: true, wmtHiking: true, restricted: true, winterWays: true, lipasWinter: true },
-  trailrun: { access: true, lipasRoutes: true, lipasPoints: true, pois: true, restricted: true, winterWays: true, lipasWinter: true },
-  run: { access: true, lipasRoutes: true, lipasPoints: false, pois: false, sfRoadworks: true, winterWays: true, lipasWinter: true },
-  paddle: { lipasRoutes: true, lipasPoints: true, pois: true, depthAreas: true, depthContours: true, soundings: true, fairways: true, sfShips: true, restricted: true, nautical: true, seaIce: true },
-  swim: { lipasRoutes: false, lipasPoints: true, pois: true, depthAreas: true, depthContours: true, fairways: true, sfShips: true, nautical: true, seaIce: true },
+  mtb: { access: true, lipasRoutes: true, lipasPoints: true, pois: true, shops: false, wmtMtb: false, restricted: true, winterWays: true, lipasWinter: true },
+  gravel: { access: true, lipasRoutes: false, lipasPoints: true, pois: true, shops: true, drPaved: false, sfTraffic: true, sfRoadworks: true, sfIncidents: true, sfCameras: true, winterWays: true, lipasWinter: true },
+  road: { access: true, lipasRoutes: false, lipasPoints: false, pois: false, shops: true, wmtCycling: true, sfTraffic: true, sfRoadworks: true, sfIncidents: true, sfRoadcond: true, sfCameras: true, winterWays: true },
+  hike: { access: true, lipasRoutes: true, lipasPoints: true, pois: true, shops: true, wmtHiking: true, restricted: true, winterWays: true, lipasWinter: true },
+  trailrun: { access: true, lipasRoutes: true, lipasPoints: true, pois: true, shops: false, restricted: true, winterWays: true, lipasWinter: true },
+  run: { access: true, lipasRoutes: true, lipasPoints: false, pois: false, shops: true, sfRoadworks: true, winterWays: true, lipasWinter: true },
+  paddle: { lipasRoutes: true, lipasPoints: true, pois: true, shops: false, depthAreas: true, depthContours: true, soundings: true, fairways: true, sfShips: true, restricted: true, nautical: true, seaIce: true },
+  swim: { lipasRoutes: false, lipasPoints: true, pois: true, shops: false, depthAreas: true, depthContours: true, fairways: true, sfShips: true, nautical: true, seaIce: true },
 };
 
 // ---------------------------------------------------------------------------
@@ -473,6 +473,7 @@ export const QUICK_TILE = {
   wmtCycling: { group: 'Marked routes', label: 'Waymarked cycling', icon: 'sign' },
   lipasPoints: { group: 'Places', label: 'Huts & lean-tos', icon: 'hut', zoom: 10 },
   pois: { group: 'Places', label: 'Outdoor places', icon: 'pin' },
+  shops: { group: 'Places', label: 'Shops and food', icon: 'shop', zoom: 17 },
   nautical: { group: 'Water & nautical', label: 'Nautical marks', icon: 'buoy', zoom: 10.5 },
   depths: { group: 'Water & nautical', label: 'Depths', icon: 'depth', opts: true, note: 'Not for navigation', zoom: 10 },
   fairways: { group: 'Water & nautical', label: 'Shipping lanes', icon: 'ship', zoom: 9 },

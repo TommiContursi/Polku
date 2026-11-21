@@ -4,6 +4,11 @@ What's new in [Polku](https://polku.si), from the latest updates back to the fir
 
 ## 2026-11-21
 
+### Shops and food on the map ([#1222](https://github.com/TommiContursi/Polku/issues/1222))
+
+- A new layer under **Layers › Places**, **Shops and food**, shows shops, supermarkets, cafés, restaurants, bars, bakeries and pharmacies from zoom 17, each with its icon and name in purple. Where they crowd, the better-known ones come first, and shops upstairs or inside a shopping centre are left out. A tap on one opens its card.
+- It's on by default in Road cycling, Gravel, Run and Hike, and off in MTB, Trail run, Paddle and Swim. Turn it on or off for each sport in **Layers**.
+
 ### Car parks on the map ([#1219](https://github.com/TommiContursi/Polku/issues/1219))
 
 - In Finland, car parks are drawn as light grey areas with a darker edge from zoom 14, from the National Land Survey's map, which has public car parks of about 1,000 m² and more, larger private ones, and rest and loading areas. With **Outdoor places** on, each gets a P from zoom 15, and a tap on one says it's a car park.
