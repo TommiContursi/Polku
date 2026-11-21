@@ -48,6 +48,9 @@ import { shadowProtocol } from './shadows.js';
 // ------------------------------------------------------------------ state
 const APPEARANCES = [['auto', 'Automatic'], ['light', 'Light'], ['dark', 'Dark'], ['map', 'Match the map']];
 const LIT_LOOKS = [['lines', 'Lines'], ['dark', 'In the dark']];
+// Settings' choices for a tap on the map and on a way (#1244)
+const TAP_OPENS = [['all', 'Everything'], ['lines', 'No areas'], ['none', 'Nothing']];
+const TAP_WAYS = [['whole', 'The whole way'], ['piece', 'The piece'], ['off', 'Off']];
 const DEFAULTS = {
   activity: 'mtb',
   base: 'trail',
@@ -81,11 +84,15 @@ const DEFAULTS = {
   depthsBack: {}, // per sport: the depth layers the Depths tile brings back when it's turned on again
   litLook: 'lines', // how Lit ways looks: 'lines' or 'dark' (In the dark, #638)
   plotSelect: true, // Property boundaries: a plot tinted and named under the mouse pointer, and its card on a click or a tap (#1148, #1199)
+  tapOpens: 'all', // what a tap, a click and the pointer pick on the map: 'all', 'lines' (no areas) or 'none' (#1244, tapLayers())
+  tapWay: 'whole', // …and on a way: 'whole', 'piece' (junction to junction) or 'off'
 };
 const state = { ...DEFAULTS, ...store.get('settings', {}) };
 if (!ACTIVITIES[state.activity]) state.activity = 'mtb'; // a sport this version doesn't know
 if (!APPEARANCES.some(([k]) => k === state.appearance)) state.appearance = 'auto'; // (and a look)
 if (!LIT_LOOKS.some(([k]) => k === state.litLook)) state.litLook = 'lines';
+if (!TAP_OPENS.some(([k]) => k === state.tapOpens)) state.tapOpens = 'all';
+if (!TAP_WAYS.some(([k]) => k === state.tapWay)) state.tapWay = 'whole';
 state.weather = { ...DEFAULTS.weather, ...(state.weather || {}) };
 for (const k of ['quickTiles', 'depthsBack']) if (!state[k] || typeof state[k] !== 'object') state[k] = {};
 const shared = parseShared(new URLSearchParams(location.search));
@@ -626,6 +633,7 @@ const planner = new Planner(map, {
     weather.showAt(sec);
   },
   weatherSec: () => timeAtHour(weather.hour), // the hour the map's weather shows (a pick's weather agrees with it)
+  tapWay: () => state.tapWay, // a pick's way: whole, or the piece (#1244)
   hazards: (a, opt) => safety.hazardsAlong(a, opt),
   routeTip: (ev, d) => hover.route(ev, d),
   saveOffline: () => {
@@ -688,7 +696,7 @@ const inspector = initInspector(map, {
   openRoute: (leg, lngLat) => { planner.noClickUntil = Date.now() + 400; if (!planner.active) planner.setActive(true); setTimeout(() => planner.openRouteCard(leg, lngLat), 60); }, // (the same click mustn't add a point too)
   // a way, a place, a LIPAS route or place: the planner's card, at the spot (25d part 6)
   openSpot: (f, ll, point, touch) => {
-    if (f.layer.id !== 'lipas-route') return planner.openSpotCard(ll, { pt: point, touch, place: point ? null : f });
+    if (f.layer.id !== 'lipas-route') return planner.openSpotCard(ll, { pt: point, touch, place: point ? null : f, ways: state.tapWay !== 'off', areas: state.tapOpens === 'all' });
     planner.openLipasCard(f.properties, ll, { click: point ? ll : null, near: f.near });
     if (!point) return; // (from search, the route is lit already)
     // the route a click or a tap picked is lit, as search's pick is, until its card goes (unless another pick has taken the layer since)
@@ -697,12 +705,13 @@ const inspector = initInspector(map, {
     planner.cards.current.gone = () => { if (data.lipasPick === lit) setData('lipasPick', { type: 'FeatureCollection', features: [] }); };
   },
   openThing: (f, ll) => planner.openThing(f, ll),
+  taps: () => state.tapOpens, tapWay: () => state.tapWay,
   cardOpen: () => !!planner.cards.current,
   closeCard: () => planner.cards.close(),
   openShip: (mmsi) => safety.openShip(mmsi),
   openCamera: (id, name) => cameras.open(id, name),
 });
-const hover = initHover(map, { wayUnder: (ll, loaded) => wayUnder(ll, map.getZoom(), loaded), hoverPick: (coords) => { dropFade(); planner.hoverPick(coords); },
+const hover = initHover(map, { wayUnder: (ll, loaded) => wayUnder(ll, map.getZoom(), loaded, state.tapWay === 'piece'), taps: () => state.tapOpens, tapWay: () => state.tapWay, hoverPick: (coords) => { dropFade(); planner.hoverPick(coords); },
   enabled: () => state.hoverInfo && hoverCapable() && !planner.edit, isPlanning: () => planner.active, isDrawing: () => planner.drawing(), activity: () => state.activity, difficulty: showsDifficulty, bike: isBike, hoverLeg: routeHoverLeg, hoverRoute: routeHoverRoute, hoverPlot: (id) => lightPlot('hover', id), headAt: (point, touch) => planner.headAt(point, touch ? 18 : 10) });
 
 initSearch(map, $('#search-input'), $('#search-results'), {
@@ -2123,6 +2132,12 @@ function renderSettingsPanel() {
     h('div', { class: 'rows' }, item({ icon: 'layers', label: 'Layers', line: 'The base map, trails, 3D, the timeline and weather on the map', chev: true, onclick: () => openPanel('quick-layers') })),
     ...hillsControls(),
     hillshadeControls(),
+    // what a tap, a click and the pointer pick (#1244); the piece is a hold's too, as it opens the card a tap does
+    h('div', { class: 'tg-text' }, 'A tap on the map'),
+    seg(TAP_OPENS, state.tapOpens, (v) => { state.tapOpens = v; saveSettings(); renderSettingsPanel(); }),
+    h('div', { class: 'tg-text' }, 'A tap on a way'),
+    seg(TAP_WAYS, state.tapWay, (v) => { state.tapWay = v; saveSettings(); renderSettingsPanel(); }),
+    h('p', { class: 'note' }, 'No areas: a lake, a park, a bog, rock, open ground or a forest opens nothing. The piece runs from junction to junction. A hold still opens the spot’s card.'),
     hoverCapable() ? toggleInfo('Details on hover', state.hoverInfo, (v) => { state.hoverInfo = v; saveSettings(); }, 'Difficulty, surface or name under the mouse · click for everything') : null,
     hoverCapable() ? toggleInfo('Trackpad rotates', state.trackpadTilt, (v) => { state.trackpadTilt = v; saveSettings(); }, 'Two-finger sideways scroll rotates. Up/down and pinch zoom; Shift+scroll tilts') : null,
     comingToggle('Turn the map with two fingers', 'Off keeps north up; a pinch only zooms', true),

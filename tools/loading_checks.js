@@ -44,7 +44,7 @@ export async function hoverFeedback() {
     queryRenderedFeatures: (box, { layers: wanted }) => hit && wanted.includes(hit) ? [{ layer: { id: hit },
       properties: { class: hit === 'path-ground' ? 'path' : 'residential', name: 'Test way', kind: 'leg' }, geometry: { type: 'LineString', coordinates: [[25, 62], [25.001, 62]] } }] : [],
   };
-  const hover = H.initHover(map, { enabled: () => true, isPlanning: () => planning, isDrawing: () => planning && !viewing, activity: () => 'hike', headAt: () => null,
+  const hover = H.initHover(map, { enabled: () => true, isPlanning: () => planning, isDrawing: () => planning && !viewing, activity: () => 'hike', headAt: () => null, taps: () => 'all', tapWay: () => 'whole',
     hoverRoute: () => {}, hoverPick: (coords) => { outlined = !!coords; },
     wayUnder: () => { asked++; return { title: 'Resolved way', line: 'Full details', coords: [[25, 62], [25.001, 62]] }; } });
   const tip = document.querySelector('.hover-tip:last-of-type');
