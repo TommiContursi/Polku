@@ -21,6 +21,9 @@ const GLYPHS = {
   // the Maastokartta's spring, a ring with its outflow; a tar pit, the funnel it's dug as
   spring: 'M12 3 A6 6 0 1 1 11.99 3 Z M12 6 A3 3 0 1 0 12.01 6 Z M11 15 H13 V17 C13 18.2 14 18.8 15.5 18.8 H19.5 V20.8 H15.5 C12.8 20.8 11 19.6 11 17 Z',
   tarpit: 'M3 7 H21 L14.5 16 V21 H9.5 V16 Z',
+  // OSM's standard map's cave entrance, an arch; a bunker, a low dome with its slit
+  cave: 'M3 20 V12 A9 9 0 0 1 21 12 V20 H16 V13.5 A4 4 0 0 0 8 13.5 V20 Z',
+  bunker: 'M2 19 C2 12.5 6 9 12 9 C18 9 22 12.5 22 19 Z M7 13.5 V15.5 H17 V13.5 Z',
   target: 'M12 3 A9 9 0 1 1 11.99 3 Z M12 6 A6 6 0 1 0 12.01 6 Z M12 9 A3 3 0 1 1 11.99 9 Z M11 1 H13 V7 H11 Z M11 17 H13 V23 H11 Z M1 11 H7 V13 H1 Z M17 11 H23 V13 H17 Z',
 };
 

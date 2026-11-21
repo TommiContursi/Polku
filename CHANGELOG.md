@@ -4,6 +4,12 @@ What's new in [Polku](https://polku.si), from the latest updates back to the fir
 
 ## 2026-11-21
 
+### Fire places, springs, caves and tar pits on the map ([#1179](https://github.com/TommiContursi/Polku/issues/1179), [#1173](https://github.com/TommiContursi/Polku/issues/1173))
+
+- With **Outdoor places** on, the map now shows OpenStreetMap's fire places from zoom 13, and its springs, cave entrances, bunkers and tar kilns from zoom 15, each with an icon of its own. A spring's card says whether its water is drinkable, where OpenStreetMap says so.
+- In Finland, the National Land Survey's springs and tar pits show too, with the same icons. Where both have the same spring, OpenStreetMap's shows.
+- A shelter or a picnic site with a fire place keeps its own icon, and its card says it has a fire place.
+
 ### Names of bogs, forests and capes ([#1174](https://github.com/TommiContursi/Polku/issues/1174))
 
 - In Finland, the map now names the bogs, forests, fields, meadows, capes, isthmuses, shores, hollows and other places in the terrain from the National Land Survey's map, as well as stones and shoals in the water and rapids, in italics. Each comes in at the zoom the survey's own map shows it.

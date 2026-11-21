@@ -1598,11 +1598,11 @@ def reedbed_style(chrome):
       // (the aerial base's imagery may never finish loading: idle or 8 s)
       const settle=async()=>{m.jumpTo({center:m.getCenter(),zoom:m.getZoom()+1e-6});m.fire('moveend');await new Promise(r=>setTimeout(r,500));
         await Promise.race([new Promise(r=>{m.once('idle',r);m.triggerRepaint();}),new Promise(r=>setTimeout(r,8000))]);};
-      O.holdReedbeds();
+      O.holdHosted('wetlands');
       const c=[25.7905,62.2335], d=0.002, ring=[[c[0]-d,c[1]-d],[c[0]+d,c[1]-d],[c[0]+d,c[1]+d],[c[0]-d,c[1]+d],[c[0]-d,c[1]-d]];
-      const [x,y]=lonLatToTile(...c,O.REED_Z).map(Math.floor);
-      try{O.seedReedbeds(x,y,{schema:1,elements:[{type:'way',id:1,tags:{wetland:'reedbed'},area:[[ring.slice(0,3)]]}]});errs.push('a ring of three points was taken');}catch{}
-      O.seedReedbeds(x,y,{schema:1,elements:[{type:'relation',id:1302976,tags:{wetland:'reedbed'},area:[[ring]]}]});
+      const [x,y]=lonLatToTile(...c,O.HOSTED_Z).map(Math.floor);
+      try{O.seedHosted('wetlands',x,y,{schema:1,elements:[{type:'way',id:1,tags:{wetland:'reedbed'},area:[[ring.slice(0,3)]]}]});errs.push('a ring of three points was taken');}catch{}
+      O.seedHosted('wetlands',x,y,{schema:1,elements:[{type:'relation',id:1302976,tags:{wetland:'reedbed'},area:[[ring]]}]});
       const at=m.project(c), here=()=>m.queryRenderedFeatures([at.x,at.y],{layers:['lc-reedbed']}).length;
       for(const base of ['trail','plain','night']) {
         polku.set({base});
@@ -2037,6 +2037,71 @@ def mml_names(chrome):
     fails += [f'console: {e[:160]}' for e in pg.errors()]
     pg.close()
     print(f"{'ok  ' if not fails else 'FAIL'} MML's names of the terrain and the water's details (#1174)" + ''.join(f'\n     - {f}' for f in fails), flush=True)
+    return not fails
+
+
+# #1179, #1173: OSM's fire places, springs, caves, bunkers and tar kilns from Polku's own OSM data (seeded `points` tiles), and
+# MML's springs and tar pits from recorded tiles (Seitseminen, tools/fixtures/mml-taustakartta-14-9260-4578.pbf; Suomussalmi,
+# …-14-9527-4276.pbf), never live MML: each kind's icon (fire places from 13, the rest from 15), MML's placed after OSM's, a shelter
+# with a fire place keeping its own icon and its card saying so, a spring's card saying its water is drinkable, a tar pit's card.
+def osm_points(chrome):
+    pg = chrome.page(1440, 900, False)
+    pg.open_app({'activity': 'hike', 'base': 'trail'}, None, '#10/61.93/23.47')
+    fails = pg.js("""(async () => {
+      const errs=[], m=polku.map, FX=['14/9260/4578','14/9527/4276'], wait=(ms)=>new Promise((r)=>setTimeout(r,ms));
+      const settle=async()=>{m.fire('moveend');await wait(400);await Promise.race([new Promise(r=>{m.once('idle',r);m.triggerRepaint();}),wait(10000)]);await wait(400);};
+      if(m.style.tileManagers.mml.getIds().length)return ['MML was asked for tiles at zoom 10'];""" + MML_FIXTURES + """
+      const O=await import('/js/osm-data.js'), {lonLatToTile}=await import('/js/geo.js'), {makeIcon}=await import('/js/icons.js'), {PLACE_KINDS}=await import('/js/config.js');
+      for(const k of Object.keys(PLACE_KINDS)){const img=makeIcon(`place-${k}`); if(!img||!img.data.some((v,i)=>i%4===3&&v>0))errs.push(`no icon for ${k}`);}
+      // OSM's points, seeded at Seitseminen, 60 m apart in a row
+      O.holdHosted('points');
+      const c=[23.5,61.94], at=(i)=>[c[0]+i*0.0012,c[1]], node=(id,i,tags)=>({type:'node',id,lon:at(i)[0],lat:at(i)[1],tags});
+      const [x,y]=lonLatToTile(...c,O.HOSTED_Z).map(Math.floor);
+      O.seedHosted('points',x,y,{schema:1,elements:[node(1,0,{leisure:'firepit'}),node(2,1,{natural:'spring',drinking_water:'yes',name:'Lähde'}),node(3,2,{natural:'cave_entrance'}),
+        {type:'way',id:4,tags:{military:'bunker',building:'bunker'},nodes:[10,11],geometry:[{lon:at(3)[0],lat:at(3)[1]},{lon:at(3)[0]+1e-4,lat:at(3)[1]}],center:{lon:at(3)[0],lat:at(3)[1]}},
+        node(5,4,{historic:'tar_kiln'}),node(6,5,{amenity:'shelter',fireplace:'yes'})]});
+      const kinds=(id)=>new Set(m.queryRenderedFeatures({layers:[id]}).map((f)=>f.properties.subclass));
+      m.jumpTo({center:at(2.5),zoom:14}); await settle();
+      for(let k=0;k<20&&!kinds('poi-fire').size;k++)await wait(250);
+      if(!kinds('poi-fire').has('firepit'))errs.push('no fire place at 14');
+      if(kinds('poi-points').size)errs.push('springs, caves… drawn under 15');
+      m.jumpTo({zoom:16.2}); await settle();
+      for(let k=0;k<20&&kinds('poi-points').size<4;k++)await wait(250);
+      const got=kinds('poi-points');
+      for(const k of ['spring','cave','bunker','tarpit'])if(!got.has(k))errs.push(`no ${k} drawn at 16 (${[...got]})`);
+      if(got.has('fireplace')||kinds('poi-fire').has('fireplace'))errs.push('a shelter with a fire place drawn as one');
+      for(const k of ['spring','cave','bunker','tarpit','firepit'])if(!m.hasImage(`place-${k}`))errs.push(`place-${k} isn't on the map`);
+      // the cards: a spring's says its water is drinkable; a shelter beside a fire place's record says it has one
+      const card=async(pt,f)=>{ if(f)polku.planner.openPlaceCard(f,pt); else polku.planner.openSpotCard(pt,{pt:m.project(pt)}); let c=null; for(let k=0;k<20&&!(c=polku.planner.cards.current);k++)await wait(100);
+        await wait(300); const el=[...document.querySelectorAll('.pl-way.card')].find((e)=>e.getClientRects().length), r={title:c&&c.title,text:el?el.textContent:'',img:!!(el&&el.querySelector('img'))}; polku.planner.cards.close(); await wait(200); return r; };
+      let r=await card(at(1)); if(r.title!=='Lähde'||!/Spring/.test(r.text)||!/Drinking water\\s*Yes/.test(r.text)||!r.img)errs.push(`a spring's card: ${r.title}, ${r.text.slice(0,120)}`);
+      r=await card(at(4)); if(r.title!=='Tar pit'||!r.img)errs.push(`a tar kiln's card: ${r.title}`);
+      r=await card(at(5),{layer:{id:'poi-outdoor'},properties:{class:'shelter',subclass:'shelter'},geometry:{type:'Point',coordinates:at(5)}});
+      if(!/Fireplace\\s*Yes/.test(r.text))errs.push(`a shelter with a fire place: ${r.text.slice(0,160)}`);
+      // MML's springs and tar pits from the recorded tiles, from 15, placed after OSM's
+      const order=m.getLayersOrder();
+      for(const id of ['mml-spring','mml-tarpit'])if(!(order.indexOf(id)>=0&&order.indexOf(id)<order.indexOf('poi-points')))errs.push(`${id} not under OSM's points`);
+      for(const [t,id,cls,title] of [[[9260,4578],'mml-spring',36100,'Spring'],[[9527,4276],'mml-tarpit',45400,'Tar pit']]) {
+        const layer=id==='mml-spring'?'maasto_piste':'poi';
+        m.jumpTo({center:tileMid(14,...t),zoom:14.6}); await settle();
+        let pt=null; for(let k=0;k<20&&!pt;k++){const f=m.querySourceFeatures('mml',{sourceLayer:layer}).find((f)=>f.properties.kohdeluokka===cls); pt=f&&f.geometry.coordinates; if(!pt)await wait(250);}
+        if(!pt){errs.push(`(the test) no ${title} in the recorded tile`);continue;}
+        m.jumpTo({center:pt,zoom:14.8}); await settle(); if(m.queryRenderedFeatures({layers:[id]}).length)errs.push(`${id} drawn under 15`);
+        m.jumpTo({center:pt,zoom:15.5}); await settle();
+        let f=null; for(let k=0;k<20&&!f;k++){f=m.queryRenderedFeatures({layers:[id]})[0]; if(!f)await wait(250);}
+        if(!f){errs.push(`${id} not drawn at 15.5`);continue;}
+        const p=m.project(f.geometry.coordinates);
+        m.fire('click',{point:p,lngLat:m.unproject([p.x,p.y]),originalEvent:new MouseEvent('click')});
+        let c=null; for(let k=0;k<20&&!(c=polku.planner.cards.current);k++)await wait(100);
+        if(!c||c.title!==title)errs.push(`a click on ${id} opened ${c?c.title:'nothing'}`);
+        polku.planner.cards.close(); await wait(200);
+        r=await card(f.geometry.coordinates); if(r.title!==title||!r.img)errs.push(`the planner's tap on ${id} opened ${r.title} ${r.img?'':'without its icon'}`);
+      }
+      return errs;
+    })()""", timeout=180000)
+    fails += [f'console: {e[:160]}' for e in pg.errors()]
+    pg.close()
+    print(f"{'ok  ' if not fails else 'FAIL'} OSM's fire places, springs, caves, bunkers and tar kilns, MML's springs and tar pits (#1179, #1173)" + ''.join(f'\n     - {f}' for f in fails), flush=True)
     return not fails
 
 # #1179: guideposts from zoom 15 with an icon of their own (a post with two signs on a brown disc), not the information
@@ -26867,7 +26932,7 @@ GROUPS = [
     ('site', [license_text], 'the built site: LICENSE sent as text, since every file\'s copyright line links to it (#115); against the checkout it checks nothing'),
     ('pacing', [pacing, paced_legs, net_fails], 'calls made together go out paced and counted (mocked services, a fake clock); legs refused for a slot follow at it (#78); the calls that failed, in Data sources (#687)'),
     ('loading', [loading, routing_edits], 'cancel obsolete routing, edits/Undo/Clear, shared subscribers, refusal/recovery, deadlines, terrain slots and LIPAS viewport/cache (mocked)'),
-    ('layers', [layers, layer_coverage, cycleway_style, cycling_restrictions, waterway_style, property_lines, property_plots, wetland_style, reedbed_style, mml_bogs, mml_rock, mml_water, mml_open, osm_cliffs, saddles, mml_cards, mml_winter_roads, guideposts, mml_names, town_gates, town_bridges, town_oneway, town_parks, town_parking, town_shops, town_housenumbers], 'the Layers panel in every sport'),
+    ('layers', [layers, layer_coverage, cycleway_style, cycling_restrictions, waterway_style, property_lines, property_plots, wetland_style, reedbed_style, mml_bogs, mml_rock, mml_water, mml_open, osm_cliffs, saddles, mml_cards, mml_winter_roads, guideposts, mml_names, osm_points, town_gates, town_bridges, town_oneway, town_parks, town_parking, town_shops, town_housenumbers], 'the Layers panel in every sport'),
     ('raster', [raster_maps, aerial_fallback, aerial_labels], 'terrain and aerial detail, bounded high-density WMS symbols, depth boundaries and missing aerial detail (#649, #650, #653); the map\'s words on the aerial photos at 4.5:1 on their halo (#554)'),
     ('coarse', [coarse], 'a coarse map underneath (#1091): the base map\'s tile four zoom levels up stands in for one that hasn\'t come, at 1440 and 390'),
     ('offline', [mml_offline], 'Save offline keeps the National Land Survey\'s tiles (#1176): its terrain at zooms 11–14 and property boundaries while on, under addresses without the key, two at a time and ten a second at most; what Offline maps says an area lacks; offline, with the real worker, the bogs drawn from the saved tile and no message'),

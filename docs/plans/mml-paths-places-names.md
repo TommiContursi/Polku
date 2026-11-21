@@ -41,6 +41,14 @@ ways to avoid it, and asks seven questions, each with one recommendation.
   (`Maaston yksityiskohdat`, 1030105 and 1030110) weren't in the decided
   kinds and are left out.
 
+- **Built, part 3: the points.** OSM's points are a `points` product built
+  in the `polku-osm-data` repository (nodes and ways' centres with
+  `leisure=firepit`, `amenity=bbq`, `natural=spring`, `natural=cave_entrance`,
+  `military=bunker`, `historic=tar_kiln` or `fireplace=yes`), drawn by
+  `poi-fire` from 13 and `poi-points` from 15; MML's springs and tar pits are
+  `mml-spring` and `mml-tarpit`, placed after OSM's. The kinds are
+  `PLACE_KINDS`, the list #121 takes over.
+
 ## The questions
 
 | # | Question | Recommended | Cost |
