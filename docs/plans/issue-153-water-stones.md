@@ -34,7 +34,7 @@ The hidden map draws a leg's water at 3 m a pixel or coarser, which is MapLibre'
 - **Reading a tile:** the vector-tile reader in `js/shadows.js`, made to read any layer, so there's one reader. Only the classes above are kept.
 - **Not complete where it isn't:** a tile with no features at all counts as outside MML's map. The router measures how much of the leg's water lies in tiles MML covered, as it does for Syke's surveyed water, and What Polku looked at says so.
 - **OSM's rocks stay everywhere,** beside MML's: no code to switch between them, and neither set has all the other's. They're the fallback beyond Finland that AGENTS.md asks for (#1201), and where MML doesn't answer they're still there.
-- **Offline:** offline saves keep OpenFreeMap's tiles, not MML's (`sw.js`), so offline a leg is routed with OSM's rocks and Not checked says MML's didn't load, unless the browser still has the tiles from that day. MML's tiles in offline saves would be a part of their own.
+- **Offline:** when this was planned, offline saves kept OpenFreeMap's tiles, not MML's. Since #1231 (#1176) they keep MML's too, and the router's requests for them go through the service worker as the map's do, so offline a leg in a saved area keeps clear of MML's stones; elsewhere it's routed with OSM's rocks and Not checked says MML's didn't load.
 - **A leg saved before** (no `checked.stones`) is routed again when the route loads online, as #1187 does for the depths.
 - **Tests** answer MML's address from recorded tiles in `tools/fixtures/` (the ones #1186 records off Kotka and on Kitkajoki), never live MML.
 
@@ -111,7 +111,7 @@ Nothing in the router or Check reads rapids today, so a river route goes through
 
 ## Not in this part
 
-- Stones under the surface (38511); weirs, dams and locks (#856); OSM's rapids; MML's tiles in offline saves.
+- Stones under the surface (38511); weirs, dams and locks (#856); OSM's rapids.
 
 ## As built
 
@@ -122,4 +122,4 @@ Nothing in the router or Check reads rapids today, so a river route goes through
 - **Rapids,** as decided: MML's lines and OSM's `waterway=rapids` drawn 25 m either side into the grid at no cost, read whatever Rocks & shoals is set to; runs under 50 m apart are one item, under Warnings; **Avoid it** puts places to avoid 30 m round every 40 m along the rapid. Tested down Tourujoki at Kangas, whose two MML lines (230 m and a short one) give one item of about 440 m; Avoid it carries round. OSM's rapids join Polku's own OSM data at its next build.
 - **From a review, 2026-11-21:** an answer from MML with no layers at all fails (outside Finland MML answers its layers with no features: 314 bytes at zoom 14); a leg too long for zoom 14's tiles asks zoom 11's (at most 16), and if they're all empty, as off Tallinn, it's outside MML's map, not "too long"; rapids are found on streams too, which the router follows at a stream's cost; how much water MML covers is looked up per piece of the line rather than drawn. With MML down for good, each of its tiles is asked once a retry (two minutes) and the legs are routed about once more each time: 73 requests for 12 tiles over six retries made 1.5 s apart. Off Kotka, with the 6 m rule, the three legs measured give no "Close to a marked rock or shoal" item.
 - **From Codex's review and a fresh session's, 2026-11-21:** a rapid joined over a gap spans it; **Avoid it** places 40 m circles every 40 m, interpolated, as wide as the rapids' zone, which is now 40 m (at Kukkolankoski on the Torne the route ran 18–36 m from MML's line); OSM's answers from Overpass are kept under a new key, as those from before have no rapids; offline, a source's retry routes nothing again until the connection is back; the row names the source a leg was too long for. On a wide river Avoid it still only moves the route across: #1239.
-- **Not done:** MML's tiles in offline saves; weirs, dams and locks (#856); Avoid it on a wide river (#1239).
+- **Not done:** weirs, dams and locks (#856); Avoid it on a wide river (#1239). MML's tiles in offline saves came with #1231.
