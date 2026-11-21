@@ -10,6 +10,11 @@ What's new in [Polku](https://polku.si), from the latest updates back to the fir
 - **A tap on a way** chooses what a tap on a street, a trail or a cycleway picks: **The whole way**, as before; **The piece**, from junction to junction, with that piece's length and profile; or **Off**, where a tap on a way opens nothing.
 - Holding the map, or a right-click, still opens the spot's card whatever you choose, with the way's piece when you've chosen **The piece**. Search and links to a spot open their cards as before.
 
+### Reeds in the water look the same everywhere ([#1248](https://github.com/TommiContursi/Polku/issues/1248))
+
+- On the Trail, Plain and Night maps, reeds in the water are reed tufts on the water's blue, whether they come from OpenStreetMap's reedbeds or, in Finland, from the National Land Survey's overgrowing water. Before, the same reedy shore could be tufts on a pale ground, which read as land, or blue dashes on the water. Blue dashes now mean bogs and wetlands only.
+- Reedbeds that OpenStreetMap maps inside a lake now show. Before, the lake covered them.
+
 ### A tap on a river's flow arrow, a jetty or open ground says what it is ([#1234](https://github.com/TommiContursi/Polku/issues/1234))
 
 - In Finland, a tap or a click on the National Land Survey's flow arrows beside rivers, jetties, heath, open forest land (mostly clear-cuts), meadows, open shores, fields, sand and the forest's marks now opens a card that names it, and on a desktop resting the pointer on one says the same. A flow arrow's card says which way the river flows, such as "Flows to the SW".
