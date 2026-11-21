@@ -685,9 +685,10 @@ export class Planner {
     return this.nogos.filter((n) => dist(n.ll, mid) < pad + dist(a, b) / 2);
   }
 
-  addNogo(ll, r = 40, label = 'Avoid') {
+  // water: blocks only the water, bank to bank across the river (a rapid's, #1239); land legs don't get it
+  addNogo(ll, r = 40, label = 'Avoid', water = false) {
     this.commit();
-    this.nogos.push({ ll: [+ll[0].toFixed(6), +ll[1].toFixed(6)], r: Math.round(r), label });
+    this.nogos.push({ ll: [+ll[0].toFixed(6), +ll[1].toFixed(6)], r: Math.round(r), ...(water && { water: true }), label });
     this.drawNogos();
     this.update();
     toast(this.points.length > 1 ? 'Re-routing around it…' : 'Marked — routes will go around it');
@@ -695,9 +696,9 @@ export class Planner {
 
   // several at once (a group of fallen trees): one undo step, one re-route
   addNogos(list) {
-    if (list.length === 1) { this.addNogo(list[0].ll, list[0].r, list[0].label); return; }
+    if (list.length === 1) { this.addNogo(list[0].ll, list[0].r, list[0].label, list[0].water); return; }
     this.commit();
-    for (const n of list) this.nogos.push({ ll: [+n.ll[0].toFixed(6), +n.ll[1].toFixed(6)], r: Math.round(n.r), label: n.label });
+    for (const n of list) this.nogos.push({ ll: [+n.ll[0].toFixed(6), +n.ll[1].toFixed(6)], r: Math.round(n.r), ...(n.water && { water: true }), label: n.label });
     this.drawNogos();
     this.update();
     toast(`Re-routing around ${list.length} places…`);
@@ -1111,14 +1112,14 @@ export class Planner {
   legKey(i) {
     const leg = this.legs[i];
     const from = this.points[i], to = this.points[i + 1];
-    const nogos = leg.mode === 'auto' || leg.mode === 'water' ? this.nogosNear(from, to) : [];
+    const nogos = leg.mode === 'water' ? this.nogosNear(from, to) : leg.mode === 'auto' ? this.nogosNear(from, to).filter((n) => !n.water) : [];
     const rp = this.routerFor(i); // the leg's route style, as the routers take it
     const profile = rp.profile || ACTIVITIES[this.legSport(i)].brouter;
     const styleKey = leg.mode === 'line' ? '' : rp.key;
     // a water leg also depends on the craft and, keeping out of the wind, on the hour it starts
     const at = leg.mode === 'water' ? this.legStartSec(i) : 0;
     const waterKey = leg.mode === 'water' ? `|${this.craftOf(i)}|${rp.water.wind === 'ignore' ? '' : Math.floor(at / 3600)}` : '';
-    const base = `${leg.mode}|${profile}|${from.join(',')}|${to.join(',')}|${nogos.map((n) => n.ll.join(',') + n.r).join(';')}|${styleKey}${waterKey}`;
+    const base = `${leg.mode}|${profile}|${from.join(',')}|${to.join(',')}|${nogos.map((n) => n.ll.join(',') + n.r + (n.water ? 'w' : '')).join(';')}|${styleKey}${waterKey}`;
     // another way picked (#95): BRouter's alternative k; added only then, so older keys still match
     const alt = leg.mode === 'auto' && leg.alt ? leg.alt : 0;
     return { key: alt ? `${base}|alt${alt}` : base, base, alt, from, to, nogos, profile, rp, at };
@@ -1598,7 +1599,7 @@ export class Planner {
       let calls = 0;
       // on land: one BRouter call a loop
       const profile = rp.profile || ACTIVITIES[sport].brouter;
-      const opts = { portage: true, nogos: this.nogos, params: { ...rp.params, correctMisplacedViaPoints: 1 }, valhalla: rp.valhalla, maxWait: STAND_IN_AFTER };
+      const opts = { portage: true, nogos: this.nogos.filter((n) => !n.water), params: { ...rp.params, correctMisplacedViaPoints: 1 }, valhalla: rp.valhalla, maxWait: STAND_IN_AFTER };
       const length = (c) => { let m = 0; for (let i = 1; i < c.length; i++) m += dist(c[i - 1], c[i]); return m; };
       const runLand = async (o) => {
         calls++;
@@ -7425,7 +7426,7 @@ export class Planner {
       if (w.avoidAlong) {
         for (let d = w.at, k = Math.max(0, i0 - 1); ; d = Math.min(w.at + w.len, d + 40)) {
           while (k < a.along.length - 2 && a.along[k + 1] < d) k++;
-          avoid.push({ ll: lerp(a.pts[k], a.pts[k + 1], Math.min(1, Math.max(0, (d - a.along[k]) / (a.along[k + 1] - a.along[k] || 1)))), r: 40, label: w.text });
+          avoid.push({ ll: lerp(a.pts[k], a.pts[k + 1], Math.min(1, Math.max(0, (d - a.along[k]) / (a.along[k + 1] - a.along[k] || 1)))), r: 40, water: true, label: w.text });
           if (d >= w.at + w.len) break;
         }
       }
@@ -8434,17 +8435,17 @@ function alongAt(c, m) {
 }
 
 // Places to avoid in a share link (av=): lon_lat_metres, comma-separated, the
-// centre to 5 decimals (about a metre, like the route's points). A link holds at
+// centre to 5 decimals (about a metre, like the route's points), and `w` after the metres for one on the water only. A link holds at
 // most AVOID_MAX; anything that doesn't read as a circle is left out, and `lost` says so.
 const AVOID_MAX = 200;
-const encodeAvoid = (nogos) => nogos.map((n) => `${+n.ll[0].toFixed(5)}_${+n.ll[1].toFixed(5)}_${Math.round(n.r)}`).join(',');
+const encodeAvoid = (nogos) => nogos.map((n) => `${+n.ll[0].toFixed(5)}_${+n.ll[1].toFixed(5)}_${Math.round(n.r)}${n.water ? 'w' : ''}`).join(',');
 function decodeAvoid(s) {
   const nogos = [];
   let lost = false;
   for (const part of s ? s.split(',') : []) {
-    const m = part.match(/^(-?\d{1,3}(?:\.\d{1,7})?)_(-?\d{1,2}(?:\.\d{1,7})?)_(\d{1,5})$/);
+    const m = part.match(/^(-?\d{1,3}(?:\.\d{1,7})?)_(-?\d{1,2}(?:\.\d{1,7})?)_(\d{1,5})(w?)$/);
     if (m && Math.abs(+m[1]) <= 180 && Math.abs(+m[2]) <= 90 && +m[3] >= 1 && +m[3] <= 10000 && nogos.length < AVOID_MAX) {
-      nogos.push({ ll: [+m[1], +m[2]], r: +m[3], label: 'Avoided place' });
+      nogos.push({ ll: [+m[1], +m[2]], r: +m[3], ...(m[4] && { water: true }), label: 'Avoided place' });
     } else lost = true;
   }
   return { nogos, lost };
