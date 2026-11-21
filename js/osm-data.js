@@ -36,7 +36,7 @@ export function hostedTile(url, dataset, zoom, xy, fallback, { force = false, sl
     entry = { raw: url ? readers.get(readerKey).tile(xy, { force, signal }) : Promise.reject(new Error('Hosted OSM unavailable')), fallbacks: new Map() };
     pending.set(key, entry);
   }
-  return entry.raw.then((json) => ({ ...slim(json), source: json.source })).catch((err) => {
+  return entry.raw.then((json) => ({ ...slim(json), source: json.source, ...(json.cycleways ? { cycleways: true } : {}) })).catch((err) => {
     if (!entry.fallbacks.has(fallback)) entry.fallbacks.set(fallback, Promise.resolve().then(() => fallback(err)));
     return entry.fallbacks.get(fallback);
   }).finally(() => { if (pending.get(key) === entry) pending.delete(key); });
@@ -148,7 +148,7 @@ function mergeTiles(tiles) {
       elements.set(key,e);
     }
   }
-  return {schema:1,elements:[...elements.values()],nearby_complete:tiles.every(t=>t.nearby_complete!==false),
+  return {schema:1,elements:[...elements.values()],nearby_complete:tiles.every(t=>t.nearby_complete!==false),...(tiles.every(t=>t.cycleways)?{cycleways:true}:{}),
     source:{timestamp:tiles[0].source.timestamp,provider:'Polku OSM data',attribution:tiles[0].source.attribution,sources:tiles.map(t=>t.source)}};
 }
 
@@ -204,7 +204,7 @@ export class StaticOSM {
       const effective={...manifest,bounds:d.bounds || manifest.bounds,coverage:d.coverage || manifest.coverage,source:d.source || manifest.source};
       const url=new URL(d.url,this.url), base=new URL(this.url);
       if (url.origin!==base.origin || !['https:','http:'].includes(url.protocol) || url.username || url.password) throw new Error('Invalid OSM archive URL');
-      return {manifest:effective,url:url.href,bytes:d.bytes,schema:d.schema,areas_complete:d.areas_complete,nearby_complete:d.nearby_complete,country:d.country || manifest.country};
+      return {manifest:effective,url:url.href,bytes:d.bytes,schema:d.schema,areas_complete:d.areas_complete,nearby_complete:d.nearby_complete,cycleways:d.cycleways===true,country:d.country || manifest.country};
     });
     if (xy) {
       const bounds=tileBounds(...xy,this.zoom);
@@ -235,14 +235,15 @@ export class StaticOSM {
     return tiles.length===1 ? tiles[0] : mergeTiles(tiles);
   }
 
-  async readArchive([x,y], {force}, signal, {manifest,url,bytes,schema,areas_complete,nearby_complete,country}) {
+  // cycleways: the release's trails keep every highway=cycleway (#1306); a release without the flag doesn't say so
+  async readArchive([x,y], {force}, signal, {manifest,url,bytes,schema,areas_complete,nearby_complete,cycleways,country}) {
     const key = `static/${url}/${manifest.release}/${this.zoom}/${x}/${y}`;
     const validate = j => schema===2 ? validateGeometry(j,[this.zoom,x,y]) : validateTile(j);
     if (force) { this.tiles.delete(key); this.readers.delete(url); }
     if (this.tiles.has(key)) return this.tiles.get(key);
     const promise = (async () => {
       const hit = await cache.get(key).catch(() => null);
-      if (hit) return { ...validate(hit.json), ...(schema===2 ? {areas_complete} : {}), nearby_complete, source: { ...manifest.source, ...(country ? {country} : {}), provider: 'Polku OSM data', attribution: manifest.attribution } };
+      if (hit) return { ...validate(hit.json), ...(schema===2 ? {areas_complete} : {}), nearby_complete, ...(cycleways ? {cycleways} : {}), source: { ...manifest.source, ...(country ? {country} : {}), provider: 'Polku OSM data', attribution: manifest.attribution } };
       signal.throwIfAborted();
       if (!manifest.coverage && manifest.source.url === 'https://download.geofabrik.de/europe/finland-latest.osm.pbf') {
         // The first published release predates embedded coverage; cached tiles still work without this asset.
@@ -276,6 +277,7 @@ export class StaticOSM {
       validate(json);
       signal.throwIfAborted();
       json.nearby_complete = nearby_complete;
+      if (cycleways) json.cycleways = true;
       if (schema===2) json.areas_complete = areas_complete;
       json.source = { ...manifest.source, ...(country ? {country} : {}), provider: 'Polku OSM data', attribution: manifest.attribution };
       cache.set(key, { at: Date.now(), json }).catch(() => {});

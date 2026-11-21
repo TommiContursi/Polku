@@ -4,6 +4,11 @@ What's new in [Polku](https://polku.si), from the latest updates back to the fir
 
 ## 2026-11-21
 
+### Every cycle path from zoom 13 ([#1306](https://github.com/TommiContursi/Polku/issues/1306))
+
+- With **Trail details** on, cycle paths show in full from zoom 13, drawn from the trail details, so a town's cycling network no longer looks broken into pieces until you zoom in to 14. Footpaths that allow bikes still show from zoom 14.
+- Where the trail details come from Polku's own data, this starts once that data has every cycle path; until then the map shows them as before.
+
 ### Road numbers on the map ([#1307](https://github.com/TommiContursi/Polku/issues/1307))
 
 - Roads show their numbers from zoom 10, in a small box along the road, as on the National Land Survey's terrain map, so you can find a trailhead or follow a numbered road. They show everywhere OpenStreetMap has them. Where one road carries several numbers, the first shows.

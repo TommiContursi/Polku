@@ -29,8 +29,8 @@ const NODE_KEEP = ['barrier', 'obstacle', 'ford', 'access', 'bicycle', 'foot', '
 const BARRIER_NODES = 'gate|lift_gate|swing_gate|sliding_gate|wicket_gate|hampshire_gate|bump_gate|chain|rope|bar|block|stile|kissing_gate|turnstile'
   + '|horse_stile|full-height_turnstile|cycle_barrier|motorcycle_barrier|log|fallen_tree|windfall|debris';
 
-// Every trail and track (so the map can draw them all from OSM, #1128), the
-// footways and cycleways that have something worth showing, fences, walls and
+// Every trail, track and cycleway (so the map can draw them all from OSM, #1128, #1306), the
+// footways that have something worth showing, fences, walls and
 // hedges, and the gates, stiles, fallen trees and fords anywhere in the tile (a
 // gate is as often on a service road or in a fence as on a trail). The hosted
 // trails data (`products()` in tools/osm_data/builder.py) keeps the same set.
@@ -38,7 +38,7 @@ export function tileQuery(x, y) {
   const [w, s, e, n] = tileBounds(x, y, TILE_Z);
   const bb = `${s.toFixed(6)},${w.toFixed(6)},${n.toFixed(6)},${e.toFixed(6)}`;
   return `[out:json][timeout:25];way[highway~"^(path|bridleway|steps|footway|track|cycleway)$"](${bb})->.all;`
-    + '(way.all[highway~"^(path|bridleway|steps|track)$"];way.all[highway=footway]["mtb:scale"];'
+    + '(way.all[highway~"^(path|bridleway|steps|track|cycleway)$"];way.all[highway=footway]["mtb:scale"];'
     + 'way.all[~"^(obstacle|ford|mtb:scale:uphill)$"~"."];way.all[surface=mud];'
     + `way[barrier~"^(fence|wall|hedge|city_wall)$"](${bb}););out tags geom qt;`
     + `(node[barrier~"^(${BARRIER_NODES})$"](${bb});node[obstacle](${bb});node[ford][ford!=no](${bb}););out qt;`;
@@ -91,7 +91,8 @@ export function trailTile(x, y, { hostedOnly = false } = {}) {
   const entry = { data: null, hostedOnly };
   entry.promise = hostedTile(OSM_DATA_MANIFEST, 'trails', TILE_Z, [x, y], hostedOnly
     ? (err) => { throw Object.assign(new Error(err.message), { hostedOnly }); }
-    : () => cachedOverpass(`trails3/${TILE_Z}/${key}`, tileQuery(x, y), slimTile, { oneRound: true, timeoutMs: 30000 }), { slim: slimTile })
+    // (an Overpass answer has every cycleway; a hosted tile when its release says so)
+    : () => cachedOverpass(`trails4/${TILE_Z}/${key}`, tileQuery(x, y), slimTile, { oneRound: true, timeoutMs: 30000 }).then((d) => ({ ...d, cycleways: true })), { slim: slimTile })
     .then((data) => { entry.data = data; arrived(key); return data; })
     .catch((err) => { tiles.delete(key); failed.set(key, { until: Date.now() + RETRY, hostedOnly }); throw err; });
   tiles.set(key, entry);
@@ -165,7 +166,7 @@ export function obstacleKind(t) {
 const HALO_W = [0.62, 1, 1.32, 1.6];
 const CENTRE_W = [0.8, 1, 1.35, 1.6];
 
-function wayFeature(id, t, flat) {
+function wayFeature(id, t, flat, everyCycleway) {
   const coords = [];
   for (let i = 0; i < flat.length; i += 2) coords.push([flat[i], flat[i + 1]]);
   const o = obstacles(t);
@@ -179,6 +180,8 @@ function wayFeature(id, t, flat) {
     w, vis: visClass(t), wf: track ? 1 : HALO_W[w], cf: CENTRE_W[w],
     veg: /vegetation/.test(o), mud: t.surface === 'mud' || /mud/.test(o), tree: /fallen.?trees?/.test(o), wayford: yes(t.ford),
     boardwalk: t.bridge === 'boardwalk',
+    // a cycleway from a tile that has every one, drawn in place of the map's own (#1306)
+    cw: everyCycleway && t.highway === 'cycleway',
     width: t.width, tv: t.trail_visibility, smooth: t.smoothness, sac: t.sac_scale, informal: t.informal === 'yes', name: t.name,
   };
   // no undefined values: MapLibre's `has` would count them as there
@@ -198,7 +201,7 @@ function featuresOf(data) {
   let f = built.get(data);
   if (!f) {
     f = {
-      ways: data.w.map(([id, t, g]) => (t.highway ? wayFeature(id, t, g) : fenceFeature(id, t, g))),
+      ways: data.w.map(([id, t, g]) => (t.highway ? wayFeature(id, t, g, data.cycleways) : fenceFeature(id, t, g))),
       points: data.n.map(([id, lon, lat, t]) => ({ id, kind: obstacleKind(t), lon, lat, t })).filter((p) => p.kind).map((p) => ({
         type: 'Feature', id: p.id, geometry: { type: 'Point', coordinates: [p.lon, p.lat] },
         properties: { osm: p.id, kind: p.kind, barrier: p.t.barrier, obstacle: p.t.obstacle, ford: p.t.ford, access: p.t.access, name: p.t.name },
@@ -212,7 +215,7 @@ function featuresOf(data) {
 // ---------------------------------------------------------------- the layer
 export class TrailDetails {
   /**
-   * @param {object} app onData(ways, points) for the map sources; onCoverage(multiPolygon|null)
+   * @param {object} app onData(ways, points) for the map sources; onCoverage(multiPolygon|null, the part whose tiles have every cycleway)
    *   when the area drawn from OSM changes; onBusy() when Overpass fails.
    */
   constructor(map, app) {
@@ -273,7 +276,7 @@ export class TrailDetails {
     const ways = new Map(), points = new Map();
     for (const [x, y] of list) {
       const f = featuresOf(loadedTile(x, y));
-      for (const w of f.ways) ways.set(w.id, w); // a way crossing tiles comes once
+      for (const w of f.ways) if (!ways.get(w.id)?.properties.cw) ways.set(w.id, w); // a way crossing tiles comes once
       for (const p of f.points) points.set(p.id, p);
     }
     this.app.onData({ type: 'FeatureCollection', features: [...ways.values()] }, { type: 'FeatureCollection', features: [...points.values()] });
@@ -293,7 +296,7 @@ export class TrailDetails {
       }
       return { type: 'MultiPolygon', coordinates: tiles.map(([x, y]) => ring(tileBounds(x, y, TILE_Z))) };
     };
-    this.app.onCoverage(area(list));
+    this.app.onCoverage(area(list), area(list.filter(([x, y]) => loadedTile(x, y).cycleways)));
   }
 }
 

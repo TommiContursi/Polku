@@ -2295,10 +2295,53 @@ TRACKS_FROM_13 = """(async () => {
 })()"""
 
 
+# Every cycleway from zoom 13 (#1306), on a phone in Jyväskylä's centre: inside trail detail tiles that keep every cycleway
+# (a release that says so, or an Overpass answer) the trail data draws them, at 13.5 and at 14.2, and the map's own are hidden;
+# in tiles that don't say so, the map's own stay and the trail data draws none. Overpass is asked for every cycleway.
+CYCLEWAYS_FROM_13 = """(async () => {
+  const m = polku.map, wait = (ms) => new Promise((r) => setTimeout(r, ms)), errs = [];
+  const idle = () => new Promise((r) => { if (m.loaded()) r(); else m.once('idle', r); });
+  const T = await import('/js/trails.js'), G = await import('/js/geo.js');
+  T.holdFetches();
+  if (!T.tileQuery(4681, 2272).includes('way.all[highway~"^(path|bridleway|steps|track|cycleway)$"]')) errs.push("Overpass isn't asked for every cycleway");
+  const ownCycleways = () => m.queryRenderedFeatures({ layers: ['cycleway-ground'] }).filter((f) => f.properties.subclass === 'cycleway').length;
+  const drawn = () => new Set(m.queryRenderedFeatures({ layers: m.getLayer('cycleway-osm-ground') ? ['cycleway-osm-ground'] : [] }).map((f) => f.properties.osm)).size;
+  const seed = (cycleways) => {
+    for (const [x, y] of polku.trailDetails.want) {
+      const [w, s, e, n] = G.tileBounds(x, y, 13), cx = (w + e) / 2, cy = (s + n) / 2;
+      T.seedTile(x, y, { v: 1, n: [], ...(cycleways ? { cycleways } : {}), w: [
+        [x * 100000 + y * 10 + 1, { highway: 'cycleway', surface: 'asphalt' }, [cx - 0.01, cy, cx + 0.01, cy]],
+        [x * 100000 + y * 10 + 2, { highway: 'cycleway', surface: 'gravel' }, [cx, cy - 0.005, cx, cy + 0.005]]] });
+    }
+  };
+  // tiles that don't say they have every cycleway: as before
+  m.jumpTo({ center: [25.7470, 62.2420], zoom: 13.5 });
+  await wait(800); seed(false); await wait(1500); await idle();
+  if (drawn()) errs.push(`${drawn()} cycleways drawn from tiles that don't have every one`);
+  if (ownCycleways() < 5) errs.push(`${ownCycleways()} of the map's own cycleways where the trail data doesn't have every one`);
+  // tiles that have every cycleway
+  m.jumpTo({ center: [25.7470, 62.2120], zoom: 13.5 });
+  await wait(800); seed(true); await wait(1500); await idle();
+  if (drawn() < 4) errs.push(`${drawn()} cycleways drawn from the trail data at 13.5`);
+  if (ownCycleways()) errs.push(`${ownCycleways()} of the map's own cycleways drawn under the trail data's at 13.5`);
+  const L = m.style.getLayer('cycleway-osm-ground'), dash = (surface) => JSON.stringify(L.paint.get('line-dasharray').evaluate({ type: 2, properties: { surface } }, {}).from);
+  if (dash('asphalt') !== '[6,1.5]' || dash('gravel') !== '[1,0.5]') errs.push(`the trail data's cycleways dashed ${dash('asphalt')} on asphalt, ${dash('gravel')} on gravel`);
+  m.jumpTo({ zoom: 14.2 }); await wait(1500); await idle();
+  if (drawn() < 2) errs.push(`${drawn()} cycleways drawn from the trail data at 14.2`);
+  if (ownCycleways()) errs.push(`${ownCycleways()} of the map's own cycleways drawn under the trail data's at 14.2`);
+  return errs;
+})()"""
+
+
 def trails(chrome):
     pg = chrome.page(390, 844, True)
     pg.open_app({'activity': 'mtb'}, None, '#12/62.26066/25.8095')
     fails = [f'tracks from 13: {e}' for e in pg.js(TRACKS_FROM_13)]
+    fails += [f'console: {e[:160]}' for e in pg.errors()]
+    pg.close()
+    pg = chrome.page(390, 844, True)
+    pg.open_app({'activity': 'road', 'trailDetails': True}, None, '#12/62.2420/25.7470')
+    fails += [f'cycleways from 13: {e}' for e in pg.js(CYCLEWAYS_FROM_13)]
     fails += [f'console: {e[:160]}' for e in pg.errors()]
     pg.close()
     pg = chrome.page(1440, 900, False)
@@ -2311,7 +2354,7 @@ def trails(chrome):
     fails += [f'console: {e[:160]}' for e in pg.errors()]
     pg.close()
     fails += trail_card(chrome)
-    print(f"{'ok  ' if not fails else 'FAIL'} trail details, every track from zoom 13 (#1128), a trail's card on phones (#435)" + ''.join(f'\n     - {f}' for f in fails), flush=True)
+    print(f"{'ok  ' if not fails else 'FAIL'} trail details, every track and cycleway from zoom 13 (#1128, #1306), a trail's card on phones (#435)" + ''.join(f'\n     - {f}' for f in fails), flush=True)
     return not fails
 
 

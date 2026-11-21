@@ -91,6 +91,10 @@ const diffColor = (idxExpr, none) => ['match', idxExpr, ...DIFF_COLORS.flatMap((
 const mtbColor = (idxExpr, none) => ['match', ['to-string', idxExpr], ...MTB_GRADES.flatMap((k) => [String(k), MTB_COLORS[k]]), none];
 
 const isPathClass = ['==', ['get', 'class'], 'path'];
+// OSM's surface as OpenMapTiles folds it into paved and unpaved, for ways from Polku's own trail data
+const COARSE_SURFACE = ['match', ['get', 'surface'],
+  ['paved', 'asphalt', 'cobblestone', 'concrete', 'concrete:lanes', 'concrete:plates', 'metal', 'paving_stones', 'sett', 'unhewn_cobblestone', 'wood'], 'paved',
+  ['unpaved', 'compacted', 'dirt', 'earth', 'fine_gravel', 'grass', 'grass_paver', 'gravel', 'gravel_turf', 'ground', 'ice', 'mud', 'pebblestone', 'salt', 'sand', 'snow', 'woodchips'], 'unpaved', ''];
 // the trail colours' own opacities (Layers → Trails & difficulty), 0.1–1: 'down' difficulty, 'up' uphill
 // yours, or full; in winter with the winter ways on, faint (difficulty matters little under snow, as on Trailmap's winter map)
 const trailColorOpacity = (s, which) => (s.overlayOpacity && s.overlayOpacity[`trail:${which}`] != null ? s.overlayOpacity[`trail:${which}`] : 1) * (s.winterOn && s.overlays.winterWays ? 0.3 : 1);
@@ -1154,38 +1158,45 @@ function addRoads(s, P, hc, layers, ctx) {
       noBikeBars(`path-osm-${brunnel}-nobike`, 'trailWays', ['all', osmFilter, noBikeMark]);
     }
     // Cycling infrastructure: surface patterns use only the tiles' known coarse class.
-    const surfaceWidth = (paved, rough) => ['case', unpaved, rough, paved];
     // Shared stops preserve the two exponential surface curves; avoid duplicate zoom stops.
     const paved17 = 1.8 + (6 - 1.8) * (1.2 ** 3 - 1) / (1.2 ** 4 - 1);
-    const cycleWidth = !trail ? zi(12, 1.4 * k, 14, 3 * k * (roadBike ? 1.5 : 1), 16, 5.5 * k * (roadBike ? 1.5 : 1), 18, 9 * k * (roadBike ? 1.4 : 1))
-      : brunnel === 'tunnel' ? ze(1.2, 14, 1.5, 16, 2.5, 18, 6)
-      : hc ? ze(1.2, 12, surfaceWidth(1.5, 2), 14, surfaceWidth(2.5, 3), 16, surfaceWidth(4, 5), 18, 10)
-      : brunnel === 'bridge' ? ze(1.2, 14, surfaceWidth(1.5, 2), 16, surfaceWidth(2.5, 3.5), 18, 6)
-      : ze(1.2, 12, surfaceWidth(1.5, 2), 14, surfaceWidth(1.8, 2.4), 17, surfaceWidth(paved17, 6), 18, 6);
     const cycleBand = brunnel === 'bridge'
       ? hc ? ze(1.2, 14, 6, 16, 9, 18, 22.5) : ze(1.2, 14, 1.2, 16, 10, 18, 15)
       : hc ? ze(1.2, 14, 2.2, 15, 4, 16, 7, 18, 16) : ze(1.2, 14, 2.2, 15, 3, 16, 6, 18, 12);
-    bridgeEdge(`cycleway-${brunnel}-edge`, { source: 'ofm', 'source-layer': 'transportation' }, ['all', isPathClass, cyclingPath, bf], trail ? cycleBand : cycleWidth);
-    if (trail && brunnel !== 'tunnel') add({
-      id: `cycleway-${brunnel}-casing`, type: 'line', source: 'ofm', 'source-layer': 'transportation', minzoom: 12,
-      filter: ['all', isPathClass, cyclingPath, bf],
-      paint: {
-        'line-color': '#ffffff',
-        'line-width': cycleBand,
-        'line-opacity': brunnel === 'ground' ? zi(13, 0, 14, roadsDim) : roadsDim,
-      },
-    });
-    add({
-      id: `cycleway-${brunnel}`, type: 'line', source: 'ofm', 'source-layer': 'transportation', minzoom: 12,
-      filter: ['all', isPathClass, cyclingPath, bf],
-      paint: {
-        'line-color': aerial ? '#bfe0ff' : trail ? (hc && brunnel !== 'tunnel' ? '#001bc7' : '#3148d8') : P.cycleway,
-        'line-dasharray': trail && brunnel === 'tunnel' ? [6, 1.5] : ['match', ['get', 'surface'], 'paved', ['literal', [6, 1.5]], 'unpaved', ['literal', [1, trail && (hc || brunnel === 'bridge') ? 0.8 : 0.5]], ['literal', [2.5, 1.5]]],
-        'line-width': cycleWidth,
-        'line-opacity': (trail ? (brunnel === 'tunnel' ? 0.5 : 1) : 0.85) * roadsDim,
-      },
-    });
-    noBikeBars(`cycleway-${brunnel}-nobike`, 'ofm', ['all', isPathClass, cyclingPath, bf, noBikeMark]);
+    // OpenFreeMap's zoom 13 tiles hold about a tenth of the cycleways, so inside trail detail tiles that keep every one
+    // (#1306: a release whose trails say so, or an Overpass answer) they're drawn from those, and the tiles' own hidden.
+    const cycleLayers = (id, src, filter, surface) => {
+      const surfaceWidth = (paved, rough) => ['case', ['==', surface, 'unpaved'], rough, paved];
+      const cycleWidth = !trail ? zi(12, 1.4 * k, 14, 3 * k * (roadBike ? 1.5 : 1), 16, 5.5 * k * (roadBike ? 1.5 : 1), 18, 9 * k * (roadBike ? 1.4 : 1))
+        : brunnel === 'tunnel' ? ze(1.2, 14, 1.5, 16, 2.5, 18, 6)
+        : hc ? ze(1.2, 12, surfaceWidth(1.5, 2), 14, surfaceWidth(2.5, 3), 16, surfaceWidth(4, 5), 18, 10)
+        : brunnel === 'bridge' ? ze(1.2, 14, surfaceWidth(1.5, 2), 16, surfaceWidth(2.5, 3.5), 18, 6)
+        : ze(1.2, 12, surfaceWidth(1.5, 2), 14, surfaceWidth(1.8, 2.4), 17, surfaceWidth(paved17, 6), 18, 6);
+      bridgeEdge(`${id}-edge`, src, filter, trail ? cycleBand : cycleWidth);
+      if (trail && brunnel !== 'tunnel') add({
+        id: `${id}-casing`, type: 'line', ...src, minzoom: 12, filter,
+        paint: {
+          'line-color': '#ffffff',
+          'line-width': cycleBand,
+          'line-opacity': brunnel === 'ground' ? zi(13, 0, 14, roadsDim) : roadsDim,
+        },
+      });
+      add({
+        id, type: 'line', ...src, minzoom: 12, filter,
+        paint: {
+          'line-color': aerial ? '#bfe0ff' : trail ? (hc && brunnel !== 'tunnel' ? '#001bc7' : '#3148d8') : P.cycleway,
+          'line-dasharray': trail && brunnel === 'tunnel' ? [6, 1.5] : ['match', surface, 'paved', ['literal', [6, 1.5]], 'unpaved', ['literal', [1, trail && (hc || brunnel === 'bridge') ? 0.8 : 0.5]], ['literal', [2.5, 1.5]]],
+          'line-width': cycleWidth,
+          'line-opacity': (trail ? (brunnel === 'tunnel' ? 0.5 : 1) : 0.85) * roadsDim,
+        },
+      });
+      noBikeBars(`${id}-nobike`, src.source, ['all', filter, noBikeMark]);
+    };
+    const cycleCover = s.trailDetails && ctx.cyclewayCoverage;
+    const isCycleway = ['==', ['get', 'subclass'], 'cycleway'];
+    cycleLayers(`cycleway-${brunnel}`, { source: 'ofm', 'source-layer': 'transportation' },
+      ['all', isPathClass, cyclingPath, bf, ...(cycleCover ? [['!', ['all', isCycleway, ['within', cycleCover]]]] : [])], ['get', 'surface']);
+    if (cycleCover) cycleLayers(`cycleway-osm-${brunnel}`, { source: 'trailWays' }, ['all', ['==', ['get', 'cw'], true], bf], COARSE_SURFACE);
   }
 
   // One-way streets (#1217): the water's flow arrow along the street from zoom 16, the way traffic goes (the tiles' oneway: 1
