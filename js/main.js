@@ -2387,7 +2387,8 @@ window.addEventListener('keydown', (e) => {
 
 // The free vector tiles only carry the full trail network from zoom 14; the trail details, from 13 (#1128).
 const zoomHint = $('#zoom-hint');
-const syncZoomHint = () => { const z = map.getZoom(); zoomHint.hidden = !(z >= 10.5 && z < 14) || details.covers; };
+// (the trail details load for Access restrictions' gates too, #1232, but draw the trails only with Trail details on)
+const syncZoomHint = () => { const z = map.getZoom(); zoomHint.hidden = !(z >= 10.5 && z < 14) || (state.trailDetails && details.covers); };
 map.on('zoomend', syncZoomHint);
 zoomHint.addEventListener('click', () => map.easeTo({ zoom: 14.2, duration: 600 }));
 
