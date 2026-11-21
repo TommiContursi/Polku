@@ -1218,8 +1218,8 @@ def saddles(chrome):
     return not fails
 
 
-# #1144: reedbeds from Polku's own OSM data, as reed tufts on the vector bases only: on the water's colour, over the water,
-# paddling's and in high contrast too (#1248).
+# #1144: reedbeds from Polku's own OSM data, as reed tufts on the vector bases only: on the water's colour, over the water
+# (#1248; mml_bogs checks paddling's).
 def reedbed_style(chrome):
     pg = chrome.page(1440, 900, False)
     pg.open_app({'activity': 'mtb', 'base': 'trail'}, hash_='#15.5/62.2335/25.7905')
@@ -1255,12 +1255,7 @@ def reedbed_style(chrome):
         if(px(0,0)!=='#'+f||px(22,2)!=='#'+f)errs.push(`${base}: reeds where the ground should be`);
         if(!here())errs.push(`${base}: the seeded reedbed isn't on the map`);
       }
-      for(const [what,s] of [['paddling',{base:'trail',activity:'paddle'}],['high contrast',{activity:'mtb',highContrast:true}]]) {
-        polku.set(s); await settle();
-        const id=m.getPaintProperty('lc-reedbed','fill-pattern'), w=m.getPaintProperty('water','fill-color');
-        if(!id.startsWith(`reedbed-${w.slice(1)}-`))errs.push(`${what}: reedbeds drawn as ${id} on water ${w}`);
-      }
-      polku.set({base:'trail',highContrast:false}); m.jumpTo({center:c,zoom:11.5}); await settle();
+      polku.set({base:'trail'}); m.jumpTo({center:c,zoom:11.5}); await settle();
       if(here())errs.push('reedbeds drawn below zoom 12, where their tiles aren\\'t read');
       m.jumpTo({center:c,zoom:15.5}); await settle();
       if(!here())errs.push('reedbeds not back at zoom 15.5');
