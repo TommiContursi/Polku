@@ -42,8 +42,7 @@ What follows from it:
 - **Actions cost money in a private repository.** Pro includes 18 $ a month (about 3,000
   Linux minutes at 0.006 $ a minute). Public repositories stay free, so the OSM data build,
   which has needed many runs, moves to a public repository. The smoke suite alone used
-  8,843 minutes in that month, about 53 $, three times Pro's allowance; the monthly budget
-  and what happens when it stops runs are in "Actions budget" below.
+  more than three times Pro's allowance; "Actions budget" below keeps Polku within it.
 - **Cloudflare's documented headers have no `Last-Modified`**, which `sw.js` uses to keep one deploy's files
   together (DEVELOPING, "One deploy's files per page"). The deploy gets an id of its own.
 - **The app links to the repository** in the map's credits (`js/main.js`) and in What's new:
@@ -221,7 +220,8 @@ host, and Polku reads them from `OSM_DATA_MANIFEST`.
   repository dispatch needs a token with Contents write, which could read and push Polku's
   code. Instead Polku's own scheduled job finds a new candidate in the public manifest, runs
   the app's checks against it and promotes it; promotion waits for its next run. The daily
-  health check runs in Polku too. If OVH allows a second SFTP user whose root is a candidates
+  check of the files runs in the public repository; the browser check, which needs the app,
+  runs in Polku weekly with the promotion. If OVH allows a second SFTP user whose root is a candidates
   folder, that one goes to the public repository, so it can't write the production manifest. The public repository never checks out
   Polku. Part 6 measures these jobs' minutes first, since they run in the private repository;
   the build itself, the costly part, stays free.
@@ -280,13 +280,30 @@ in local clones. Cloudflare is no backup: it keeps built versions of the site, n
 
 ## Actions budget
 
-The smoke suite at last month's rate costs about 53 $, about 35 $ over Pro's allowance, before
-the OSM app checks, the daily health check and the backup. A budget that stops usage would stop
-the suite after about 50 runs, and then for the rest of the month. **Tomba sets the monthly
-figure.** Recommended: 20 $ over the allowance (about 3,300 minutes more, about 6,300 in all),
-with **Stop usage when budget limit is reached** on, looked at again after the first private
-month. When it stops runs, the groups still run locally, as AGENTS.md has them, and the whole
-suite waits for the next month or runs on Tomba's Mac.
+**Polku pays Pro's 4 $ a month and nothing more:** the budget is 0 $ over Pro's 18 $, with
+**Stop usage when budget limit is reached** on. Without Pro (GitHub Free, 12 $ included) there
+would be no 4 $, but "Protect main" and the OSM environment stop working in a private
+repository: not worth it.
+
+Measured from GitHub's API for 2026-10-21 to 11-20, rounded up per job as GitHub bills: 188
+suite runs, 10,087 minutes. 43 whole-suite runs took 5,007 minutes (about 116 each), and 145
+runs of a few groups took 5,080 (about 35 each); 150 of the runs came from Claude's branches.
+That is over three times the 18 $ (about 3,000 minutes). To fit:
+
+- **Groups run locally,** on a server of their own, as AGENTS.md has them, not on GitHub.
+  GitHub runs a group only for a check that fails only on its runner.
+- **The whole suite on GitHub at most about 20 times a month** (about 2,300 minutes): before a
+  phase PR leaves draft and before a milestone closes. Part 1 writes this into AGENTS.md's
+  "Testing".
+- **The OSM data's daily check** of the files runs in the public repository, free. The browser
+  check, which needs the app, runs in Polku weekly with the promotion instead of daily (4 to 5
+  minutes a run).
+- **The backup:** a few minutes a week.
+
+When the allowance runs out, every Actions run stops until the next month, the OSM promotion
+too: the groups still run locally, and the data waits a week or two. Worth trying while the
+repository is still public, when runs are free: GitHub's 1-core Linux runner (`ubuntu-slim`)
+costs 0.002 $ a minute, a third of the 2-core's, if the groups pass on it in time.
 
 ## Tomba's steps
 
@@ -314,7 +331,7 @@ Each comes with click-by-click instructions in its PR or Hand-over when it is ne
    AI Crawl Control and the managed `robots.txt` on. Mail tested in a mail client that uses
    `imap` and `smtp`, not only by sending and receiving.
 3. The new public repository for the OSM data build, its environment and secrets.
-4. GitHub Pro, the monthly Actions budget (above), a check that Codex's
+4. GitHub Pro, an Actions budget of 0 $ with **Stop usage** on (above), a check that Codex's
    and Claude's GitHub access include the repository, GitHub Pages off, and the repository
    made private.
 5. A private Bitbucket repository for the backup and an access token for it, stored as a
@@ -352,7 +369,6 @@ would also send positions through Polku (PRODUCT.md).
 - **Where people report problems** once GitHub is private. Proposal: an e-mail address on
   polku.si, shown in Settings → About Polku.
 - **The licence sentence's wording,** for Tomba to approve.
-- **The Actions budget's monthly figure** (20 $ recommended above).
 - **Should `main` keep publishing polku.si,** or should a release be a tagged commit, with
   `main` going to the test address first (#115's review of 2026-10-18)? This plan keeps
   `main` publishing; a release step can come later.
