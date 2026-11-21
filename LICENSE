@@ -1,0 +1,31 @@
+Polku OSM data build — Proprietary License
+
+Copyright (c) 2026 Tommi Contursi. All rights reserved.
+
+This notice applies only to original material in this repository for which
+Tommi Contursi holds the copyright: the tools that build, check and publish
+Polku's OpenStreetMap data, and their documentation. The repository is public
+so that its builds run in the open; being able to read it does not grant
+permission to reuse it.
+
+Except for rights required by applicable law, or separate written permission
+from the copyright holder, no permission is granted to copy, modify,
+distribute, sublicense, sell, or use the original material to create
+derivative works or to operate another service.
+
+No permission is granted to use the original material for text and data
+mining, including to train, fine-tune or evaluate machine-learning or other
+artificial-intelligence models. The copyright holder expressly reserves this
+right under Article 4(3) of Directive (EU) 2019/790 and the national laws
+that implement it.
+
+The data these tools publish is derived from OpenStreetMap, © OpenStreetMap
+contributors, and is available under the Open Database License 1.0
+(https://opendatacommons.org/licenses/odbl/1-0/). Each published release
+carries that notice in its LICENSE.txt. The country outlines in data/ come
+from Geofabrik's extracts of OpenStreetMap and are under the same licence.
+Third-party code, data and other material remain the property of their
+respective rights holders and are governed by their own licences, among them
+the pinned Python dependencies in tools/osm_data/*requirements.txt. Nothing in
+this notice restricts rights granted by those licences or claims ownership of
+that material.

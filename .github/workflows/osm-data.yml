@@ -1,0 +1,491 @@
+name: Polku OSM data
+run-name: OSM data / ${{ github.event_name == 'workflow_dispatch' && inputs.operation || github.event.schedule == '17 3 * * 1' && 'build' || 'check' }}
+
+# Builds and checks the data, and uploads a candidate that Polku's own weekly job checks with the app and promotes.
+on:
+  pull_request:
+  schedule:
+    - cron: '17 3 * * 1'
+    - cron: '17 7 * * *'
+  workflow_dispatch:
+    inputs:
+      operation:
+        description: Verify access, build, inspect or resume a verified build's upload, or check the live release
+        type: choice
+        options: [verify-access, inspect-retention, test-host, build, geometry-candidate, upload-existing, inspect-existing, resume-existing, check]
+        default: verify-access
+      release:
+        description: Source run ID to upload again, or to build optional geometry
+        type: string
+
+permissions:
+  contents: read
+  actions: read
+
+concurrency:
+  group: ${{ github.event_name == 'pull_request' && format('osm-data-pr-{0}', github.event.pull_request.number) || inputs.operation == 'geometry-candidate' && 'osm-geometry-candidate' || 'osm-data' }}
+  cancel-in-progress: false
+
+jobs:
+  test:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1
+        with:
+          python-version: '3.14.3'
+      - name: Install pinned data dependencies
+        run: python -m pip install -r tools/osm_data/requirements.txt -r tools/osm_data/sftp-requirements.txt
+      - name: Test extraction, reading and publishing without credentials
+        run: |
+          python -m unittest discover -s tools/osm_data -p 'test_*.py' -v
+
+  verify-access:
+    if: github.event_name == 'workflow_dispatch' && (inputs.operation == 'verify-access' || inputs.operation == 'inspect-retention')
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    environment: osm-data-production
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1
+        with:
+          python-version: '3.14.3'
+      - name: Install pinned SFTP dependency
+        run: python -m pip install -r tools/osm_data/sftp-requirements.txt
+      - name: Verify credentials and directory without uploading
+        env:
+          OSM_OPERATION: ${{ inputs.operation }}
+          OSM_FTP_HOST: ${{ secrets.OSM_FTP_HOST }}
+          OSM_FTP_USER: ${{ secrets.OSM_FTP_USER }}
+          OSM_FTP_PASSWORD: ${{ secrets.OSM_FTP_PASSWORD }}
+          OSM_SFTP_HOST_KEY_SHA256: ${{ secrets.OSM_SFTP_HOST_KEY_SHA256 }}
+          OSM_FTP_ROOT: ${{ vars.OSM_FTP_ROOT }}
+          OSM_PUBLIC_URL: ${{ vars.OSM_PUBLIC_URL }}
+        run: python tools/osm_data/publish.py "$OSM_OPERATION"
+
+  test-host:
+    if: github.event_name == 'workflow_dispatch' && inputs.operation == 'test-host'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    environment: osm-data-production
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1
+        with:
+          python-version: '3.14.3'
+      - name: Install pinned SFTP dependency
+        run: python -m pip install -r tools/osm_data/sftp-requirements.txt
+      - name: Check disposable SFTP transfer, overwrite, rename and public HTTP
+        env:
+          OSM_FTP_HOST: ${{ secrets.OSM_FTP_HOST }}
+          OSM_FTP_USER: ${{ secrets.OSM_FTP_USER }}
+          OSM_FTP_PASSWORD: ${{ secrets.OSM_FTP_PASSWORD }}
+          OSM_SFTP_HOST_KEY_SHA256: ${{ secrets.OSM_SFTP_HOST_KEY_SHA256 }}
+          OSM_FTP_ROOT: ${{ vars.OSM_FTP_ROOT }}
+          OSM_PUBLIC_URL: ${{ vars.OSM_PUBLIC_URL }}
+        run: python tools/osm_data/publish.py test-host
+
+  snapshot:
+    if: github.event.schedule == '17 3 * * 1' || (github.event_name == 'workflow_dispatch' && inputs.operation == 'build' && inputs.release == '')
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    outputs:
+      stamp: ${{ steps.snapshot.outputs.stamp }}
+    steps:
+      - id: snapshot
+        name: Pick a completed dated export shared by all four countries and Europe
+        run: |
+          for osm_days in 1 2; do
+            osm_stamp=$(date -u -d "$osm_days days ago" +%y%m%d)
+            osm_ready=true
+            for osm_region in europe/finland europe/sweden europe/norway europe/estonia europe; do
+              curl --head --fail --silent --show-error --location \
+                --connect-timeout 5 --max-time 8 --retry 2 --retry-connrefused --retry-max-time 15 \
+                --output /dev/null --write-out '%{url} HTTP %{http_code} (curl %{exitcode})\n' \
+                "https://download.geofabrik.de/$osm_region-$osm_stamp.osm.pbf.md5" || osm_ready=false
+            done
+            if $osm_ready; then
+              echo "stamp=$osm_stamp" >> "$GITHUB_OUTPUT"
+              echo "Shared dated snapshot: $osm_stamp" >> "$GITHUB_STEP_SUMMARY"
+              exit 0
+            fi
+          done
+          echo 'No completed common country/reference snapshot within two days' >&2
+          exit 1
+
+  build:
+    needs: snapshot
+    if: github.event.schedule == '17 3 * * 1' || (github.event_name == 'workflow_dispatch' && inputs.operation == 'build' && inputs.release == '')
+    runs-on: ubuntu-24.04
+    timeout-minutes: 150
+    strategy:
+      fail-fast: false
+      matrix:
+        country: [finland, sweden, norway, estonia]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: '3.14.3'
+      - name: Build dependencies and checks
+        run: |
+          python -m pip install -r tools/osm_data/requirements.txt -r tools/osm_data/sftp-requirements.txt
+          python -m unittest discover -s tools/osm_data -p 'test_*.py' -v
+      - name: Download one complete country, checksum and clipping polygon
+        timeout-minutes: 40
+        env:
+          COUNTRY: ${{ matrix.country }}
+          SNAPSHOT: ${{ needs.snapshot.outputs.stamp }}
+        run: |
+          mkdir -p osm-build
+          df -h .
+          python -c 'import shutil; assert shutil.disk_usage(".").free >= 25 * 1024**3, "Complete OSM country builds require 25 GiB free disk"'
+          # Geofabrik is moving countries into folders of their own: the checksum and polygon come from beside the file served (#1151)
+          source=$(curl --fail --location --retry 3 --retry-all-errors --retry-delay 30 --retry-max-time 300 --connect-timeout 30 --max-time 1800 --write-out '%{url_effective}' "https://download.geofabrik.de/europe/$COUNTRY-$SNAPSHOT.osm.pbf" -o osm-build/source.osm.pbf)
+          echo "Downloaded $source"
+          curl --fail --location --retry 3 --retry-all-errors --retry-delay 30 --max-time 60 "$source.md5" -o osm-build/source.md5
+          curl --fail --location --retry 3 --retry-all-errors --retry-delay 30 --max-time 60 "${source%/*}/$COUNTRY.poly" -o osm-build/coverage.poly
+      - name: Transform, validate and measure
+        env:
+          COUNTRY: ${{ matrix.country }}
+          SNAPSHOT: ${{ needs.snapshot.outputs.stamp }}
+        run: |
+          /usr/bin/time -v python tools/osm_data/builder.py osm-build/source.osm.pbf osm-build/release --md5 osm-build/source.md5 --country "$COUNTRY" --coverage osm-build/coverage.poly --snapshot "$SNAPSHOT"
+          df -h .
+      - name: Build measurements
+        if: always()
+        run: |
+          if test -f osm-build/release/measurements.json; then
+            echo '### Country OSM build' >> "$GITHUB_STEP_SUMMARY"
+            echo '```json' >> "$GITHUB_STEP_SUMMARY"
+            cat osm-build/release/measurements.json >> "$GITHUB_STEP_SUMMARY"
+            echo '```' >> "$GITHUB_STEP_SUMMARY"
+          fi
+      - name: Retain small measurements and manifest independently of archives
+        if: always()
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f
+        with:
+          name: osm-${{ matrix.country }}-evidence
+          path: |
+            osm-build/release/measurements.json
+            osm-build/release/manifest.json
+          if-no-files-found: ignore
+          retention-days: 14
+      - name: Retain small geometry inputs without copying country archives
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f
+        with:
+          name: osm-${{ matrix.country }}-geometry-inputs
+          path: |
+            osm-build/release/manifest.json
+            osm-build/release/identities.jsonl.gz
+            osm-build/release/geometry-roots.jsonl.gz
+          compression-level: 0
+          retention-days: 14
+          if-no-files-found: error
+      - uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f
+        with:
+          name: osm-${{ matrix.country }}-release
+          path: osm-build/release/
+          compression-level: 0
+          retention-days: 14
+          if-no-files-found: error
+      - uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f
+        with:
+          name: osm-${{ matrix.country }}-source
+          path: |
+            osm-build/source.osm.pbf
+            osm-build/source.md5
+            osm-build/coverage.poly
+          compression-level: 0
+          retention-days: 14
+
+  geometry:
+    needs: build
+    if: ${{ !cancelled() && github.ref == 'refs/heads/main' && (needs.build.result == 'success' || (github.event_name == 'workflow_dispatch' && inputs.operation == 'geometry-candidate')) }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 300
+    outputs:
+      run_id: ${{ steps.source.outputs.run_id }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1
+        with:
+          python-version: '3.14.3'
+      - run: python -m pip install -r tools/osm_data/requirements.txt
+      - name: Select the current or a verified completed country run
+        id: source
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SOURCE_RUN: ${{ inputs.release }}
+          OPERATION: ${{ inputs.operation }}
+        run: |
+          python - <<'PYCODE'
+          import json,os,re,subprocess
+          from tools.osm_data.publish import recovery_countries,require
+          source,repo=os.environ.get('SOURCE_RUN',''),os.environ['GITHUB_REPOSITORY']
+          selected=os.environ['GITHUB_RUN_ID']
+          if os.environ['OPERATION']=='geometry-candidate':
+              require(re.fullmatch('[0-9]+',source),'Enter the numeric source build run ID from Actions')
+              def read(path):
+                  return json.loads(subprocess.check_output(['gh','api','repos/'+repo+'/actions/runs/'+source+path]))
+              selected=recovery_countries(repo,read(''),read('/jobs?filter=all&per_page=100')['jobs'],read('/artifacts?per_page=100')['artifacts'])
+          with open(os.environ['GITHUB_OUTPUT'],'a') as output:output.write('run_id='+selected+'\n')
+          print('Country artifact source run: '+selected)
+          PYCODE
+      - uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53
+        with:
+          pattern: osm-*-geometry-inputs
+          path: osm-build/inputs
+          github-token: ${{ github.token }}
+          run-id: ${{ steps.source.outputs.run_id }}
+      - name: Derive one dated reference from verified country inputs
+        id: reference
+        run: |
+          python - <<'PYCODE'
+          import os,re
+          from pathlib import Path
+          from tools.osm_data.geometry_source import load_inputs
+          inputs=load_inputs(sorted(Path('osm-build/inputs').glob('osm-*-geometry-inputs')))
+          stamps=[re.search(r'-([0-9]{6})\.osm\.pbf$',m['source']['url']) for _,m in inputs.values()]
+          assert all(stamps) and len({s[1] for s in stamps})==1,'One common dated country snapshot is required'
+          with open(os.environ['GITHUB_OUTPUT'],'a') as output:output.write('stamp='+stamps[0][1]+'\n')
+          PYCODE
+      - name: Check actual disk against the dated reference size and staging reserve
+        env:
+          SOURCE_URL: https://download.geofabrik.de/europe-${{ steps.reference.outputs.stamp }}.osm.pbf
+        run: |
+          df -h .
+          SOURCE_BYTES=$(curl --head --fail --silent --show-error --location --retry 3 --retry-all-errors --retry-delay 30 --max-time 30 --output /dev/null --write-out '%header{content-length}' "$SOURCE_URL")
+          export SOURCE_BYTES
+          python - <<'PYCODE'
+          import json,os,shutil
+          size=int(os.environ['SOURCE_BYTES'] or 0)
+          free=shutil.disk_usage('.').free
+          print(json.dumps({'source_bytes':size,'free_bytes':free,'staging_reserve_bytes':25*1024**3}))
+          assert size>0 and free>=size+25*1024**3, 'Insufficient reference download/staging disk on this runner'
+          PYCODE
+      - name: Download dated reference and checksum
+        timeout-minutes: 130
+        env:
+          SOURCE_URL: https://download.geofabrik.de/europe-${{ steps.reference.outputs.stamp }}.osm.pbf
+        run: |
+          source=$(curl --fail --location --retry 3 --retry-all-errors --retry-delay 30 --retry-max-time 300 --connect-timeout 30 --max-time 7200 --write-out '%{url_effective}' "$SOURCE_URL" -o osm-build/europe.osm.pbf)
+          echo "Downloaded $source"
+          curl --fail --location --retry 3 --retry-all-errors --retry-delay 30 --max-time 60 "$source.md5" -o osm-build/europe.md5
+          df -h .
+      - name: Complete original references and compile local geometry
+        env:
+          SNAPSHOT: ${{ steps.reference.outputs.stamp }}
+        run: |
+          /usr/bin/time -v python -m tools.osm_data.geometry_source osm-build/europe.osm.pbf osm-build/geometry osm-build/inputs/osm-finland-geometry-inputs osm-build/inputs/osm-sweden-geometry-inputs osm-build/inputs/osm-norway-geometry-inputs osm-build/inputs/osm-estonia-geometry-inputs --md5 osm-build/europe.md5 --snapshot "$SNAPSHOT" --remove-source
+          test ! -f osm-build/europe.osm.pbf
+          df -h .
+      - name: Geometry measurements
+        if: always()
+        run: |
+          df -h .
+          if test -f osm-build/geometry/measurements.json; then
+            echo '### Shared OSM geometry build' >> "$GITHUB_STEP_SUMMARY"
+            echo '```json' >> "$GITHUB_STEP_SUMMARY"
+            cat osm-build/geometry/measurements.json >> "$GITHUB_STEP_SUMMARY"
+            echo '```' >> "$GITHUB_STEP_SUMMARY"
+          fi
+      - uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f
+        if: always()
+        with:
+          name: osm-geometry-evidence
+          path: |
+            osm-build/geometry/manifest.json
+            osm-build/geometry/measurements.json
+          retention-days: 14
+          if-no-files-found: ignore
+      - uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f
+        with:
+          name: osm-shared-geometry
+          path: osm-build/geometry/
+          compression-level: 0
+          retention-days: 14
+          if-no-files-found: error
+
+  bundle:
+    needs: geometry
+    if: ${{ !cancelled() && needs.geometry.result == 'success' }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1
+        with:
+          python-version: '3.14.3'
+      - run: python -m pip install -r tools/osm_data/requirements.txt
+      - name: Check measured assembly disk budget
+        run: python -c 'import shutil; assert shutil.disk_usage(".").free >= 25 * 1024**3, "OSM candidate assembly requires 25 GiB free disk"'
+      - uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53
+        with:
+          pattern: osm-*-release
+          path: osm-build/countries
+          github-token: ${{ github.token }}
+          run-id: ${{ needs.geometry.outputs.run_id }}
+      - uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53
+        with:
+          name: osm-shared-geometry
+          path: osm-build/geometry
+      - name: Validate source epoch and all overlapping original object identities
+        run: |
+          python -m tools.osm_data.bundle osm-build/release osm-build/countries/osm-finland-release osm-build/countries/osm-sweden-release osm-build/countries/osm-norway-release osm-build/countries/osm-estonia-release --geometry osm-build/geometry
+          df -h .
+      - name: Check every country's sample roads in the combined release
+        run: |
+          python - <<'PY' > osm-build/sample-validation.json
+          import json
+          from pathlib import Path
+          from tools.osm_data.builder import COUNTRIES, COUNTRY_SAMPLES, validate_archive
+          from tools.osm_data.publish import local_release
+          root = Path('osm-build/release')
+          _, manifest = local_release(root)
+          results = {}
+          for country in COUNTRIES:
+              records = [d for d in manifest['datasets'].values() if d.get('country') == country and d.get('kind') == 'ways']
+              assert len(records) == 1, f'Missing or duplicate ways archive for {country}'
+              dataset = records[0]
+              samples = COUNTRY_SAMPLES[country]
+              rows = validate_archive(root / dataset['url'], dataset['tiles'], samples=samples)
+              assert rows and set(rows) == set(samples) and all(row['ways'] for row in rows.values()), f'Missing sample roads for {country}'
+              results[country] = rows
+          print(json.dumps(results, indent=2))
+          PY
+      - uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f
+        if: always()
+        with:
+          name: osm-four-country-evidence
+          path: |
+            osm-build/release/manifest.json
+            osm-build/release/measurements.json
+            osm-build/sample-validation.json
+          retention-days: 14
+      - uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f
+        with:
+          name: nordic-osm-release
+          path: osm-build/release/
+          compression-level: 0
+          retention-days: 14
+          if-no-files-found: error
+
+  upload:
+    needs: bundle
+    if: ${{ !cancelled() && needs.bundle.result == 'success' && vars.OSM_UPLOAD_ENABLED == 'true' && github.ref == 'refs/heads/main' && (github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' && inputs.operation == 'build')) }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 120
+    environment: osm-data-production
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1
+        with:
+          python-version: '3.14.3'
+      - uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53 # v6
+        with:
+          name: nordic-osm-release
+          path: osm-build/release
+      - name: Install pinned SFTP dependency
+        run: python -m pip install -r tools/osm_data/sftp-requirements.txt
+      - name: Upload, verify and name the candidate
+        env:
+          OSM_ALLOW_PUBLISH: 'true'
+          OSM_FTP_HOST: ${{ secrets.OSM_FTP_HOST }}
+          OSM_FTP_USER: ${{ secrets.OSM_FTP_USER }}
+          OSM_FTP_PASSWORD: ${{ secrets.OSM_FTP_PASSWORD }}
+          OSM_SFTP_HOST_KEY_SHA256: ${{ secrets.OSM_SFTP_HOST_KEY_SHA256 }}
+          OSM_FTP_ROOT: ${{ vars.OSM_FTP_ROOT }}
+          OSM_PUBLIC_URL: ${{ vars.OSM_PUBLIC_URL }}
+        run: python tools/osm_data/publish.py upload osm-build/release
+
+  upload-existing:
+    # Explicit recovery selects a verified main build, including a later upload failure.
+    # Does not enable unattended upload or rebuild the archive.
+    if: github.event_name == 'workflow_dispatch' && (inputs.operation == 'upload-existing' || inputs.operation == 'inspect-existing' || inputs.operation == 'resume-existing') && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 120
+    environment: osm-data-production
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1
+        with:
+          python-version: '3.14.3'
+      - name: Validate the selected recovery build before downloading
+        id: source
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SOURCE_RUN: ${{ inputs.release }}
+        run: |
+          python - <<'PY'
+          import json, os, re, subprocess
+          from tools.osm_data.publish import recovery_source, require
+          source, repo = os.environ['SOURCE_RUN'], os.environ['GITHUB_REPOSITORY']
+          require(re.fullmatch('[0-9]+', source), 'Enter the numeric source build run ID from Actions')
+          def read(path):
+              return json.loads(subprocess.check_output(['gh', 'api', 'repos/' + repo + '/actions/runs/' + source + path]))
+          selected = recovery_source(repo, read(''), read('/jobs?filter=all&per_page=100')['jobs'], read('/artifacts?per_page=100')['artifacts'])
+          with open(os.environ['GITHUB_OUTPUT'], 'a') as output:
+              output.write('run_id=' + selected + '\n')
+          print('Verified recovery source: main build ' + selected)
+          PY
+      - name: Download the verified main four-country build
+        uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53 # v6
+        with:
+          name: nordic-osm-release
+          path: osm-build/release
+          github-token: ${{ github.token }}
+          run-id: ${{ steps.source.outputs.run_id }}
+      - name: Install pinned SFTP dependency
+        run: python -m pip install -r tools/osm_data/sftp-requirements.txt
+      - name: Inspect, resume or upload the verified OSM release
+        env:
+          OSM_ALLOW_PUBLISH: ${{ inputs.operation == 'inspect-existing' && 'false' || 'true' }}
+          OSM_OPERATION: ${{ inputs.operation }}
+          OSM_FTP_HOST: ${{ secrets.OSM_FTP_HOST }}
+          OSM_FTP_USER: ${{ secrets.OSM_FTP_USER }}
+          OSM_FTP_PASSWORD: ${{ secrets.OSM_FTP_PASSWORD }}
+          OSM_SFTP_HOST_KEY_SHA256: ${{ secrets.OSM_SFTP_HOST_KEY_SHA256 }}
+          OSM_FTP_ROOT: ${{ vars.OSM_FTP_ROOT }}
+          OSM_PUBLIC_URL: ${{ vars.OSM_PUBLIC_URL }}
+        run: |
+          case "$OSM_OPERATION" in
+            inspect-existing) python tools/osm_data/publish.py inspect osm-build/release ;;
+            resume-existing) python tools/osm_data/publish.py upload osm-build/release --resume ;;
+            upload-existing) python tools/osm_data/publish.py upload osm-build/release ;;
+            *) exit 1 ;;
+          esac
+
+  monitor:
+    if: (github.event.schedule == '17 7 * * *' && vars.OSM_PUBLIC_URL != '') || (github.event_name == 'workflow_dispatch' && inputs.operation == 'check')
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1
+        with:
+          python-version: '3.14.3'
+      - name: Freshness and integrity of the live files (Polku's weekly job checks them in a browser)
+        env:
+          OSM_PUBLIC_URL: ${{ vars.OSM_PUBLIC_URL }}
+        run: python tools/osm_data/publish.py check "$OSM_PUBLIC_URL/current.json"

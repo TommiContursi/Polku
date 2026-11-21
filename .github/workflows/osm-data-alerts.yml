@@ -1,0 +1,81 @@
+name: Polku OSM alerts
+
+on:
+  workflow_run:
+    workflows: [Polku OSM data]
+    types: [completed]
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      operation:
+        description: Exercise delivery or recovery of the isolated test alert
+        type: choice
+        options: [failure-test, recovery-test]
+        required: true
+        default: failure-test
+
+permissions:
+  contents: read
+
+concurrency:
+  group: osm-data-alerts
+  cancel-in-progress: false
+
+jobs:
+  report:
+    if: (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main') || (github.event_name == 'workflow_run' && github.event.workflow_run.head_branch == 'main' && github.event.workflow_run.head_repository.full_name == github.repository && (github.event.workflow_run.event == 'schedule' || github.event.workflow_run.event == 'workflow_dispatch'))
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      actions: read
+      issues: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: main
+          persist-credentials: false
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1
+        with:
+          python-version: '3.14.3'
+      - name: Report trusted failures or corresponding recovery
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          OSM_ALERT_TEST: ${{ inputs.operation }}
+        run: |
+          if [ "$GITHUB_EVENT_NAME" = workflow_dispatch ]; then
+            if [ "$OSM_ALERT_TEST" = failure-test ]; then
+              python -m tools.osm_data.alerts --test failure
+            else
+              python -m tools.osm_data.alerts --test recovery
+            fi
+          else
+            python -m tools.osm_data.alerts
+          fi
+
+  retry:
+    # Geofabrik refuses a few of GitHub's runner networks for the whole job, so only a new runner gets past it (#1043)
+    if: github.event_name == 'workflow_run' && github.event.workflow_run.head_branch == 'main' && github.event.workflow_run.head_repository.full_name == github.repository && (github.event.workflow_run.event == 'schedule' || github.event.workflow_run.event == 'workflow_dispatch') && github.event.workflow_run.display_title == 'OSM data / build' && github.event.workflow_run.conclusion == 'failure' && github.event.workflow_run.run_attempt < 15
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      actions: write
+    steps:
+      - name: Re-run the jobs Geofabrik refused, on new runners
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RUN: ${{ github.event.workflow_run.id }}
+          ATTEMPT: ${{ github.event.workflow_run.run_attempt }}
+        run: |
+          newest=$(gh api "repos/$GITHUB_REPOSITORY/actions/workflows/osm-data.yml/runs?branch=main&per_page=30" --jq '[.workflow_runs[] | select(.display_title == "OSM data / build")][0].id')
+          if [ "$newest" != "$RUN" ]; then echo "Build $newest is newer than $RUN: no re-run"; exit 0; fi
+          refused=0
+          for job in $(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$RUN/attempts/$ATTEMPT/jobs?per_page=100" --jq '.jobs[] | select(.conclusion == "failure") | .id'); do
+            if ! curl -sfL -H "Authorization: Bearer $GH_TOKEN" "$GITHUB_API_URL/repos/$GITHUB_REPOSITORY/actions/jobs/$job/logs" | grep -q 'Failed to connect to download.geofabrik.de'; then
+              echo "Job $job failed for another reason: no re-run"; exit 0
+            fi
+            refused=$((refused + 1))
+          done
+          if [ "$refused" = 0 ]; then echo 'No refused job: no re-run'; exit 0; fi
+          gh run rerun "$RUN" --failed --repo "$GITHUB_REPOSITORY"
+          echo "Re-ran $refused refused jobs of run $RUN, attempt $ATTEMPT"

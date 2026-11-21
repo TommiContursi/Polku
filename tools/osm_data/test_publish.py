@@ -1,0 +1,966 @@
+"""Publication boundaries use in-memory SFTP and HTTP; no live credentials."""
+
+import copy
+from contextlib import ExitStack
+from datetime import datetime, timedelta, timezone
+from email.message import Message
+import ftplib
+import hashlib
+from http.server import BaseHTTPRequestHandler, HTTPServer
+import io
+import importlib.util
+import json
+import os
+from pathlib import Path
+import posixpath
+import subprocess
+from types import SimpleNamespace
+import tempfile
+from textwrap import dedent
+from threading import Thread
+import unittest
+from unittest.mock import patch
+from urllib.error import HTTPError
+from urllib.parse import urlsplit
+
+from tools.osm_data import publish
+from tools.osm_data.publish import open_sftp as real_open_sftp
+
+
+ROOT = '/home/example/www/polku-osm'
+PUBLIC = 'https://data.example/polku-osm'
+ENV = {'OSM_FTP_HOST': 'ftp.example', 'OSM_FTP_USER': 'user-private',
+       'OSM_FTP_PASSWORD': 'password-private', 'OSM_FTP_ROOT': ROOT,
+       'OSM_PUBLIC_URL': PUBLIC, 'OSM_ALLOW_PUBLISH': 'true',
+       'OSM_SFTP_HOST_KEY_SHA256': 'SHA256:' + 'A' * 43}
+ARCHIVE = b'PMTiles' + bytes(range(256)) * 40
+LICENSE = b'OpenStreetMap contributors, ODbL 1.0\n'
+
+
+def encoded(value):
+    return json.dumps(value, sort_keys=True).encode()
+
+
+def manifest(release, built_at='2026-11-20T00:00:00Z'):
+    files = [{'path': name, 'bytes': len(data),
+              'sha256': hashlib.sha256(data).hexdigest()}
+             for name, data in [('ways.pmtiles', ARCHIVE), ('LICENSE.txt', LICENSE)]]
+    return {'schema': 1, 'release': release, 'built_at': built_at,
+            'source': {'timestamp': datetime.now(timezone.utc).isoformat()},
+            'datasets': {'ways': {'url': 'ways.pmtiles', 'bytes': len(ARCHIVE),
+                                  'sha256': files[0]['sha256']}}, 'files': files}
+
+
+def pointer(value):
+    result = copy.deepcopy(value)
+    result['datasets']['ways']['url'] = f"releases/{value['release']}/ways.pmtiles"
+    return result
+
+
+class Response(io.BytesIO):
+    def __init__(self, body, status=200, headers=None):
+        super().__init__(body)
+        self.status = status
+        self.headers = Message()
+        for name, value in (headers or {}).items():
+            self.headers[name] = value
+
+
+class Host:
+    """The server enforces encrypted transfers and keeps atomic rename observable."""
+    def __init__(self):
+        self.files = {}
+        self.dirs = {ROOT, ROOT + '/releases'}
+        self.fail_upload = self.corrupt_upload = self.fail_pointer = False
+        self.bad_range = self.bad_after_pointer = self.changed_manifest_after_pointer = False
+        self.denied_login = False
+        self.connections = self.pointer_writes = 0
+        self.pointer_cache = 'no-cache'
+        self.uploads = []
+        self.unsafe = set()
+        self.release_headers = {'Access-Control-Allow-Origin': '*',
+                                'Access-Control-Expose-Headers': 'Content-Length, Content-Range, Accept-Ranges',
+                                'Accept-Ranges': 'bytes', 'Cache-Control': 'public, max-age=31536000, immutable'}
+
+    def add_release(self, value, current=False):
+        base = ROOT + '/releases/' + value['release']
+        self.dirs.add(base)
+        self.files.update({base + '/manifest.json': encoded(value),
+                           base + '/ways.pmtiles': ARCHIVE, base + '/LICENSE.txt': LICENSE})
+        if current:
+            self.files[ROOT + '/current.json'] = encoded(pointer(value))
+
+    def ftp(self, *args, **kwargs):
+        host = self
+        self.connections += 1
+        _, user, password, _fingerprint = args
+        if self.denied_login:
+            raise ftplib.error_perm(f'530 {user} {password}')
+        if (user, password) != (ENV['OSM_FTP_USER'], ENV['OSM_FTP_PASSWORD']):
+            raise AssertionError('wrong credentials')
+
+        class Connection:
+            def __init__(self):
+                self.path, self.protected = '/', True
+            def connect(self, server, port=21, **kwargs):
+                if server != 'ftp.example' or port != 21:
+                    raise AssertionError('expected explicit FTPS on port 21')
+            def login(self, user, passwd):
+                if host.denied_login:
+                    raise ftplib.error_perm(f'530 {user} {passwd}')
+                if (user, passwd) != (ENV['OSM_FTP_USER'], ENV['OSM_FTP_PASSWORD']):
+                    raise AssertionError('wrong credentials')
+            def prot_p(self):
+                self.protected = True
+            def abs(self, path):
+                if not self.protected:
+                    raise AssertionError('unencrypted data operation')
+                return posixpath.normpath(posixpath.join(self.path, path))
+            def cwd(self, path):
+                path = self.abs(path)
+                if path not in host.dirs:
+                    raise ftplib.error_perm('550 missing directory')
+                self.path = path
+            def pwd(self):
+                return self.path
+            def mkd(self, path):
+                path = self.abs(path)
+                if path in host.dirs:
+                    raise ftplib.error_perm('550 exists')
+                host.dirs.add(path)
+                return path
+            def nlst(self, path='.'):
+                base = self.abs(path).rstrip('/') + '/'
+                return [p for p in host.files.keys() | host.dirs if p.startswith(base) and '/' not in p[len(base):]]
+            def remove(self, path):
+                path = self.abs(path)
+                if path not in host.files:
+                    raise FileNotFoundError(2, 'No such file', path)
+                del host.files[path]
+            def rmd(self, path):
+                path = self.abs(path)
+                if path not in host.dirs or any(p.startswith(path + '/') for p in host.files):
+                    raise OSError('Directory missing or not empty')
+                host.dirs.remove(path)
+            def size(self, path):
+                path = self.abs(path)
+                if path not in host.files:
+                    raise ftplib.error_perm('550 missing')
+                return len(host.files[path])
+            def kind(self, path):
+                path = self.abs(path)
+                return 'other' if path in host.unsafe else 'directory' if path in host.dirs else 'file'
+            def voidcmd(self, cmd):
+                return '200 OK'
+            def storbinary(self, cmd, body, *args, **kwargs):
+                name = self.abs(cmd.removeprefix('STOR '))
+                if host.fail_upload and name.endswith('ways.pmtiles'):
+                    raise OSError('upload failed')
+                data = body.read()
+                offset = kwargs.get('rest')
+                host.uploads.append((name, offset, len(data)))
+                if offset is not None:
+                    if len(host.files[name]) != offset:
+                        raise OSError('Resume offset changed')
+                    data = host.files[name] + data
+                host.files[name] = data[:-1] + b'!' if host.corrupt_upload and name.endswith('ways.pmtiles') else data
+            def retrbinary(self, cmd, callback, *args, **kwargs):
+                name = self.abs(cmd.removeprefix('RETR '))
+                if name not in host.files:
+                    raise ftplib.error_perm('550 missing')
+                callback(host.files[name])
+            def replace(self, old, new):
+                if new.endswith('/pointer.json') or new.startswith('maintenance/') or new == 'candidates/current.json':
+                    old, new = self.abs(old), self.abs(new)
+                    if host.fail_pointer:
+                        raise OSError('POSIX rename extension unsupported')
+                    host.files[new] = host.files.pop(old)
+                    return
+                return self.rename(old, new)
+            def rename(self, old, new):
+                old, new = self.abs(old), self.abs(new)
+                if new == ROOT + '/current.json':
+                    if host.fail_pointer:
+                        raise ftplib.error_perm('550 atomic overwrite unsupported')
+                    host.pointer_writes += 1
+                elif new in host.files or new in host.dirs:
+                    raise ftplib.error_perm('550 immutable target exists')
+                if old in host.files:
+                    host.files[new] = host.files.pop(old)
+                elif old in host.dirs:
+                    host.dirs.remove(old)
+                    host.dirs.add(new)
+                    for path in list(host.files):
+                        if path.startswith(old + '/'):
+                            host.files[new + path[len(old):]] = host.files.pop(path)
+                else:
+                    raise ftplib.error_perm('550 missing rename source')
+            def quit(self):
+                pass
+            close = quit
+        return Connection()
+
+    def http(self, req, **kwargs):
+        path = urlsplit(req.full_url).path
+        name = ROOT + path.removeprefix('/polku-osm')
+        if name not in self.files:
+            raise HTTPError(req.full_url, 404, 'missing', {}, None)
+        if req.get_header('Origin') != 'https://polku.si':
+            raise AssertionError('public probe must test app Origin')
+        data = self.files[name]
+        if self.changed_manifest_after_pointer and self.pointer_writes == 1 and path.endswith('/manifest.json'):
+            changed = json.loads(data)
+            changed['attribution'] = 'unexpected replacement'
+            data = encoded(changed)
+        headers = dict(self.release_headers)
+        if path.endswith('/current.json'):
+            headers['Cache-Control'] = self.pointer_cache
+        headers['Content-Type'] = 'application/json' if path.endswith('.json') else 'application/vnd.pmtiles'
+        byte_range = req.get_header('Range')
+        if byte_range:
+            start, end = map(int, byte_range.removeprefix('bytes=').split('-'))
+            headers['Content-Range'] = f'bytes {start}-{end}/{len(data)}'
+            headers['Content-Length'] = str(end - start + 1)
+            bad = self.bad_range or (self.bad_after_pointer and self.pointer_writes == 1)
+            return Response(data[start:end + 1], 200 if bad else 206, headers)
+        headers['Content-Length'] = str(len(data))
+        return Response(data, headers=headers)
+
+
+class PublishTests(unittest.TestCase):
+    def test_unattended_upload_is_gated_and_recovery_leaves_time_to_verify(self):
+        workflow = (Path(__file__).resolve().parents[2] / '.github/workflows/osm-data.yml').read_text()
+        self.assertNotIn('rollback', workflow, "the live pointer is Polku's: its weekly job promotes and rolls back")
+        automatic = workflow.split('\n  upload:\n', 1)[1].split('\n  upload-existing:', 1)[0]
+        condition = next(line.split('if:',1)[1].strip() for line in automatic.splitlines() if line.strip().startswith('if:'))
+        for event,ref,operation,enabled,expected in [
+            ('schedule','refs/heads/main','','true',True),
+            ('workflow_dispatch','refs/heads/main','build','true',True),
+            ('workflow_dispatch','refs/heads/feature','build','true',False),
+            ('workflow_dispatch','refs/heads/main','build','',False),
+            ('workflow_dispatch','refs/heads/main','geometry-candidate','true',False),
+            ('workflow_dispatch','refs/heads/main','check','true',False),
+            ('pull_request','refs/heads/main','build','true',False)]:
+            expression=condition.removeprefix('${{').removesuffix('}}').replace('!cancelled()','True').replace('needs.bundle.result',repr('success'))
+            for name,value in [('github.event_name',event),('github.ref',ref),('inputs.operation',operation),('vars.OSM_UPLOAD_ENABLED',enabled)]:
+                expression=expression.replace(name,repr(value))
+            self.assertEqual(eval(expression.replace('&&','and').replace('||','or'),{'__builtins__':{}}),expected)
+        # GitHub's dynamic run-name metadata reaches the alerts.
+        from tools.osm_data.alerts import classify
+        event={'workflow':{'path':'.github/workflows/osm-data.yml'},'workflow_run':{
+            'name':'OSM data / upload-existing','head_branch':'main','head_repository':{'full_name':'TommiContursi/polku-osm-data'},
+            'event':'workflow_dispatch','conclusion':'failure','html_url':'https://github.com/TommiContursi/polku-osm-data/actions/runs/123'}}
+        self.assertEqual(classify(event,'TommiContursi/polku-osm-data')['kind'],'update')
+        recovery=workflow.split('\n  upload-existing:\n',1)[1].split('\n  monitor:',1)[0]
+        self.assertIn('run-id: ${{ steps.source.outputs.run_id }}',recovery)
+        for publication in (automatic,recovery):
+            self.assertIn('\n    timeout-minutes: 120\n',publication,
+                          'Slow artifact download must leave time for full verification')
+
+    def test_recovery_source_accepts_failed_publication_with_verified_main_bundle(self):
+        run={'id':123,'status':'completed','conclusion':'failure','head_branch':'main',
+             'head_repository':{'full_name':'TommiContursi/polku-osm-data'},'event':'workflow_dispatch','path':'.github/workflows/osm-data.yml'}
+        jobs=[{'name':name,'conclusion':'success'} for name in ['snapshot','bundle',
+              'build (finland)','build (sweden)','build (norway)','build (estonia)']]
+        artifact={'name':'nordic-osm-release','expired':False,'size_in_bytes':100}
+        self.assertEqual(publish.recovery_source('TommiContursi/polku-osm-data',run,jobs,[artifact]),'123')
+        for change in [dict(head_branch='feature'),dict(head_repository={'full_name':'attacker/polku-osm-data'}),
+                       dict(status='in_progress'),dict(event='pull_request'),dict(path='.github/workflows/other.yml')]:
+            with self.subTest(change=change),self.assertRaises(ValueError):
+                publish.recovery_source('TommiContursi/polku-osm-data',dict(run,**change),jobs,[artifact])
+        for artifacts in [[],[dict(artifact,expired=True)],[artifact,artifact]]:
+            with self.subTest(artifacts=artifacts),self.assertRaises(ValueError):
+                publish.recovery_source('TommiContursi/polku-osm-data',run,jobs,artifacts)
+        for failed in range(len(jobs)):
+            partial=copy.deepcopy(jobs);partial[failed]['conclusion']='failure'
+            with self.subTest(job=jobs[failed]['name']),self.assertRaises(ValueError):
+                publish.recovery_source('TommiContursi/polku-osm-data',run,partial,[artifact])
+
+    def test_publication_recovery_accepts_a_verified_geometry_bundle(self):
+        run={'id':123,'status':'completed','conclusion':'failure','head_branch':'main',
+             'head_repository':{'full_name':'TommiContursi/polku-osm-data'},'event':'workflow_dispatch','path':'.github/workflows/osm-data.yml'}
+        jobs=[{'name':name,'conclusion':'success'} for name in ('geometry','bundle')]
+        artifact={'name':'nordic-osm-release','expired':False,'size_in_bytes':100}
+        self.assertEqual(publish.recovery_source('TommiContursi/polku-osm-data',run,jobs,[artifact]),'123')
+        for i in range(len(jobs)):
+            bad=copy.deepcopy(jobs);bad[i]['conclusion']='failure'
+            with self.assertRaises(ValueError):publish.recovery_source('TommiContursi/polku-osm-data',run,bad,[artifact])
+
+    def test_automatic_upload_after_recovery_requires_a_successful_bundle_and_no_cancellation(self):
+        workflow=(Path(__file__).resolve().parents[2]/'.github/workflows/osm-data.yml').read_text()
+        job=workflow.split('\n  upload:\n',1)[1].split('\n  upload-existing:',1)[0]
+        condition=next(l.split('if:',1)[1].strip() for l in job.splitlines() if l.strip().startswith('if:'))
+        self.assertIn('!cancelled()',condition)
+        self.assertIn('needs.bundle.result',condition)
+        for cancelled,bundle,expected in [(False,'success',True),(True,'success',False),(False,'failure',False)]:
+            expression=condition.removeprefix('${{').removesuffix('}}').replace('!cancelled()',repr(not cancelled))
+            for name,value in [('needs.bundle.result',bundle),('github.event_name','workflow_dispatch'),('github.ref','refs/heads/main'),('inputs.operation','build'),('vars.OSM_UPLOAD_ENABLED','true')]:expression=expression.replace(name,repr(value))
+            self.assertEqual(eval(expression.replace('&&','and').replace('||','or'),{'__builtins__':{}}),expected)
+
+    def test_geometry_recovery_requires_trusted_completed_country_jobs_and_artifacts(self):
+        run={'id':123,'status':'completed','conclusion':'cancelled','head_branch':'main',
+             'head_repository':{'full_name':'TommiContursi/polku-osm-data'},'event':'workflow_dispatch','path':'.github/workflows/osm-data.yml'}
+        countries=('finland','sweden','norway','estonia')
+        jobs=[{'name':name,'conclusion':'success'} for name in ['snapshot',*(f'build ({c})' for c in countries)]]
+        artifacts=[{'name':f'osm-{c}-{kind}','expired':False,'size_in_bytes':100} for c in countries for kind in ('release','geometry-inputs')]
+        self.assertEqual(publish.recovery_countries('TommiContursi/polku-osm-data',run,jobs,artifacts),'123')
+        for change in [dict(head_branch='feature'),dict(head_repository={'full_name':'other/polku-osm-data'}),dict(status='in_progress'),dict(event='pull_request'),dict(path='.github/workflows/other.yml')]:
+            with self.subTest(change=change),self.assertRaises(ValueError):
+                publish.recovery_countries('TommiContursi/polku-osm-data',dict(run,**change),jobs,artifacts)
+        for failed in range(len(jobs)):
+            partial=copy.deepcopy(jobs);partial[failed]['conclusion']='failure'
+            with self.subTest(job=jobs[failed]['name']),self.assertRaises(ValueError):
+                publish.recovery_countries('TommiContursi/polku-osm-data',run,partial,artifacts)
+        for invalid in [artifacts[:-1],artifacts+[artifacts[0]],[dict(a,expired=True) for a in artifacts]]:
+            with self.subTest(artifacts=invalid),self.assertRaises(ValueError):
+                publish.recovery_countries('TommiContursi/polku-osm-data',run,jobs,invalid)
+
+    def test_weekly_and_candidate_geometry_are_gated(self):
+        workflow = (Path(__file__).resolve().parents[2] / '.github/workflows/osm-data.yml').read_text()
+        job = workflow.split('\n  geometry:\n', 1)[1].split('\n  bundle:', 1)[0]
+        condition = next(line.strip()[4:] for line in job.splitlines() if line.strip().startswith('if:'))
+        for event, ref, operation, build, cancelled, expected in [
+            ('schedule', 'main', '', 'success', False, True),
+            ('schedule', 'main', '', 'failure', False, False),
+            ('schedule', 'main', '', 'skipped', False, False),
+            ('schedule', 'main', '', 'success', True, False),
+            ('workflow_dispatch', 'main', 'build', 'success', False, True),
+            ('workflow_dispatch', 'main', 'geometry-candidate', 'skipped', False, True),
+            ('workflow_dispatch', 'main', 'geometry-candidate', 'skipped', True, False),
+            ('workflow_dispatch', 'feature', 'geometry-candidate', 'skipped', False, False),
+        ]:
+            with self.subTest(event=event, ref=ref, operation=operation, build=build, cancelled=cancelled):
+                expr = condition.removeprefix('${{').removesuffix('}}').strip()
+                for name, value in [('!cancelled()', not cancelled), ('needs.build.result', build),
+                                    ('github.event_name', event), ('github.ref', 'refs/heads/' + ref),
+                                    ('inputs.operation', operation)]:
+                    expr = expr.replace(name, repr(value))
+                self.assertEqual(eval(expr.replace('&&', 'and').replace('||', 'or'), {'__builtins__': {}}), expected)
+
+    def test_bundle_requires_successful_geometry_and_no_cancellation(self):
+        workflow = (Path(__file__).resolve().parents[2] / '.github/workflows/osm-data.yml').read_text()
+        job = workflow.split('\n  bundle:\n', 1)[1].split('\n  upload:', 1)[0]
+        condition = next(line.strip()[4:] for line in job.splitlines() if line.strip().startswith('if:'))
+        for cancelled, geometry, expected in [
+            (False, 'success', True), (False, 'failure', False), (False, 'cancelled', False),
+            (False, 'skipped', False), (True, 'success', False),
+        ]:
+            with self.subTest(cancelled=cancelled, geometry=geometry):
+                expr = condition.removeprefix('${{').removesuffix('}}').strip()
+                for name, value in [('!cancelled()', not cancelled), ('needs.geometry.result', geometry)]:
+                    expr = expr.replace(name, repr(value))
+                self.assertEqual(eval(expr.replace('&&', 'and').replace('||', 'or'), {'__builtins__': {}}), expected)
+        self.assertIn('run-id: ${{ needs.geometry.outputs.run_id }}', job)
+
+    def test_geofabrik_requests_retry_a_refused_connection(self):
+        # curl's --retry alone gives up at once when Geofabrik refuses the runner or briefly answers 404 for a file it has (#1131)
+        workflow = (Path(__file__).resolve().parents[2] / '.github/workflows/osm-data.yml').read_text().replace('\\\n', ' ')
+        requests = [line for line in workflow.splitlines() if 'curl ' in line and '127.0.0.1' not in line]
+        self.assertEqual(len(requests), 7, 'the snapshot check, three country downloads, the reference size and its two downloads')
+        for line in requests:
+            with self.subTest(line=line.strip()[:90]):
+                # the snapshot check reads a 404 as a date not ready yet, so it retries only a refusal
+                self.assertIn('--retry-connrefused' if '$osm_region' in line else '--retry-all-errors', line)
+
+    def test_snapshot_retries_temporary_failure_and_requires_one_complete_date(self):
+        workflow = (Path(__file__).resolve().parents[2] / '.github/workflows/osm-data.yml').read_text()
+        step = workflow.split('\n  snapshot:\n', 1)[1].split('\n  build:', 1)[0]
+        script = dedent(step.split('        run: |\n', 1)[1])
+        latest = '/europe-261115.osm.pbf.md5'
+        older = '/europe-261114.osm.pbf.md5'
+        requests = []
+        responses = {}
+
+        class Checksums(BaseHTTPRequestHandler):
+            def do_HEAD(self):
+                requests.append(self.path)
+                codes = responses.get(self.path)
+                self.send_response_only(codes.pop(0) if codes else 200)
+                self.end_headers()
+
+        with HTTPServer(('127.0.0.1', 0), Checksums) as server, tempfile.TemporaryDirectory() as tmp:
+            worker = Thread(target=server.serve_forever, daemon=True)
+            worker.start()
+            try:
+                script = script.replace('https://download.geofabrik.de', f'http://127.0.0.1:{server.server_port}')
+                date = 'date() { case "$3" in "1 days ago") echo 261115;; "2 days ago") echo 261114;; esac; }\n'
+                output = Path(tmp) / 'output'
+                env = dict(os.environ, GITHUB_OUTPUT=str(output), GITHUB_STEP_SUMMARY=os.devnull,
+                           NO_PROXY='127.0.0.1', no_proxy='127.0.0.1')
+                for latest_codes, older_codes, selected in [([503, 200], [], '261115'), ([404], [], '261114'), ([404], [404], '')]:
+                    with self.subTest(selected=selected):
+                        responses.update({latest: latest_codes, older: older_codes})
+                        requests.clear()
+                        output.write_text('')
+                        result = subprocess.run(['bash', '-e', '-c', date + script], env=env,
+                                                capture_output=True, text=True, timeout=12)
+                        self.assertEqual(result.returncode, 0 if selected else 1, result)
+                        self.assertEqual(output.read_text(), f'stamp={selected}\n' if selected else '')
+                        self.assertEqual(requests.count(latest), 2 if selected == '261115' else 1)
+                        self.assertEqual(requests.count(older), 0 if selected == '261115' else 1)
+                        for stamp in ['261115'] if selected == '261115' else ['261115', '261114']:
+                            for region in ['europe/finland', 'europe/sweden', 'europe/norway', 'europe/estonia']:
+                                self.assertIn(f'/{region}-{stamp}.osm.pbf.md5 HTTP 200 (curl 0)', result.stdout)
+                        status = '200 (curl 0)' if selected == '261115' else '404 (curl 22)'
+                        self.assertIn(f'{latest} HTTP {status}', result.stdout)
+            finally:
+                server.shutdown()
+                worker.join()
+
+    def test_country_checksum_and_polygon_come_from_beside_the_file_served(self):
+        # Geofabrik moves countries into folders of their own; its old addresses keep a different checksum (#1151)
+        workflow = (Path(__file__).resolve().parents[2] / '.github/workflows/osm-data.yml').read_text()
+        step = workflow.split('name: Download one complete country, checksum and clipping polygon', 1)[1].split('\n      - name:', 1)[0]
+        script = '\n'.join(line for line in dedent(step.split('        run: |\n', 1)[1]).splitlines() if 'disk' not in line)
+        pbf, poly = b'the country itself', b'estonia\n1\nEND\nEND\n'
+        moved = {'/europe/estonia-261118.osm.pbf': (308, b'', '/europe/estonia/estonia-261118.osm.pbf'),
+                 '/europe/estonia-261118.osm.pbf.md5': (200, b'0' * 32 + b'  estonia-261118.osm.pbf\n', None),
+                 '/europe/estonia/estonia-261118.osm.pbf': (200, pbf, None),
+                 '/europe/estonia/estonia-261118.osm.pbf.md5': (200, hashlib.md5(pbf).hexdigest().encode() + b'  estonia-261118.osm.pbf\n', None),
+                 '/europe/estonia/estonia.poly': (200, poly, None)}
+        kept = {'/europe/estonia-261118.osm.pbf': (200, pbf, None),
+                '/europe/estonia-261118.osm.pbf.md5': (200, hashlib.md5(pbf).hexdigest().encode() + b'  estonia-261118.osm.pbf\n', None),
+                '/europe/estonia.poly': (200, poly, None)}
+        files = {}
+
+        class Geofabrik(BaseHTTPRequestHandler):
+            def do_GET(self):
+                code, body, location = files.get(self.path, (404, b'', None))
+                self.send_response(code)
+                if location: self.send_header('Location', location)
+                self.send_header('Content-Length', str(len(body)))
+                self.end_headers()
+                self.wfile.write(body)
+            def log_message(self, *args): pass
+
+        with HTTPServer(('127.0.0.1', 0), Geofabrik) as server, tempfile.TemporaryDirectory() as tmp:
+            worker = Thread(target=server.serve_forever, daemon=True)
+            worker.start()
+            try:
+                local = script.replace('https://download.geofabrik.de', f'http://127.0.0.1:{server.server_port}')
+                env = dict(os.environ, COUNTRY='estonia', SNAPSHOT='261118', NO_PROXY='127.0.0.1', no_proxy='127.0.0.1')
+                for layout, served in [('moved', moved), ('kept', kept)]:
+                    with self.subTest(layout=layout):
+                        files.clear(); files.update(served)
+                        result = subprocess.run(['bash', '-e', '-c', local], cwd=tmp, env=env, capture_output=True, text=True, timeout=30)
+                        self.assertEqual(result.returncode, 0, result.stderr)
+                        build = Path(tmp) / 'osm-build'
+                        self.assertEqual((build / 'source.md5').read_text()[:32], hashlib.md5((build / 'source.osm.pbf').read_bytes()).hexdigest())
+                        self.assertEqual((build / 'coverage.poly').read_bytes(), poly)
+            finally:
+                server.shutdown()
+                worker.join()
+
+    def test_country_download_leaves_time_to_build(self):
+        workflow = (Path(__file__).resolve().parents[2] / '.github/workflows/osm-data.yml').read_text()
+        build = workflow.split('\n  build:\n', 1)[1].split('\n  geometry:', 1)[0]
+        download = build.split('      - name: Download one complete country', 1)[1].split('\n      - name:', 1)[0]
+        curl = next(line for line in download.splitlines() if '-o osm-build/source.osm.pbf' in line).split()
+        transfer = int(curl[curl.index('--max-time') + 1])
+        self.assertGreaterEqual(transfer, 22 * 60, 'the slowest Norway transfer needed over 21 minutes')
+        retries = int(curl[curl.index('--retry-max-time') + 1])
+        step = int(download.split('timeout-minutes: ', 1)[1].splitlines()[0])
+        job = int(build.split('timeout-minutes: ', 1)[1].splitlines()[0])
+        self.assertGreater(retries, 0, 'a stalled large transfer must not restart late in the step')
+        self.assertLess(transfer + retries, step * 60, 'leave time for checksum and polygon downloads')
+        self.assertGreaterEqual(job - step, 100, 'leave time for the measured 86-minute build and its checks')
+
+    def test_reference_download_leaves_time_to_compile(self):
+        workflow = (Path(__file__).resolve().parents[2] / '.github/workflows/osm-data.yml').read_text()
+        geometry = workflow.split('\n  geometry:\n', 1)[1].split('\n  bundle:', 1)[0]
+        download = geometry.split('      - name: Download dated reference and checksum', 1)[1].split('\n      - name:', 1)[0]
+        curl = next(line for line in download.splitlines() if '-o osm-build/europe.osm.pbf' in line).split()
+        transfer = int(curl[curl.index('--max-time') + 1])
+        self.assertGreaterEqual(transfer, 100 * 60, 'the measured Europe transfer rate needs about 94 minutes')
+        retries = int(curl[curl.index('--retry-max-time') + 1])
+        step = int(download.split('timeout-minutes: ', 1)[1].splitlines()[0])
+        job = int(geometry.split('timeout-minutes: ', 1)[1].splitlines()[0])
+        self.assertGreater(retries, 0, 'a stalled reference transfer must not restart late')
+        self.assertLess(transfer + retries, step * 60, 'leave time for the checksum')
+        self.assertGreaterEqual(job - step, 160, 'leave a separate compilation and artifact budget')
+
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.tmp.cleanup)
+        self.release_dir = Path(self.tmp.name) / 'new-release'
+        self.release_dir.mkdir()
+        self.new, self.old = manifest('new-release'), manifest('previous-release', '2026-11-13T00:00:00Z')
+        for name, data in [('ways.pmtiles', ARCHIVE), ('LICENSE.txt', LICENSE), ('manifest.json', encoded(self.new))]:
+            (self.release_dir / name).write_bytes(data)
+        self.host = Host()
+        self.host.add_release(self.old, current=True)
+        self.previous = self.host.files[ROOT + '/current.json']
+        patches = ExitStack()
+        self.addCleanup(patches.close)
+        patches.enter_context(patch.dict('os.environ', ENV, clear=True))
+        patches.enter_context(patch.object(publish, 'open_sftp', self.host.ftp))
+        patches.enter_context(patch.object(publish.urllib.request, 'urlopen', self.host.http))
+
+    def publish(self, resume=False):
+        publish.upload(self.release_dir, resume=resume)
+        sha256 = hashlib.sha256((self.release_dir / 'manifest.json').read_bytes()).hexdigest()
+        publish.promote_candidate(self.new['release'], sha256, self.release_dir)
+
+    def test_verified_release_switches_pointer_and_saves_previous(self):
+        self.publish()
+        current = json.loads(self.host.files[ROOT + '/current.json'])
+        self.assertEqual(current, pointer(self.new))
+        self.assertTrue(any(p.read_bytes() == self.previous for p in self.release_dir.glob('rollback*.json')))
+        self.assertEqual(self.host.files[ROOT + '/releases/new-release/LICENSE.txt'], LICENSE)
+        self.assertFalse(any(p.endswith('.htaccess') for p in self.host.files))
+
+    def test_upload_names_the_candidate_and_leaves_the_live_release(self):
+        self.assertIsNone(publish.candidate(PUBLIC), 'nothing uploaded yet')
+        publish.upload(self.release_dir)
+        self.assertEqual(self.host.files[ROOT + '/current.json'], self.previous)
+        self.assertEqual(self.host.pointer_writes, 0)
+        self.assertIn(ROOT + '/releases/new-release/_upload.json', self.host.files, 'kept until promotion')
+        raw = encoded(self.new)
+        self.assertEqual(self.host.files[ROOT + '/candidates/current.json'], raw)
+        self.assertEqual(publish.candidate(PUBLIC), {'release': 'new-release', 'sha256': hashlib.sha256(raw).hexdigest(),
+                                                     'manifest': PUBLIC + '/releases/new-release/manifest.json'})
+        publish.promote_candidate('new-release', hashlib.sha256(raw).hexdigest(), self.release_dir)
+        self.assertEqual(json.loads(self.host.files[ROOT + '/current.json']), pointer(self.new))
+        self.assertNotIn(ROOT + '/releases/new-release/_upload.json', self.host.files)
+        self.assertIsNone(publish.candidate(PUBLIC), 'the candidate is live')
+
+    def test_promotion_refuses_a_candidate_that_changed_or_is_not_newer(self):
+        publish.upload(self.release_dir)
+        sha256 = hashlib.sha256(encoded(self.new)).hexdigest()
+        base = ROOT + '/releases/new-release/'
+        for change, error in [('manifest', 'differs from the one checked'), ('short', 'size differs'),
+                              ('extra', 'Unexpected files'), ('older', 'not newer')]:
+            with self.subTest(change=change):
+                files = dict(self.host.files)
+                if change == 'manifest':
+                    self.host.files[base + 'manifest.json'] = encoded(dict(self.new, attribution='changed'))
+                elif change == 'short':
+                    self.host.files[base + 'ways.pmtiles'] = ARCHIVE[:-1]
+                elif change == 'extra':
+                    self.host.files[base + 'other.pmtiles'] = ARCHIVE
+                else:
+                    self.host.files[ROOT + '/current.json'] = encoded(pointer(dict(self.old, built_at='2026-11-21T00:00:00Z')))
+                    self.host.files[ROOT + '/releases/previous-release/manifest.json'] = encoded(dict(self.old, built_at='2026-11-21T00:00:00Z'))
+                before = dict(self.host.files)
+                with self.assertRaisesRegex(RuntimeError, error):
+                    publish.promote_candidate('new-release', sha256, self.release_dir)
+                self.assertEqual(self.host.files, before)
+                self.assertEqual(self.host.pointer_writes, 0)
+                self.host.files = files
+        with patch.dict('os.environ', {'OSM_ALLOW_PUBLISH': ''}), self.assertRaisesRegex(ValueError, 'approved'):
+            publish.promote_candidate('new-release', sha256, self.release_dir)
+
+    def test_publication_cannot_remove_live_geometry(self):
+        geometry = {**self.old['datasets']['ways'], 'url': 'geometry.pmtiles'}
+        self.old['datasets']['geometry'] = geometry
+        self.old['files'].append({**self.old['files'][0], 'path': geometry['url']})
+        self.host.add_release(self.old)
+        self.host.files[ROOT + '/releases/previous-release/geometry.pmtiles'] = ARCHIVE
+        current = encoded(publish.current(self.old))
+        for resume in (False, True):
+            with self.subTest(resume=resume):
+                self.host.files[ROOT + '/current.json'] = current
+                if resume:
+                    self.stage({'ways.pmtiles': ARCHIVE, 'LICENSE.txt': LICENSE, 'manifest.json': encoded(self.new)})
+                with self.assertRaisesRegex(RuntimeError, 'remove live geometry'):
+                    self.publish(resume=resume)
+                self.assertEqual(self.host.files[ROOT + '/current.json'], current)
+                self.assertEqual(self.host.uploads, [])
+
+    def test_publication_and_monitor_verify_the_lighting_archive_too(self):
+        data = b'PMTiles lighting' + bytes(range(256)) * 5
+        digest = hashlib.sha256(data).hexdigest()
+        self.new['datasets']['lit'] = {'url': 'lit.pmtiles', 'bytes': len(data), 'sha256': digest}
+        self.new['files'].append({'path': 'lit.pmtiles', 'bytes': len(data), 'sha256': digest})
+        (self.release_dir / 'lit.pmtiles').write_bytes(data)
+        (self.release_dir / 'manifest.json').write_bytes(encoded(self.new))
+        self.publish()
+        current = json.loads(self.host.files[ROOT + '/current.json'])
+        self.assertEqual(current['datasets']['lit']['url'], 'releases/new-release/lit.pmtiles')
+        self.assertEqual(self.host.files[ROOT + '/releases/new-release/lit.pmtiles'], data)
+        publish.check(PUBLIC + '/current.json')
+        http = self.host.http
+        def fail_lighting(req, **kwargs):
+            response = http(req, **kwargs)
+            if req.full_url.endswith('/lit.pmtiles'):
+                response.status = 200
+            return response
+        with patch.object(publish.urllib.request, 'urlopen', fail_lighting):
+            with self.assertRaisesRegex(ValueError, 'Range'):
+                publish.check(PUBLIC + '/current.json')
+
+    def stage(self, files):
+        stage = '.upload-new-release-' + 'a' * 32
+        self.host.dirs.add(ROOT + '/' + stage)
+        self.host.files.update({ROOT + '/' + stage + '/' + name: data for name, data in files.items()})
+        return stage
+
+    def test_inspection_reports_partial_bytes_without_writes_or_approval(self):
+        stage = self.stage({'ways.pmtiles': ARCHIVE[:4000]})
+        before = dict(self.host.files), set(self.host.dirs)
+        with patch.dict('os.environ', {'OSM_ALLOW_PUBLISH': ''}):
+            result = publish.inspect_release(self.release_dir)
+        self.assertEqual(result['candidates'][0]['path'], stage)
+        self.assertEqual(result['candidates'][0]['files']['ways.pmtiles']['actual'], 4000)
+        self.assertEqual((self.host.files, self.host.dirs), before)
+        self.assertEqual(self.host.uploads, [])
+
+    def test_resume_complete_stage_does_not_reupload_payload(self):
+        self.stage({'ways.pmtiles': ARCHIVE, 'LICENSE.txt': LICENSE, 'manifest.json': encoded(self.new)})
+        self.publish(resume=True)
+        self.assertEqual(json.loads(self.host.files[ROOT + '/current.json']), pointer(self.new))
+        self.assertTrue(all('/current.' in name or '/maintenance/r-new-release.json.' in name or '/maintenance/p-new-release.json.' in name
+                            for name, _, _ in self.host.uploads))
+        # A rerun after promotion, say after a receipt write was interrupted, changes nothing but the receipt.
+        receipt = ROOT + '/maintenance/r-new-release.json'
+        self.host.files[ROOT + '/maintenance/p-new-release.json'] = self.host.files.pop(receipt)
+        self.host.uploads.clear()
+        sha256 = hashlib.sha256(encoded(self.new)).hexdigest()
+        publish.promote_candidate('new-release', sha256, self.release_dir)
+        self.assertEqual(json.loads(self.host.files[ROOT + '/current.json']), pointer(self.new))
+        self.assertIn(receipt, self.host.files)
+        saved, = self.release_dir.glob('rollback-*.json')
+        self.assertEqual(json.loads(saved.read_bytes()), json.loads(self.previous))
+        self.assertTrue(all('/maintenance/' in name for name, _, _ in self.host.uploads))
+        from tools.osm_data import health
+        with patch.object(health.subprocess, 'run', side_effect=RuntimeError('browser failed')):
+            with self.assertRaisesRegex(RuntimeError, 'browser failed'):
+                health.verify(Path(self.tmp.name) / 'health', self.release_dir)
+        self.assertEqual(json.loads(self.host.files[ROOT + '/current.json']), json.loads(self.previous))
+
+    def test_resume_partial_stage_verifies_prefix_and_sends_only_missing_suffix(self):
+        stage = self.stage({'ways.pmtiles': ARCHIVE[:4000]})
+        self.publish(resume=True)
+        self.assertIn((ROOT + '/' + stage + '/ways.pmtiles', 4000, len(ARCHIVE) - 4000), self.host.uploads)
+        self.assertEqual(self.host.files[ROOT + '/releases/new-release/ways.pmtiles'], ARCHIVE)
+
+    def test_resume_accounts_for_missing_payload_before_storage_budget(self):
+        self.stage({'ways.pmtiles': ARCHIVE[:100]})
+        with patch.object(publish.maintenance, 'usage', return_value=publish.maintenance.BUDGET-5000):
+            with self.assertRaisesRegex(RuntimeError, 'budget'):
+                self.publish(resume=True)
+        self.assertEqual(self.host.uploads, [])
+
+    def test_resume_rejects_corrupt_or_oversized_prefix_without_writing(self):
+        for data in (b'wrong prefix', ARCHIVE + b'!'):
+            with self.subTest(length=len(data)):
+                self.stage({'ways.pmtiles': data})
+                before = dict(self.host.files)
+                with self.assertRaisesRegex(RuntimeError, 'prefix|larger'):
+                    self.publish(resume=True)
+                self.assertEqual(self.host.files, before)
+                self.assertEqual(self.host.uploads, [])
+
+    def test_resume_still_checks_complete_file_hash_before_promotion(self):
+        self.stage({'ways.pmtiles': b'!' + ARCHIVE[1:], 'LICENSE.txt': LICENSE, 'manifest.json': encoded(self.new)})
+        with self.assertRaisesRegex(RuntimeError, 'SHA-256'):
+            self.publish(resume=True)
+        self.assertEqual(self.host.files[ROOT + '/current.json'], self.previous)
+        self.assertEqual(self.host.uploads, [])
+
+    def test_resume_existing_immutable_release_verifies_without_payload_writes(self):
+        self.host.add_release(self.new)
+        self.publish(resume=True)
+        self.assertTrue(all('/current.' in name or '/maintenance/r-new-release.json.' in name or '/maintenance/p-new-release.json.' in name
+                            for name, _, _ in self.host.uploads))
+
+    def test_resume_refuses_missing_ambiguous_or_unsafe_staging(self):
+        with self.assertRaisesRegex(RuntimeError, 'exactly one'):
+            self.publish(resume=True)
+        stage = self.stage({'ways.pmtiles': ARCHIVE[:4000]})
+        other = ROOT + '/.upload-new-release-' + 'b' * 32
+        self.host.dirs.add(other)
+        with self.assertRaisesRegex(RuntimeError, 'exactly one'):
+            self.publish(resume=True)
+        self.host.dirs.remove(other)
+        for unsafe in (ROOT + '/' + stage, ROOT + '/' + stage + '/ways.pmtiles'):
+            self.host.unsafe = {unsafe}
+            with self.assertRaisesRegex(RuntimeError, 'regular|directory'):
+                self.publish(resume=True)
+        self.assertEqual(self.host.uploads, [])
+
+    def test_sftp_pipelines_writes_and_bounds_read_prefetch(self):
+        events = []
+        class File(io.BytesIO):
+            def set_pipelined(self, enabled):
+                events.append(('pipeline', enabled))
+            def stat(self):
+                return SimpleNamespace(st_size=len(ARCHIVE))
+            def prefetch(self, file_size, max_concurrent_requests):
+                events.append(('prefetch', file_size, max_concurrent_requests))
+        class SFTP:
+            def open(self, path, mode):
+                return File(ARCHIVE if mode == 'rb' else b'')
+        remote = publish.SFTPFiles(None, SFTP())
+        remote.storbinary('STOR sample', io.BytesIO(ARCHIVE))
+        chunks = []
+        remote.retrbinary('RETR sample', chunks.append)
+        self.assertIn(('pipeline', True), events)
+        self.assertIn(('prefetch', len(ARCHIVE), 64), events)
+        self.assertEqual(b''.join(chunks), ARCHIVE)
+
+    def test_sftp_resume_uses_nontruncating_seek_and_surfaces_close_errors(self):
+        events = []
+        class File(io.BytesIO):
+            def set_pipelined(self, enabled):
+                pass
+            def close(self):
+                events.append(('body', self.getvalue()))
+                super().close()
+                raise OSError('deferred write error')
+        class SFTP:
+            def lstat(self, path):
+                return SimpleNamespace(st_mode=0o100600)
+            def stat(self, path):
+                return SimpleNamespace(st_size=4)
+            def open(self, path, mode):
+                events.append(('open', mode))
+                return File(b'abcd')
+        remote = publish.SFTPFiles(None, SFTP())
+        with self.assertRaisesRegex(OSError, 'deferred write error'):
+            remote.storbinary('STOR sample', io.BytesIO(b'efgh'), rest=4)
+        self.assertEqual(events, [('open', 'r+b'), ('body', b'abcdefgh')])
+        with self.assertRaisesRegex(ValueError, 'offset'):
+            remote.storbinary('STOR sample', io.BytesIO(b'efgh'), rest=3)
+
+    def test_host_checks_disposable_files_without_touching_release_or_pointer(self):
+        original_files, original_dirs = dict(self.host.files), set(self.host.dirs)
+        with patch.dict('os.environ', {'OSM_ALLOW_PUBLISH': ''}):
+            result = publish.test_host()
+        self.assertTrue(result['sftp_write_and_rename'])
+        self.assertTrue(result['posix_overwrite'])
+        self.assertTrue(result['http_range_cors_and_cache'])
+        self.assertEqual(result['retention']['deleted_entries'], 2)
+        self.assertEqual(self.host.files, original_files)
+        self.assertEqual(self.host.dirs, original_dirs)
+        self.assertEqual(self.host.pointer_writes, 0)
+
+    def test_host_fails_safely_when_posix_overwrite_unsupported(self):
+        original_files, original_dirs = dict(self.host.files), set(self.host.dirs)
+        self.host.fail_pointer = True
+        with self.assertRaisesRegex(RuntimeError, 'POSIX rename extension unsupported'):
+            publish.test_host()
+        self.assertEqual(self.host.files, original_files)
+        self.assertEqual(self.host.dirs, original_dirs)
+
+    def test_public_range_probe_uses_browser_user_agent(self):
+        original_http = self.host.http
+        def browser_only(request, **kwargs):
+            if request.get_header('User-agent') != 'Mozilla/5.0':
+                raise HTTPError(request.full_url, 403, 'blocked user agent', {}, None)
+            return original_http(request, **kwargs)
+        with patch.object(publish.urllib.request, 'urlopen', browser_only):
+            body = publish.get(PUBLIC + '/releases/previous-release/ways.pmtiles',
+                               (0, 10, len(ARCHIVE)), immutable=True)
+        self.assertEqual(body, ARCHIVE[:10])
+
+    def test_unsafe_root_and_missing_approval_fail_before_connect(self):
+        for root in ['', '/', '/home/example/www', '/www/../polku-osm', '/www/polku-osm\r\nDELE x']:
+            with self.subTest(root=root), patch.dict('os.environ', {'OSM_FTP_ROOT': root}):
+                with self.assertRaises(ValueError):
+                    self.publish()
+        with patch.dict('os.environ', {'OSM_ALLOW_PUBLISH': ''}):
+            with self.assertRaises(ValueError):
+                self.publish()
+        self.assertEqual(self.host.connections, 0)
+
+    def test_local_corruption_stops_before_connect(self):
+        (self.release_dir / 'ways.pmtiles').write_bytes(b'bad')
+        with self.assertRaises(ValueError):
+            self.publish()
+        self.assertEqual(self.host.connections, 0)
+
+    def test_upload_hash_and_http_failures_never_switch_pointer(self):
+        for failure in ['fail_upload', 'corrupt_upload', 'bad_range']:
+            with self.subTest(failure=failure):
+                self.host = Host()
+                self.host.add_release(self.old, current=True)
+                setattr(self.host, failure, True)
+                with patch.object(publish, 'open_sftp', self.host.ftp), patch.object(publish.urllib.request, 'urlopen', self.host.http):
+                    with self.assertRaises((ValueError, RuntimeError)):
+                        self.publish()
+                self.assertEqual(self.host.files[ROOT + '/current.json'], self.previous)
+                self.assertEqual(self.host.pointer_writes, 0)
+
+    def test_existing_release_is_never_overwritten(self):
+        self.host.add_release(self.new)
+        before = dict(self.host.files)
+        with self.assertRaises((ValueError, RuntimeError)):
+            self.publish()
+        self.assertEqual(self.host.files, before)
+
+    def test_unsupported_pointer_overwrite_leaves_previous(self):
+        self.host.fail_pointer = True
+        with self.assertRaises((ValueError, RuntimeError)):
+            self.publish()
+        self.assertEqual(self.host.files[ROOT + '/current.json'], self.previous)
+
+    def test_failed_post_switch_probe_restores_previous_pointer(self):
+        self.host.bad_after_pointer = True
+        with self.assertRaises((ValueError, RuntimeError)):
+            self.publish()
+        self.assertEqual(self.host.files[ROOT + '/current.json'], self.previous)
+
+    def test_changed_immutable_manifest_after_promotion_restores_previous(self):
+        self.host.changed_manifest_after_pointer = True
+        with self.assertRaises((ValueError, RuntimeError)):
+            self.publish()
+        self.assertEqual(self.host.files[ROOT + '/current.json'], self.previous)
+
+    def test_saved_rollback_roundtrip_keeps_both_releases(self):
+        self.publish()
+        saved = next(p for p in self.release_dir.glob('rollback*.json') if p.read_bytes() == self.previous)
+        publish.rollback(saved)
+        self.assertEqual(json.loads(self.host.files[ROOT + '/current.json']), json.loads(self.previous))
+        self.assertIn(ROOT + '/releases/new-release/ways.pmtiles', self.host.files)
+        self.assertIn(ROOT + '/releases/previous-release/ways.pmtiles', self.host.files)
+        # This regression is also exercised by tools/smoke.py osmdata.
+        with publish.connection(publish.settings()) as ftp:
+            plan = publish.maintenance.prune(ftp, apply=True,
+                       now=datetime.now(timezone.utc) + timedelta(days=40))
+        self.assertEqual(plan['delete'], [])
+        record = json.loads(self.host.files[ROOT + '/maintenance/r-previous-release.json'])
+        self.assertEqual(record['previous_release'], 'new-release')
+
+        # An interrupted second round trip must retain the true, pre-switch predecessor too.
+        self.host.dirs.add(ROOT + '/maintenance')
+        self.host.files[ROOT + '/maintenance/r-previous-release.json'] = encoded({
+            'version': 1, 'release': 'previous-release', 'previous_release': 'already-pruned',
+            'published_at': (datetime.now(timezone.utc)-timedelta(days=50)).isoformat(),
+            'manifest_sha256': hashlib.sha256(encoded(self.old)).hexdigest()})
+        self.host.add_release(self.new, current=True)
+        saved = self.release_dir / 'rollback-interrupted.json'
+        saved.write_bytes(self.previous)
+        with patch.object(publish.maintenance, 'record_publication', side_effect=OSError('interrupted after promotion')):
+            with self.assertRaisesRegex(RuntimeError, 'interrupted'):
+                publish.rollback(saved)
+        before = dict(self.host.files)
+        with publish.connection(publish.settings()) as ftp:
+            plan = publish.maintenance.prune(ftp)
+        self.assertEqual(plan['recover_receipt'], 'previous-release')
+        self.assertEqual(self.host.files, before)
+        with publish.connection(publish.settings()) as ftp:
+            self.assertEqual(publish.maintenance.prune(ftp, apply=True)['delete'], [])
+        receipt = json.loads(self.host.files[ROOT + '/maintenance/r-previous-release.json'])
+        self.assertEqual(receipt['previous_release'], 'new-release')
+        publish.rollback(saved)
+        self.assertEqual(json.loads(self.host.files[ROOT + '/maintenance/r-previous-release.json'])['previous_release'], 'new-release')
+
+    def test_rollback_still_requires_publication_approval(self):
+        self.publish()
+        saved = next(self.release_dir.glob('rollback*.json'))
+        files = dict(self.host.files)
+        with patch.dict('os.environ', {'OSM_ALLOW_PUBLISH': ''}):
+            with self.assertRaisesRegex(ValueError, 'approval|approved'):
+                publish.rollback(saved)
+        self.assertEqual(self.host.files, files)
+
+    def test_automatic_rollback_does_not_replace_another_live_release(self):
+        saved = self.release_dir / 'rollback-own.json'
+        saved.write_bytes(self.previous)
+        before = dict(self.host.files)
+        with self.assertRaisesRegex(RuntimeError, 'changed'):
+            publish.rollback(saved, expected_current='different')
+        self.assertEqual(self.host.files, before)
+
+    def test_monitor_rejects_old_data_and_invalid_public_headers(self):
+        old = pointer(self.old)
+        old['source']['timestamp'] = '2000-01-01T00:00:00Z'
+        self.host.files[ROOT + '/current.json'] = encoded(old)
+        with self.assertRaises(ValueError):
+            publish.check(PUBLIC + '/current.json')
+
+        self.host.files[ROOT + '/current.json'] = self.previous
+        self.host.release_headers['Access-Control-Allow-Origin'] = 'https://other.example'
+        with self.assertRaises(ValueError):
+            publish.check(PUBLIC + '/current.json')
+
+    def test_monitor_runs_without_the_sftp_dependency(self):
+        original_import = __import__
+        def no_sftp(name, *args, **kwargs):
+            if name == 'paramiko':
+                raise ModuleNotFoundError('SFTP dependency is not installed in monitor jobs')
+            return original_import(name, *args, **kwargs)
+        with patch('builtins.__import__', side_effect=no_sftp):
+            spec = importlib.util.spec_from_file_location('http_monitor', publish.__file__)
+            monitor = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(monitor)
+            monitor.check(PUBLIC + '/current.json')
+
+    def test_monitor_rejects_an_immutable_or_freshly_cached_current_pointer(self):
+        for policy in ['public, max-age=31536000, immutable', 'public, max-age=900', '']:
+            with self.subTest(policy=policy):
+                self.host.pointer_cache = policy
+                with self.assertRaisesRegex(ValueError, 'current.json|revalidat'):
+                    publish.check(PUBLIC + '/current.json')
+
+    def test_credentials_are_redacted_from_failure(self):
+        self.host.denied_login = True
+        with self.assertRaises((ValueError, RuntimeError)) as raised:
+            self.publish()
+        self.assertNotIn(ENV['OSM_FTP_USER'], str(raised.exception))
+        self.assertNotIn(ENV['OSM_FTP_PASSWORD'], str(raised.exception))
+
+    def test_access_check_does_not_need_publication_approval_or_write_files(self):
+        files, dirs = dict(self.host.files), set(self.host.dirs)
+        with patch.dict('os.environ', {'OSM_ALLOW_PUBLISH': ''}):
+            result = publish.verify_access()
+        self.assertTrue(result['sftp_read_access'])
+        self.assertEqual(result['public_status'], 200)
+        self.assertEqual((self.host.files, self.host.dirs), (files, dirs))
+        self.assertEqual(self.host.pointer_writes, 0)
+
+    def test_access_check_reports_unpublished_http_without_changing_host(self):
+        def forbidden(request, **kwargs):
+            raise HTTPError(request.full_url, 403, 'forbidden', {}, None)
+        files = dict(self.host.files)
+        with patch.object(publish.urllib.request, 'urlopen', forbidden):
+            result = publish.verify_access()
+        self.assertTrue(result['sftp_read_access'])
+        self.assertEqual(result['public_status'], 403)
+        self.assertFalse(result['public_cors'])
+        self.assertEqual(self.host.files, files)
+
+    def test_host_key_mismatch_aborts_before_password_authentication(self):
+        class Key:
+            def asbytes(self):
+                return b'an unexpected SSH host key'
+        class Transport:
+            authenticated = False
+            closed = False
+            def start_client(self, timeout=None):
+                pass
+            def get_remote_server_key(self):
+                return Key()
+            def auth_password(self, username, password):
+                self.authenticated = True
+            def close(self):
+                self.closed = True
+        transport = Transport()
+        with patch('paramiko.Transport', return_value=transport):
+            with self.assertRaisesRegex(ValueError, 'host key differs'):
+                real_open_sftp('ftp.example', 'user', 'secret', ENV['OSM_SFTP_HOST_KEY_SHA256'])
+        self.assertFalse(transport.authenticated)
+        self.assertTrue(transport.closed)
+
+    def test_missing_host_key_pin_rejects_access_without_connection(self):
+        with patch.dict('os.environ', {'OSM_SFTP_HOST_KEY_SHA256': ''}):
+            with self.assertRaisesRegex(ValueError, 'OSM_SFTP_HOST_KEY_SHA256'):
+                publish.verify_access()
+        self.assertEqual(self.host.connections, 0)
+
+    def test_atomic_pointer_replace_uses_posix_rename_only(self):
+        class Stub:
+            posix_rename_calls = []
+            def posix_rename(self, old, new):
+                self.posix_rename_calls.append((old, new))
+                raise OSError('POSIX rename extension unavailable')
+        fake = Stub()
+        remote = publish.SFTPFiles(None, fake)
+        with self.assertRaisesRegex(OSError, 'extension unavailable'):
+            remote.replace('pointer.tmp', 'current.json')
+        self.assertEqual(fake.posix_rename_calls, [('pointer.tmp', 'current.json')])
+
+
+if __name__ == '__main__':
+    unittest.main()
