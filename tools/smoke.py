@@ -2819,7 +2819,8 @@ def water_rapids(chrome):
 
 # what a water check forgets before and after (WATER_LATE, WATER_BACK)
 WATER_FORGET = '''// the rocks are made up, and the hosted data fails: no answer cached by an earlier run before (nor the hosted
-  // data's manifest), none kept after
+  // data's manifest or tiles: the page pins a manifest it read before the check, and an earlier group's hazards tile
+  // then answered from the cache, #153), none kept after
   const forget = () => new Promise((ok) => {
     const r = indexedDB.open('polku');
     r.onerror = () => ok();
@@ -2828,7 +2829,7 @@ WATER_FORGET = '''// the rocks are made up, and the hosted data fails: no answer
       if (!db.objectStoreNames.contains('overpass')) { db.close(); ok(); return; }
       const t = db.transaction('overpass', 'readwrite'), o = t.objectStore('overpass');
       o.delete(IDBKeyRange.bound('waterhaz/', 'waterhaz/~'));
-      o.delete(IDBKeyRange.bound('static/manifest/', 'static/manifest/~'));
+      o.delete(IDBKeyRange.bound('static/', 'static/~'));
       t.oncomplete = t.onerror = () => { db.close(); ok(); };
     };
   });'''
