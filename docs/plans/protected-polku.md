@@ -44,7 +44,7 @@ What follows from it:
   which has needed many runs, moves to a public repository. The smoke suite alone used
   8,843 minutes in that month, about 53 $, three times Pro's allowance; the monthly budget
   and what happens when it stops runs are in "Actions budget" below.
-- **Cloudflare sends no `Last-Modified`**, which `sw.js` uses to keep one deploy's files
+- **Cloudflare's documented headers have no `Last-Modified`**, which `sw.js` uses to keep one deploy's files
   together (DEVELOPING, "One deploy's files per page"). The deploy gets an id of its own.
 - **The app links to the repository** in the map's credits (`js/main.js`) and in What's new:
   `SOURCE` and `REPO` in `js/changelog.js`, and 297 links to issues inside `CHANGELOG.md`
@@ -70,8 +70,9 @@ headers a `<meta>` tag can't set (HSTS, `frame-ancestors`, `X-Frame-Options`, th
   `robots.txt`, `.well-known/tdmrep.json` and `_headers`. A check fails the build when a
   file the app requests is missing from it.
 - **One build script** (`tools/site.sh` or similar) copies the allowlist into `site/`,
-  minifies, writes the deploy id and the headers. Cloudflare runs it; nothing else does, and
-  the app keeps running from the repository as it is, with no build step locally.
+  minifies, writes the deploy id and the headers. Cloudflare runs it to publish, and a session
+  runs it to test the built site (below); the app itself keeps running from the repository as
+  it is, with no build step.
 - **Minified with esbuild**, pinned with its integrity hash in a lockfile (`npm ci` in
   Cloudflare's build only): each file
   transformed on its own (no bundling, so modules and `import.meta.url` stay as they are),
@@ -80,9 +81,11 @@ headers a `<meta>` tag can't set (HSTS, `frame-ancestors`, `X-Frame-Options`, th
   comments are also stripped from `index.html` (13 lines) and `profiles/*.brf` (323 lines, the
   routing's reasons; BRouter ignores them).
 - **The deploy id** comes from the commit Cloudflare builds (`WORKERS_CI_COMMIT_SHA`). It is
-  sent as a header on every file, and stamped into every published `.js` and `.css` file and
-  `index.html` (the copyright comment carries it), so every file's hash, and so its ETag,
-  changes with every deploy, as GitHub's does today. Otherwise an unchanged file would
+  sent as a header on every file, and stamped into every published `.js` and `.css` file but
+  `sw.js`, and into `index.html` (the copyright comment carries it), so every file's hash, and
+  so its ETag, changes with every deploy, as GitHub's does today. `sw.js` is left out: the
+  browser fetches it directly, never through the worker, and a stamp would install a new worker
+  on every deploy, which forgets the open pages' deploys and saved copies (`deployOf`, `savedFor`). Otherwise an unchanged file would
   revalidate to a 304, and Cloudflare's docs don't say whether `_headers` headers come with a
   304: the browser could keep an older deploy's id. `sw.js` reads the deploy-id header and
   falls back to `Last-Modified`, because part 1 runs on GitHub Pages for days before the DNS
@@ -134,7 +137,8 @@ after minifying. Workers: `'self' blob:` (the service worker, `js/offline.js:33`
 module worker, `js/shadows.js:198`; MapLibre's from `blob:`). Styles: `'self'`, `https://unpkg.com`
 (MapLibre's CSS) and `'unsafe-inline'`, because 36 `style` attributes are set through `h()` and
 16 more are in HTML strings (the route's marks and the chart's dots take their colours there).
-No `default-src 'self'` that would silently cover what isn't listed. Connections stay open to any `https:`
+`default-src 'self'` covers the rest (fonts, frames, media), so a source a directive forgets
+is blocked, and shows in the smoke groups run with the policy enforced, rather than left open. Connections stay open to any `https:`
 address and to this computer, because Settings' own BRouter address can be anything
 (`brouterUrl`, `js/router.js`). Images and tiles likewise. Images and connections also allow
 `data:` and `blob:`: the rain radar and the no-radar hatch are drawn in the app and handed to
@@ -220,6 +224,8 @@ host, and Polku reads them from `OSM_DATA_MANIFEST`.
   folder, that one goes to the public repository, so it can't write the production manifest. The public repository never checks out
   Polku. Part 6 measures these jobs' minutes first, since they run in the private repository;
   the build itself, the costly part, stays free.
+- **Its licence** is Polku's own, all rights reserved: public to read, not to reuse, as Polku's
+  code has been until now. The data it publishes keeps OpenStreetMap's ODbL notices.
 - **The contract** is the manifest and the archives' format. A change to it needs a PR in
   each repository: the build's first, then Polku's reader with new fixtures.
 - **Secrets can't be copied out of GitHub.** Tomba re-enters them in the new repository from
@@ -276,7 +282,9 @@ in local clones. Cloudflare is no backup: it keeps built versions of the site, n
 The smoke suite at last month's rate costs about 53 $, about 35 $ over Pro's allowance, before
 the OSM app checks, the daily health check and the backup. A budget that stops usage would stop
 the suite after about 50 runs, and then for the rest of the month. **Tomba sets the monthly
-figure.** When it stops runs, the groups still run locally, as AGENTS.md has them, and the whole
+figure.** Recommended: 20 $ over the allowance (about 3,300 minutes more, about 6,300 in all),
+with **Stop usage when budget limit is reached** on, looked at again after the first private
+month. When it stops runs, the groups still run locally, as AGENTS.md has them, and the whole
 suite waits for the next month or runs on Tomba's Mac.
 
 ## Tomba's steps
@@ -343,7 +351,7 @@ would also send positions through Polku (PRODUCT.md).
 - **Where people report problems** once GitHub is private. Proposal: an e-mail address on
   polku.si, shown in Settings → About Polku.
 - **The licence sentence's wording,** for Tomba to approve.
-- **The Actions budget's monthly figure** (above).
+- **The Actions budget's monthly figure** (20 $ recommended above).
 - **Should `main` keep publishing polku.si,** or should a release be a tagged commit, with
   `main` going to the test address first (#115's review of 2026-10-18)? This plan keeps
   `main` publishing; a release step can come later.
