@@ -236,8 +236,6 @@ export function buildStyle(s, ctx) {
       filter: ['in', cls, ['literal', [35401, 35402, 35411, 35412, 35421, 35422]]],
       paint: { 'fill-pattern': ['match', cls, [35401, 35411], dashes(P.wetland), [35402, 35412], dashes(P.bogWood), 35421, hard(P.wetland), hard(P.bogWood)] },
     });
-    // reedbeds over it, from Polku's own OSM data (js/osm-data.js): reed stems on the same ground, covering the dashes
-    add({ id: 'lc-reedbed', type: 'fill', source: 'reedbeds', minzoom: 12, paint: { 'fill-pattern': `reedbed-${P.wetland.slice(1)}-${P.reed.slice(1)}` } });
     lc('lc-sand', ['sand'], P.sand);
     lc('lc-rock', ['rock'], P.rock);
     // MML's rock in Finland (#1147), from zoom 13, over OSM's in the same grey, so the two read as one: OSM's stays where
@@ -320,8 +318,12 @@ export function buildStyle(s, ctx) {
       },
     });
     add({ id: 'water', type: 'fill', source: 'ofm', 'source-layer': 'water', filter: ['!=', ['get', 'class'], 'swimming_pool'], paint: { 'fill-color': waterColor, 'fill-antialias': true } });
-    // MML's overgrowing water in Finland (#1147): dashes on the water's blue, over OSM's lake, which covers most of it
-    if (sources.mml) add({ id: 'mml-overgrowing', type: 'fill', source: 'mml', 'source-layer': 'maasto_alue', minzoom: 11, filter: ['==', ['get', 'kohdeluokka'], 38300], paint: { 'fill-pattern': `wetland-${waterColor.slice(1)}-${P.wetlandDash.slice(1)}` } });
+    // reeds in the water, one look from both sources (#1248): tufts on the water's own blue (paddling's too), over the
+    // lake, which would hide them, so a reedbed never reads as land. OSM's reedbeds from Polku's own OSM data
+    // (js/osm-data.js), then MML's overgrowing water in Finland (#1147), whose tap card wins where both are.
+    const reeds = `reedbed-${waterColor.slice(1)}-${P.reed.slice(1)}`;
+    add({ id: 'lc-reedbed', type: 'fill', source: 'reedbeds', minzoom: 12, paint: { 'fill-pattern': reeds } });
+    if (sources.mml) add({ id: 'mml-overgrowing', type: 'fill', source: 'mml', 'source-layer': 'maasto_alue', minzoom: 11, filter: ['==', ['get', 'kohdeluokka'], 38300], paint: { 'fill-pattern': reeds } });
     add({ id: 'water-shore', type: 'line', source: 'ofm', 'source-layer': 'water', minzoom: 11, filter: ['!=', ['get', 'class'], 'swimming_pool'], paint: { 'line-color': P.waterLine, 'line-width': zi(11, 0.3, 15, act === 'paddle' ? 1.4 : 0.8), 'line-opacity': 0.8 } });
   }
 
@@ -595,7 +597,8 @@ export function buildStyle(s, ctx) {
         'symbol-sort-key': ['get', 'rank'], 'icon-image': ['coalesce', ['image', ['get', 'class']], ['image', 'shop']], 'icon-size': hc ? 1 : 0.75,
         'text-field': ['get', 'name'], 'text-font': FONT, 'text-size': 10.5, 'text-offset': [0, 0.9], 'text-anchor': 'top', 'text-optional': true, 'text-max-width': 7,
       },
-      paint: { 'text-color': s.base === 'night' ? '#d6b8e6' : '#7a2e8a', 'text-halo-color': P.halo, 'text-halo-width': 1.2, 'icon-opacity': s.base === 'night' ? 0.85 : 1 },
+      // (a light purple on the dark halo of the Night map and the aerial photos, 9.8:1 or more; the dark one on a white halo, 8.1:1)
+      paint: { 'text-color': s.base === 'night' || isAerial(s.base) ? '#d6b8e6' : '#7a2e8a', 'text-halo-color': P.halo, 'text-halo-width': 1.2, 'icon-opacity': s.base === 'night' ? 0.85 : 1 },
     });
   }
   if (s.overlays.lipasPoints || s.overlays.restricted) {
