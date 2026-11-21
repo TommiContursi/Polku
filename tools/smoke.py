@@ -1045,12 +1045,13 @@ def property_lines(chrome):
     return not fails
 
 
-# #1148: with Property boundaries on (and its Plot under the pointer, on at first), the plot under the pointer is tinted, and a click on a plot opens its card with its ID
-# and tints it more, by its id (all its tiles' pieces), until the card closes.
+# #1148: with Property boundaries on (and its Property details switch, on at first), the plot under the pointer is tinted, and a click on a plot opens its card with its ID
+# and tints it more, by its id (all its tiles' pieces), until the card closes. #1199: with Property details off, no plot is tinted or
+# picked by a mouse, a hold or a tap, and the switch is there by touch too.
 def property_plots(chrome):
     pg = chrome.page(1440, 900, False)
     pg.open_app({'activity': 'mtb', 'overlaysByActivity': {'mtb': {'propertyLines': True}}}, None, '#16.5/62.2415/25.748')
-    fails = pg.js("""(async () => {
+    r = pg.js("""(async () => {
       const errs=[], m=polku.map, wait=(ms)=>new Promise(r=>setTimeout(r,ms)), frame=()=>new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)));
       const t0=performance.now();
       while(performance.now()-t0<30000&&!m.queryRenderedFeatures({layers:['property-plot']}).length)await wait(250);
@@ -1058,7 +1059,8 @@ def property_plots(chrome):
       const {inspectLayers,pickFeature,hitBox}=await import(location.origin+'/js/inspect.js');
       let spot=null;
       for(let y=200;y<800&&!spot;y+=23)for(let x=200;x<1200&&!spot;x+=29){const f=pickFeature(m.queryRenderedFeatures(hitBox({x,y},false),{layers:inspectLayers(m)}));if(f&&f.layer.id==='property-plot'&&f.id!=null)spot={x,y,f};}
-      if(!spot)return ['no spot at Jyväskylä where a click picks a plot'];
+      if(!spot)return {errs:['no spot at Jyväskylä where a click picks a plot']};
+      const ll=m.unproject([spot.x,spot.y]).toArray();
       const st=(id)=>m.getFeatureState({source:'ov-propertyLines',sourceLayer:'PalstanSijaintitiedot',id});
       const cv=m.getCanvas(), R=cv.getBoundingClientRect();
       const ev=(type)=>cv.dispatchEvent(new MouseEvent(type,{bubbles:true,cancelable:true,clientX:R.left+spot.x,clientY:R.top+spot.y,button:0,buttons:type==='mouseup'?0:1}));
@@ -1095,26 +1097,106 @@ def property_plots(chrome):
         else if(/^Property /.test(c.title))errs.push('a click in a park opened the property under it, not the park');
         polku.planner.cards.close(); await frame();
       }
-      // Plot under the pointer, under the switch in Layers: off, the pointer tints nothing, and a click still picks the plot
+      // Property details, under the switch in Layers (#1199): off, the pointer, a click and a hold pick no plot, and what's under it
+      // opens as without the layer; the plot whose card is open as it goes off is no longer tinted, and its card closes
+      const idle=()=>Promise.race([new Promise(r=>{m.once('idle',r);m.triggerRepaint();}),wait(5000)]);
+      const tinted=()=>m.getLayer('property-plot')&&m.queryRenderedFeatures([spot.x,spot.y],{layers:['property-plot']}).some(f=>f.id===spot.f.id)&&(st(spot.f.id).lit||st(spot.f.id).hover);
+      const move=(dx)=>cv.dispatchEvent(new PointerEvent('pointermove',{bubbles:true,pointerType:'mouse',clientX:R.left+spot.x+dx,clientY:R.top+spot.y,buttons:0}));
+      ev('mousedown'); ev('mouseup'); ev('click'); await wait(600);
+      if(!/^Property \\d/.test(polku.planner.cards.current?.title||''))errs.push('before Property details goes off, a click on the plot opens no card of it');
       document.querySelector('#btn-layers').click(); await frame();
       [...document.querySelectorAll('button')].find(b=>/^More: all layers/.test(b.getAttribute('aria-label')||''))?.click(); await frame();
-      const sub=[...document.querySelectorAll('[data-group=terrain] input[role=switch]')].find(i=>i.closest('label')?.textContent.includes('Plot under the pointer'));
-      if(!sub)errs.push('no Plot under the pointer switch under Property boundaries');
+      const sub=[...document.querySelectorAll('[data-group=terrain] input[role=switch]')].find(i=>i.closest('label')?.textContent.includes('Property details'));
+      if(!sub)errs.push('no Property details switch under Property boundaries');
       else {
-        if(!sub.checked)errs.push('Plot under the pointer is off at first');
-        sub.click(); await frame(); polku.set({}); await frame();
-        cv.dispatchEvent(new PointerEvent('pointermove',{bubbles:true,pointerType:'mouse',clientX:R.left+spot.x+1,clientY:R.top+spot.y,buttons:0})); await frame(); await frame();
-        if(st(spot.f.id).hover)errs.push('the plot is tinted with Plot under the pointer off');
-        if(polku.state.plotHover!==false)errs.push('Plot under the pointer stays on after its switch');
+        if(!sub.checked)errs.push('Property details is off at first');
+        if(!/^Property /.test(polku.planner.cards.current?.title||''))errs.push("the plot's card closed as Layers opened");
+        sub.click(); await idle();
+        if(polku.state.plotSelect!==false)errs.push('Property details stays on after its switch');
+        if(tinted())errs.push('the picked plot stays tinted after Property details goes off');
+        if(polku.planner.cards.current)errs.push(`the plot's card stays open after Property details goes off: ${polku.planner.cards.current.title}`);
+        polku.planner.cards.close(); await frame();
+        move(1); await frame(); await frame();
+        if(tinted())errs.push('the plot under the pointer is tinted with Property details off');
+        if(cv.style.cursor==='pointer')errs.push('the pointer cursor over a plot with Property details off');
         ev('mousedown'); ev('mouseup'); ev('click'); await wait(600);
-        if(!st(spot.f.id).lit)errs.push('with Plot under the pointer off, a click no longer picks the plot');
+        let c=polku.planner.cards.current;
+        if(c)errs.push(`with Property details off, a click on a plot with nothing else there opened ${c.title}`);
+        polku.planner.cards.close(); await frame();
+        // a hold (the right button, whose contextmenu MapLibre passes on at its mouseup): the spot's card, not the property's
+        for(const t of ['mousedown','contextmenu','mouseup'])cv.dispatchEvent(new MouseEvent(t,{bubbles:true,cancelable:true,clientX:R.left+spot.x,clientY:R.top+spot.y,button:2,buttons:t==='mousedown'?2:0}));
+        await wait(600); c=polku.planner.cards.current;
+        if(!c)errs.push('with Property details off, a hold on a plot opens no card');
+        else if(/^Property /.test(c.title))errs.push(`with Property details off, a hold on a plot opens ${c.title}`);
+        polku.planner.cards.close(); await frame();
+        if(park){
+          for(const t of ['mousedown','mouseup','click'])cv.dispatchEvent(new MouseEvent(t,{bubbles:true,cancelable:true,clientX:R.left+park.x,clientY:R.top+park.y,button:0,buttons:t==='mousedown'?1:0}));
+          await wait(800); c=polku.planner.cards.current;
+          if(!c||/^Property /.test(c.title))errs.push(`with Property details off, a click in the park opened ${c?c.title:'no card'}`);
+          polku.planner.cards.close(); await frame();
+        }
+        // on again: the plot under the pointer tinted, and a click opens its card
+        sub.click(); await idle();
+        move(0); await frame(); await frame();
+        if(!tinted())errs.push('the plot under the pointer is not tinted with Property details back on');
+        ev('mousedown'); ev('mouseup'); ev('click'); await wait(600);
+        c=polku.planner.cards.current;
+        if(!c||!/^Property \\d/.test(c.title))errs.push(`with Property details back on, a click on the plot opened ${c?c.title:'no card'}`);
         polku.planner.cards.close();
       }
-      return errs;
+      return {errs, ll};
     })()""", timeout=90000)
+    fails, ll = r['errs'], r.get('ll')
     fails += [f'console: {e[:160]}' for e in pg.errors()]
     pg.close()
-    print(f"{'ok  ' if not fails else 'FAIL'} a property's plot tinted under the pointer and picked (#1148)" + ''.join(f'\n     - {f}' for f in fails), flush=True)
+    # by touch, at a phone's size (#1199): Property details is there too, and with it off a tap on the plot opens nothing
+    # (at the plot the mouse picked: the phone's view of the centre is all park)
+    pg = chrome.page(390, 844, True)
+    pg.open_app({'activity': 'mtb', 'overlaysByActivity': {'mtb': {'propertyLines': True}}}, None, f'#17/{ll[1]:.6f}/{ll[0]:.6f}' if ll else '#17/62.2415/25.748')
+    at = pg.js("""(async () => {
+      const m=polku.map, wait=(ms)=>new Promise(r=>setTimeout(r,ms)), t0=performance.now();
+      while(performance.now()-t0<30000&&!(m.isSourceLoaded('ov-propertyLines')&&m.queryRenderedFeatures({layers:['property-plot']}).length))await wait(250);
+      const {inspectLayers,pickFeature,hitBox,areaUnder}=await import(location.origin+'/js/inspect.js'), R=m.getCanvas().getBoundingClientRect();
+      for(let y=200;y<560;y+=17)for(let x=40;x<350;x+=19){const f=pickFeature(m.queryRenderedFeatures(hitBox({x,y},true),{layers:inspectLayers(m)}));if(f&&f.layer.id==='property-plot'&&!areaUnder(m,[x,y]))return [R.left+x,R.top+y];}
+      return null;
+    })()""", timeout=40000)
+    title = "new Promise(r=>setTimeout(()=>r(polku.planner.cards.current?.title||''),800))"
+    if not at:
+        fails.append('by touch: no spot at Jyväskylä where a tap picks a plot')
+    else:
+        pg.quick_tap(*at)
+        t = pg.js(title)
+        if not t.startswith('Property '):
+            fails.append(f'by touch: before Property details goes off, a tap on the plot opened {t or "no card"}')
+        sw = pg.js("""(async () => {
+          const frame=()=>new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)));
+          polku.planner.cards.close(); await frame();
+          if (document.querySelector('#layers-panel').hidden) { document.querySelector('#btn-layers').click(); await frame(); document.querySelector('#quick-layers .qt-more').click(); await frame(); }
+          const sub=[...document.querySelectorAll('[data-group=terrain] input[role=switch]')].find(i=>i.closest('label')?.textContent.includes('Property details'));
+          if(!sub)return 'no Property details switch under Property boundaries';
+          sub.closest('label').scrollIntoView({block:'center'}); await new Promise(r=>setTimeout(r,400));
+          const r=(sub.offsetWidth?sub:sub.closest('label')).getBoundingClientRect();
+          return [r.left+r.width/2, r.top+r.height/2];
+        })()""")
+        if isinstance(sw, list):
+            pg.quick_tap(*sw)  # (the switch as a finger finds it)
+            sw = pg.js("""(async () => {
+          if(polku.state.plotSelect!==false)return "a tap on Property details doesn't turn it off";
+          document.querySelector('#layers-panel').dispatchEvent(new KeyboardEvent('keydown',{key:'Escape',bubbles:true}));
+          document.querySelector('#quick-layers').dispatchEvent(new KeyboardEvent('keydown',{key:'Escape',bubbles:true}));
+          await new Promise(r=>setTimeout(r,600));
+          return !document.querySelector('#layers-panel').hidden||document.querySelector('#quick-layers.open') ? 'Layers stays open after Escape' : '';
+        })()""")
+        if sw:
+            fails.append(f'by touch: {sw}')
+        else:
+            pg.quick_tap(*at)
+            t = pg.js(title)
+            if t:
+                fails.append(f'by touch: with Property details off, a tap on a plot with nothing else there opened {t}')
+    fails += [f'by touch, console: {e[:160]}' for e in pg.errors()]
+    pg.close()
+    print(f"{'ok  ' if not fails else 'FAIL'} a property's plot tinted under the pointer and picked, and Property details off by mouse and touch (#1148, #1199)" + ''.join(f'\n     - {f}' for f in fails), flush=True)
     return not fails
 
 
@@ -1433,8 +1515,8 @@ def mml_rock(chrome):
 
 
 # #1175: a tap or a click on MML's terrain opens its card (the map's other things'), from the recorded tiles, never live MML:
-# a bog hard to cross with the survey's caveat (Seitseminen), reeds in the water (Porvoo) and a stone above the surface (Kotka, #1170),
-# by touch at 390 × 844 and by mouse
+# a bog hard to cross with the survey's caveat (Seitseminen), reeds in the water (Porvoo), a stone above the surface (Kotka, #1170),
+# a river's flow arrow (Porvoo) and a field (Hailuoto, #1169, #1234), by touch at 390 × 844 and by mouse
 # at 1440 × 900, where the pointer's tooltip says the same first. A bog's crossing class only from zoom 13's tiles, and a name
 # for every class the inspected layers draw.
 def mml_cards(chrome):
@@ -1443,14 +1525,14 @@ def mml_cards(chrome):
     # a spot where a click or a tap picks the layer's class (inspect.js's own choice) with nothing else there but the water, clear
     # of the top bar and the map's buttons; a point's own spot first (sourceLayer: centred on it, as a narrow phone may not show it)
     spot = """(async (layer, classes, touch, sourceLayer) => {
-      const m=polku.map, {inspectLayers,pickFeature,hitBox,featuresAt}=await import('/js/inspect.js'), R=m.getCanvas().getBoundingClientRect();
+      const m=polku.map, {inspectLayers,pickAt,hitBox,featuresAt}=await import('/js/inspect.js'), R=m.getCanvas().getBoundingClientRect();
       const settle=async()=>{await new Promise(r=>setTimeout(r,300));await Promise.race([new Promise(r=>{m.once('idle',r);m.triggerRepaint();}),new Promise(r=>setTimeout(r,10000))]);};
       const pt=sourceLayer&&m.querySourceFeatures('mml',{sourceLayer}).find((f)=>classes.includes(f.properties.kohdeluokka));
       if(pt){m.jumpTo({center:pt.geometry.coordinates}); await settle();}
       const at=pt&&m.project(pt.geometry.coordinates);
       for(let y=at?at.y:140;y<(at?at.y+1:innerHeight-180);y+=9)for(let x=at?at.x:24;x<(at?at.x+1:innerWidth-100);x+=9){
-        const fs=featuresAt(m,{x,y},hitBox({x,y},touch),inspectLayers(m)), f=pickFeature(fs);
-        if(f&&f.layer.id===layer&&classes.includes(f.properties.kohdeluokka)&&fs.every((g)=>g.layer.id===layer||/^(water|mml-shoal)$/.test(g.layer.id)))return [R.left+x,R.top+y];
+        const fs=featuresAt(m,{x,y},hitBox({x,y},touch),inspectLayers(m)), f=pickAt(m,[x,y],fs);
+        if(f&&f.layer.id===layer&&classes.includes(f.properties.kohdeluokka)&&fs.every((g)=>/^(water|mml-)/.test(g.layer.id)))return [R.left+x,R.top+y];
       }
       return null;
     })"""
@@ -1461,11 +1543,14 @@ def mml_cards(chrome):
         pg = chrome.page(w, h_, phone)
         # (zoom 10: under the source's zoom 11, so MML is asked for nothing before the test answers it)
         pg.open_app({'activity': 'mtb', 'base': 'trail'}, hash_='#10/61.92/23.478')
-        pg.js("""(async () => { const m=polku.map, FX=['14/9260/4578','14/9352/4721','14/9416/4714'];""" + MML_FIXTURES + """ return true; })()""")
+        pg.js("""(async () => { const m=polku.map, FX=['14/9260/4578','14/9352/4721','14/9416/4714','14/9286/3913','14/9318/4263'];""" + MML_FIXTURES + """ return true; })()""")
         for what, center, layer, classes, title, words, src in (
                 ('a bog hard to cross', mid(9260, 4578), 'mml-bog', [35421], 'Open bog', ['Survey class', 'Hard to cross', 'not a promise about the ground today', 'From the National Land Survey'], None),
                 ('reeds', mid(9352, 4721), 'mml-reed', [38100], 'Reeds', ['From the National Land Survey'], 'maasto_piste'),
-                ('a stone above the surface', mid(9416, 4714), 'mml-rock-point', [38513], 'Stone above the surface', ['From the National Land Survey'], 'maasto_piste')):
+                ('a stone above the surface', mid(9416, 4714), 'mml-rock-point', [38513], 'Stone above the surface', ['From the National Land Survey'], 'maasto_piste'),
+                ("a river's flow arrow", mid(9352, 4721), 'mml-flow', [36392], 'Flow direction', ['Flows to the ', 'From the National Land Survey'], 'symboli'),
+                # (a field near the tile's middle, so a phone's view has it too)
+                ('a field', [24.75611, 65.0026], 'mml-landuse', [32611], 'Field', ['From the National Land Survey'], None)):
             pg.js(f"(async () => {{ const m=polku.map; m.jumpTo({{center:{json.dumps(center)},zoom:14.6}}); await new Promise(r=>setTimeout(r,300)); "
                   "await Promise.race([new Promise(r=>{m.once('idle',r);m.triggerRepaint();}),new Promise(r=>setTimeout(r,10000))]); return true; })()")
             at = pg.js(f"({spot})('{layer}', {json.dumps(classes)}, {json.dumps(phone)}, {json.dumps(src)})")
@@ -1532,7 +1617,8 @@ def mml_cards(chrome):
               }
               const bogAt=(p)=>I.featuresAt(m,p,I.hitBox(p,true),I.inspectLayers(m)).some((f)=>f.layer.id==='mml-bog');
               if(!under||!park)errs.push(`(the test) no bog ${under?'in a park':'under the water'} in the recorded tile`);
-              else { if(bogAt(under))errs.push('a bog under the water drawn over it is found'); if(!bogAt(park))errs.push('a bog in a park is not found'); }
+              else { if(bogAt(under))errs.push('a bog under the water drawn over it is found'); if(!bogAt(park))errs.push('a bog in a park is not found');
+                const p=I.pickAt(m,[park.x,park.y],I.featuresAt(m,park,I.hitBox(park,true),I.inspectLayers(m))); if(!p||p.layer.id!=='mml-bog')errs.push(`a tap on a bog in a park names ${p&&p.layer.id}`); }
               // a hold on a bog opens the spot's card, as before (OpenStreetMap's answer would replace a bog's words there)
               if(park){ const ll=m.unproject([park.x,park.y]); polku.planner.openSpotCard(ll,{pt:m.project(ll)}); const held=polku.planner.cards.current;
                 if(!held||/bog/i.test(held.title))errs.push(`a hold on a bog opens ${held?held.title:'no card'}`); polku.planner.cards.close(); }
@@ -1541,6 +1627,16 @@ def mml_cards(chrome):
               const dry={getLayer:(id)=>id!=='water'&&m.getLayer(id), queryRenderedFeatures:(pt,o)=>m.queryRenderedFeatures(pt,o)};
               if(!q)errs.push('(the test) no MML lake drawn from the recorded tile');
               else if(I.areaUnder(dry,q)!=='water')errs.push(`MML's lake without OSM's over it is ${I.areaUnder(dry,q)}, not the water`);
+              // open ground gives way to a park it lies in (#1234): the heath on Pallas' fells names nothing, as a click there opens the national park
+              m.jumpTo({center:[24.0491,68.061],zoom:14.6}); await new Promise(r=>setTimeout(r,300)); await Promise.race([new Promise(r=>{m.once('idle',r);m.triggerRepaint();}),new Promise(r=>setTimeout(r,10000))]);
+              let heath=null;
+              for(let y=150;y<innerHeight-150&&!heath;y+=8)for(let x=30;x<innerWidth-100&&!heath;x+=8){const fs=I.featuresAt(m,{x,y},I.hitBox({x,y},true),I.inspectLayers(m)), f=I.pickFeature(fs);
+                if(f&&f.layer.id==='mml-open'&&I.areaUnder(m,[x,y])==='park')heath={x,y,fs};}
+              if(!heath)errs.push("(the test) no heath in Pallas' national park in the recorded tile");
+              else if(I.pickAt(m,[heath.x,heath.y],heath.fs))errs.push(`heath in a national park names ${I.pickAt(m,[heath.x,heath.y],heath.fs).layer.id}, not the park`);
+              // a flow arrow says which way the river flows: suunta is 1/10,000 radian counter-clockwise from east (Porvoo's -21374 is south-west)
+              for(const [suunta,want] of [[-21374,'SW'],[0,'E'],[15708,'N'],[31416,'W']]){const t=I.mmlTerrain({properties:{kohdeluokka:36392,suunta}});
+                if(t.line!==`Flows to the ${want}`)errs.push(`a flow arrow with suunta ${suunta} says ${t.line}`);}
               // every class the inspected MML layers draw has its words
               for(const id of I.inspectLayers(m).filter((id)=>id.startsWith('mml-'))) {
                 const f=JSON.stringify(m.getFilter(id)), ks=(f.match(/\\b\\d{5}\\b/g)||[]).map(Number);
@@ -2388,7 +2484,8 @@ MARKED_JS = """(() => {
         const q10 = at(10 * s), q30 = at(30 * s), q50 = at(50 * s);
         const top = I.pickFeature(map.queryRenderedFeatures(I.hitBox(touch ? q10 : P, touch), { layers: I.inspectLayers(map) }));
         if (!top || top.layer.id !== 'lipas-route' || keyOf(top.properties) !== key) continue;
-        if (!(touch ? ok(q10) && ok(q30) && !near(q30, 17) : ok(q50) && !near(q50, 20))) continue;
+        // (a mouse's spot off the route has nothing a click opens, not even open ground, #1234: its cursor is the plain one)
+        if (!(touch ? ok(q10) && ok(q30) && !near(q30, 17) : ok(q50) && !near(q50, 20) && !I.pickFeature(I.featuresAt(map, q50, I.hitBox(q50, false), I.inspectLayers(map))))) continue;
         // a mouse: also two vertices 50 px apart (and their midpoint on the line) for a route of yours drawn over it
         let plan = null;
         if (!touch) {
@@ -2675,7 +2772,9 @@ WATER_DEPTHS = """(async () => {
   const N = await import(location.origin + '/js/net.js');
   const fc = { type: 'FeatureCollection', features: [] };
   let depths = [tile], missing = [];
-  D.seedWater((box, want) => ({ fairways: fc, hazards: fc, depths: want.depths ? depths : null, wind: null, missing: want.depths ? missing : [], skipped: [] }));
+  // MML's map covers the lake as well (#153): where Syke surveyed and MML's coverage both count
+  const covered = ([w, s, e, n]) => { const t = [], [x0, y0] = G.lonLatToTile(w, n, 14).map(Math.floor), [x1, y1] = G.lonLatToTile(e, s, 14).map(Math.floor); for (let x = x0; x <= x1; x++) for (let y = y0; y <= y1; y++) t.push({ x, y, covered: true }); return t; };
+  D.seedWater((box, want) => ({ fairways: fc, hazards: fc, mml: want.rapids ? covered(box) : null, depths: want.depths ? depths : null, wind: null, missing: want.depths ? missing : [], skipped: [] }));
   // from and to straight through a row of the shoal's soundings; the shoal's end on one of them
   const from = [28.6095, 64.23944], to = [28.6185, 64.23944], shoal = [28.61389, 64.23989];
   const near = (c) => Math.min(...tile.shallow.map((p) => G.nearestOnLine(p, c).d));
@@ -2773,6 +2872,8 @@ WATER_DEPTHS = """(async () => {
   const { OVERPASS, OSM_DATA_MANIFEST, OPEN_METEO } = await import(location.origin + '/js/config.js');
   let mode = 'fail', held = [];
   const realFetch = window.fetch;
+  // MML's tiles answered with one off Kotka with only the sea on it: covered, nothing to keep clear of (#153), never live
+  const mmlSea = await (await fetch(location.origin + '/tools/fixtures/mml-taustakartta-14-9418-4721.pbf')).arrayBuffer(), MML = (await import(location.origin + '/js/config.js')).MML_TERRAIN_TILES.split('{z}')[0];
   window.fetch = (url, init = {}) => {
     const u = String(url);
     if (u.includes('/data/depths/')) {
@@ -2784,6 +2885,7 @@ WATER_DEPTHS = """(async () => {
     if (u.startsWith(new URL(OSM_DATA_MANIFEST).origin) || u.startsWith(OPEN_METEO)) return Promise.reject(new TypeError('Failed to fetch'));
     if (OVERPASS.some((m) => u.startsWith(m))) return Promise.resolve(new Response('{"elements":[]}'));
     if (u.startsWith('https://avoinapi.vaylapilvi.fi/')) return Promise.resolve(new Response('{"type":"FeatureCollection","features":[]}'));
+    if (u.startsWith(MML)) return Promise.resolve(new Response(mmlSea));
     return realFetch(url, init);
   };
   const syke = () => p.headsUp().not.find((x) => x.key === 'water' && x.by === 'Syke');
@@ -2829,9 +2931,382 @@ def water_depths(chrome):
     return not fails
 
 
+
+# MML's stones in the water (#153), from a recorded tile off Kotka (tools/fixtures/mml-taustakartta-14-9416-4714.pbf),
+# never live MML: its other tiles answer as off Tallinn (tools/fixtures/mml-taustakartta-14-9318-4808.pbf: the layers,
+# no features: outside MML's map), and every other source answers nothing.
+# MML failing: Not checked, with Retry; answering late: the leg is routed again with it; then a leg straight over a stone
+# at the surface keeps 20 m from it (its zone is 25 m), one over a stone above the surface 11 m (15 m), What Polku looked
+# at says MML's map covered the route's water, or how much of it, a box too big isn't asked for, one outside Finland
+# asks nothing, and a route saved before is routed again.
+WATER_MML = """(async () => {
+  const wait = (ms) => new Promise((r) => setTimeout(r, ms)), errs = [];
+  const tile = await (await fetch(location.origin + '/tools/fixtures/mml-taustakartta-14-9416-4714.pbf')).arrayBuffer();
+  const outside = await (await fetch(location.origin + '/tools/fixtures/mml-taustakartta-14-9318-4808.pbf')).arrayBuffer();
+  const D = await import(location.origin + '/js/waterdata.js');
+  const W = await import(location.origin + '/js/water.js');
+  const G = await import(location.origin + '/js/geo.js');
+  const { OVERPASS, OSM_DATA_MANIFEST, OPEN_METEO, MML_TERRAIN_TILES } = await import(location.origin + '/js/config.js');
+  const MML = MML_TERRAIN_TILES.split('{z}')[0];
+  /*forget*/
+  await forget();
+  let mode = 'fail', held = [], asked = 0;
+  const realFetch = window.fetch;
+  window.fetch = (url, init = {}) => {
+    const u = String(url);
+    if (u.startsWith(MML)) {
+      asked++;
+      if (mode === 'fail') return Promise.reject(new TypeError('Failed to fetch'));
+      if (mode === 'void') return Promise.resolve(new Response(new ArrayBuffer(0)));
+      // (zoom 11's tile over the recorded one has something in it too)
+      const answer = () => new Response(u.includes('/14/4714/9416.pbf') || u.includes('/11/589/1177.pbf') ? tile : outside);
+      return mode === 'late' ? new Promise((ok) => held.push(ok)).then(answer) : Promise.resolve(answer());
+    }
+    if (u.startsWith(new URL(OSM_DATA_MANIFEST).origin) || u.startsWith(OPEN_METEO)) return Promise.reject(new TypeError('Failed to fetch'));
+    // OSM's rocks: three in Stockholm, one charted always dry, one awash and one that doesn't say
+    const rock = (id, lon, tags) => ({ type: 'node', id, lon, lat: 59.32, tags: { 'seamark:type': 'rock', ...tags } });
+    if (OVERPASS.some((m) => u.startsWith(m))) return Promise.resolve(new Response(JSON.stringify({ elements: String(init.body || '').includes('seamark') ? [rock(1, 18.045, { 'seamark:rock:water_level': 'always_dry' }), rock(2, 18.05, { 'seamark:rock:water_level': 'awash' }), rock(3, 18.055, {})] : [] })));
+    if (u.startsWith('https://avoinapi.vaylapilvi.fi/')) return Promise.resolve(new Response('{"type":"FeatureCollection","features":[]}'));
+    if (u.includes('/data/depths/')) return Promise.resolve(new Response('{"tiles":[]}'));
+    return realFetch(url, init);
+  };
+  // a stone at the surface (38512) and one above it (38513) in the recorded tile, each with a leg straight over it
+  const rock = [26.898243, 60.472926], above = [26.90313, 60.473925];
+  const overRock = [[rock[0], rock[1] - 0.002], [rock[0], rock[1] + 0.002]];
+  const overAbove = [[above[0] + 0.002828, above[1] - 0.001414], [above[0] - 0.002828, above[1] + 0.001414]];
+  const p = polku.planner;
+  const row = () => (p.analysis ? p.lookedAt(p.analysis).find((r) => r.what === 'Rocks and shoals') : null);
+  const says = () => (row() ? `${row().state} · ${row().by}` : 'no row');
+  const lost = () => p.headsUp().not.find((x) => x.key === 'water' && x.by === 'the National Land Survey');
+  const off = () => G.nearestOnLine(rock, p.legs[0].result.coords).d;
+  try {
+    polku.set({ activity: 'paddle' });
+    await wait(800);
+    p.setActive(true);
+    p.clear();
+    p.setMode('water');
+    p.addPoint(overRock[0]);
+    p.addPoint(overRock[1]);
+    for (let k = 0; k < 80 && !(lost() && p.legs[0].status === 'ok'); k++) await wait(250);
+    if (!lost()) errs.push(`MML failing: ${p.headsUp().not.map((x) => `${x.text} (${x.by})`).join(' / ') || 'nothing in Not checked'}`);
+    else {
+      if (lost().text !== 'Stones, shoals and rapids from the National Land Survey didn’t load' || typeof lost().retry !== 'function') errs.push(`MML failing, Not checked: ${lost().text}, Retry ${typeof lost().retry}`);
+      if (!row() || row().state !== 'bad' || row().by !== 'the National Land Survey didn’t answer') errs.push(`MML failing, What Polku looked at: ${says()}`);
+      // Retry, MML answering only after the leg stopped waiting for it: routed without, then again with it
+      mode = 'late';
+      lost().retry();
+      for (let k = 0; k < 40 && !held.length; k++) await wait(100);
+      if (!held.length) errs.push('Retry didn’t ask MML again');
+      await wait(3500); // past the 2.5 s a leg waits for a source
+      if (!lost()) errs.push('MML answering late: Not checked doesn’t say so while it’s late');
+      mode = 'ok';
+      for (const ok of held) ok();
+      held = [];
+      for (let k = 0; k < 80 && (lost() || !row() || row().state !== 'ok' || p.legs[0].status !== 'ok'); k++) await wait(250);
+      if (lost() || !row() || row().state !== 'ok' || row().by !== 'the National Land Survey and OpenStreetMap') errs.push(`MML answered late: ${lost() ? 'still in Not checked, ' : ''}${says()}`);
+      else if (off() < 20) errs.push(`the leg passes ${Math.round(off())} m from a stone at the surface (keeps 25 m)`);
+      { // a leg too long for MML's tiles: the row says which source wasn't checked
+        const w = p.legs[0].result.water, keep = w.skipped;
+        w.skipped = ['the National Land Survey'];
+        if (!row() || row().state !== 'bad' || row().by !== 'the National Land Survey: not checked, a leg too long to ask for') errs.push(`a leg too long for MML's tiles: ${says()}`);
+        w.skipped = keep;
+      }
+    }
+    // straight over each stone: kept clear, and only with Rocks & shoals on (else the check proves nothing)
+    for (const [what, [from, to], stone, keep] of [['at the surface', overRock, rock, 20], ['above the surface', overAbove, above, 11]]) {
+      const a = await W.routeWater(from, to, { at: 0, wind: 'ignore', fairways: 'ignore' });
+      const b = await W.routeWater(from, to, { at: 0, wind: 'ignore', fairways: 'ignore', hazards: 'ignore' });
+      const da = G.nearestOnLine(stone, a.coords).d, db = G.nearestOnLine(stone, b.coords).d;
+      if (db > 6) errs.push(`(the test) ignoring rocks, the leg passes ${Math.round(db)} m from the stone ${what}, not over it`);
+      if (da < keep) errs.push(`passes ${Math.round(da)} m from a stone ${what} (keeps ${keep} m or more)`);
+      // a graze of a zone's edge, under 6 m, isn't an item of Check
+      const graze = a.water.events.find((e) => e.kind === 'hazard' && e.len < 6);
+      if (graze) errs.push(`over the stone ${what}: an item for a graze of ${graze.len.toFixed(1)} m at ${Math.round(graze.at)} m`);
+    }
+    // a leg partly in a tile with nothing in it (outside MML's map): What Polku looked at says how much MML covered
+    const part = [[26.895293 - 0.004, 60.471178 - 0.001414], [26.895293 + 0.004, 60.471178 + 0.001414]];
+    p.clear();
+    p.addPoint(part[0]);
+    p.addPoint(part[1]);
+    for (let k = 0; k < 80 && !(p.analysis && p.analysis.waterWarn && p.legs[0] && p.legs[0].status === 'ok'); k++) await wait(250);
+    await wait(500);
+    if (!row() || row().state !== 'ok' || !/^OpenStreetMap, and the National Land Survey for \\d+ m$/.test(row().by)) errs.push(`a leg half outside MML's map: ${says()}`);
+    // beyond MML's map, OSM's rocks the same way (#153): one charted always dry as clear as MML's stones above the surface,
+    // the rest as a stone at the surface
+    await forget();
+    const osm = await D.waterInputs([18.04, 59.31, 18.06, 59.33], { hazards: true }, 0);
+    const kinds = osm.hazards.features.filter((f) => f.properties.src === 'osm').map((f) => f.properties.kind).sort().join(', ');
+    if (kinds !== 'above, rock, rock') errs.push(`OSM's rocks in Stockholm: ${kinds || 'none'} (missing ${osm.missing.join(', ')}), not above, rock, rock`);
+    // too many tiles: not asked where zoom 11's have anything in them, outside MML's map (off Tallinn) nothing covered,
+    // and outside Finland's box nothing asked
+    const big = await D.waterInputs([26.80, 60.40, 26.95, 60.50], { rapids: true }, 0);
+    if (!big.skipped.includes('the National Land Survey') || big.mml !== null) errs.push(`a box of 100 tiles off Kotka: skipped ${big.skipped.join(', ') || 'nothing'}, ${JSON.stringify(big.mml)}`);
+    const tallinn = await D.waterInputs([24.65, 59.40, 24.85, 59.50], { rapids: true }, 0);
+    if (tallinn.skipped.length || tallinn.missing.length || !Array.isArray(tallinn.mml) || tallinn.mml.length) errs.push(`a box of 100 tiles off Tallinn: skipped ${tallinn.skipped.join(', ') || 'nothing'}, missing ${tallinn.missing.join(', ') || 'nothing'}, ${JSON.stringify(tallinn.mml)}`);
+    const n0 = asked;
+    const sweden = await D.waterInputs([18.0, 59.3, 18.1, 59.35], { rapids: true }, 0);
+    if (!Array.isArray(sweden.mml) || sweden.mml.length || sweden.missing.length || sweden.skipped.length) errs.push(`Stockholm: ${JSON.stringify(sweden.mml)}, missing ${sweden.missing.join(', ')}, skipped ${sweden.skipped.join(', ')}`);
+    if (asked !== n0) errs.push(`${asked - n0} tiles asked of MML outside Finland's box`);
+    // an answer with nothing in it, not even the layers, didn't load: not "outside MML's map"
+    mode = 'void';
+    const empty = await D.waterInputs([25.70, 60.28, 25.71, 60.285], { rapids: true }, 0);
+    if (!empty.missing.includes('the National Land Survey')) errs.push(`MML answering with nothing: missing ${empty.missing.join(', ') || 'nothing'}, ${JSON.stringify(empty.mml)}`);
+    mode = 'ok';
+    // a route saved before the router read MML: its leg on the water is routed again when it loads
+    p.clear();
+    p.addPoint(overRock[0]);
+    p.addPoint(overRock[1]);
+    for (let k = 0; k < 80 && !(row() && row().state === 'ok' && p.legs[0].status === 'ok'); k++) await wait(250);
+    await wait(800);
+    const saved = JSON.parse(localStorage.getItem('polku:route'));
+    const leg = saved && saved.routed && saved.routed[0];
+    if (!leg || !leg.water || !leg.water.mml) errs.push(`(the test) no saved water leg with MML's: ${JSON.stringify(leg && leg.water && leg.water.checked)}`);
+    else {
+      delete leg.water.mml; delete leg.water.checked.rapids;
+      localStorage.setItem('polku:route', JSON.stringify(saved));
+      p.loadSaved();
+      for (let k = 0; k < 60 && !(p.legs[0] && p.legs[0].result && p.legs[0].result.water && p.legs[0].result.water.mml && p.analysis && p.analysis.waterWarn); k++) await wait(250);
+      if (!(p.legs[0] && p.legs[0].result && p.legs[0].result.water && p.legs[0].result.water.mml)) errs.push('a route saved before MML\\'s stones, loaded: its leg isn\\'t routed again');
+    }
+  } finally {
+    window.fetch = realFetch;
+    p.clear();
+    polku.set({ activity: 'mtb' });
+    await forget();
+  }
+  return errs;
+})()"""
+
+
+def water_mml(chrome):
+    pg = chrome.page(1440, 900, False)
+    pg.open_app({'activity': 'mtb'}, {'polku:plannerDock': '"left"'}, '#15/60.4729/26.8982')
+    pg.js("import(location.origin + '/js/trails.js').then((T) => { T.holdFetches(); return true; })")
+    fails = pg.js(WATER_MML.replace('/*forget*/', WATER_FORGET), timeout=150000)
+    fails += [f'console: {e[:160]}' for e in pg.errors()]
+    pg.close()
+    print(f"{'ok  ' if not fails else 'FAIL'} MML's stones on the water" + ''.join(f'\n     - {f}' for f in fails), flush=True)
+    return not fails
+
+
+# Rapids (#153): MML's on Tourujoki at Kangas in Jyväskylä, a restored stream no kayak can take, from a recorded tile
+# (tools/fixtures/mml-taustakartta-14-9364-4545.pbf), never live MML: its other tiles answer empty, and every other source
+# nothing. A leg down the river stays on it and Check warns of the rapids under Warnings, once; What Polku looked at says
+# where it had them from; Avoid it carries round them; Rocks & shoals: Ignore still warns; and OSM's rapids, beyond MML's
+# map, are rapids, not rocks to keep clear of.
+WATER_RAPIDS = """(async () => {
+  const wait = (ms) => new Promise((r) => setTimeout(r, ms)), errs = [];
+  /*forget*/
+  await forget();
+  const tile = await (await fetch(location.origin + '/tools/fixtures/mml-taustakartta-14-9364-4545.pbf')).arrayBuffer();
+  const outside = await (await fetch(location.origin + '/tools/fixtures/mml-taustakartta-14-9318-4808.pbf')).arrayBuffer();
+  const D = await import(location.origin + '/js/waterdata.js');
+  const W = await import(location.origin + '/js/water.js');
+  const G = await import(location.origin + '/js/geo.js');
+  const { OVERPASS, OSM_DATA_MANIFEST, OPEN_METEO, MML_TERRAIN_TILES } = await import(location.origin + '/js/config.js');
+  const MML = MML_TERRAIN_TILES.split('{z}')[0], realFetch = window.fetch;
+  window.fetch = (url, init = {}) => {
+    const u = String(url);
+    if (u.startsWith(MML)) return Promise.resolve(new Response(u.includes('/14/4545/9364.pbf') ? tile : outside));
+    if (u.startsWith(new URL(OSM_DATA_MANIFEST).origin) || u.startsWith(OPEN_METEO)) return Promise.reject(new TypeError('Failed to fetch'));
+    // OSM: one rapid in Stockholm, and two made up on Eerolanpuro, a stream in Jyväskylä, 75 m apart: one rapid
+    const way = (id, c) => ({ type: 'way', id, tags: { waterway: 'rapids' }, geometry: c.map(([lon, lat]) => ({ lon, lat })) });
+    if (OVERPASS.some((m) => u.startsWith(m))) return Promise.resolve(new Response(JSON.stringify({ elements: String(init.body || '').includes('rapids') ? [way(1, [[18.045, 59.32], [18.05, 59.321]]), way(2, stream.slice(2, 6)), way(3, stream.slice(8, 11))] : [] })));
+    if (u.startsWith('https://avoinapi.vaylapilvi.fi/')) return Promise.resolve(new Response('{"type":"FeatureCollection","features":[]}'));
+    if (u.includes('/data/depths/')) return Promise.resolve(new Response('{"tiles":[]}'));
+    return realFetch(url, init);
+  };
+  const from = [25.7519622, 62.2575603], to = [25.7573529, 62.2487162]; // down Tourujoki, through Kangas
+  // Eerolanpuro, as OSM has it (way 32236945)
+  const stream = [[25.7202401, 62.2468368], [25.7212426, 62.2469252], [25.721466, 62.2470774], [25.7216424, 62.2471702], [25.7218033, 62.2472764], [25.7220657, 62.2474629], [25.7221925, 62.2475523], [25.7222802, 62.247649], [25.7227633, 62.248052], [25.7227942, 62.2484233], [25.722784, 62.2486344], [25.7228068, 62.2487868], [25.7228374, 62.2488752], [25.723022, 62.2490427], [25.7231434, 62.2491561]];
+  { // an Overpass answer kept from before the rapids were asked for (none in it) isn't used: Eerolanpuro's tile
+    const [x, y] = G.lonLatToTile(25.722, 62.248, 11).map(Math.floor);
+    await new Promise((ok) => { const r = indexedDB.open('polku'); r.onerror = () => ok(); r.onsuccess = () => { const db = r.result; if (!db.objectStoreNames.contains('overpass')) { db.close(); ok(); return; } const t = db.transaction('overpass', 'readwrite'); t.objectStore('overpass').put({ at: Date.now(), json: { points: [], areas: [] } }, `waterhaz/11/${x}/${y}`); t.oncomplete = t.onerror = () => { db.close(); ok(); }; }; });
+    const kept = await D.waterInputs([25.718, 62.246, 25.726, 62.250], { hazards: true, rapids: true }, 0);
+    if (!kept.rapids.features.some((f) => f.properties.src === 'osm' && f.geometry.coordinates.length > 2)) errs.push(`Eerolanpuro's tile, an old answer kept: ${kept.rapids.features.length} rapids (missing ${kept.missing.join(', ') || 'nothing'})`);
+  }
+  const p = polku.planner;
+  const rapids = () => (p.analysis ? p.headsUp().read.filter((w) => /^Rapids for/.test(w.text)) : []);
+  const row = () => (p.analysis ? p.lookedAt(p.analysis).find((r) => r.what === 'Rapids') : null);
+  const routed = () => p.legs.length === 1 && p.legs[0].status === 'ok' && p.legs[0].result && p.legs[0].result.water && p.analysis && p.analysis.waterWarn;
+  try {
+    polku.set({ activity: 'paddle' });
+    await wait(800);
+    p.setActive(true);
+    p.clear();
+    p.setMode('water');
+    p.addPoint(from);
+    p.addPoint(to);
+    for (let k = 0; k < 120 && !(routed() && rapids().length); k++) await wait(250);
+    const r = rapids();
+    if (r.length !== 1) errs.push(`down Tourujoki: ${r.length} rapids in Warnings (${p.headsUp().read.map((w) => w.text).join(' / ') || 'none'}), not one`);
+    else {
+      if (!(r[0].len > 250 && r[0].len < 600) || r[0].src.by !== 'the National Land Survey and OpenStreetMap' || !/isn’t known/.test(r[0].note)) errs.push(`the rapids' item: ${r[0].text} · ${Math.round(r[0].len)} m · ${r[0].note} · ${r[0].src.by}`);
+      if (!row() || row().state !== 'ok' || !/National Land Survey/.test(row().by)) errs.push(`What Polku looked at, rapids: ${row() ? `${row().state} · ${row().by}` : 'no row'}`);
+      // Avoid it: places to avoid all along them, and the leg carries round
+      const act = p.itemActions({ g: 'read', w: r[0] }).main;
+      if (!act || act.label !== 'Avoid it') errs.push(`the rapids' action: ${act ? act.label : 'none'}`);
+      else {
+        const carried = p.legs[0].result.portage.length, n0 = p.nogos.length;
+        act.fn();
+        // every 40 m along the rapid, 30 m round each: no gap between them however the route was sampled
+        const added = p.nogos.slice(n0), gap = Math.max(...added.slice(1).map((n, k) => G.dist(added[k].ll, n.ll)));
+        if (added.length < 5 || gap > 41) errs.push(`Avoid it put ${added.length} places to avoid along the rapids, up to ${Math.round(gap)} m apart`);
+        for (let k = 0; k < 120 && !(routed() && !rapids().length); k++) await wait(250);
+        if (rapids().length || !(p.legs[0].result.portage.length > carried)) errs.push(`after Avoid it: ${rapids().map((w) => w.text).join(' / ') || 'no rapids'}, ${p.legs[0].result.portage.length} carries (${carried} before)`);
+      }
+    }
+    // Rocks & shoals: Ignore still says where the rapids are
+    const ig = await W.routeWater(from, to, { at: 0, wind: 'ignore', hazards: 'ignore' });
+    if (!ig.water.events.some((e) => e.kind === 'rapids')) errs.push(`Rocks & shoals: Ignore, no rapids on the leg: ${ig.water.events.map((e) => e.kind).join(', ') || 'no events'}`);
+    // a rapid on a stream, which the router follows at a stream's cost
+    const brook = await W.routeWater([25.7212426, 62.2469252], [25.7231434, 62.2491561], { at: 0, wind: 'ignore' });
+    const br = brook.water.events.filter((e) => e.kind === 'rapids');
+    if (br.length !== 1) errs.push(`up Eerolanpuro, ${br.length} rapids, not one: ${brook.water.events.map((e) => `${e.kind} ${Math.round(e.at)}+${Math.round(e.len)}`).join(', ') || 'no events'} (missing ${brook.water.missing.join(', ') || 'nothing'})`);
+    else { // the two lines' rapid ends past the second line's end, gap and all
+      const near = G.nearestOnLine(stream[10], brook.coords), end = G.lineLength([...brook.coords.slice(0, near.i + 1), G.lerp(brook.coords[near.i], brook.coords[near.i + 1], near.t)]);
+      if (br[0].at + br[0].len < end + 10) errs.push(`up Eerolanpuro, the rapid ends at ${Math.round(br[0].at + br[0].len)} m, before the second line's end at ${Math.round(end)} m`);
+    }
+    { // a rapid's line 32 m beside the leg, as on a wide river: within its zone (the leg off Helsinki, seeded)
+      const fc = (features) => ({ type: 'FeatureCollection', features });
+      let rap = fc([]);
+      D.seedWater(() => ({ fairways: fc([]), hazards: fc([]), rapids: rap, mml: null, depths: null, wind: null, missing: [], skipped: [] }));
+      const a = [24.9585, 60.1540], b = [24.9800, 60.1480];
+      const plain = await W.routeWater(a, b, { at: 0, wind: 'ignore' });
+      const c = plain.coords, k = c.reduce((m, _, i) => (i && G.dist(c[i - 1], c[i]) > G.dist(c[m - 1] || c[0], c[m] || c[0]) ? i : m), 1);
+      const p0 = c[k - 1], p1 = c[k], len = G.dist(p0, p1), mx = 111320 * Math.cos((p0[1] * Math.PI) / 180), my = 110570;
+      const nx = -((p1[1] - p0[1]) * my) / len, ny = ((p1[0] - p0[0]) * mx) / len; // a metre to the left, as east and north
+      const off = (q) => [q[0] + (32 * nx) / mx, q[1] + (32 * ny) / my];
+      rap = fc([{ type: 'Feature', properties: { kind: 'rapids', src: 'osm' }, geometry: { type: 'LineString', coordinates: [off(G.lerp(p0, p1, 0.3)), off(G.lerp(p0, p1, 0.7))] } }]);
+      const beside = await W.routeWater(a, [b[0], b[1] + 1e-6], { at: 0, wind: 'ignore' }); // (another leg: the router keeps the first)
+      D.seedWater(null);
+      if (!beside.water.events.some((e) => e.kind === 'rapids')) errs.push(`a rapid's line 32 m beside the leg isn't a rapid on it: ${beside.water.events.map((e) => e.kind).join(', ') || 'no events'} (its segment ${Math.round(len)} m)`);
+    }
+    // OSM's rapids are rapids, not a rock's zone
+    const osm = await D.waterInputs([18.04, 59.31, 18.06, 59.33], { hazards: true, rapids: true }, 0);
+    const rf = (osm.rapids && osm.rapids.features) || [];
+    if (!rf.length || rf.some((f) => f.properties.src !== 'osm') || osm.hazards.features.some((f) => f.properties.kind === 'rapids')) errs.push(`OSM's rapids in Stockholm: ${rf.length} rapids, hazards ${osm.hazards.features.map((f) => f.properties.kind).join(', ') || 'none'} (missing ${osm.missing.join(', ')})`);
+  } finally {
+    window.fetch = realFetch;
+    p.clear();
+    while (p.nogos.length) p.removeNogo(0);
+    polku.set({ activity: 'mtb' });
+    await forget();
+  }
+  return errs;
+})()"""
+
+
+def water_rapids(chrome):
+    pg = chrome.page(1440, 900, False)
+    pg.open_app({'activity': 'mtb'}, {'polku:plannerDock': '"left"'}, '#15/62.253/25.755')
+    pg.js("import(location.origin + '/js/trails.js').then((T) => { T.holdFetches(); return true; })")
+    fails = pg.js(WATER_RAPIDS.replace('/*forget*/', WATER_FORGET), timeout=150000)
+    fails += [f'console: {e[:160]}' for e in pg.errors()]
+    pg.close()
+    print(f"{'ok  ' if not fails else 'FAIL'} rapids on the water: a warning, and Avoid it carries round" + ''.join(f'\n     - {f}' for f in fails), flush=True)
+    return not fails
+
+
+# A failed source's retry (#905, #153), from mocked services: the hosted OSM data fails, Overpass fails until `fail` is
+# off, MML answers with its empty tile, the wind is ignored. The water router's two-minute retries are caught, not
+# timed, so the check says when they come. Offline, a retry doesn't route the legs again; back online they are, with
+# OSM's rocks. Then a retry that comes while its leg is being routed (the hidden map's idle held) isn't lost: the leg is
+# routed again with the rocks, where it used to keep the failure for good.
+WATER_RETRY = """(async () => {
+  const wait = (ms) => new Promise((r) => setTimeout(r, ms)), errs = [];
+  /*forget*/
+  await forget();
+  const { OVERPASS, OSM_DATA_MANIFEST, MML_TERRAIN_TILES } = await import(location.origin + '/js/config.js');
+  const outside = await (await fetch(location.origin + '/tools/fixtures/mml-taustakartta-14-9318-4808.pbf')).arrayBuffer();
+  const MML = MML_TERRAIN_TILES.split('{z}')[0], realFetch = window.fetch, realTimeout = window.setTimeout, Map0 = maplibregl.Map;
+  let fail = true, again = [], hold = null, routes = 0;
+  window.fetch = (url, init = {}) => {
+    const u = String(url);
+    if (u.startsWith(new URL(OSM_DATA_MANIFEST).origin)) return Promise.reject(new TypeError('Failed to fetch'));
+    if (OVERPASS.some((m) => u.startsWith(m))) return Promise.resolve(fail ? new Response('', { status: 500 }) : new Response('{"elements":[]}'));
+    if (u.startsWith('https://avoinapi.vaylapilvi.fi/')) return Promise.resolve(new Response('{"type":"FeatureCollection","features":[]}'));
+    if (u.startsWith(MML)) return Promise.resolve(new Response(outside));
+    if (u.includes('/data/depths/')) return Promise.resolve(new Response('{"tiles":[]}'));
+    return realFetch(url, init);
+  };
+  // the water router's two-minute retries, kept for the check to run
+  window.setTimeout = (fn, ms, ...a) => (ms === 120e3 && /waterdata\\.js/.test(new Error().stack) ? (again.push(fn), 0) : realTimeout(fn, ms, ...a));
+  // the hidden map's idle, held while the check wants a leg mid-routing
+  maplibregl.Map = class extends Map0 {
+    constructor(o) {
+      super(o);
+      if (o.container.getAttribute('aria-hidden') !== 'true') return;
+      const once = this.once.bind(this);
+      this.once = (t, fn) => (t === 'idle' && hold ? once(t, (...x) => hold.then(() => fn(...x))) : once(t, fn));
+    }
+  };
+  const p = polku.planner, ra = p.routeAll.bind(p);
+  p.routeAll = (...x) => { routes++; return ra(...x); };
+  const without = () => p.legs.length === 1 && p.legs[0].status === 'ok' && p.legs[0].result && p.legs[0].result.water && p.legs[0].result.water.missing.includes('OpenStreetMap');
+  const withRocks = () => p.legs.length === 1 && p.legs[0].status === 'ok' && p.legs[0].result && p.legs[0].result.water && !p.legs[0].result.water.missing.length;
+  const leg = async (a, b) => { p.clear(); p.setMode('water'); p.addPoint(a); p.addPoint(b); for (let k = 0; k < 120 && !without(); k++) await wait(250); };
+  try {
+    polku.set({ activity: 'paddle' });
+    await wait(800);
+    p.setActive(true);
+    // offline: a retry routes nothing again; back online the legs are routed, and get the rocks
+    await leg([24.9585, 60.1540], [24.9800, 60.1480]);
+    if (!without() || !again.length) return [`(the test) the leg off Helsinki: ${p.legs[0] ? p.legs[0].status : 'none'}, ${again.length} retries caught`];
+    const n0 = routes;
+    Object.defineProperty(navigator, 'onLine', { get: () => false, configurable: true });
+    for (const fn of again.splice(0)) fn();
+    await wait(1500);
+    if (routes !== n0) errs.push(`offline, a retry routed the legs again (${routes - n0} times)`);
+    fail = false;
+    delete navigator.onLine;
+    dispatchEvent(new Event('online'));
+    for (let k = 0; k < 60 && !withRocks(); k++) await wait(250);
+    if (!withRocks()) errs.push(`back online, the leg isn't routed again with OSM's rocks: ${p.legs[0].status}, missing ${(p.legs[0].result && p.legs[0].result.water && p.legs[0].result.water.missing.join(', ')) || '?'}`);
+    // a retry while the leg is being routed (#905): off Kotka, tiles of their own
+    fail = true;
+    await leg([26.885, 60.385], [26.905, 60.395]);
+    if (!without() || !again.length) return [...errs, `(the test) the leg off Kotka: ${p.legs[0] ? p.legs[0].status : 'none'}, ${again.length} retries caught`];
+    fail = false;
+    let release;
+    hold = new Promise((r) => { release = r; });
+    p.retryWater({ ask: false }); // routed again, the failure still kept
+    for (let k = 0; k < 40 && !(p.legs[0] && p.legs[0].status === 'loading'); k++) await wait(50);
+    await wait(300); // its sources read, its water still being drawn
+    for (const fn of again.splice(0)) fn();
+    hold = null;
+    release();
+    for (let k = 0; k < 60 && !withRocks(); k++) await wait(250);
+    if (!withRocks()) errs.push(`a retry that came while the leg was being routed was lost (#905): ${p.legs[0].status}, missing ${(p.legs[0].result && p.legs[0].result.water && p.legs[0].result.water.missing.join(', ')) || '?'}`);
+    return errs;
+  } finally {
+    window.fetch = realFetch;
+    window.setTimeout = realTimeout;
+    maplibregl.Map = Map0;
+    delete navigator.onLine;
+    p.routeAll = ra;
+    p.clear();
+    polku.set({ activity: 'mtb' });
+    await wait(300);
+    await forget();
+  }
+})()"""
+
+
+def water_retry(chrome):
+    pg = chrome.page(1440, 900, False)
+    pg.open_app({'activity': 'mtb'}, {'polku:plannerDock': '"left"', 'polku:styles': json.dumps({'paddle': {'p': 'balanced', 'v': {'w': 'ignore'}}})}, '#13/60.152/24.97')
+    pg.js("import(location.origin + '/js/trails.js').then((T) => { T.holdFetches(); return true; })")
+    fails = pg.js(WATER_RETRY.replace('/*forget*/', WATER_FORGET), timeout=150000)
+    fails += [f'console: {e[:160]}' for e in pg.errors()]
+    pg.close()
+    print(f"{'ok  ' if not fails else 'FAIL'} a source's retry: none offline, one when back, and none lost while its leg is routed (#905)" + ''.join(f'\n     - {f}' for f in fails), flush=True)
+    return not fails
+
 # what a water check forgets before and after (WATER_LATE, WATER_BACK)
 WATER_FORGET = '''// the rocks are made up, and the hosted data fails: no answer cached by an earlier run before (nor the hosted
-  // data's manifest), none kept after
+  // data's manifest or tiles: the page pins a manifest it read before the check, and an earlier group's hazards tile
+  // then answered from the cache, #153), none kept after
   const forget = () => new Promise((ok) => {
     const r = indexedDB.open('polku');
     r.onerror = () => ok();
@@ -2840,7 +3315,7 @@ WATER_FORGET = '''// the rocks are made up, and the hosted data fails: no answer
       if (!db.objectStoreNames.contains('overpass')) { db.close(); ok(); return; }
       const t = db.transaction('overpass', 'readwrite'), o = t.objectStore('overpass');
       o.delete(IDBKeyRange.bound('waterhaz/', 'waterhaz/~'));
-      o.delete(IDBKeyRange.bound('static/manifest/', 'static/manifest/~'));
+      o.delete(IDBKeyRange.bound('static/', 'static/~'));
       t.oncomplete = t.onerror = () => { db.close(); ok(); };
     };
   });'''
@@ -2867,6 +3342,8 @@ WATER_LATE = """(async () => {
   const rockAnswer = () => new Response(JSON.stringify({ elements: rocks.map(([lon, lat], i) => ({ type: 'node', id: i + 1, lon, lat, tags: { natural: 'rock' } })) }));
   const empty = () => new Response('{"type":"FeatureCollection","features":[]}');
   const release = () => { hold = false; const h = held; held = []; for (const ok of h) ok(); };
+  // MML's tiles answered with one off Kotka with only the sea on it: covered, nothing to keep clear of (#153), never live
+  const mmlSea = await (await fetch(location.origin + '/tools/fixtures/mml-taustakartta-14-9418-4721.pbf')).arrayBuffer(), MML = (await import(location.origin + '/js/config.js')).MML_TERRAIN_TILES.split('{z}')[0];
   window.fetch = (url, init = {}) => {
     const u = String(url);
     if (u.startsWith(new URL(OSM_DATA_MANIFEST).origin)) return Promise.reject(new TypeError('Failed to fetch'));
@@ -2885,6 +3362,7 @@ WATER_LATE = """(async () => {
       if (vaylaB === true) vaylaB = new Promise((ok) => { const off = D.onWaterData(() => { off(); ok(); }); setTimeout(release, 100); });
       return vaylaB.then(empty);
     }
+    if (u.startsWith(MML)) return Promise.resolve(new Response(mmlSea));
     return realFetch(url, init);
   };
   const along = (c, f) => {
@@ -2984,6 +3462,8 @@ WATER_BACK = """(async () => {
   /*forget*/
   let fail = true, asked = 0;
   const realFetch = window.fetch, realTimeout = window.setTimeout;
+  // MML's tiles answered with one off Kotka with only the sea on it: covered, nothing to keep clear of (#153), never live
+  const mmlSea = await (await fetch(location.origin + '/tools/fixtures/mml-taustakartta-14-9418-4721.pbf')).arrayBuffer(), MML = (await import(location.origin + '/js/config.js')).MML_TERRAIN_TILES.split('{z}')[0];
   window.fetch = (url, init = {}) => {
     const u = String(url);
     if (u.startsWith(new URL(OSM_DATA_MANIFEST).origin)) return Promise.reject(new TypeError('Failed to fetch'));
@@ -2992,6 +3472,7 @@ WATER_BACK = """(async () => {
       return Promise.resolve(fail ? new Response('', { status: 500 }) : new Response('{"elements":[]}'));
     }
     if (u.startsWith('https://avoinapi.vaylapilvi.fi/')) return Promise.resolve(new Response('{"type":"FeatureCollection","features":[]}'));
+    if (u.startsWith(MML)) return Promise.resolve(new Response(mmlSea));
     return realFetch(url, init);
   };
   // the water router's two minutes before it asks a failed source again: 1.5 s
@@ -3056,24 +3537,27 @@ def water_back(chrome):
 # A leg too long to ask for the rocks and the fairways (#490), not seeded: the services mocked (the hosted OSM data and
 # Overpass fail, Väylävirasto answers with nothing), the wind ignored. A 30 km leg, Turku to Nauvo, is routed without
 # OSM's rocks, and Check says it wasn't checked, the leg being too long, not that OpenStreetMap didn't answer; What
-# Polku looked at too. A box too big for Väylävirasto too skips both, and a small one neither.
+# Polku looked at too. A box too big for Väylävirasto too skips both, and MML's stones (#153), and a small one none.
 WATER_LONG = """(async () => {
   const wait = (ms) => new Promise((r) => setTimeout(r, ms)), errs = [];
   const D = await import(location.origin + '/js/waterdata.js');
   const { OVERPASS, OSM_DATA_MANIFEST } = await import(location.origin + '/js/config.js');
   const realFetch = window.fetch;
+  // MML's tiles answered with one off Kotka with only the sea on it: covered, nothing to keep clear of (#153), never live
+  const mmlSea = await (await fetch(location.origin + '/tools/fixtures/mml-taustakartta-14-9418-4721.pbf')).arrayBuffer(), MML = (await import(location.origin + '/js/config.js')).MML_TERRAIN_TILES.split('{z}')[0];
   window.fetch = (url, init = {}) => {
     const u = String(url);
     if (u.startsWith(new URL(OSM_DATA_MANIFEST).origin)) return Promise.reject(new TypeError('Failed to fetch'));
     if (OVERPASS.some((m) => u.startsWith(m))) return Promise.resolve(new Response('', { status: 500 }));
     if (u.startsWith('https://avoinapi.vaylapilvi.fi/')) return Promise.resolve(new Response('{"type":"FeatureCollection","features":[]}'));
+    if (u.startsWith(MML)) return Promise.resolve(new Response(mmlSea));
     return realFetch(url, init);
   };
   const p = polku.planner, want = { fairways: true, hazards: true, wind: false };
   try {
     const say = (r) => `missing ${r.missing.join(', ') || 'nothing'}, skipped ${(r.skipped || []).join(', ') || 'nothing'}`;
     const big = await D.waterInputs([21.0, 59.9, 23.6, 61.0], want, 0);
-    if (big.missing.length || String((big.skipped || []).sort()) !== 'OpenStreetMap,Väylävirasto') errs.push(`a 140 × 120 km box: ${say(big)}, not both skipped`);
+    if (big.missing.length || String((big.skipped || []).sort()) !== 'OpenStreetMap,Väylävirasto,the National Land Survey') errs.push(`a 140 × 120 km box: ${say(big)}, not all three skipped`);
     const small = await D.waterInputs([24.97, 60.15, 24.98, 60.155], want, 0);
     if ((small.skipped || []).length) errs.push(`a 1 km box: ${say(small)}`);
     polku.set({ activity: 'paddle' });
@@ -3773,6 +4257,11 @@ AVOID_OPENED = """(async (sent) => {
   q.set('av', Array.from({ length: 205 }, (_, i) => `24.9_60.${100 + i}_30`).join(','));
   const many = P.parseShared(q);
   if (!many || (many.nogos || []).length !== 200 || !many.nogosLost) errs.push(`205 circles in a link: ${many ? `${(many.nogos || []).length} read, lost: ${many.nogosLost}` : 'did not open'}`);
+  // (#1246) a route with a point off the earth isn't read: the map threw on it, and Polku stopped starting
+  const G = await import(location.origin + '/js/geo.js');
+  for (const off of [[24.95, 95], [200, 60.18]]) {
+    if (P.parseShared(new URLSearchParams({ r: G.encodePolyline([[24.94, 60.17], off]) }))) errs.push(`a link with a point at ${off} was read as a route`);
+  }
   return errs;
 })"""
 # a reload: the saved route keeps them
@@ -4792,8 +5281,8 @@ HEADS = """(async () => {
   // the water: its events, along one leg
   const events = [{ kind: 'ship', at: 100, len: 50, name: 'Näsijärvi fairway' }, { kind: 'ship', at: 200, len: 900 }, { kind: 'harbour', at: 300, len: 100 }, { kind: 'hazard', at: 350, len: 20 }, { kind: 'rough', at: 400, len: 100, max: 0.6 }];
   const ww = p.waterWarnings.call({ legs: [{ mode: 'water', status: 'ok', result: { water: { events, missing: [], craft: 'kayak', wind: { speed: 7, dir: 225 } } } }], lengthTo: () => 0 });
-  const MAP = ['map', 'Väylävirasto and OpenStreetMap'], LANES = ['map', 'Väylävirasto'];
-  expect('waterWarnings', ww, [[/^Crosses the Näsijärvi/, 'read', ...LANES], [/^Along a shipping lane/, 'read', ...LANES], [/^Through a harbour/, 'look', ...MAP], [/^Close to a marked rock/, 'look', ...MAP], [/^Rough for a (sea )?kayak/, 'read', 'estimate', 'the waves, from the forecast']]);
+  const MAP = ['map', 'Väylävirasto and OpenStreetMap'], LANES = ['map', 'Väylävirasto'], ROCKS = ['map', 'Väylävirasto, the National Land Survey and OpenStreetMap'];
+  expect('waterWarnings', ww, [[/^Crosses the Näsijärvi/, 'read', ...LANES], [/^Along a shipping lane/, 'read', ...LANES], [/^Through a harbour/, 'look', ...MAP], [/^Close to a marked rock/, 'look', ...ROCKS], [/^Rough for a (sea )?kayak/, 'read', 'estimate', 'the waves, from the forecast']]);
   // …for the departure its wind is for (part 3, jc-paddle-step): "Rough for a kayak, at 13:00", its source the forecast for 13:00
   const at13 = new Date(); at13.setHours(13, 0, 0, 0);
   const hhmm = at13.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
@@ -6160,6 +6649,11 @@ FIT_LIB = """(() => {
     // a KML line's empty values are missing too, not 0 (an empty altitude leaves the point as it is)
     const ls = G.parseTrackFile('<?xml version="1.0"?><kml xmlns="http://www.opengis.net/kml/2.2"><Placemark><LineString><coordinates>23.7,61.4,0 ,61.41,0 23.72,,0 23.73, 61.43 23.74,61.44,</coordinates></LineString></Placemark></kml>', 'bad.kml');
     if (ls.lines.map((l) => l.length).join() !== '2' || ls.lines.some((l) => l.some((c) => c.some((v) => !v)))) err(`a KML line with empty values: ${JSON.stringify(ls.lines)} (want 2 points, no zero)`);
+    // (#1246) a point off the earth is left out too: the map throws on a latitude beyond 90°, and Analyse & edit stopped there
+    const far = G.parseTrackFile(`<?xml version="1.0"?><gpx version="1.1"><trk><trkseg>${[pt('trkpt', 'lat="61.4" lon="23.7"'), pt('trkpt', 'lat="95" lon="23.71"'), pt('trkpt', 'lat="61.42" lon="23.72"'), pt('trkpt', 'lat="61.43" lon="190"')].join('')}</trkseg></trk>${pt('wpt', 'lat="-91" lon="23.7"')}</gpx>`, 'far.gpx');
+    if (far.lines.map((l) => l.length).join() !== '2' || far.points.length) err(`a GPX with points off the earth: lines of ${far.lines.map((l) => l.length).join()} points (want 2), ${far.points.length} waypoints (want 0)`);
+    const farKml = G.parseTrackFile('<?xml version="1.0"?><kml xmlns="http://www.opengis.net/kml/2.2"><Placemark><LineString><coordinates>23.7,61.4 23.71,95 23.72,61.42</coordinates></LineString></Placemark></kml>', 'far.kml');
+    if (farKml.lines.map((l) => l.length).join() !== '2') err(`a KML line with a point off the earth: lines of ${farKml.lines.map((l) => l.length).join()} points (want 2)`);
     p.setSheetState('half');
     return T.errs.splice(0);
   };
@@ -8374,6 +8868,191 @@ def coarse(chrome):
     return not fails
 
 
+# #1176: Save offline keeps MML's tiles, MML answered by the page from its recorded tile (14/9260/4578, Seitseminen; an
+# empty tile elsewhere), never live: how many it asks for at once and in a second, with whose key, and what it keeps.
+# Saved first with every MML tile failing (the pace held through failures too), then with MML's zoom 13 failing (Polku's
+# key, property boundaries off), then whole (your own key, property boundaries on). Offline maps says what each lacks,
+# beside two areas saved before MML's tiles were kept.
+MML_OFFLINE_SAVE = r"""
+(async () => {
+  const f = [], off = await import(location.origin + '/js/offline.js'), { idb } = await import(location.origin + '/js/idb.js');
+  const fx = await (await fetch('/tools/fixtures/mml-taustakartta-14-9260-4578.pbf')).arrayBuffer(), real = window.fetch, asked = [];
+  let now = 0, most = 0, failing = null;
+  window.fetch = async (u, o) => {
+    const url = String((u && u.url) || u);
+    if (!url.startsWith('https://avoin-karttakuva.maanmittauslaitos.fi/')) return real(u, o);
+    asked.push([Date.now(), url]); most = Math.max(most, ++now);
+    try {
+      await new Promise((r) => setTimeout(r, 30));
+      if (failing && failing.test(url)) throw new TypeError('Failed to fetch');
+      return new Response(url.includes('/14/4578/9260.pbf') ? fx.slice(0) : new ArrayBuffer(0));
+    } finally { now--; }
+  };
+  const line = [[23.474, 61.92], [23.481, 61.921]], save = (name, mml) => off.saveArea({ name, line, bbox: [23.474, 61.92, 23.481, 61.921], route: null }, { buffer: 1000, terrain: false, mml }, () => {}, new AbortController().signal);
+  const mmlKeys = (a) => a.keys.filter((k) => k.startsWith('https://avoin-karttakuva.maanmittauslaitos.fi/'));
+  // paced: two at a time, ten in any second at most
+  const paced = (what) => {
+    const peak = Math.max(...asked.map(([t]) => asked.filter(([s]) => s >= t && s < t + 1000).length));
+    if (most > 2 || peak > 10) f.push(`${what}, MML asked for ${most} tiles at once and ${peak} in a second`);
+    if (asked.length < 12) f.push(`(the test) ${what}, only ${asked.length} MML tiles asked for: too few to see the pace`);
+  };
+  try {
+    failing = /./;
+    const down = await save('smoke-down', { key: '', property: false });
+    if (!(down.mml && down.mml.tiles && down.mml.failed === down.mml.tiles)) f.push(`with every MML tile failing, the area says ${JSON.stringify(down.mml)} of MML's terrain tiles failed`);
+    paced('with every tile failing');
+    asked.length = 0; most = 0;
+    failing = /\/taustakartta\/.+\/13\/\d+\/\d+\.pbf/;
+    const part = await save('smoke-part', { key: '', property: false });
+    failing = null;
+    const z = (a) => [...new Set(mmlKeys(a).filter((k) => k.includes('/taustakartta/')).map((k) => +k.split('/').at(-3)))].sort((x, y) => x - y).join();
+    if (z(part) !== '11,12,13,14') f.push(`MML's terrain kept at zooms ${z(part)}, not 11–14`);
+    if (mmlKeys(part).some((k) => k.includes('/kiinteistojaotus/'))) f.push('property boundaries kept with their layer off');
+    if (!(part.mml && part.mml.failed > 0 && part.mml.failed < part.mml.tiles)) f.push(`with MML's zoom 13 failing, the area says ${JSON.stringify(part.mml)} of MML's terrain tiles failed`);
+    if (asked.some(([, u]) => !new URL(u).searchParams.get('api-key'))) f.push('MML asked for tiles without a key');
+    // what Offline maps says of each
+    await idb('offline').set('smoke-old', { id: 'smoke-old', name: 'smoke-old', created: 1, bbox: [23.47, 61.91, 23.49, 61.93], keys: [], bytes: 1, failed: 0 });
+    await idb('offline').set('smoke-oslo', { id: 'smoke-oslo', name: 'smoke-oslo', created: 2, bbox: [10.7, 59.9, 10.8, 59.95], keys: [], bytes: 1, failed: 0 });
+    const box = document.createElement('div');
+    await off.renderOfflineSection(box, { open: () => {} });
+    const said = Object.fromEntries([...box.querySelectorAll('.off-area-text')].map((el) => [el.querySelector('b').textContent, el.textContent]));
+    if (!/National Land Survey’s terrain is missing in parts: save the area again/.test(said['smoke-part'])) f.push(`an area whose MML tiles failed in part says: ${said['smoke-part']}`);
+    if (!/National Land Survey’s terrain didn’t load: save the area again/.test(said['smoke-down'])) f.push(`an area whose MML tiles all failed says: ${said['smoke-down']}`);
+    if (!/Saved without the National Land Survey’s terrain: save the area again/.test(said['smoke-old'])) f.push(`an area in Finland saved before MML's tiles were kept says: ${said['smoke-old']}`);
+    if (/National Land Survey/.test(said['smoke-oslo'])) f.push(`an area in Oslo says: ${said['smoke-oslo']}`);
+    for (const id of ['smoke-old', 'smoke-oslo', part.id, down.id]) await off.removeArea(id);
+    asked.length = 0; most = 0;
+    const whole = await save('smoke-mml', { key: 'own-test', property: true });
+    if (!whole.mml || whole.mml.failed || !whole.mml.tiles) f.push(`saved whole, the area says ${JSON.stringify(whole.mml)} of MML's terrain tiles failed`);
+    if (!mmlKeys(whole).some((k) => k.includes('/kiinteistojaotus/default/v3/WGS84_Pseudo-Mercator/14/'))) f.push('property boundaries not kept with their layer on');
+    if (mmlKeys(whole).some((k) => k.includes('?'))) f.push(`MML's tiles kept under an address with its key: ${mmlKeys(whole).find((k) => k.includes('?'))}`);
+    if (asked.some(([, u]) => new URL(u).searchParams.get('api-key') !== 'own-test')) f.push('your own key not used for MML\'s tiles');
+    paced('saved whole');
+    const c = await caches.open('polku-offline-tiles');
+    if (!await c.match('https://avoin-karttakuva.maanmittauslaitos.fi/vectortiles/taustakartta/wmts/1.0.0/taustakartta/default/v21/WGS84_Pseudo-Mercator/14/4578/9260.pbf')) f.push('the recorded tile isn\'t kept');
+  } finally { window.fetch = real; }
+  return f;
+})()
+"""
+
+# Offline and in Preview offline, with this commit's worker: MML's bogs from the saved tile, asked for with Polku's key
+# (saved with your own), and no message that MML's terrain didn't load, though the view reaches past the corridor
+MML_OFFLINE_MAP = r"""
+(async () => {
+  const f = [], m = polku.map, wait = (ms) => new Promise((r) => setTimeout(r, ms)), failed = [];
+  m.on('error', (e) => { if (e.sourceId === 'mml') failed.push(e.tile ? e.tile.tileID.canonical.toString() : String(e.error && e.error.message)); });
+  m.jumpTo({ center: [(9260.5 / 2 ** 14) * 360 - 180, Math.atan(Math.sinh(Math.PI * (1 - (2 * 4578.5) / 2 ** 14))) * 180 / Math.PI], zoom: 14.5 });
+  const bogs = () => m.queryRenderedFeatures({ layers: ['mml-bog'] }).length;
+  for (let k = 0; k < 60 && !(bogs() && m.areTilesLoaded()); k++) await wait(250);
+  await wait(1500);
+  if (!bogs()) f.push('no bogs drawn from the saved tile');
+  const said = (window.__toasts || []).filter((t) => t.includes('National Land Survey'));
+  if (said.length) f.push(`in the saved area: ${said[0]} (MML's tiles that failed: ${failed.join(' ')})`);
+  return f;
+})()
+"""
+
+# MML out of reach with the device still online (a signal without data): zoomed out through the saved zooms, the message
+# comes once, not again each time a saved tile loads after one that failed
+MML_UNREACHABLE = r"""
+(async () => {
+  const f = [], m = polku.map, wait = (ms) => new Promise((r) => setTimeout(r, ms));
+  const center = [(9260.5 / 2 ** 14) * 360 - 180, Math.atan(Math.sinh(Math.PI * (1 - (2 * 4578.5) / 2 ** 14))) * 180 / Math.PI];
+  for (const zoom of [14.5, 13.5, 12.5, 11.5]) {
+    m.jumpTo({ center, zoom });
+    for (let k = 0; k < 40 && !m.areTilesLoaded(); k++) await wait(250);
+    await wait(800);
+  }
+  const said = (window.__toasts || []).filter((t) => t.includes('National Land Survey'));
+  if (!navigator.onLine) f.push('(the test) the device says it\'s offline');
+  else if (said.length !== 1) f.push(`the message that MML's terrain didn't load came ${said.length} times, not once`);
+  return f;
+})()
+"""
+
+
+def mml_offline(chrome):
+    """Save offline keeps MML's terrain at its zooms, property boundaries while their layer is on, under addresses
+    without the key, paced (#1176); offline, with the real worker and the network off, the map draws them from there."""
+    fails = []
+    pg = chrome.page(390, 844, True)
+    try:
+        # (zoom 10: under the source's zoom 11, so the map asks MML for nothing)
+        pg.open_app({'activity': 'mtb', 'base': 'trail'}, hash_='#10/61.92/23.478')
+        fails += pg.js(MML_OFFLINE_SAVE, timeout=120000)
+        pg.c.send('Network.setBypassServiceWorker', {'bypass': False}, pg.s)
+        # this commit's worker, not one an earlier run on the port left in the profile (#1134)
+        pg.js("(async () => { for (const r of await navigator.serviceWorker.getRegistrations()) await r.unregister(); return true })()")
+        pg.js("Promise.race([navigator.serviceWorker.register('./sw.js').then(() => navigator.serviceWorker.ready), new Promise((_, no) => setTimeout(() => no(new Error('service worker not ready after 15 s')), 15000))]).then(() => true)", timeout=20000)
+        pg.reload()
+        if not pg.js('!!navigator.serviceWorker.controller'):
+            raise RuntimeError('the page is not controlled by the worker')
+        toasts = "new MutationObserver((ms) => { for (const m of ms) if (m.target.id === 'toast') (window.__toasts ||= []).push(m.target.textContent); }).observe(document, { childList: true, subtree: true }); true"
+        pg.js(toasts)
+        # the page, its own workers (MapLibre's, which fetch the tiles) and every service worker of this origin offline: CDP's
+        # offline for the page alone leaves the others' fetches online, and a tile the service worker leaves alone goes out
+        # from MapLibre's worker
+        pg.c.send('Target.setAutoAttach', {'autoAttach': True, 'waitForDebuggerOnStart': False, 'flatten': True}, pg.s)
+        time.sleep(0.5)
+        own = [e['params']['sessionId'] for e in pg.c.events if e.get('method') == 'Target.attachedToTarget' and e.get('sessionId') == pg.s]
+        workers = [t['targetId'] for t in chrome.send('Target.getTargets')['targetInfos'] if t['type'] == 'service_worker' and t['url'].startswith(BASE)]
+        attached = [chrome.send('Target.attachToTarget', {'targetId': t, 'flatten': True})['sessionId'] for t in workers]
+        sessions = [pg.s] + own + attached
+
+        def network(off):
+            for s_ in sessions:
+                try:
+                    chrome.send('Network.enable', {}, s_)
+                    chrome.send('Network.emulateNetworkConditions', {'offline': off, 'latency': 0, 'downloadThroughput': 0 if off else -1, 'uploadThroughput': 0 if off else -1}, s_)
+                except RuntimeError:  # (a worker gone since)
+                    pass
+        try:
+            network(True)
+            fails += [f'offline: {e}' for e in pg.js(MML_OFFLINE_MAP, timeout=60000)]
+            # a saved property tile, asked for with another key
+            fails += pg.js("""(async () => {
+              const { listAreas } = await import(location.origin + '/js/offline.js'), a = (await listAreas()).find((x) => x.name === 'smoke-mml');
+              const k = a && a.keys.find((u) => u.includes('/kiinteistojaotus/'));
+              if (!k) return ['offline: no property tile kept to ask for'];
+              const r = await fetch(k + '?api-key=another').catch(() => null);
+              return r && r.ok ? [] : [`offline: a saved property tile not answered: ${k}`];
+            })()""")
+        finally:
+            network(False)
+        pg.reload()
+        pg.js(toasts)
+        time.sleep(0.5)
+        sessions += [e['params']['sessionId'] for e in pg.c.events if e.get('method') == 'Target.attachedToTarget' and e.get('sessionId') == pg.s and e['params']['sessionId'] not in sessions]
+
+        def block(urls):
+            for s_ in sessions:
+                try:
+                    chrome.send('Network.setBlockedURLs', {'urls': urls}, s_)
+                except RuntimeError:
+                    pass
+        try:
+            block(['*avoin-karttakuva.maanmittauslaitos.fi*'])
+            fails += [f'MML out of reach: {e}' for e in pg.js(MML_UNREACHABLE, timeout=90000)]
+        finally:
+            block([])
+            for s_ in attached:
+                chrome.send('Target.detachFromTarget', {'sessionId': s_})
+        preview = "new Promise((ok) => { navigator.serviceWorker.addEventListener('message', (e) => e.data.type === 'offline-preview' && ok(true)); navigator.serviceWorker.controller.postMessage({ type: 'offline-preview', on: %s }); setTimeout(() => ok(false), 3000); })"
+        try:
+            pg.js(preview % 'true')
+            pg.reload()
+            pg.js(toasts)
+            fails += [f'Preview offline: {e}' for e in pg.js(MML_OFFLINE_MAP, timeout=60000)]
+        finally:
+            pg.js(preview % 'false')
+        pg.js("(async () => { const off = await import(location.origin + '/js/offline.js'); for (const a of await off.listAreas()) if (a.name === 'smoke-mml') await off.removeArea(a.id); return true })()")
+        fails += [f'console: {e[:160]}' for e in pg.errors()]
+    finally:
+        pg.close()
+    print(f"{'ok  ' if not fails else 'FAIL'} MML's tiles in offline areas: kept at its zooms, paced, without the key, drawn offline by the worker (#1176)" + ''.join(f'\n     - {f}' for f in fails), flush=True)
+    return not fails
+
+
 # Polku's own layers come in together (#1091): Väylävirasto's tiles and Digitraffic's faults answered by the page (an
 # empty chart, so no request leaves), before Polku loads: window.__nmDelay ms after they're asked for, or, while
 # window.__nmHeld is a list, once window.__nmRelease() is called
@@ -10339,6 +11018,8 @@ def changelog(chrome):
           const notes = document.querySelector('.changelog-notes'), status = document.querySelector('.modal-changelog [role=status]');
           if (!count() || !notes?.querySelector('h3') || !notes.querySelector('h4') || !notes.querySelector('li strong')) errs.push('real changelog did not render dates/headings/lists/bold');
           if (!/Release notes through \\d{4}-\\d{2}-\\d{2}/.test(status?.textContent || '')) errs.push('no source date');
+          // the repository is private (#115): its links (one in nearly every heading) are plain text
+          if (document.querySelector('.modal-changelog a[href*="github.com/TommiContursi"]') || !notes.textContent.includes('#1214')) errs.push('links into the repository, or their text gone');
           if ((net.usage().find(s => s.id === 'polku').session) !== before+1) errs.push('changelog did not use request()');
           const b = document.querySelector('.modal-changelog .modal-body'); b.scrollTop = 2000;
           if (b.scrollTop < 100 || b.scrollWidth > b.clientWidth+1) errs.push('notes do not scroll or overflow sideways');
@@ -10348,11 +11029,15 @@ def changelog(chrome):
         })()""")
         fails += [f'{w}: {e}' for e in errs]
         if pg.js('!!document.querySelector(".modal-changelog[open]")'):
+            # Tab never reaches the page behind. Past the dialog's last control it may leave the page for the browser's own,
+            # as a native modal dialog does: with the repository's links as text (#115) the dialog has only a few controls
             for _ in range(12):
                 chrome.send('Input.dispatchKeyEvent', {'type': 'rawKeyDown', 'key': 'Tab', 'code': 'Tab', 'windowsVirtualKeyCode': 9}, pg.s)
-                if not pg.js('document.querySelector(".modal-changelog").contains(document.activeElement)'):
-                    fails.append(f'{w}: Tab escaped the native dialog')
+                behind = pg.js('(() => { const a = document.activeElement; return a && a !== document.body && !document.querySelector(".modal-changelog").contains(a) ? a.outerHTML.slice(0, 80) : "" })()')
+                if behind:
+                    fails.append(f'{w}: Tab escaped the native dialog to {behind}')
                     break
+            pg.js('document.querySelector(".modal-changelog .changelog-notes").focus(); true')  # (back in the dialog, for Escape)
             chrome.send('Input.dispatchKeyEvent', {'type': 'rawKeyDown', 'key': 'Escape', 'code': 'Escape', 'windowsVirtualKeyCode': 27}, pg.s)
             pg.js('new Promise(r => setTimeout(r,100))')
             if not pg.js('!document.querySelector(".modal-changelog").open && document.activeElement === notesOpener && !document.querySelector("#settings-panel").hidden && notesSnapshot() === notesBefore'):
@@ -10360,16 +11045,16 @@ def changelog(chrome):
             errs = pg.js("""(async () => {
               const errs=[], wait=ms=>new Promise(r=>setTimeout(r,ms));
               const real=window.fetch; let calls=0, release;
-              const fixture='# Changelog\\n\\n## 2026-10-17\\n\\n### A safe update\\n- **Bold** and `code` with [source](docs/USING.md), [unsafe](javascript:alert%281%29) and <img src=x onerror=alert(1)>.';
+              const fixture='# Changelog\\n\\n## 2026-10-17\\n\\n### A safe update\\n- **Bold** and `code` with [source](docs/USING.md), [#1](https://github.com/TommiContursi/Polku/issues/1), [OpenStreetMap](https://www.openstreetmap.org/), [unsafe](javascript:alert%281%29) and <img src=x onerror=alert(1)>.';
               window.fetch=(url,opts)=>String(url).endsWith('/CHANGELOG.md') ? (++calls===1 ? Promise.resolve(new Response('unavailable',{status:503})) : calls===2 ? Promise.resolve(new Response(fixture)) : new Promise(r=>{release=r;})) : real(url,opts);
               notesOpener.click(); await wait(100);
               const d=document.querySelector('.modal-changelog'), b=d.querySelector('.modal-body'), status=d.querySelector('[role=status]');
               const retry=[...b.querySelectorAll('button')].find(x=>x.textContent==='Retry');
-              if (!/could not be loaded/.test(status.textContent) || retry.hidden || !b.querySelector('a[href*="github.com"]')) errs.push('failure has no honest message/retry/full source');
+              if (!/could not be loaded/.test(status.textContent) || retry.hidden || b.querySelector('a[href*="github.com"]')) errs.push('failure has no honest message/retry, or links to GitHub');
               retry.click(); await wait(100);
               const n=b.querySelector('.changelog-notes');
               if (!n.querySelector('code') || n.querySelector('img,script') || n.querySelector('a[href^="javascript:"]') || !n.textContent.includes('<img')) errs.push('unsafe Markdown rendered as executable content or no inline code');
-              if (n.querySelector('a')?.href !== 'https://github.com/TommiContursi/Polku/blob/main/docs/USING.md') errs.push('relative document link has wrong source');
+              if ([...n.querySelectorAll('a')].map(a => a.href).join() !== 'https://www.openstreetmap.org/' || !/with source, #1, OpenStreetMap,/.test(n.textContent)) errs.push('links into the repository (relative ones too) not plain text, or an outside link lost');
               d.querySelector('[aria-label=Close]').click(); await wait(100);
               if (document.activeElement!==notesOpener) errs.push('close button did not restore focus');
               notesOpener.click(); await wait(100);
@@ -11778,12 +12463,16 @@ def start_fails(chrome):
     pg.close()
 
     # The worker's saved copies (#481), a returning visitor on a slow network. Just after an update: the saved
-    # js/safety.js is from an older deploy (its Last-Modified isn't the page's) and the server's answer comes after
-    # 6 s, past the worker's 3 s: the page waits for it and opens once, all new, with no try more (main mixed the two,
-    # failed and tried again). With no update: the saved copies are the page's deploy's and every js/ file hangs for
-    # good, the page itself too ('saved'): it opens from them, and says it may be an older Polku.
-    for case in ('update', 'hang', 'saved'):
-        name = '390x844, ' + {'update': 'an older deploy’s js/safety.js saved, the new one 6 s late', 'hang': 'every js/ file hanging, the saved copies the page’s deploy’s',
+    # js/safety.js is from an older deploy (its Last-Modified isn't the page's; in 'update-id' its X-Polku-Deploy isn't,
+    # though its Last-Modified is) and the server's answer comes after 6 s, past the worker's 3 s: the page waits for it and opens once, all new, with no try
+    # more (main mixed the two, failed and tried again). With no update: the saved copies are the page's deploy's and
+    # every js/ file hangs for good, the page itself too ('saved'): it opens from them, and says it may be an older
+    # Polku. The deploy is X-Polku-Deploy where it's sent (Cloudflare), else Last-Modified (GitHub Pages, #115): 'hang'
+    # gives the js/ copies the page's X-Polku-Deploy beside their own Last-Modified, 'saved' only the page's Last-Modified.
+    for case in ('update', 'update-id', 'hang', 'saved'):
+        update = case.startswith('update')
+        name = '390x844, ' + {'update': 'an older deploy’s js/safety.js saved, the new one 6 s late',
+                              'update-id': 'an older deploy’s js/safety.js saved (by X-Polku-Deploy), the new one 6 s late', 'hang': 'every js/ file hanging, the saved copies the page’s deploy’s',
                               'saved': 'the page and every js/ file hanging, the saved copies the page’s deploy’s'}[case]
         pg = chrome.page(390, 844, True)
         pg.open_app({'activity': 'mtb'})
@@ -11796,20 +12485,22 @@ def start_fails(chrome):
         if not pg.js('!!navigator.serviceWorker.controller') or not worker:
             raise RuntimeError(f'{name}: the page has no service worker')
         ws = chrome.send('Target.attachToTarget', {'targetId': worker['targetId'], 'flatten': True})['sessionId']
-        if case == 'update':
-            pg.js("""caches.open('polku-shell-v1').then((c) => c.put(new URL('js/safety.js', location.href).href,
-              new Response('export class SafetyLayers {}', { headers: { 'Content-Type': 'text/javascript', 'Last-Modified': 'Thu, 01 Jan 2026 00:00:00 GMT' } }))).then(() => true)""")
+        if update:
+            pg.js("""caches.open('polku-shell-v1').then(async (c) => c.put(new URL('js/safety.js', location.href).href,
+              new Response('export class SafetyLayers {}', { headers: { 'Content-Type': 'text/javascript', ...(ID ? { 'X-Polku-Deploy': 'older',
+                'Last-Modified': (await c.match(new URL('./', location.href).href)).headers.get('last-modified') } : { 'Last-Modified': 'Thu, 01 Jan 2026 00:00:00 GMT' }) } }))).then(() => true)""".replace('ID', 'true' if case == 'update-id' else 'false'))
             chrome.send('Fetch.enable', {'patterns': [{'urlPattern': '*js/safety.js'}]}, ws)
         else:
-            # (serve.py gives each file its own time; GitHub Pages gives every file the deploy's: the page's, here)
-            pg.js("""(async () => { const c = await caches.open('polku-shell-v1'), js = new URL('js/', location.href).href;
-              const d = (await c.match(new URL('./', location.href).href)).headers.get('last-modified');
-              for (const r of await c.keys()) if (r.url.startsWith(js)) { const a = await c.match(r), h = new Headers(a.headers); h.set('Last-Modified', d); await c.put(r, new Response(await a.blob(), { headers: h })); }
-              return true; })()""")
+            # (serve.py gives each file its own time and no X-Polku-Deploy; GitHub Pages gives every file the deploy's time,
+            # Cloudflare its commit: the page's, here)
+            pg.js(f"""(async () => {{ const c = await caches.open('polku-shell-v1'), js = new URL('js/', location.href).href, p = (await c.match(new URL('./', location.href).href)).headers;
+              const [k, d] = {'true' if case == 'hang' else 'false'} ? ['X-Polku-Deploy', p.get('x-polku-deploy') || p.get('last-modified')] : ['Last-Modified', p.get('last-modified')];
+              for (const r of await c.keys()) if (r.url.startsWith(js)) {{ const a = await c.match(r), h = new Headers(a.headers); h.set(k, d); await c.put(r, new Response(await a.blob(), {{ headers: h }})); }}
+              return true; }})()""")
             chrome.send('Fetch.enable', {'patterns': [{'urlPattern': BASE + 'js/*'}] + ([{'urlPattern': BASE}] if case == 'saved' else [])}, ws)
         chrome.events = [e for e in chrome.events if e.get('sessionId') != pg.s]
         chrome.send('Page.reload', {}, pg.s)
-        t0, opened, let_go = time.time(), False, case != 'update'
+        t0, opened, let_go = time.time(), False, not update
         while time.time() - t0 < 30 and not opened:
             time.sleep(0.5)
             if not let_go and time.time() - t0 > 6:  # the new js/safety.js arrives
@@ -11822,16 +12513,16 @@ def start_fails(chrome):
                 opened = pg.js('!!window.polku', timeout=3000)
             except Exception:
                 pass  # (the page loading again)
-        if case != 'update':
+        if not update:
             chrome.send('Fetch.disable', {}, ws)
         chrome.send('Target.detachFromTarget', {'sessionId': ws})
         if not opened:
             fails.append(f'{name}: Polku didn’t open in 30 s, window.polku {pg.js("!!window.polku")}, the message {"shown" if pg.js(banner) else "not shown"}')
         else:
             older = pg.js("new Promise((ok) => setTimeout(() => ok(!!document.querySelector('.offline-banner.saved-copy:not(#start-failed)')?.checkVisibility()), 1500))")
-            if case == 'update' and tries(pg) != 1:
+            if update and tries(pg) != 1:
                 fails.append(f'{name}: {tries(pg)} tries, not 1')
-            if case != 'update' and not older:
+            if not update and not older:
                 fails.append(f'{name}: opened without saying it may be an older Polku')
             fails.extend(f'{name}: console: {e[:160]}' for e in pg.errors())
         pg.js("(async () => { for (const r of await navigator.serviceWorker.getRegistrations()) await r.unregister(); return true })()")
@@ -16984,7 +17675,7 @@ BT_STATES = """(async () => {
     polku.planner.btRedraw(polku.planner.cards.current);
     await BT.until(() => BT.box()?.querySelector('.stale-note, .bt-fail') && BT.done());
     const old = BT.box().querySelector('.stale-note')?.textContent || '';
-    if (!/^Older forecast \(from /.test(old) || !BT.box().querySelector('.bt-best')) errs.push(`an hour on with the forecast failing: “${BT.box().textContent.slice(0, 160)}”, not the older forecast, said`);
+    if (!/^Older forecast \\(from /.test(old) || !BT.box().querySelector('.bt-best')) errs.push(`an hour on with the forecast failing: “${BT.box().textContent.slice(0, 160)}”, not the older forecast, said`);
   } finally { Date.now = now; W.fail = false; }
   return errs;
 })()"""
@@ -17197,7 +17888,7 @@ BT_WATER = """(async () => {
   const cross = () => [...BT.box().querySelectorAll('.bt-cross')].map((e) => e.textContent);
   const step = async (k) => { BT.box().querySelector('[data-k=bt-next]').click(); return BT.until(() => BT.box()?.querySelector('.bt-day b')?.textContent.includes(new Date(BT.day(k, 12) * 1000).toLocaleDateString([], { weekday: 'short' })) && BT.done(), 30000); };
   await step(2);
-  const two = /^Leave between (\S+) and (\S+) to cross in small waves/.exec(cross()[0] || '');
+  const two = /^Leave between (\\S+) and (\\S+) to cross in small waves/.exec(cross()[0] || '');
   if (!two || two[1] !== BT.clock(BT.day(2, 10)) || ![BT.clock(BT.day(2, 13)), BT.clock(BT.day(2, 14))].includes(two[2])) errs.push(`the day after tomorrow, calm from 10:00 to 15:00: “${cross().join(' / ')}”`);
   for (const k of [3, 4, 5]) await step(k);
   if (cross().length) errs.push(`five days ahead (${BT.box().querySelector('.bt-day b')?.textContent}), past the forecast: “${cross().join(' / ')}”`);
@@ -25045,6 +25736,7 @@ def osm_data(chrome):
                              'tools.osm_data.test_builder.BuilderTests.test_sample_validation_reads_locations_without_overwriting_them',
                              'tools.osm_data.test_builder.BuilderTests.test_full_country_rejects_missing_required_sample_roads',
                              'tools.osm_data.test_preview.PreviewTests.test_preview_overrides_an_already_configured_live_source_in_response_only',
+                             'tools.osm_data.test_preview.PreviewTests.test_the_server_holds_a_page_of_module_requests',
                              'tools.osm_data.test_alerts.AlertTests.test_retry_runs_only_for_a_failed_main_build_below_the_attempt_cap',
                              'tools.osm_data.test_alerts.AlertTests.test_retry_reruns_the_build_only_when_geofabrik_refused_every_failed_job'],
                             cwd=Path(__file__).resolve().parent.parent, capture_output=True, text=True, timeout=30)
@@ -25172,6 +25864,42 @@ def point_card_actions(chrome):
 
 
 LIPAS_KOTA = {'name': 'Haukanlammen kota', 'typeName': 'Laavu, kota tai kammi', 'city': 'Tampere', 'lipasId': 72269, 'type': 206}
+
+
+# (#1247) a name from map data, with HTML in it, in each kind of feature whose name heads the spot card: the card
+# says it as written, and nothing in it loads (an image's request would mean it was put into the page as HTML)
+SPOT_NAMES = """(async () => {
+  const m = polku.map, p = polku.planner, at = m.getCenter(), errs = [], real = m.queryRenderedFeatures, IMG = '/__smoke-1247.png';
+  const name = `<img src="${IMG}" onerror="window.__ran1247 = 1">Kota & co`;
+  const kinds = [['winter-ski', { name, cls: 'ski' }], ['cameras', { name }], ['sf-points', { kind: 'roadcond', label: name }], ['lipas-route', { name, typeName: 'Hiking route' }]];
+  p.placeAt = () => null; // (on the spot: no place under it, whatever the tiles have)
+  try {
+    for (const [id, props] of kinds) {
+      window.__ran1247 = 0;
+      m.queryRenderedFeatures = () => [{ type: 'Feature', layer: { id }, source: 'x', properties: props, geometry: { type: 'LineString', coordinates: [[at.lng - 0.001, at.lat], [at.lng + 0.001, at.lat]] } }];
+      try { p.openSpotCard([at.lng, at.lat]); } finally { m.queryRenderedFeatures = real; }
+      await new Promise((r) => setTimeout(r, 500));
+      const card = document.querySelector('.pl-way.card');
+      if (window.__ran1247 || performance.getEntriesByName(location.origin + IMG).length) errs.push(`${id}: the name went into the page as HTML`);
+      else if (!card || !card.textContent.includes(name)) errs.push(`${id}: the card says ${card ? JSON.stringify(card.textContent.slice(0, 80)) : 'nothing'}, not the name as written`);
+      p.cards.close();
+    }
+  } finally { delete p.placeAt; }
+  return errs;
+})()"""
+
+
+def spot_card_names(chrome):
+    """A name with HTML in it, from LIPAS, a winter way or Fintraffic, is text in the spot card, never run (#1247)."""
+    pg = chrome.page(1440, 900, False)
+    try:
+        pg.open_app({'activity': 'mtb'}, {'polku:winter': '"off"'}, '#15/61.514/23.818')
+        pg.js("import(location.origin + '/js/ways.js').then((W) => { W.holdWays(); return true; })")  # (no answer from Overpass to name the spot instead)
+        fails = pg.js(SPOT_NAMES, timeout=30000) + [f'console: {e[:160]}' for e in pg.errors()]
+    finally:
+        pg.close()
+    print(' ', 'ok' if not fails else 'FAIL', 'a name with HTML in it is text in the spot card (#1247)', *(['\n    1440x900: ' + f for f in fails] if fails else []))
+    return not fails
 
 
 def spot_card_actions(chrome):
@@ -25545,13 +26273,14 @@ GROUPS = [
     ('layers', [layers, layer_coverage, cycleway_style, cycling_restrictions, waterway_style, property_lines, property_plots, wetland_style, reedbed_style, mml_bogs, mml_rock, mml_water, mml_open, osm_cliffs, saddles, mml_cards], 'the Layers panel in every sport'),
     ('raster', [raster_maps, aerial_fallback, aerial_labels], 'terrain and aerial detail, bounded high-density WMS symbols, depth boundaries and missing aerial detail (#649, #650, #653); the map\'s words on the aerial photos at 4.5:1 on their halo (#554)'),
     ('coarse', [coarse], 'a coarse map underneath (#1091): the base map\'s tile four zoom levels up stands in for one that hasn\'t come, at 1440 and 390'),
+    ('offline', [mml_offline], 'Save offline keeps the National Land Survey\'s tiles (#1176): its terrain at zooms 11–14 and property boundaries while on, under addresses without the key, two at a time and ten a second at most; what Offline maps says an area lacks; offline, with the real worker, the bogs drawn from the saved tile and no message'),
     ('together', [together], 'Polku\'s own layers come in together after the map stops, 500 ms at most (#1091)'),
     ('fadein', [fadein], 'what comes after the map stops fades in, 0.2–0.4 s by how much it changes (#1091): after a move by mouse or touch and a search result\'s flight, never from the keys, ended by a touch, no picture over a moving map'),
     ('trails', [trails, uphill_late, mtb_grades], 'recorded trail details/card, late uphill colors, and consistent MTB 0−/S0 display (#435, #673)'),
     ('header', [header_fit, head_names], 'the planner header fitting its sheet; the route\'s name following the road names that come late with the map\'s tiles (the review of #1050)'),
     ('lipas', [lipas], 'LIPAS search and riding a LIPAS route (recorded answers), a place, coordinates or a trail from search gets its pin and card (#871, #875)'),
     ('marked', [marked], 'marked routes picked on the map (#308): a hand and the whole route lit under a mouse before a click, a tap 10 px beside the line lit while its card is open and one 30 px away not (recorded LIPAS, cut in two parts)'),
-    ('water', [water, water_depths, water_late, water_back, water_long, water_hidden, water_offline, paddle_map, best_time_water], 'the paddling router\'s costs (recorded fairways, a fixed wind), lake depths from a recorded tile (#1184), OSM\'s rocks coming late, failing and coming back, Undo, a leg too long to ask for them (mocked), the hidden map\'s last tile failing (#129, #80, #490, #400), a new leg offline with the real service worker (#1195), and Paddle\'s map: a leg over water stands out from the sea, no hint about trails (#611, #613)'),
+    ('water', [water, water_depths, water_mml, water_rapids, water_late, water_back, water_retry, water_long, water_hidden, water_offline, paddle_map, best_time_water], 'the paddling router\'s costs (recorded fairways, a fixed wind), lake depths from a recorded tile (#1184), MML\'s stones and rapids from recorded tiles (#153), OSM\'s rocks coming late, failing and coming back, Undo, a retry offline and one during routing, a leg too long to ask for them (mocked), the hidden map\'s last tile failing (#129, #80, #490, #400), a new leg offline with the real service worker (#1195), and Paddle\'s map: a leg over water stands out from the sea, no hint about trails (#611, #613)'),
     ('multi', [multi], 'multisport: a sport per leg, changeovers, share links, Reorder (straight legs)'),
     ('editing', [editing], 'midpoint handle and line drags: one via point, Undo/Redo, mouse and touch in four sports'),
     ('routemenu', [route_menu, quick_taps], 'clicks and taps on the route (straight legs), LIPAS over trails, and quick taps on a busy page (#293)'),
@@ -25608,7 +26337,7 @@ GROUPS = [
     ('pointcard', [point_card, point_card_actions], 'a point\'s card (25d): a tap, a hold and a right-click open the same card, when you\'re there and the profile up to it, with its actions, in the peek or at the point, its numbers, Make it a stop, Stay the night, Change sport from here, Move by a tap, Rename, Remove and Undo, Back and the back gesture, the route\'s view, 200 % and Finnish (straight legs)'),
     ('routecard', [route_card, near_line, route_card_actions], 'the route\'s card and a stretch\'s (25d 1b): a tap on the route, a tap just beside it while drawing (#725), Add a waypoint here at the spot, This stretch, What\'s here, Edit this stretch, On the profile, Avoid this spot, the whole route, the start\'s Back to start, End not Finish (straight legs, mocked BRouter)'),
     ('pickcard', [pick_card, pick_card_settings], 'a pick (#574): road works on the same card with their years (#564, #565), a phone\'s tap opening the card at its peek, the hover; a way\'s pieces joined into one thing from a recorded tile, the S5 path\'s grade and incline in Gravel (#561), nothing "not mapped" that wasn\'t loaded (#562), a street in many pieces, Way type on a trail across kinds (the legend\'s lengths add up; recorded ways, set terrain and weather)'),
-    ('spotcard', [spot_card, spot_card_foot, spot_card_actions], 'hold the map to see what\'s there (25d part 5): a finger held 0.5 s or a right-click, the ring, a tap, a move and two fingers, a busy page (#293), the spot\'s and a place\'s cards, Add to my route where it fits or on the line, Start here and End here, the line\'s hold and right-click, the route\'s view, the planner put away (straight legs, mocked BRouter)'),
+    ('spotcard', [spot_card, spot_card_foot, spot_card_actions, spot_card_names], 'hold the map to see what\'s there (25d part 5): a finger held 0.5 s or a right-click, the ring, a tap, a move and two fingers, a busy page (#293), the spot\'s and a place\'s cards, Add to my route where it fits or on the line, Start here and End here, the line\'s hold and right-click, the route\'s view, the planner put away (straight legs, mocked BRouter)'),
     ('crosshair', [crosshair], 'the keyboard\'s crosshair (25d part 5b): Tab to the map, the keys listed, Enter as a tap (a point, the route\'s card), Shift+F10 and the menu key as a hold, Escape and the focus, the crosshair gone with the focus, never by touch (straight legs)'),
     ('facts', [facts], 'facts on the card (#574, What\'s here\'s levels before): the same facts in every sport, All OpenStreetMap details and Copy (a failure, a late answer), Not right?, a toilet\'s and an obstacle\'s facts, a LIPAS place\'s, a late height, a path\'s card with the planner put away, a ship\'s own card (recorded ways, Overpass answered here)'),
     ('sharespot', [share_spot], 'Share a spot and Weather here (25d part 6b): the share sheet and the copied link, the link\'s pin and card with a route as it was, a bad pin, an old route link, the timeline held at the spot and released, no request with the spot'),

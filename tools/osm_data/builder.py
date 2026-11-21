@@ -131,7 +131,8 @@ def products(kind, tags):
     if kind == 'node':
         trail = (tags.get('barrier') in BARRIERS or 'obstacle' in tags or
                  'ford' in tags and tags['ford'] != 'no')
-        hazard = tags.get('seamark:type') in {'rock', 'obstruction', 'wreck'} or tags.get('natural') in {'rock', 'reef', 'shoal'}
+        hazard = (tags.get('seamark:type') in {'rock', 'obstruction', 'wreck'} or tags.get('natural') in {'rock', 'reef', 'shoal'} or
+                  tags.get('waterway') == 'rapids')
     else:
         trail = (h in {'path', 'bridleway', 'steps', 'track'} or
                  h in {'footway', 'cycleway'} and
@@ -139,7 +140,8 @@ def products(kind, tags):
                   any(tags.get(k) for k in ['obstacle', 'ford', 'mtb:scale:uphill']) or
                   tags.get('surface') == 'mud') or
                  tags.get('barrier') in {'fence', 'wall', 'hedge', 'city_wall'})
-        hazard = tags.get('natural') in {'reef', 'shoal'} or tags.get('seamark:type') in {'rock', 'obstruction'}
+        hazard = (tags.get('natural') in {'reef', 'shoal'} or tags.get('seamark:type') in {'rock', 'obstruction'} or
+                  tags.get('waterway') == 'rapids')
         if ('mtb:winter' in tags or any(tags.get(k) for k in ['snowplowing', 'winter_service', 'bicycle:winter', 'foot:winter']) or
                 tags.get('seasonal') == 'winter' or tags.get('piste:type') == 'nordic'):
             result.append('winter')

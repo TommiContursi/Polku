@@ -7,7 +7,7 @@
 
 import { DIFF_COLORS, MTB_COLORS, MTB_SCALE_TEXT, mtbClass, UPHILL_TEXT, LIPAS_TYPES } from './config.js';
 import { WINTER_TEXT } from './winter.js';
-import { inspectLayers, pickFeature, hitBox, featuresAt, winterAt, WAY_NAMES, MARK_TYPE, SECTOR_NAME, mmlTerrain } from './inspect.js';
+import { inspectLayers, pickFeature, pickAt, hitBox, featuresAt, winterAt, WAY_NAMES, MARK_TYPE, SECTOR_NAME, mmlTerrain } from './inspect.js';
 import { NAV_TEXT } from './nautical.js';
 import { aadtColor, fmtAadt } from './safety.js';
 import { gradeHere } from './uphill.js';
@@ -41,7 +41,6 @@ export function initHover(map, app) {
   let route = false; // showing the planner's route readout
   let current = null; // what the tooltip shows
 
-  const plots = () => !app.plotHover || app.plotHover(); // Property boundaries' Plot under the pointer (#1148)
   let glowing = false; // a leg of your route glows brighter because the pointer rests on it
   let drawn = false; // the way under the pointer drawn on the map (#574)
   const hide = () => {
@@ -70,7 +69,7 @@ export function initHover(map, app) {
     if (enrich) detailTimer = 0; else timer = 0;
     if (!at || !app.enabled() || map.isMoving() || map.getContainer().querySelector('.polku-popup')) return;
     const planning = app.isPlanning();
-    const layers = inspectLayers(map).filter((id) => id !== 'water' && !id.endsWith('-halo') && !id.startsWith('road-tunnel') && (id !== 'property-plot' || plots()));
+    const layers = inspectLayers(map).filter((id) => id !== 'water' && !id.endsWith('-halo') && !id.startsWith('road-tunnel'));
     if (planning) layers.push(...['route-casing', 'nogo-fill', ...ALT_LAYERS].filter((id) => map.getLayer(id)));
     const [x, y] = at;
     const feats = featuresAt(map, { x, y }, [[x - RADIUS, y - RADIUS], [x + RADIUS, y + RADIUS]], layers);
@@ -88,7 +87,7 @@ export function initHover(map, app) {
       const ng = feats.find((f) => f.layer.id === 'nogo-fill');
       if (ng) d = { title: ng.properties.label || 'Avoided place', bits: ['Routes go around it · click to change'] };
     }
-    if (!d) { const f = pickFeature(feats); d = f && describe(f, feats, { ll: map.unproject(at).toArray(), mtb: app.difficulty ? app.difficulty() : app.activity() === 'mtb', bike: app.bike ? app.bike() : false, planning, terrain: enrich }); }
+    if (!d) { const f = pickAt(map, at, feats); d = f && describe(f, feats, { ll: map.unproject(at).toArray(), mtb: app.difficulty ? app.difficulty() : app.activity() === 'mtb', bike: app.bike ? app.bike() : false, planning, terrain: enrich }); }
     if (!d) { hide(); return; }
     // a way: as its pick says it, from OpenStreetMap's own ways once its tile is in, with what only the map draws after
     // it (the uphill grade, access, a bridge, the trail details, winter), and the way drawn under the pointer (#574)
@@ -129,7 +128,7 @@ export function initHover(map, app) {
     if (!at || app.isDrawing()) { pointer = false; light(null); return; }
     // what a click picks first is what's lit: your route's line, an alternative route (#1029) and a place's icon win over
     // a LIPAS route (inspect.js)
-    const layers = [...inspectLayers(map).filter((id) => id !== 'property-plot' || plots()), ...['route-casing', 'heads-icon', 'heads-on-icon', ...ALT_LAYERS].filter((id) => map.getLayer(id))];
+    const layers = [...inspectLayers(map), ...['route-casing', 'heads-icon', 'heads-on-icon', ...ALT_LAYERS].filter((id) => map.getLayer(id))];
     const feats = featuresAt(map, { x: at[0], y: at[1] }, hitBox({ x: at[0], y: at[1] }, false), layers);
     const hit = feats.some((f) => f.layer.id !== 'route-casing' || f.properties.kind !== 'gap');
     pointer = hit; canvas.style.cursor = hit ? 'pointer' : '';
@@ -221,6 +220,7 @@ export function describe(f, feats, ctx) {
   }
   if (id === 'military-fill') return { title: 'Military area', bits: ['May be closed or have live firing'] };
   if (id === 'property-plot') return { title: `Property ${p.kiinteistotunnuksenEsitysmuoto}`, bits: ['National Land Survey'] };
+  if (id.startsWith('pier')) return { title: 'Pier', bits: [] };
   if (id.startsWith('mml-')) { const t = mmlTerrain(f); return { title: t.title, bits: [t.line, t.survey && `Survey class: ${t.survey.toLowerCase()}`].filter(Boolean) }; }
   if (id === 'lipas-point') return { title: p.name || p.typeName || 'Place', bits: [e(p.typeName || ''), e(p.city || '')].filter(Boolean) };
   if (id === 'lipas-route') {

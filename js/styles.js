@@ -223,12 +223,12 @@ export const STYLES = {
         ['avoid', 'Avoid', {}, {}, { water: { carry: 70 } }],
         ['never', 'Never', {}, {}, { water: { carry: 400 } }],
       ]),
-      // phase 13 (js/waterdata.js): Väylävirasto fairways and marks, OSM rocks and shoals, the forecast wind
+      // phase 13 (js/waterdata.js): Väylävirasto fairways and marks, OSM rocks and shoals, MML's stones and shoals (#153), the forecast wind
       control('f', 'Fairways', 'Shipping lanes are crossed straight and quickly, not followed: ships can’t stop or turn for you. Small-boat routes are fine either way. (Väylävirasto)', [
         ['cross', 'Cross straight', {}],
         ['ignore', 'Ignore', {}, {}, { water: { fairways: 'ignore' } }],
       ]),
-      control('k', 'Rocks & shoals', 'Keeps clear of marked dangers: isolated-danger and cardinal marks (Väylävirasto) and the rocks, reefs and shoals in OpenStreetMap. Keeps off water Syke surveyed under 0.5 m deep, in the lakes it surveyed; elsewhere Polku doesn’t know the depth, so keep a lookout.', [
+      control('k', 'Rocks & shoals', 'Keeps clear of marked dangers: isolated-danger and cardinal marks (Väylävirasto), stones, stone fields and shoals on the National Land Survey’s map in Finland, and the rocks, reefs and shoals in OpenStreetMap. Keeps off water Syke surveyed under 0.5 m deep, in the lakes it surveyed; elsewhere Polku doesn’t know the depth, so keep a lookout.', [
         ['clear', 'Keep clear', {}],
         ['ignore', 'Ignore', {}, {}, { water: { hazards: 'ignore' } }],
       ]),
@@ -255,7 +255,7 @@ export const STYLES = {
         ['avoid', 'Avoid', {}, {}, { water: { fairways: 'avoid' } }],
         ['cross', 'Cross straight', {}],
       ]),
-      control('k', 'Rocks & shoals', 'Keeps clear of marked dangers (Väylävirasto marks, OpenStreetMap rocks and reefs).', [
+      control('k', 'Rocks & shoals', 'Keeps clear of marked dangers (Väylävirasto marks, the National Land Survey’s stones and shoals, OpenStreetMap rocks and reefs).', [
         ['clear', 'Keep clear', {}],
         ['ignore', 'Ignore', {}, {}, { water: { hazards: 'ignore' } }],
       ]),

@@ -10,7 +10,7 @@ import { detailsAlong, forgetFailures as forgetTrailFailures, obstacleText } fro
 import { iconUrl, warnMarkId } from './icons.js';
 import { speedsFor, speedSummary, renderSpeedEditor, pace, pace100 } from './speeds.js';
 import { ProfileChart, COLOR_MODES, COLOR_GROUPS, PICK_MODES, colorAt, routeReadout, breakdownKey, breakdownRows, sampleRows, skyIcon, noTerrain, downClass } from './chart.js';
-import { dist, encodePolyline, decodePolyline, fmtDist, fmtDuration, compass, bbox, nearestOnLine, simplify, lineLength, pointSegment, bearing, inFinland, finlandInView } from './geo.js';
+import { dist, encodePolyline, decodePolyline, onEarth, fmtDist, fmtDuration, compass, bbox, nearestOnLine, simplify, lineLength, pointSegment, bearing, inFinland, finlandInView, lerp } from './geo.js';
 import { lipasPlace, stitch, clipAlong } from './lipas.js';
 import { onWaterData, prefetchWater, forgetWaterFailures } from './waterdata.js';
 import { sunTimes, darkness, nightAt, sunPosition } from './sun.js';
@@ -264,7 +264,9 @@ export class Planner {
     map.on('zoom', () => this.fitGhosts());
     map.on('zoomend', () => this.drawHeads()); // (Check's markers kept clear of the points and the legs' handles)
     // a source the water router waited for in vain has answered: route those legs again
-    onWaterData(() => this.retryWater({ ask: false }));
+    // (offline, a source's retry would only fail again: it's asked once the connection is back, #153)
+    onWaterData(() => { if (navigator.onLine) this.retryWater({ ask: false }); });
+    addEventListener('online', () => this.retryWater());
     // back online: the terrain that didn't load, now
     addEventListener('online', () => { if (this.analysis && this.analysis.terrain && this.analysis.terrain.retry) this.retryTerrain(this.analysis, 0, true); });
     // names of roads come with the tiles: when new ones arrive, the list may know more
@@ -1365,6 +1367,7 @@ export class Planner {
     previous?.abort();
     await work;
     if (gen !== this.gen) return;
+    if (this.waterAgain) { this.waterAgain = false; this.retryWater({ ask: false }); if (gen !== this.gen) return; }
     this.setBusy(false);
     if (this.refit && this.legs.every((l) => l.result && l.status !== 'waiting')) { this.refit = false; this.fitRoute(); }
     if (this.snapPoints()) { this.renderMarkers(); this.drawRoute(); }
@@ -1860,7 +1863,7 @@ export class Planner {
         // on the water: carrying, and what the water router noted (shipping lanes, rough water, rocks)
         const n = (k) => r.events.filter((e) => e.kind === k).length;
         what = r.carry > 30 ? `carry ${fmtDist(r.carry)}` : 'no carries';
-        notes = [n('ship') ? `${n('ship')} shipping lane${n('ship') > 1 ? 's' : ''}` : '', n('rough') ? 'rough water' : '', n('hazard') ? 'near rocks' : '', n('shallow') ? 'shallow water' : '', n('harbour') ? 'a harbour' : ''].filter(Boolean);
+        notes = [n('ship') ? `${n('ship')} shipping lane${n('ship') > 1 ? 's' : ''}` : '', n('rough') ? 'rough water' : '', n('hazard') ? 'near rocks' : '', n('rapids') ? 'rapids' : '', n('shallow') ? 'shallow water' : '', n('harbour') ? 'a harbour' : ''].filter(Boolean);
         notes = [r.o.outBack ? 'out and back' : '', notes.length ? notes.join(' · ') : 'nothing to note on the water', r.twice > 0.05 ? `${Math.round(r.twice * 100)} % paddled twice` : ''];
       } else {
         const trails = a.ways.filter(([k]) => k === 'path' || k === 'track').reduce((m, [, d]) => m + d, 0);
@@ -2074,6 +2077,8 @@ export class Planner {
     let n = 0;
     for (const l of this.legs) if (l.mode === 'water' && l.result && l.result.water && l.result.water.missing.length) { l.key = null; n++; }
     if (n) this.routeAll();
+    // a leg on the water still being routed may yet go without what answered: once routed, again (#905)
+    else if (this.legs.some((l) => l.mode === 'water' && !l.result)) this.waterAgain = true;
   }
 
   mergedLine() {
@@ -2333,7 +2338,7 @@ export class Planner {
   waterWarnings() {
     const out = [];
     // (shipping lanes are Väylävirasto's fairway areas; harbours and rocks OpenStreetMap's too)
-    const MAP = { kind: 'map', by: 'Väylävirasto and OpenStreetMap' }, LANES = { kind: 'map', by: 'Väylävirasto' }, WAVES = { kind: 'estimate', by: 'the waves, from the forecast' }, SYKE = { kind: 'map', by: 'Syke’s lake soundings' };
+    const MAP = { kind: 'map', by: 'Väylävirasto and OpenStreetMap' }, ROCKS = { kind: 'map', by: 'Väylävirasto, the National Land Survey and OpenStreetMap' }, RAPIDS = { kind: 'map', by: 'the National Land Survey and OpenStreetMap' }, LANES = { kind: 'map', by: 'Väylävirasto' }, WAVES = { kind: 'estimate', by: 'the waves, from the forecast' }, SYKE = { kind: 'map', by: 'Syke’s lake soundings' };
     this.legs.forEach((leg, i) => {
       const wr = leg.mode === 'water' && leg.status === 'ok' && leg.result && leg.result.water;
       if (!wr) return;
@@ -2345,7 +2350,9 @@ export class Planner {
             ? { at, len, kind: 'water', hide: 'Shipping lanes', noAvoid: true, text: `Along a shipping lane for ${fmtDist(len)}`, note: `${e.name ? `${e.name} · ` : ''}no way round it here: keep to its edge, ships can’t stop or turn`, tier: 'read', src: LANES }
             : { at, len, kind: 'water', hide: 'Shipping lanes', noAvoid: true, text: `Crosses ${e.name ? `the ${e.name}` : 'a shipping lane'}`, note: 'cross quickly and straight, after looking both ways: ships can’t stop or turn', tier: 'read', src: LANES });
         } else if (e.kind === 'harbour') out.push({ at, len, kind: 'water', hide: 'Harbour basins', noAvoid: true, text: 'Through a harbour basin', note: 'boats coming and going', tier: 'look', src: MAP });
-        else if (e.kind === 'hazard') out.push({ at, len, kind: 'water', hide: 'Rocks and shoals', text: 'Close to a marked rock or shoal', note: 'the only way here passes near a danger mark or a rock in OpenStreetMap', tier: 'look', src: MAP });
+        else if (e.kind === 'hazard') out.push({ at, len, kind: 'water', hide: 'Rocks and shoals', text: 'Close to a marked rock or shoal', note: 'the only way here passes near a danger mark, or a rock, stone or shoal on the map', tier: 'look', src: ROCKS });
+        // rapids (#153): the route goes through them, as a river route does; Avoid it carries round them
+        else if (e.kind === 'rapids') out.push({ at, len, kind: 'water', hide: 'Rapids', avoidAlong: true, text: `Rapids for ${fmtDist(len)}`, note: 'how hard they are isn’t known: look at them from the shore first, and carry round if unsure', tier: 'read', src: RAPIDS });
         else if (e.kind === 'shallow') out.push({ at, len, kind: 'water', hide: 'Shallow water', text: 'Shallow water, under 0.5 m when surveyed', note: 'Syke’s lake soundings, at the lake’s survey level: the water may be lower now, and stones can lie nearer the surface between the soundings', tier: 'look', src: SYKE });
         else if (e.kind === 'rough') {
           // for the departure the timeline shows (moving it routes the leg again) [jc-paddle-step]
@@ -4113,18 +4120,19 @@ export class Planner {
     const ll = Array.isArray(lngLat) ? lngLat : [+lngLat.lng.toFixed(6), +lngLat.lat.toFixed(6)], p = pt || this.map.project(ll);
     place = place || this.placeAt(p, touch);
     if (place) { this.openPlaceCard(place, ll, { from, pin }); return; }
-    // (MML's terrain is named by a tap: a hold's card stays the spot's, whose words OpenStreetMap's answer replaces, #1175)
-    const feats = this.map.queryRenderedFeatures(hitBox(p, touch), { layers: inspectLayers(this.map).filter((id) => !id.startsWith('mml-')) });
+    // (MML's terrain and a pier are named by a tap: a hold's card stays the spot's, whose words OpenStreetMap's answer replaces, #1175)
+    const feats = this.map.queryRenderedFeatures(hitBox(p, touch), { layers: inspectLayers(this.map).filter((id) => !/^(mml-|pier)/.test(id)) });
     const route = feats.find((x) => x.layer.id === 'lipas-route');
     const f = pickFeature(feats), way = feats.find((x) => /^(path|track|cycleway|road)-/.test(x.layer.id)), bike = groupOf(this.app.activity()) === 'bike';
     const d = f && describe(f, feats, { ll, bike, mtb: this.app.activity() === 'mtb' });
-    const text = (html) => { const e = document.createElement('span'); e.innerHTML = html; return e.textContent; };
+    // the hover's bits are HTML, its title text (hover.js): a bit's words, read in a document of its own, which loads and runs nothing (#1247)
+    const text = (html) => new DOMParser().parseFromString(html, 'text/html').body.textContent;
     // (the water or a park the map draws there: what OpenStreetMap says it is, where no way is in reach; the line waits for the ways)
     const area = areaUnder(this.map, p);
     // (the tile joins ways of one kind into one feature: the line of them nearest the tap, drawn while the ways come)
     const lines = feats.filter((x) => /^(path|track|cycleway|road)-/.test(x.layer.id)).flatMap((x) => (x.geometry.type === 'LineString' ? [x.geometry.coordinates] : x.geometry.type === 'MultiLineString' ? x.geometry.coordinates : []));
     const near = lines.map((c) => [nearestOnLine(ll, c).d, c]).sort((a, b) => a[0] - b[0])[0];
-    const card = spotCard(this, { ll, pin, geom: near && { type: 'LineString', coordinates: near[1] }, title: d ? text(d.title) : area === 'water' ? 'Water' : name || 'This spot', line: d ? d.bits.filter((b) => !b.startsWith('<i class="dot"')).map(text).join(', ') : '',
+    const card = spotCard(this, { ll, pin, geom: near && { type: 'LineString', coordinates: near[1] }, title: d ? d.title : area === 'water' ? 'Water' : name || 'This spot', line: d ? d.bits.filter((b) => !b.startsWith('<i class="dot"')).map(text).join(', ') : '',
       tags: way ? tileTags(way.properties) : {}, way: !!way, osm: way && way.properties.osm ? { type: 'way', id: way.properties.osm } : way ? { type: 'way', id: null } : null,
       partOf: route && route.properties.name ? { props: route.properties, ll } : null, touch, area });
     this.openCard(card, ll, from);
@@ -4451,8 +4459,9 @@ export class Planner {
       if (k && r.tags) {
         const c = decodePolyline(k.line);
         c[0] = r.points[i]; c[c.length - 1] = r.points[i + 1]; // exact ends, so the leg's key still matches
-        // a leg on the water routed before the router used lake depths (#1184: no `checked.depths`) is routed again online
-        const old = k.water && !('depths' in (k.water.checked || {})) && navigator.onLine;
+        // a leg on the water routed before the router used lake depths (#1184) or MML's stones and the rapids (#153) is
+        // routed again online
+        const old = k.water && !['depths', 'rapids'].every((c) => c in (k.water.checked || {})) && navigator.onLine;
         return { mode: r.modes[i], key: old ? null : k.key, status: 'ok', result: { coords: c, tags: k.tags.map((t) => r.tags[t] || {}), portage: k.portage || [], provider: k.provider, water: k.water } };
       }
       return { mode: r.modes[i] === 'fixed' ? 'auto' : r.modes[i] || 'auto' };
@@ -7051,7 +7060,18 @@ export class Planner {
     const source = (what, k, name) => row(what, !asked(k) ? 'not used for this route' : missing(name) ? `${name} didn’t answer` : skipped(name) ? 'not checked: a leg too long to ask for' : name,
       !asked(k) ? 'na' : missing(name) || skipped(name) ? 'bad' : 'ok');
     if (water) {
-      source('Rocks and shoals', 'hazards', 'OpenStreetMap');
+      // OSM's rocks and rapids, and MML's where its map covers the route's water (#153: Finland's). OSM's are the source
+      // beyond MML's map, so a route across a border is checked the whole way (#153's Decided list)
+      const mm = wr.filter((w) => w.mml), wetM = mm.reduce((t, w) => t + w.mml.water, 0), gotM = mm.reduce((t, w) => t + w.mml.covered, 0);
+      const lost = ['OpenStreetMap', 'the National Land Survey'].find((m) => missing(m) || skipped(m));
+      for (const [what, k] of [['Rocks and shoals', 'hazards'], ['Rapids', 'rapids']]) {
+        if (!asked(k)) row(what, 'not used for this route', 'na');
+        else if (lost) row(what, missing(lost) ? `${lost} didn’t answer` : `${lost}: not checked, a leg too long to ask for`, 'bad');
+        // (25 m for the shores' edge cells, at most half the water, as the lake depths)
+        else if (wetM > 0 && gotM >= wetM - Math.min(25, wetM / 2)) row(what, 'the National Land Survey and OpenStreetMap', 'ok');
+        else if (gotM < 25) row(what, 'OpenStreetMap', 'ok'); // outside Finland
+        else row(what, `OpenStreetMap, and the National Land Survey for ${fmtDist(gotM)}`, 'ok');
+      }
       source('Fairways and marks', 'fairways', 'Väylävirasto');
     }
     // the forecast: the weather on the way, and on the water the wind for the waves
@@ -7397,8 +7417,17 @@ export class Planner {
       const [i0, i1] = this.itemSpan(w);
       const avoid = w.items ? w.items.map((p) => ({ ll: p.lngLat, r: 25, label: p.text }))
         : w.avoid ? [{ ...w.avoid, label: w.text }]
+          : w.avoidAlong ? []
           : w.noAvoid || /^(Straight line|Carry)/.test(w.text) || w.ranges === null ? null : [{ ll: a.pts[Math.round((i0 + i1) / 2)], r: Math.max(25, Math.min(150, (w.len || 50) / 2 + 15)), label: w.text }];
-      if (avoid) main = { label: avoid.length > 1 ? `Avoid all ${avoid.length}` : 'Avoid it', icon: 'avoid', fn: () => this.addNogos(avoid) };
+      // a rapid: places to avoid 40 m round every 40 m all along it, as wide as its zone, so the route carries round (#153)
+      if (w.avoidAlong) {
+        for (let d = w.at, k = Math.max(0, i0 - 1); ; d = Math.min(w.at + w.len, d + 40)) {
+          while (k < a.along.length - 2 && a.along[k + 1] < d) k++;
+          avoid.push({ ll: lerp(a.pts[k], a.pts[k + 1], Math.min(1, Math.max(0, (d - a.along[k]) / (a.along[k + 1] - a.along[k] || 1)))), r: 40, label: w.text });
+          if (d >= w.at + w.len) break;
+        }
+      }
+      if (avoid) main = { label: w.items && avoid.length > 1 ? `Avoid all ${avoid.length}` : 'Avoid it', icon: 'avoid', fn: () => this.addNogos(avoid) };
     }
     const kind = g === 'not' ? null : hideKind(w), more = [];
     if (kind) more.push({ icon: 'eyeOff', label: `Hide “${kind.label}” in Check`, line: 'Listed at the end of Check, to show again', fn: () => this.hideWarnKind(kind) });
@@ -8369,16 +8398,18 @@ function runsAlong(along, on) {
 const itemKey = ({ g, w }) => (g === 'not' ? `not|${w.key}|${w.by}` : `${g}|${w.text}|${Math.round(w.at)}`);
 // Not checked's what and why, for each of the water router's sources that didn't answer (waterdata.js)
 const WATER_LOST = {
-  OpenStreetMap: ['Rocks and shoals from OpenStreetMap didn’t answer', 'Routed without them: the line may pass close to a rock the map knows.'],
+  OpenStreetMap: ['Rocks, shoals and rapids from OpenStreetMap didn’t answer', 'Routed without them: the line may pass close to a rock the map knows, or through rapids without a warning.'],
   Väylävirasto: ['Fairways and marks from Väylävirasto didn’t answer', 'Routed without them: the line may cross a shipping lane or pass a danger mark without saying so.'],
   'the wind forecast': ['The wind forecast didn’t answer on the water', 'Routed without the wind: how rough the water gets isn’t known.'],
   Syke: ['Lake depths didn’t load', 'Routed without them: the line may cross shallow water Syke surveyed without saying so.'],
+  'the National Land Survey': ['Stones, shoals and rapids from the National Land Survey didn’t load', 'Routed without them: the line may pass close to a stone or a shoal on its map, or through rapids without a warning.'],
 };
 // ...and for each that wasn't asked, the leg being too long for it (#490)
 const WATER_LONG = {
-  OpenStreetMap: ['Rocks and shoals: not checked, the leg is too long', 'Routed without OpenStreetMap’s rocks and shoals: the line may pass close to one. Add a point to split the leg.'],
+  OpenStreetMap: ['Rocks, shoals and rapids: not checked, the leg is too long', 'Routed without OpenStreetMap’s rocks, shoals and rapids: the line may pass close to a rock, or through rapids without a warning. Add a point to split the leg.'],
   Väylävirasto: ['Fairways and marks: not checked, the leg is too long', 'Routed without Väylävirasto’s fairways and marks: the line may cross a shipping lane or pass a danger mark without saying so. Add a point to split the leg.'],
   Syke: ['Lake depths: not checked, the leg is too long', 'Routed without Syke’s lake depths: the line may cross shallow water without saying so. Add a point to split the leg.'],
+  'the National Land Survey': ['Stones, shoals and rapids: not checked, the leg is too long', 'Routed without the National Land Survey’s stones, shoals and rapids: the line may pass close to a stone, or through rapids without a warning. Add a point to split the leg.'],
 };
 
 // "2 h 13" or "54 min": a duration where there's little room
@@ -8435,7 +8466,7 @@ export function parseShared(params) {
   if (!r) return null;
   try {
     const points = decodePolyline(r);
-    if (points.length < 1) return null;
+    if (points.length < 1 || !points.every(onEarth)) return null; // (a point off the earth: no route, not a Polku that stops)
     const lipas = (params.get('lr') || '').split(',').map((x) => {
       const m = x.match(/^(\d+):(\d+)\.(\d+)\.([\w-]+)\.(\d+)\.(\d+)$/);
       return m && { i: +m[1], t: +m[2], id: +m[3], seq: m[4], a: +m[5], b: +m[6] };

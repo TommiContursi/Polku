@@ -4,7 +4,7 @@
 
 import {
   OFM_TILEJSON, OFM_SPRITE, OFM_GLYPHS, ESRI_IMAGERY, DEM_MAXZOOM, DEM_TILESIZE,
-  DIFF_COLORS, MTB_COLORS, MTB_GRADES, ROUTE_COLORS, RASTER_OVERLAYS, RASTER_RATIO, LIPAS_TYPES, mmlTiles, MML_KEY, MML_PROPERTY_TILES, MML_TERRAIN_TILES, FINLAND_BOUNDS, kapsiTiles, groupOf,
+  DIFF_COLORS, MTB_COLORS, MTB_GRADES, ROUTE_COLORS, RASTER_OVERLAYS, RASTER_RATIO, LIPAS_TYPES, mmlTiles, mmlApiKey, MML_PROPERTY_TILES, MML_TERRAIN_TILES, FINLAND_BOUNDS, kapsiTiles, groupOf,
   isWater, isLipasRoute, WARN_COLORS,
 } from './config.js';
 import { warnMarkId } from './icons.js';
@@ -106,7 +106,7 @@ export function buildStyle(s, ctx) {
   const topoBase = isTopo(s.base);
   const raised = s.terrain3d && s.raiseHills; // the hills raised in 3D, or 3D flat, only tilted
   // MML's tiles (#1147, #1148): your own key, or Polku's unscrambled (config.js)
-  const mmlKey = s.mmlKey || [...atob(MML_KEY)].map((c, i) => String.fromCharCode(c.charCodeAt(0) ^ 'polku'.charCodeAt(i % 5))).join('');
+  const mmlKey = mmlApiKey(s.mmlKey);
   const sources = {
     ofm: { type: 'vector', url: OFM_TILEJSON },
     // the same tiles again (from the HTTP cache), for the trail and track lines alone: with trail details on,
@@ -444,9 +444,9 @@ export function buildStyle(s, ctx) {
     const color = dark ? '#fdba74' : '#c2410c', op = s.overlayOpacity && s.overlayOpacity.propertyLines != null ? s.overlayOpacity.propertyLines : 0.9;
     sources['ov-propertyLines'] = { type: 'vector', tiles: [`${MML_PROPERTY_TILES}?api-key=${encodeURIComponent(mmlKey)}`], promoteId: { PalstanSijaintitiedot: 'id' }, minzoom: 14, maxzoom: 14, bounds: FINLAND_BOUNDS, attribution: '© Maanmittauslaitos, kiinteistörekisteri, CC BY 4.0' };
     // a plot under the pointer, or picked with its card open, tinted (#1148): by feature state, so its pieces in every tile;
-    // otherwise clear, there for a tap to find
+    // otherwise clear, there for a tap to find; with Property details off, not there at all (#1199)
     const plot = (k) => ['boolean', ['feature-state', k], false];
-    add({ id: 'property-plot', type: 'fill', source: 'ov-propertyLines', 'source-layer': 'PalstanSijaintitiedot', minzoom: 14, paint: { 'fill-color': color, 'fill-opacity': ['case', plot('lit'), 0.24, plot('hover'), 0.12, 0] } });
+    if (s.plotSelect) add({ id: 'property-plot', type: 'fill', source: 'ov-propertyLines', 'source-layer': 'PalstanSijaintitiedot', minzoom: 14, paint: { 'fill-color': color, 'fill-opacity': ['case', plot('lit'), 0.24, plot('hover'), 0.12, 0] } });
     add({ id: 'property-line', type: 'line', source: 'ov-propertyLines', 'source-layer': 'KiinteistorajanSijaintitiedot', minzoom: 14, paint: { 'line-color': color, 'line-width': zi(14, 0.8, 17, 1.6, 19, 2.5), 'line-opacity': op } });
     add({ id: 'property-id', type: 'symbol', source: 'ov-propertyLines', 'source-layer': 'KiinteistotunnuksenSijaintitiedot', minzoom: 16,
       layout: { 'text-field': ['get', 'kiinteistotunnuksenEsitysmuoto'], 'text-font': FONT, 'text-size': 11, 'text-optional': true },

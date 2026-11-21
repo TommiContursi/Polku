@@ -19,10 +19,10 @@ import { item } from './card.js';
 import { UphillLayer } from './uphill.js';
 import { TrailDetails, MIN_ZOOM as DETAILS_ZOOM } from './trails.js';
 import { LipasLayer, lipasPlace, rideOf } from './lipas.js';
-import { prefetchWater } from './waterdata.js';
+import { prefetchWater, useMmlKey } from './waterdata.js';
 import { initInspector } from './inspect.js';
 import { initHover, hoverCapable } from './hover.js';
-import { registerServiceWorker, initOfflineStatus, openSaveOffline, renderOfflineSection, saveOverview } from './offline.js';
+import { registerServiceWorker, initOfflineStatus, openSaveOffline, renderOfflineSection, saveOverview, savedOnly } from './offline.js';
 import { initSearch, recentSearches, clearRecentSearches } from './search.js';
 import { parseTrackFile } from './gpx.js';
 import { lineLength, bbox, fmtDist, compass as side, finlandInView, polygonInView, shipsInView, boxesMeet } from './geo.js';
@@ -80,7 +80,7 @@ const DEFAULTS = {
   quickTiles: {}, // the quick drawer's tiles you chose, per sport (#123); a sport you haven't edited has its own
   depthsBack: {}, // per sport: the depth layers the Depths tile brings back when it's turned on again
   litLook: 'lines', // how Lit ways looks: 'lines' or 'dark' (In the dark, #638)
-  plotHover: true, // Property boundaries: the plot under the mouse pointer tinted and named (#1148)
+  plotSelect: true, // Property boundaries: a plot tinted and named under the mouse pointer, and its card on a click or a tap (#1148, #1199)
 };
 const state = { ...DEFAULTS, ...store.get('settings', {}) };
 if (!ACTIVITIES[state.activity]) state.activity = 'mtb'; // a sport this version doesn't know
@@ -218,11 +218,11 @@ syncView3d();
 map.on('pitchend', syncView3d);
 // bottom left, beside the scale bar: the bottom-right corner belongs to the map controls
 map.addControl(new maplibregl.AttributionControl({ compact: true }), 'bottom-left');
-// Polku (its source) and its maker first, then the data credits MapLibre collects from the
+// Polku and its maker first, then the data credits MapLibre collects from the
 // sources. MapLibre sorts its own list by length and rewrites it, so this sits just before it.
 {
   const attrib = $('.maplibregl-ctrl-attrib');
-  attrib.insertBefore(h('span', { class: 'attrib-own', html: '<a href="https://github.com/TommiContursi/Polku" target="_blank" rel="noopener">Polku</a> © <a href="https://github.com/TommiContursi" target="_blank" rel="noopener">TommiContursi</a> | ' }), attrib.querySelector('.maplibregl-ctrl-attrib-inner'));
+  attrib.insertBefore(h('span', { class: 'attrib-own' }, 'Polku © Tommi Contursi | '), attrib.querySelector('.maplibregl-ctrl-attrib-inner'));
   // Where the credits don't fit on one line beside the map's buttons (a phone, a smaller window, #1002) they stay
   // folded behind their ⓘ until you open them: MapLibre opens them by itself when their text first comes in (often
   // after the map has loaded), and a window narrowed until they wrap folds them too
@@ -460,6 +460,7 @@ function setFewerEffects(on) {
 
 function applyStyle() {
   applyTheme(); // (the base map may have changed: Match the map)
+  useMmlKey(state.mmlKey); // (the water router reads MML's tiles with the map's key)
   const style = buildStyle(state, ctx);
   // the shadows' new hour given to their sources, not swapped in by the diff, which would drop the ones on screen
   for (const id of SHADOWS) {
@@ -630,7 +631,7 @@ const planner = new Planner(map, {
   saveOffline: () => {
     const p = planner.offlinePayload();
     if (!p) { toast('Plan a route first — the area along it is what gets saved'); return; }
-    openSaveOffline(p, { onSaved: () => renderSettingsPanel() });
+    openSaveOffline(p, { onSaved: () => renderSettingsPanel(), mml: { key: state.mmlKey, property: !!state.overlays.propertyLines } });
   },
   onActiveChange: (on) => {
     syncPlanButton(on);
@@ -702,7 +703,7 @@ const inspector = initInspector(map, {
   openCamera: (id, name) => cameras.open(id, name),
 });
 const hover = initHover(map, { wayUnder: (ll, loaded) => wayUnder(ll, map.getZoom(), loaded), hoverPick: (coords) => { dropFade(); planner.hoverPick(coords); },
-  enabled: () => state.hoverInfo && hoverCapable() && !planner.edit, isPlanning: () => planner.active, isDrawing: () => planner.drawing(), activity: () => state.activity, difficulty: showsDifficulty, bike: isBike, hoverLeg: routeHoverLeg, hoverRoute: routeHoverRoute, plotHover: () => state.plotHover, hoverPlot: (id) => lightPlot('hover', id), headAt: (point, touch) => planner.headAt(point, touch ? 18 : 10) });
+  enabled: () => state.hoverInfo && hoverCapable() && !planner.edit, isPlanning: () => planner.active, isDrawing: () => planner.drawing(), activity: () => state.activity, difficulty: showsDifficulty, bike: isBike, hoverLeg: routeHoverLeg, hoverRoute: routeHoverRoute, hoverPlot: (id) => lightPlot('hover', id), headAt: (point, touch) => planner.headAt(point, touch ? 18 : 10) });
 
 initSearch(map, $('#search-input'), $('#search-results'), {
   sportTypes: () => ACTIVITIES[state.activity].lipas.routes,
@@ -1491,8 +1492,14 @@ const overlayToggle = (id) => {
     if (v && id === 'sfShips' && map.getZoom() < 8) toast('Zoom in to level 8+ to see ships');
     if (v && id === 'lit' && map.getZoom() < LIT_MIN_ZOOM) toast(`Zoom in to level ${LIT_MIN_ZOOM}+ to see the lit ways`);
   }), words || note);
-  if (id === 'propertyLines' && state.overlays.propertyLines && hoverCapable()) return h('div', { class: 'tg-group' }, tg,
-    toggle('Plot under the pointer', state.plotHover, (v) => { state.plotHover = v; if (!v) lightPlot('hover', null); saveSettings(); }), opacityRow(id));
+  // (off, style.js draws no plots, so neither the pointer, a click, a tap nor a hold finds one, and a plot's open card closes:
+  // it couldn't be opened again, #1199)
+  if (id === 'propertyLines' && state.overlays.propertyLines) return h('div', { class: 'tg-group' }, tg,
+    toggle('Property details', state.plotSelect, (v) => {
+      state.plotSelect = v;
+      if (!v) { lightPlot('hover', null); if (plotLit.lit != null && planner.cards.current?.kind === 'thing') planner.cards.close(); }
+      applyStyle();
+    }), opacityRow(id));
   if (id !== 'lit' || !state.overlays.lit) return withOpacity(id, tg);
   return h('div', { class: 'tg-group' }, tg, seg(LIT_LOOKS, state.litLook, (v) => { state.litLook = v; applyStyle(); renderLayersPanel(); }), opacityRow(id));
 };
@@ -1793,14 +1800,21 @@ map.on('data', (e) => {
 });
 // MML's terrain (#1147) has no tile of its own: where its tiles don't load, OSM's wetlands, rock and cliffs show in their
 // place, and power lines, the water's marks and the lakes' depths (#1170) are missing, and a message says so once, until
-// one of its tiles comes again
+// one of its tiles comes again. Not while the map has only what's saved (#1176): the view reaches past a saved area's
+// corridor, and the offline message says what's missing there; Offline maps says what a saved area lacks.
 let mmlDown = false;
 map.on('error', (e) => {
-  if (e.sourceId !== 'mml' || mmlDown || (e.error && e.error.name === 'AbortError')) return;
+  if (e.sourceId !== 'mml' || mmlDown || savedOnly() || (e.error && e.error.name === 'AbortError')) return;
   mmlDown = true;
   toast('The National Land Survey’s terrain didn’t load: the map shows OpenStreetMap’s wetlands, rock and cliffs, without power lines, stones and rapids in the water, or lake depths.', { ms: 6000 });
 });
-map.on('data', (e) => { if (e.sourceId === 'mml' && e.dataType === 'source' && e.tile) mmlDown = false; });
+// (a tile a saved area keeps isn't MML coming back, #1176: the worker answers its saved copy when the network fails while
+// the device says it's online; saved under the tile's address without the key, js/offline.js)
+map.on('data', async (e) => {
+  if (e.sourceId !== 'mml' || e.dataType !== 'source' || !e.tile || !mmlDown) return;
+  const { z, x, y } = e.tile.tileID.canonical, url = map.getSource('mml').tiles[0].split('?')[0];
+  if (!(window.caches && await caches.match(url.replace('{z}', z).replace('{x}', x).replace('{y}', y)))) mmlDown = false;
+});
 onStatus(() => refreshQuickSoon());
 // LIPAS back after a pause: Marked routes lists the view again (A)
 onStatus((src, s) => { if (src === 'lipas' && (!s || s.retry)) planner.lipasBack(); });
