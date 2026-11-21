@@ -2,7 +2,7 @@
 
 <!-- impeccable:product-schema 1 -->
 
-What Polku is for and who it serves, for design work by people and coding agents. Written 2026-10-17 from the repo and the maker's answers; on 2026-10-18 the commitments to people were set apart from how Polku is built today, and the location principle became private by default, local first, not local only. On 2026-11-21 the purpose was sharpened: free, so that safety outdoors doesn't depend on income, and the code protected so that no one else can put Polku behind a paywall. How Polku works is in [docs/DEVELOPING.md](docs/DEVELOPING.md), what it does in [README.md](README.md) and [docs/USING.md](docs/USING.md), the rules for working on it in [AGENTS.md](AGENTS.md).
+What Polku is for and who it serves, for design work by people and coding agents. Written 2026-10-17 from the repo and the maker's answers; on 2026-10-18 the commitments to people were set apart from how Polku is built today, and the location principle became private by default, local first, not local only. On 2026-11-21 the purpose was sharpened: the essentials free, so that safety outdoors doesn't depend on income, and the code protected so that no one else can put Polku's features behind a paywall. How Polku works is in [docs/DEVELOPING.md](docs/DEVELOPING.md), what it does in [README.md](README.md) and [docs/USING.md](docs/USING.md), the rules for working on it in [AGENTS.md](AGENTS.md).
 
 ## Platform
 
@@ -28,7 +28,7 @@ The sports are how the planner draws and times a route: mountain biking, gravel 
 
 One outdoor app for exploring, planning, navigating and recording, in place of a set of separate ones (Trailmap, Strava, Komoot, Windy.app, Orca and the National Land Survey's maps). Someone finds places and trails, plans a route, understands its terrain, weather and hazards, follows it outdoors, records the trip and looks back at it, and each step feels like part of the same app, not a tool bolted on.
 
-**As complete, as good and as free as it can be** (2026-11-21). Moving outdoors, and above all staying safe there, shouldn't depend on what someone can pay. Other apps spread the useful features over several apps and paid subscriptions; Polku brings as many of them as it can into one free app.
+**As complete, useful and accessible as it can be** (2026-11-21). Moving outdoors, finding the way and above all staying safe shouldn't depend on income. Other apps spread the useful features over several apps and paid subscriptions; Polku brings as many of them as it can together, and its essentials stay free (the first commitment below).
 
 **Where it stands (2026-10-17):** exploring and planning are built, and on the trail the heading and Follow me (23a). On the way (23b), your track (23c) and alerts on the way (23d) are planned; see [docs/ROADMAP.md](docs/ROADMAP.md).
 
@@ -57,7 +57,7 @@ What Polku does that its neighbours don't do together:
 **What it does:** the full list is in [README.md](README.md); the controls in [docs/USING.md](docs/USING.md); what changed, and when, in [CHANGELOG.md](CHANGELOG.md).
 
 **Commitments that every design keeps** (the full rules are in [AGENTS.md](AGENTS.md)):
-- **Free, with no account needed.** If accounts ever come (to sync between devices, say), they're optional, and nothing that works without one starts needing one.
+- **The essentials stay free, with no account needed:** the map, route planning, navigation, offline use and safety information. Donations, sponsorship or optional paid services may come one day, but none of them puts an essential behind a payment; no business model is chosen yet (2026-11-21). If accounts ever come (to sync between devices, say), they're optional, and nothing that works without one starts needing one.
 - **Where you are, and where you've been, is yours:** private by default, local first, not local only.
   - Following you, On the way and recorded tracks work on your device. Nothing streams your position, sends it in the background or keeps a history of it anywhere else, unless you export, share or (one day) sync it.
   - A position goes out only for something you ask for that needs it, such as a route or a round trip from where you are: only as precise as that answer needs, once per request, and only to the service that answers. The control or its note says so in words, without a confirmation for every request.
@@ -79,7 +79,7 @@ What Polku does that its neighbours don't do together:
 
 **Polku's words:** Plan; the planner's tabs Route and Check, the trip's box and the weather card; Heads-up and Avoid; Other ways; Round trip; Route style and Your speed; Save offline and Preview offline; Follow me; On the way (planned); Layers and Settings; S0–S6 and ↑S0–↑S5 for difficulty.
 
-**Code licensing:** Polku's original code is proprietary, with all rights reserved; see [LICENSE](LICENSE). Third-party rights are preserved in [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md). The service is currently free; this source-code licence does not rule out future freemium or commercial use. Any future integration of copyleft code needs a compatibility check first (#279). The licence protects Polku's own work, so that no company can take its code as it is, make a product of it and put its features behind a paywall (2026-11-21). It claims no common idea: what other apps do, and how, is free to learn from, and Polku builds its own (AGENTS.md, "Learn from other apps").
+**Code licensing:** Polku's original code is proprietary, with all rights reserved; see [LICENSE](LICENSE). Third-party rights are preserved in [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md). The licence protects Polku's own work, so that no company can take its implementation, repackage it and put its features behind a paywall (2026-11-21). It covers Polku's original work only: not general ideas, established functionality, open geographic standards or third-party material. How agents learn from and reuse others' work is in AGENTS.md ("Learn from others, reuse what fits"). Any future integration of copyleft code needs a compatibility check first (#279).
 
 **Not decided yet:**
 - which countries come after Finland, and when (#176);
