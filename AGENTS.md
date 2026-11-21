@@ -56,7 +56,11 @@ November 2026").
 - **The user decides** what comes next: their latest choice, then the plan's
   order on `main`, however recent a Hand-over. Scope, order and any larger
   investigation are theirs too, and a review, an audit or a proposal decides
-  nothing until they choose it. When what comes next is unclear, ask.
+  nothing until they choose it. Each still ends in a recommendation of your
+  own: ranked by what people gain (safety, ease of use, offline use and
+  accessibility first), with what's already planned and its issue, what to
+  fold together and what isn't worth building, each with its reason. When
+  what comes next is unclear, ask.
 - **One home for a decision.** A choice made in chat, on a mock-up or in a PR
   goes into its issue's description (not a comment) the same day, as one
   dated line in a "Decided" list, before anything is built on it. A Hand-over links there
@@ -129,6 +133,20 @@ conversation again
   more than one way and the readings lead to different work, name them and
   ask, rather than picking one silently. When a simpler way would do, or the
   task as asked looks wrong, say so before building.
+- **Learn from others, reuse what fits.** Study competing products as part
+  of the work, with no one's OK needed, and adopt the conventions people
+  expect from maps and navigation rather than reinventing them. Actively
+  study GPL and other open-source projects for ideas, functionality,
+  architecture and proven approaches. Do not treat a project's licence as a
+  barrier to research or independent implementation. Ideas, functionality
+  and documented behaviour aren't protected; code, artwork and other
+  original expression are (Directive 2009/24/EC, art. 1(2) and 5(3); CJEU
+  C-406/10). Reuse libraries, components and code whose licence allows it
+  in Polku, with their notices in THIRD_PARTY_NOTICES.md (a new dependency
+  still takes the issue at the top). When reusing actual code or
+  integrating software, check licence compatibility and propose a
+  compliant approach. Raise only concrete licensing risks, with practical
+  alternatives.
 - **Evidence before fixes.** Observe the failure and test a falsifiable
   hypothesis before changing code. Fix the demonstrated cause, not the
   symptom, and check the failure before and after the fix.
@@ -231,11 +249,13 @@ conversation again
   (`python3 serve.py 8771`) and point the tests at it
   (`POLKU_URL=http://localhost:8771/ python3 tools/smoke.py`). Never stop
   another agent's server.
-- **One smoke run at a time on the machine,** across all sessions:
-  `tools/smoke.py` waits for the run that's going, says which one, and
-  starts when it ends, so start yours in the background with no wait loop
-  of your own. A commit from before #1241 doesn't take the lock: start
-  its run only when `pgrep -f '[t]ools/smoke.py'` shows none. Each commit
+- **Two smoke runs at a time on the machine** at most, across all
+  sessions (a trial, #1317): `tools/smoke.py` waits while two are going,
+  says which, and starts when one ends, so start yours in the background
+  with no wait loop of your own. A commit from before #1241 doesn't take
+  the lock: start its run only when `pgrep -f '[t]ools/smoke.py'` shows
+  none. A check that fails while another run is going is run again alone
+  before it's called the change's, and noted on #1317. Each commit
   runs in a frozen worktree that stays put while a run uses it, from its
   start, the wait included. Stop only the Chrome you started, by its
   process id. Before calling a failure the change's, run the same group on

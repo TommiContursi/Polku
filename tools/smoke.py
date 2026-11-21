@@ -11,8 +11,8 @@ raises fails and the rest still run. Needs the dev server (python3 serve.py) and
 Chrome. Draws a straight-line route (no routing requests). The forecast comes from
 Open-Meteo, cached for an hour. Exits 1 if anything fails.
 
-One run at a time on the machine, from any worktree: a run started while another holds
-~/.cache/polku-tools/smoke.lock says which run it waits for, and starts when that one ends.
+Two runs at a time on the machine, from any worktree (#1317): a run started while two others hold
+~/.cache/polku-tools/smoke.lock and smoke-2.lock says which runs it waits for, and starts when one ends.
 """
 import base64
 import fcntl
@@ -24,6 +24,7 @@ import sys
 import time
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import cdp  # noqa: E402
 from cdp import BASE, LOAD_STEP, Chrome  # noqa: E402
 
 # (width, height, phone, planner docked at the bottom on desktop)
@@ -1538,8 +1539,12 @@ def town_gate_marks(chrome):
       const lifts=drawn(['td-gates-all']).filter((f)=>f.properties.icon==='td-lift-unknown');
       if(lifts.length<3)errs.push(`${lifts.length} lift gates drawn at 17.5`);
       if(!m.hasImage('td-lift-unknown'))errs.push("the lift gate's mark wasn't made");
-      const {makeIcon}=await import('/js/icons.js'), closed=makeIcon('td-gate-closed'), plain=makeIcon('td-gate-unknown');
-      if(!closed||!plain||closed.width<=plain.width)errs.push("a closed mark has no room for its padlock");
+      const {makeIcon}=await import('/js/icons.js'), closed=makeIcon('td-gate-closed'), open=makeIcon('td-gate-open'), plain=makeIcon('td-gate-unknown');
+      // a closed mark's padlock and an open one's ✓ stand out of the disc, so neither is told by colour alone
+      // (white in the badge, above the padlock's shackle and the ✓'s end: 25, 20 of the 30 px canvas)
+      const corner=(img)=>{const s=img.width/30, i=(Math.round(20*s)*img.width+Math.round(25*s))*4; return img.data[i+3]>200&&img.data[i]>200&&img.data[i+1]>200&&img.data[i+2]>200;};
+      if(!closed||!open||!plain||closed.width<=plain.width||open.width<=plain.width)errs.push("a closed or open mark has no room for its badge");
+      else if(!corner(closed)||!corner(open))errs.push("no white badge in a closed or open mark's corner");
       // Access restrictions off: no barrier, the fallen tree still (Trail details')
       polku.set({overlays:{...polku.state.overlays,access:false}}); m.jumpTo({center:[25.7652,62.2289],zoom:17.5}); await settle();
       if(BARRIERS.some((id)=>m.getLayer(id)))errs.push('barriers drawn with Access restrictions off');
@@ -16224,15 +16229,28 @@ def runner(chrome):
     listed = [line.split()[0] for line in r.stdout.splitlines() if line.strip()]
     if r.returncode != 0 or listed[:-1] != [n for n, _, _ in GROUPS]:
         fails.append(f'--list exits {r.returncode} and lists {listed}')
-    # a second run waits for this one, before its Chrome starts (#1241); with no dev server at its address, one that didn't
-    # wait would stop at once rather than start a Chrome
+    # with both slots taken, a third run waits, before its Chrome starts (#1241, #1317). This check holds both, in a home
+    # of its own, so a run beside it that ends can't free one; with no dev server at its address, a run that didn't wait
+    # would stop at once rather than start a Chrome
+    import shutil
+    import tempfile
+    home = tempfile.mkdtemp(prefix='polku-slots-')
+    os.makedirs(os.path.join(home, '.cache', 'polku-tools'))
+    held = [open(os.path.join(home, '.cache', 'polku-tools', os.path.basename(p)), 'a+') for p in SLOTS]
+    for f in held:
+        fcntl.flock(f, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        f.write(f'pid {os.getpid()}, the runner')
+        f.flush()
     p = subprocess.Popen([sys.executable, me, 'changelog'], stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True,
-                         env={**os.environ, 'POLKU_URL': 'http://localhost:9/'})
+                         env={**os.environ, 'HOME': home, 'POLKU_URL': 'http://localhost:9/'})
     said = p.stdout.readline()
     p.kill()
     p.wait()
-    if f'Waiting for another smoke run to end (pid {os.getpid()}, ' not in said:
-        fails.append(f'a second run didn\'t wait for this one: it said {said.strip()[:160]!r}')
+    for f in held:
+        f.close()
+    shutil.rmtree(home)
+    if 'Waiting for one of the other two smoke runs to end (' not in said or said.count(f'pid {os.getpid()}, the runner') != 2:
+        fails.append(f'a third run didn\'t wait while two slots were taken: it said {said.strip()[:160]!r}')
 
     ran = []
 
@@ -16285,7 +16303,7 @@ def runner(chrome):
         [t.join() for t in ts]
     if refused:
         fails.append(f'{len(refused)} of 192 connections to the dev server failed in bursts of 64 ({", ".join(sorted(set(refused)))})')
-    print(f"{'ok  ' if not fails else 'FAIL'} the runner: unknown names, a second run waiting, a group that raises, a profile in use, the server under a burst" + ''.join(f'\n     - {f}' for f in fails), flush=True)
+    print(f"{'ok  ' if not fails else 'FAIL'} the runner: unknown names, a third run waiting while two go, a group that raises, a profile in use, the server under a burst" + ''.join(f'\n     - {f}' for f in fails), flush=True)
     return not fails
 
 
@@ -26831,13 +26849,41 @@ def license_text(chrome):
     return not fails
 
 
+def tdm_scope(chrome):
+    """Text and data mining is reserved for the whole site, in the header and in tdmrep.json, but for the OFL fonts and
+    the OpenStreetMap-derived outlines, whose licences forbid any added term; crawlers stay off share links (#115)."""
+    import urllib.request
+    reserved = ['', 'index.html', 'js/main.js', 'css/app.css', 'sw.js', 'LICENSE', 'js/vendor/pmtiles-4.5.0.js',
+                'profiles/polku-mtb.brf', 'img/base/trail.jpg', 'data/depths/573-286.json', 'THIRD_PARTY_NOTICES.md']
+    free = ['fonts/atkinson-hyperlegible-next.woff2', 'data/finland-coverage.geojson']
+    fails, built = [], False
+    for f in reserved + free:
+        with urllib.request.urlopen(BASE + f, timeout=10) as r:
+            built, got = built or bool(r.headers.get('X-Polku-Deploy')), r.headers.get_all('tdm-reservation') or []
+        if built and got != (['1'] if f in reserved else []):
+            fails.append(f'/{f} sends tdm-reservation {got or "none"}')
+    if built:
+        with urllib.request.urlopen(BASE + '.well-known/tdmrep.json', timeout=10) as r:
+            rules = json.load(r)
+        def first(path):  # TDMRep: the first rule whose pattern matches the path ('*' any run, '$' the end) decides
+            return next((x['tdm-reservation'] for x in rules
+                         if re.match(re.escape(x['location']).replace(r'\*', '.*').replace(r'\$', '$'), path)), None)
+        fails += [f'tdmrep.json gives /{f} {first("/" + f)}' for f in reserved + free if first('/' + f) != (f in reserved)]
+        with urllib.request.urlopen(BASE + 'robots.txt', timeout=10) as r:
+            if 'Disallow: /*?' not in r.read().decode():
+                fails.append('robots.txt lets crawlers open share links')
+    print(f"{'ok  ' if not fails else 'FAIL'} text and data mining reserved but for the OFL fonts and the ODbL outlines; crawlers off share links"
+          + ('' if built else ' (the checkout: nothing to check)') + ''.join(f'\n     - {f}' for f in fails), flush=True)
+    return not fails
+
+
 GROUPS = [
     ('hover', [hover_feedback], 'clickable map cursors and faster local tooltips without earlier OSM enrichment'),
     ('osmdata', [osm_data], 'static OSM: complete ways across tile boundaries, Range decoding, release cache and offline reuse'),
     ('radar', [radar], 'fixed FMI rain-rate units, palette order, dry/no-data and reflectivity fallback (recorded/mocked)'),
     ('weather', [weather_requests, timeline_reading, timeline_phone, timeline_mouse, timeline_open, weather_menu, towns_weather, weather_layers, clouds, thunder, no_radar, radar_past, weather_card, best_time, best_time_snow, strip_arrows, timeline_trip, timeline_zoom, trip_fold], 'forecast requests: cold zoom-out waits, cached and pending cells do not consume the budget (#298); the timeline\'s reading whole in its box on phones and a desktop, in a gale too (#243, #457); a note above it on a desktop (#343); the wind still with reduced motion (#925); the weather layers as buttons and ⋯ on a desktop, a phone and a narrow window with a mouse, nothing moving, the knob under the needle and the skeleton while the forecast comes (#869); the legend over the map, the rain\'s steps and Effects (#182); the towns\' weather at every zoom, a press pinning the reading there and naming the place (#916, #1028); the weather\'s layers in Layers and Settings, and the legend\'s fold; the clouds\' veil, the thunder, the hatch where no radar reaches and the radar\'s last 90 minutes (#182); the trip\'s box and the weather card: missing, late and partial forecasts in words, feels like known and not, the dark (#869); the timeline zoomed to your trip: the switch still, where you\'ll be, the weather card\'s hours and lanes to Your trip and back, ‹ › through the card\'s notes, missing and late forecasts, a day at a time, past 48 hours, a phone\'s room: the planner folded and the reading on one line (#869), a second lane folding it again (#1015), the weather card back where it was scrolled (#869), the turn of the hour (#1004); the timeline at 200 % on a phone between the top bar and the screen\'s foot (#590); Your trip\'s fold: 48 hours after a lane, Back and ✕ (#1015), left by an hour outside it and by Weather here (#1018), the planner yours after On the profile (#1017)'),
     ('changelog', [changelog], 'release notes, retry, safe rendering, keyboard, route preservation and real worker offline'),
-    ('site', [license_text], 'the built site: LICENSE sent as text, since every file\'s copyright line links to it (#115); against the checkout it checks nothing'),
+    ('site', [license_text, tdm_scope], 'the built site: LICENSE sent as text, since every file\'s copyright line links to it; text and data mining reserved but for the OFL fonts and the ODbL outlines, and crawlers off share links (#115); against the checkout it checks nothing'),
     ('pacing', [pacing, paced_legs, net_fails], 'calls made together go out paced and counted (mocked services, a fake clock); legs refused for a slot follow at it (#78); the calls that failed, in Data sources (#687)'),
     ('loading', [loading, routing_edits], 'cancel obsolete routing, edits/Undo/Clear, shared subscribers, refusal/recovery, deadlines, terrain slots and LIPAS viewport/cache (mocked)'),
     ('layers', [layers, layer_coverage, cycleway_style, cycling_restrictions, waterway_style, property_lines, property_plots, wetland_style, reedbed_style, mml_bogs, mml_rock, mml_water, mml_open, osm_cliffs, saddles, mml_structures, mml_cards, town_gates, town_bridges, town_oneway, town_parks, town_parking, town_shops, town_housenumbers, town_gate_marks], 'the Layers panel in every sport'),
@@ -26918,10 +26964,11 @@ GROUPS = [
     ('pastforecast', [pastforecast], 'past the forecast (25d, #465): the time without the wind past its last hour, the profile grey with No forecast yet, Not checked from where, the cold and the rain checked only within it, a section past it, paddling\'s key fact, the water router\'s wind from the 10-day forecast and none past it (Open-Meteo answered in the page)'),
     ('sheetstops', [sheet_stops, sheet_card_peek, sheet_profile_peek], 'the planner\'s sheet\'s stops (#233, 2026-10-30): a swipe from full, half or the line lands on the peek where it rests (#586) at 390 × 844, 360 × 740, 200 % and on a desktop\'s bottom dock by mouse; by touch, a light flick one stop each way, a release just under a flick\'s speed near the finger, the marks while dragging, the start\'s ways resisting; on a phone at half and full the sheet scrolling as one, a finger on the numbers scrolling it (#597), ⌄ over the docked toolbox (#598), the top row with the numbers and moving the sheet, Back to the list where it was, at 390 × 844 and 200 %; the desktop\'s side panel scrolling as one by mouse, its top row with the name and the numbers once they\'ve gone and its ⌄ folding it, its resize grip beside it, at its edge, still resizing it, and a card on the map leaving its scroll; ⌃ and ⌄ one size each by mouse in a narrow window and on the bottom dock, none by touch; a card\'s stops (#603), its peek the planner\'s at most, a finger on its body to half, the card whole while dragged, scrolling first at half, ↑ and ↓, a short card its own height alone, at 390 × 844 and 360 × 740; a card opened from a card, and Back, keeping half or full where it has that stop (#692); a scrolled card dragged from half keeping its content under the finger, scrolling back with the spring, and ↓ bringing its peek to its top, with motion and reduced motion'),
     ('fold', [fold], 'fold, then away (step 3 of #233): ⌄, the line and ✕, swipes and the handle\'s keys by touch at 390 × 844, a point\'s card folded, full and closed, what each card with no numbers says folded, no ⌄ and no line once there\'s nothing to fold (Clear route, Undo down to one point), the map\'s buttons moving once (#540); at 200 % resting at the line, the column clear of the top bar and the toolbox, the full sheet scrolling as one (#453, #344); desktops: the side panel and the bottom panel folded down, a card on the map folded keeping its bottom edge; a narrow window by mouse: the line, its handle and the open sheet\'s handle dragged, quickly too (#585)'),
-    ('runner', [runner], 'the runner itself: a name it doesn\'t know, a second run waiting for the first (#1241), a group that raises or stops Chrome, a Chrome profile in use (#262, #263, #254); the dev server answering a burst of connections (#409)'),
+    ('runner', [runner], 'the runner itself: a name it doesn\'t know, a third run waiting while two go (#1241, #1317), a group that raises or stops Chrome, a Chrome profile in use (#262, #263, #254); the dev server answering a burst of connections (#409)'),
 ]
 SIZES = list(dict.fromkeys(f'{w}x{h}' for w, h, _, _ in VIEWPORTS))
-LOCK = os.path.expanduser('~/.cache/polku-tools/smoke.lock')
+# two runs at a time (#1317): the first slot is #1241's lock, which older branches take too
+SLOTS = [os.path.expanduser('~/.cache/polku-tools/smoke.lock'), os.path.expanduser('~/.cache/polku-tools/smoke-2.lock')]
 
 
 def run(chrome, steps):
@@ -26977,17 +27024,31 @@ def main():
         sys.exit(2)
     steps = [(n if len(fns) == 1 else f'{n} ({fn.__name__})', fn, ()) for n, fns, _ in GROUPS if not args or n in args for fn in fns]
     steps += [(f'{w}x{h}', check, (w, h, phone, bottom)) for w, h, phone, bottom in VIEWPORTS if not args or f'{w}x{h}' in args]
-    # one run at a time on the machine (#1241): a second waits here, before its Chrome starts, and the kernel frees the
-    # lock when a run ends, a crash or a kill included
-    os.makedirs(os.path.dirname(LOCK), exist_ok=True)
-    lock = open(LOCK, 'a+')
-    try:
-        fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
-    except BlockingIOError:
-        lock.seek(0)
-        holder = lock.read().strip() or 'which one is unknown'
-        print(f'Waiting for another smoke run to end ({holder}): this one starts then.', flush=True)
-        fcntl.flock(lock, fcntl.LOCK_EX)
+    # two runs at a time on the machine (#1241, #1317): a third waits here, before its Chrome starts, and the kernel
+    # frees a slot when its run ends, a crash or a kill included
+    os.makedirs(os.path.dirname(SLOTS[0]), exist_ok=True)
+    locks, said = [open(p, 'a+') for p in SLOTS], False
+    while True:
+        for slot, f in enumerate(locks):
+            try:
+                fcntl.flock(f, fcntl.LOCK_EX | fcntl.LOCK_NB)
+                break
+            except BlockingIOError:
+                pass
+        else:  # both taken: say by which runs, once, and try again
+            if not said:
+                holders = []
+                for f in locks:
+                    f.seek(0)
+                    holders.append(f.read().strip() or 'which one is unknown')
+                print(f'Waiting for one of the other two smoke runs to end ({"; ".join(holders)}): this one starts then.', flush=True)
+                said = True
+            time.sleep(2)
+            continue
+        break
+    lock = locks[slot]
+    if slot:
+        cdp.PROFILE += f'-{slot + 1}'  # a profile of its own, so both runs keep their cached tiles
     lock.truncate(0)
     lock.write(f'pid {os.getpid()}, {" ".join(args) or "the whole suite"}, in {os.path.dirname(os.path.dirname(os.path.abspath(__file__)))}, since {time.strftime("%H:%M")}')
     lock.flush()

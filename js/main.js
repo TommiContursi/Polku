@@ -974,6 +974,7 @@ function configureLayers() {
   nautical.setEnabled(!!o.nautical);
   uphill.setEnabled(state.trailColors === 'up' || state.trailColors === 'both' || state.labelsUp);
   details.setEnabled(!!(state.trailDetails || o.access)); // the trail details' points are Access restrictions' gates too (#1232)
+  syncZoomHint();
 }
 
 // ------------------------------------------------------------------ activity pill
@@ -2386,11 +2387,11 @@ window.addEventListener('keydown', (e) => {
 });
 
 // The free vector tiles only carry the full trail network from zoom 14; the trail details, from 13 (#1128).
-const zoomHint = $('#zoom-hint');
-// (the trail details load for Access restrictions' gates too, #1232, but draw the trails only with Trail details on)
-const syncZoomHint = () => { const z = map.getZoom(); zoomHint.hidden = !(z >= 10.5 && z < 14) || (state.trailDetails && details.covers); };
+// The trail details load for Access restrictions' gates too (#1232), but draw the trails only with Trail details on, so
+// configureLayers() syncs the hint as well (a function, as it runs before this line)
+function syncZoomHint() { const z = map.getZoom(); $('#zoom-hint').hidden = !(z >= 10.5 && z < 14) || (state.trailDetails && details.covers); }
 map.on('zoomend', syncZoomHint);
-zoomHint.addEventListener('click', () => map.easeTo({ zoom: 14.2, duration: 600 }));
+$('#zoom-hint').addEventListener('click', () => map.easeTo({ zoom: 14.2, duration: 600 }));
 
 // The page itself never scrolls: focus() on a control can otherwise scroll the
 // document (it has overflow:hidden, not no-scroll) and shift the whole UI.
