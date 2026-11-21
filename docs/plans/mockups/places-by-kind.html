@@ -1,0 +1,409 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<title>Places by kind</title>
+<meta name="description" content="Mock-up for #121: places by kind in Layers, the quick drawer and search, beside today's Places on main.">
+<!--
+  #121, 2026-11-21. The plan: docs/plans/places-by-kind.md. Not wired to the app: nothing here is loaded by Polku.
+  Drawn with css/app.css's own classes, copied from the live app's markup on main at 7b2fe3be: the full Layers
+  panel (#layers-panel, panel-head, lg-group, lg-title, lg-count, tg, tg-text, tg-ui, lg-key, menu-h, btn small quiet,
+  bt), the quick drawer (qd, qd-head, qd-lab, qd-tiles, qt, qt-tog, qt-opt, qd-opts) and search (search,
+  #search-results, r-group, r-name, r-sub, seg small, chip, side-wrap). What's new is in the block marked "new".
+  The map behind is a screenshot of main at Nuuksio. The pictograms are sketches; the build draws them from the
+  standards the plan names.
+
+  ?view=layers|drawer|search  &v=a|b|main  &frame=390|200|1440  &sport=hike|mtb|road|paddle  &data=usual|worst
+  &q=empty|water|laavu  &route=none|drawn  &look=light|dark
+-->
+<link rel="stylesheet" href="../../../css/app.css">
+<style>
+/* ======================================================= the page (mock-up chrome, not the design) */
+:root { --page-bg: #dfe6e0; --page-fg: #1c2420; --page-cap: #33403a; --page-link: #1f6f4a; --switch-bg: #d4d8d5; --switch-on: #fff; --switch-fg: #2b322e; }
+:root[data-theme="dark"] { --page-bg: #101412; --page-fg: #e8ece9; --page-cap: #b7c2bb; --page-link: #56c48f; --switch-bg: #2a302c; --switch-on: #48514c; --switch-fg: #e8ece9; }
+* { box-sizing: border-box; }
+html:has(> body.mk), body.mk { height: auto; overflow: auto; overscroll-behavior: auto; touch-action: auto; } /* (app.css holds the app's page still; this page scrolls) */
+body.mk { margin: 0; padding: 20px 16px 60px; font: 14px/1.45 var(--face-text); color: var(--page-fg); background: var(--page-bg); -webkit-font-smoothing: antialiased; }
+.mk h1 { margin: 0 0 4px; font-size: 20px; letter-spacing: -0.01em; }
+.mk .lede { max-width: 72ch; margin: 0 0 14px; color: var(--page-cap); }
+.mk a { color: var(--page-link); text-underline-offset: 2px; }
+.mk-bar { display: flex; flex-wrap: wrap; gap: 8px 14px; align-items: center; margin: 0 0 16px; }
+.mk-sw { display: inline-flex; flex-wrap: wrap; gap: 2px; padding: 3px; border-radius: 10px; background: var(--switch-bg); }
+.mk-sw > b { align-self: center; padding: 0 8px 0 6px; font-size: 12px; font-weight: 600; color: var(--page-cap); }
+.mk-sw button { min-height: 32px; padding: 0 10px; border: 0; border-radius: 8px; background: none; color: var(--switch-fg); font: inherit; font-size: 13px; cursor: pointer; }
+.mk-sw button[aria-pressed="true"] { background: var(--switch-on); font-weight: 600; box-shadow: 0 1px 2px rgba(0,0,0,.15); }
+.mk-sw button:focus-visible { outline: 2px solid var(--page-link); outline-offset: 1px; }
+.mk-sw[hidden] { display: none; }
+.mk-main { display: flex; flex-wrap: wrap; gap: 24px; align-items: flex-start; }
+.mk-stage { flex: none; max-width: 100%; }
+.mk-notes { flex: 1 1 300px; max-width: 64ch; color: var(--page-cap); }
+.mk-notes h2 { margin: 0 0 6px; font-size: 15px; color: var(--page-fg); }
+.mk-notes ul { margin: 0 0 12px; padding-left: 18px; }
+.mk-notes li { margin: 3px 0; }
+.mk-notes code { font-size: 12.5px; }
+
+/* ---- a phone or a desktop, drawn at its size; the map a screenshot of main */
+.mk-frame { position: relative; overflow: hidden; border-radius: 28px; background: #e9eee4 center top / cover no-repeat; box-shadow: 0 0 0 1px rgba(0,0,0,.1), 0 8px 30px rgba(0,0,0,.25); transform: translateZ(0); color: var(--text); font-family: var(--face-text); }
+.mk-frame.desk { border-radius: 8px; }
+.mk-zoom { transform-origin: 0 0; }
+/* a phone frame: the app's phone rules (max-width: 720px) and touch sizes (pointer: coarse), which a desktop browser
+   wouldn't apply to a box */
+.mk-phone { --font-card: 1.375rem; --font-name: 1.1875rem; --font-heading: 1.0625rem; --font-number: 1.25rem; --font-unit: 0.875rem;
+  --font-row: 0.9375rem; --font-line: 0.8125rem; --font-field: 1rem; --size-s: 32px; --size-m: 40px; --target: 44px; --size-xl: 52px; --row-h: 50px; }
+.mk-phone #layers-panel { z-index: 12; left: 0; right: 0; top: 64px; bottom: 0; max-height: none; width: auto; border-radius: 20px 20px 0 0; box-shadow: 0 -6px 28px rgba(16, 24, 20, .2); }
+.mk-phone #layers-panel > .qd-grab, .mk-phone .qd-grab { display: block; }
+.mk-phone #layers-panel .panel-head { padding-top: 2px; }
+.mk-phone .qd { z-index: 12; left: 0; right: 0; bottom: 0; width: auto; max-height: calc(100% - 64px); padding: 4px 16px 16px; border-radius: 20px 20px 0 0; box-shadow: 0 -6px 28px rgba(16, 24, 20, .2), var(--edge); }
+.mk-phone .tg, .mk-phone .qd-opts .tg { min-height: 48px; }
+.mk-phone .topbar { gap: 8px; }
+.mk-frame.desk .panel { bottom: 12px; max-height: calc(100% - 88px); }
+.mk-frame.desk .qd { bottom: 76px; }
+.mk-frame .topbar { width: min(730px, calc(100% - 24px)); }
+.mk-frame .top-btn { flex: none; width: 40px; height: 40px; display: grid; place-items: center; border: 0; border-radius: 13px; color: var(--text); }
+.mk-frame #search-results { max-height: calc(var(--mk-h) - 90px); }
+.mk-frame #search-results[hidden] { display: none; }
+
+/* ======================================================= new (proposed; everything else is css/app.css's) */
+/* a kind's own mark before its name in a switch, as the map draws it (Map key's .lg-icon, at the row's size) */
+.pk-ic { flex: none; width: 24px; height: 24px; display: block; }
+.tg:has(.pk-ic) > .tg-text { flex-direction: row; align-items: center; gap: 10px; }
+.tg:has(.pk-ic) > .tg-text > span { min-width: 0; overflow-wrap: anywhere; hyphens: manual; display: flex; flex-direction: column; }
+/* A: the groups' headings inside Places, small headings as the ⋯ menu's */
+#layers-panel .lg-group > h3.menu-h { margin: 12px 0 0; }
+#layers-panel .lg-group > h3.menu-h:first-of-type { margin-top: 2px; }
+#layers-panel .lg-key .lg-item { display: flex; align-items: center; gap: 8px; padding: 2px 0; }
+.pk-reset { margin-top: 8px; }
+/* B: a group's switch with its kinds opening in place under it (a faint box, .bt) */
+.pk-g { display: flex; align-items: center; gap: 4px; }
+.pk-g > .tg { flex: 1; min-width: 0; }
+.pk-g > .tool { flex: none; width: var(--target); height: var(--target); display: grid; place-items: center; border: 0; background: none; color: var(--muted); border-radius: 10px; }
+.pk-g > .tool svg { transition: transform var(--t-press) var(--ease-out); }
+.pk-g > .tool[aria-expanded="true"] svg { transform: rotate(180deg); }
+.pk-g + .bt { margin: 0 0 6px; padding: 0 8px 4px; }
+.pk-g + .bt[hidden] { display: none; }
+/* search: a kind's results with where (Near the map · Along the route), and the kinds' chips with the field empty */
+#search-results li.r-where { cursor: default; padding: 4px 10px 6px; background: none; }
+#search-results li.r-where .seg { width: 100%; }
+#search-results li.r-where .seg button { flex: 1 1 0; min-width: 0; }
+#search-results li.r-kinds { cursor: default; padding: 4px 0 8px; background: none; }
+#search-results li.r-kinds .side-x { display: flex; gap: 6px; padding: 0 10px; overflow-x: auto; scrollbar-width: none; }
+#search-results li.r-kinds .chip { flex: none; display: inline-flex; align-items: center; gap: 6px; }
+#search-results li.r-kinds .chip .pk-ic { width: 20px; height: 20px; }
+#search-results li .r-row { display: flex; align-items: center; gap: 10px; min-width: 0; }
+#search-results li .r-row > span:last-child { min-width: 0; display: flex; flex-direction: column; overflow-wrap: anywhere; }
+#search-results li.r-gap { cursor: default; background: none; color: var(--muted); font-size: 12px; }
+</style>
+</head>
+<body class="mk">
+<h1>Places by kind</h1>
+<p class="lede">#121's places in Layers, the quick drawer and search: every kind its own switch in its group, landmarks in the basemap, and search by kind near the map or along the route. <b>Today</b> is <code>main</code> as it is. Switch the choices above the frame; the notes say what's new and what's proposed. The plan: <a href="../places-by-kind.md">places-by-kind.md</a>.</p>
+<div class="mk-bar" id="bar"></div>
+<div class="mk-main"><div class="mk-stage" id="stage"></div><div class="mk-notes" id="notes"></div></div>
+<script type="module">
+// ------------------------------------------------------------------ the catalogue's groups and kinds (the plan's table, as a sketch)
+// [id, name, Finnish (the worst case's long words), glyph]
+const GROUPS = [
+  { id: 'help', name: 'Help', fi: 'Apu ja ensi|apu', colour: '#c62828', kinds: [['hospital', 'Hospital', 'Sairaala', 'H'], ['health', 'Health centre', 'Terveys|keskus', 'cross'], ['pharmacy', 'Pharmacy', 'Apteekki', 'pill'], ['aed', 'Defibrillator', 'Sydän|iskuri (defi|brillaattori)', 'aed'], ['eap', 'Emergency access point', 'Pelastus|tien kohtaus|paikka', 'eap'], ['ephone', 'Emergency phone', 'Hätä|puhelin', 'phone']] },
+  { id: 'water', name: 'Water and toilets', fi: 'Vesi ja käymälät', colour: '#0369a1', kinds: [['water', 'Drinking water', 'Juoma|vesi|piste', 'tap'], ['waterpoint', 'Water point', 'Veden|otto|piste', 'can'], ['toilets', 'Toilets', 'Käymälät ja kuiva|käymälät', 'wc']] },
+  { id: 'food', name: 'Food and shops', fi: 'Ruoka ja kaupat', colour: '#7a2e8a', kinds: [['grocery', 'Groceries', 'Ruoka|kauppa', 'basket'], ['cafe', 'Café', 'Kahvila', 'cup'], ['restaurant', 'Restaurant', 'Ravintola', 'fork'], ['pub', 'Pub and bar', 'Pubi ja baari', 'glass'], ['fuel', 'Fuel station', 'Polttoaineen|jakelu|asema', 'fuel'], ['shops', 'Other shops', 'Muut kaupat', 'bag']] },
+  { id: 'sleep', name: 'Sleep and shelter', fi: 'Yöpyminen ja sää|suojat', colour: '#8a4b12', kinds: [['hut', 'Wilderness hut', 'Autio|tupa', 'hut'], ['laavu', 'Lean-to and kota', 'Laavu ja kota', 'laavu'], ['camp', 'Campsite', 'Leirintä|alue', 'tent'], ['lodge', 'Outdoor lodge', 'Ulkoilu|maja', 'hut'], ['shelter', 'Other shelter', 'Muu sää|suoja', 'roof'], ['hotel', 'Hotel and hostel', 'Hotelli ja retkeily|maja', 'bed']] },
+  { id: 'rest', name: 'Rest stops', fi: 'Taukopaikat', colour: '#c2410c', kinds: [['fire', 'Fire place', 'Tulenteko|paikka', 'fire'], ['picnic', 'Picnic site', 'Piknik|paikka', 'table']] },
+  { id: 'bike', name: 'Bike', fi: 'Polku|pyöräily', colour: '#334155', kinds: [['repair', 'Bike repair station', 'Polku|pyörän huolto|piste', 'wrench'], ['bikeshop', 'Bike shop', 'Polku|pyörä|liike', 'bike'], ['pump', 'Air pump', 'Ilma|pumppu', 'pump'], ['rental', 'Bike rental', 'Polku|pyörä|vuokraamo', 'bike']] },
+  { id: 'boat', name: 'On the water', fi: 'Vesillä', colour: '#0284c7', kinds: [['landing', 'Landing place', 'Rantautumis|paikka', 'landing'], ['harbour', 'Harbour', 'Satama', 'anchor'], ['boatpoint', 'Boating service point', 'Veneilyn palvelu|paikka', 'anchor'], ['swim', 'Beach and swimming place', 'Uima|ranta ja uima|paikka', 'swim']] },
+];
+const LANDMARKS = [['guidepost', 'Guidepost', 'Opastin|viitta', 'post', '#475569'], ['board', 'Information board', 'Opas|taulu ja luonto|keskus', 'info', '#475569'], ['spring', 'Spring', 'Lähde', 'spring', '#0369a1'], ['view', 'Viewpoint and tower', 'Näköala|paikka ja näkö|torni', 'tower', '#4d7c0f'],
+  ['cave', 'Cave entrance', 'Luolan suu|aukko', 'cave', '#57534e'], ['tar', 'Tar kiln', 'Terva|hauta', 'tar', '#57534e'], ['bunker', 'Bunker', 'Bunkkeri', 'bunker', '#57534e'], ['sight', 'Sight', 'Nähtävyys', 'star', '#475569'], ['parking', 'Car park', 'Pysäköinti|alue', 'P', '#2563eb']];
+// the table's `on`, by group (the plan's starting values)
+const ON = { help: '*', water: '*', sleep: 'mtb hike paddle', rest: 'mtb hike', food: 'road hike', bike: 'mtb road', boat: 'paddle' };
+const SPORTS = { hike: 'Hike', mtb: 'MTB', road: 'Road', paddle: 'Paddle' };
+const defaultsFor = (sport) => new Set(GROUPS.flatMap((g) => (ON[g.id] === '*' || ON[g.id].split(' ').includes(sport) ? g.kinds.map((k) => k[0]) : [])));
+
+// pictograms on a 24 px grid, white on the disc (sketches; LIPAS's own are js/icons.js's GLYPHS: laavu, hut, tent, fire, anchor, tower, landing, info, swim)
+const GLYPH = {
+  laavu: 'M12 4 L21 19 H17 L12 10 L7 19 H3 Z', hut: 'M12 4 L21 11 V20 H14 V15 H10 V20 H3 V11 Z', tent: 'M12 4 L21 20 H14 L12 15 L10 20 H3 Z',
+  fire: 'M12 3 C15 8 18 10 18 14.5 C18 18 15.3 21 12 21 C8.7 21 6 18 6 14.5 C6 12 7.5 10.5 9 9.5 C9 12 10 13.5 11.5 14 C11 10 11.5 6 12 3 Z',
+  anchor: 'M11 3 H13 V6 H16 V8 H13 V18.5 C15.5 18 17.5 16.4 18.4 14 H16 L19.5 10.5 L23 14 H20.6 C19.4 18 15.9 21 12 21 C8.1 21 4.6 18 3.4 14 H1 L4.5 10.5 L8 14 H5.6 C6.5 16.4 8.5 18 11 18.5 V8 H8 V6 H11 Z',
+  tower: 'M9 3 H15 V6 H14 L16.5 21 H14.5 L13.6 15 H10.4 L9.5 21 H7.5 L10 6 H9 Z',
+  landing: 'M3 15 C6 13 9 13 12 15 C15 17 18 17 21 15 V18 C18 20 15 20 12 18 C9 16 6 16 3 18 Z M12 3 L16 8 H13 V13 H11 V8 H8 Z',
+  info: 'M11 10 H13 V19 H11 Z M12 5 A1.6 1.6 0 1 1 11.99 5 Z',
+  swim: 'M15 4 A2.2 2.2 0 1 1 14.99 4 Z M5 12 L10 8.5 L13.5 11 L10 13.5 Z M3 16 C5.5 14.5 8 14.5 10.5 16 C13 17.5 15.5 17.5 18 16 C19 15.4 20 15.2 21 15.4 V17.6 C20 17.4 19 17.6 18 18.2 C15.5 19.7 13 19.7 10.5 18.2 C8 16.7 5.5 16.7 3 18.2 Z',
+  H: 'M6 4h3v6.5h6V4h3v16h-3v-6.5H9V20H6z', cross: 'M9.5 4h5v5.5H20v5h-5.5V20h-5v-5.5H4v-5h5.5z',
+  pill: 'M7.6 16.4a3.6 3.6 0 0 1 0-5.1l3.7-3.7a3.6 3.6 0 0 1 5.1 5.1l-3.7 3.7a3.6 3.6 0 0 1-5.1 0zm1.4-1.4c.6.6 1.6.6 2.2 0l1.9-1.9L10.9 11 9 12.8c-.6.6-.6 1.6 0 2.2z',
+  aed: 'M12 20.5 4.2 12.8A4.6 4.6 0 0 1 12 6.3a4.6 4.6 0 0 1 7.8 6.5z', aedCut: 'M13 8.2 9.6 13.2h2.6l-1.1 3.8 3.4-5h-2.6z',
+  eap: 'M11 11h2v10h-2z M4.5 3.5h15v8h-15z', eapCut: 'M11.2 5.2h1.6v3.2h-1.6z M11.2 9.1h1.6v1.2h-1.6z',
+  phone: 'M7 3.5h3l1.5 4-2 1.5a10 10 0 0 0 5.5 5.5l1.5-2 4 1.5v3c0 1-1 2-2 2A15 15 0 0 1 5 5.5c0-1 1-2 2-2z',
+  tap: 'M4 7.5h9V5.5h2v2h3a2 2 0 0 1 2 2V12h-3v-1.5H4z M16.5 14s2.2 2.6 2.2 4a2.2 2.2 0 0 1-4.4 0c0-1.4 2.2-4 2.2-4z',
+  can: 'M7 8h8l2.5 3.5V20h-13v-8.5z M9 4.5h4V8H9z',
+  wc: 'M7.5 4.2a1.8 1.8 0 1 1 0 3.6 1.8 1.8 0 0 1 0-3.6z M5.5 9h4l.8 6H9.2v5H6v-5H4.7z M16.5 4.2a1.8 1.8 0 1 1 0 3.6 1.8 1.8 0 0 1 0-3.6z M14.6 9h3.8l2 6.8h-2.1V20H15v-4.2h-2.4z',
+  basket: 'M3 9.5h18l-2.2 10H5.2z M7.6 9.5l3-5.4 1.5.8-2.6 4.6z M16.4 9.5l-3-5.4-1.5.8 2.6 4.6z',
+  cup: 'M5 7h11v6a5 5 0 0 1-5 5h-1a5 5 0 0 1-5-5z M16 8.5h1.5a2.7 2.7 0 0 1 0 5.4H16v-1.8h1.5a.9.9 0 0 0 0-1.8H16z M4 19.5h14V21H4z',
+  fork: 'M6 3h1.5v5H9V3h1.5v5H12V3h1.5v6a3 3 0 0 1-2.2 2.9V21H8.7v-9.1A3 3 0 0 1 6 9z M16 3c2 0 3 2.5 3 6s-1 4-2 4.3V21h-2.5V3z',
+  glass: 'M6 4h12l-1.5 7a4.5 4.5 0 0 1-3.2 3.3V19H16v2H8v-2h2.7v-4.7A4.5 4.5 0 0 1 7.5 11z',
+  fuel: 'M5 4h9v16H5z M14 9h2.5a1.5 1.5 0 0 1 1.5 1.5V16a1 1 0 0 0 2 0V8.2l-2.4-2.4 1-1L21 7.6V16a3 3 0 0 1-6 0v-5h-1z', fuelCut: 'M7 6h5v4H7z',
+  bag: 'M5 8h14l-1 12H6z M8.8 8a3.2 3.2 0 0 1 6.4 0h-1.6a1.6 1.6 0 0 0-3.2 0z',
+  roof: 'M3 11 12 4l9 7v2h-2.5v7h-2v-7h-9v7h-2v-7H3z',
+  bed: 'M3 7h2.5v6H21v6h-2.5v-2.5h-13V19H3z M7 9.8a2 2 0 1 1 4 0 2 2 0 0 1-4 0z M12 8.5h6a3 3 0 0 1 3 3v.5h-9z',
+  table: 'M3 8.5h18V11H3z M6 11h2.5L6.6 20H4z M15.5 11H18l2 9h-2.6z M2.5 14h19v1.6h-19z',
+  wrench: 'M15.5 3a5 5 0 0 0-4.6 6.9L3.6 17.2a2 2 0 0 0 2.8 2.8l7.3-7.3A5 5 0 0 0 20.6 8L17.5 11l-3-1-1-3 3.1-3.1A5 5 0 0 0 15.5 3z',
+  bike: 'M6 12a3.8 3.8 0 1 1 0 7.6A3.8 3.8 0 0 1 6 12zm0 2a1.8 1.8 0 1 0 0 3.6A1.8 1.8 0 0 0 6 14z M18 12a3.8 3.8 0 1 1 0 7.6 3.8 3.8 0 0 1 0-7.6zm0 2a1.8 1.8 0 1 0 0 3.6 1.8 1.8 0 0 0 0-3.6z M10.5 6.5H14V8h-1.2l.9 1.9H19l-.7 1.6h-1.4l1.8 4-1.4.6-2.2-4.6h-.5l-3.1 4.6H6.2v-1.6h3.4l2.1-3.2-1.2-2.6z',
+  pump: 'M10 3h4v2h-1v3h3v13H8V8h3V5h-1z', pumpCut: 'M11 11h2v7h-2z',
+  post: 'M11 3h2v18h-2z M4 5h8v4H4L2.5 7z M12 10.5h8l1.5 2-1.5 2h-8z',
+  spring: 'M12 4.5a6 6 0 1 1 0 12 6 6 0 0 1 0-12zm0 2.5a3.5 3.5 0 1 0 0 7 3.5 3.5 0 0 0 0-7z M11 16h2v5h-2z',
+  cave: 'M3 20v-7a9 9 0 0 1 18 0v7h-4.5v-6a4.5 4.5 0 0 0-9 0v6z',
+  tar: 'M12 5.5a6.5 6.5 0 1 1 0 13 6.5 6.5 0 0 1 0-13zm0 3a3.5 3.5 0 1 0 0 7 3.5 3.5 0 0 0 0-7z M11 11h2v2h-2z',
+  bunker: 'M3 19 6.5 9h11L21 19z', bunkerCut: 'M8.5 13h7v2h-7z',
+  star: 'M12 3l2.6 5.6 6.1.7-4.5 4.2 1.2 6L12 16.6 6.6 19.5l1.2-6L3.3 9.3l6.1-.7z',
+  P: 'M7 4h6a5 5 0 0 1 0 10h-2.5v6H7zm3.5 3v4H13a2 2 0 0 0 0-4z',
+};
+const disc = (glyph, colour, size = 24) => `<svg class="pk-ic" width="${size}" height="${size}" viewBox="0 0 28 28" aria-hidden="true"><circle cx="14" cy="14" r="12.5" fill="${colour}" stroke="#fff" stroke-width="2"/><g transform="translate(4.4 4.4) scale(.8)"><path d="${GLYPH[glyph]}" fill="#fff" fill-rule="evenodd"/>${GLYPH[glyph + 'Cut'] ? `<path d="${GLYPH[glyph + 'Cut']}" fill="${colour}"/>` : ''}</g></svg>`;
+const SVG = {
+  back: '<svg class="ic" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 6-6 6 6 6"></path></svg>',
+  x: '<svg class="ic" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"></path></svg>',
+  chev: '<svg class="ic" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 6 6 6-6 6"></path></svg>',
+  down: '<svg class="ic" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"></path></svg>',
+  search: '<svg class="ic" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="11" cy="11" r="6.5"></circle><path d="m20 20-4.2-4.2"></path></svg>',
+  brand: '<svg class="ic" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><circle cx="6" cy="19" r="2.2"></circle><circle cx="18" cy="5" r="2.2"></circle><path d="M8 19h7.5a3.5 3.5 0 0 0 0-7h-7a3.5 3.5 0 0 1 0-7H16"></path></svg>',
+  hut: '<svg class="ic" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linejoin="round" aria-hidden="true"><path d="M3 11 12 4l9 7v9h-6v-5h-6v5H3z"></path></svg>',
+  sign: '<svg class="ic" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v18M5 5h11l2 2-2 2H5zM19 11H8l-2 2 2 2h11z"></path></svg>',
+  flag: '<svg class="ic" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 21V4m0 0h11l-2 4 2 4H5"></path></svg>',
+  details: '<svg class="ic" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" aria-hidden="true"><path d="M4 18c4-1 6-5 8-8s4-5 8-6" stroke-dasharray="2 3"></path></svg>',
+  rain: '<svg class="ic" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" aria-hidden="true"><path d="M7 15a4 4 0 0 1 .5-8A5.5 5.5 0 0 1 18 9a3 3 0 0 1 0 6M8 18l-1 2M12 18l-1 2M16 18l-1 2"></path></svg>',
+  trail: '<svg class="ic" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke-width="2.6" stroke-linecap="round" aria-hidden="true"><path d="M3 20c2.5-.5 4-2.6 5.6-4.6" stroke="#22a447"></path><path d="M8.6 15.4c1.5-1.9 2.7-3.7 5-4.6" stroke="#f59e0b"></path><path d="M13.6 10.8C16.5 9.6 18 6.5 21 4" stroke="#ef4444"></path></svg>',
+  wind: '<svg class="ic" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" aria-hidden="true"><path d="M3 9h11a3 3 0 1 0-3-3M3 15h15a3 3 0 1 1-3 3"></path></svg>',
+  buoy: '<svg class="ic" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linejoin="round" aria-hidden="true"><path d="M9 4h6l2 12H7zM5 20c2-1.5 4-1.5 7 0s5 1.5 7 0"></path></svg>',
+  depth: '<svg class="ic" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" aria-hidden="true"><path d="M3 6c3 2 6 2 9 0s6-2 9 0M3 12c3 2 6 2 9 0s6-2 9 0M3 18c3 2 6 2 9 0s6-2 9 0"></path></svg>',
+  ship: '<svg class="ic" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linejoin="round" aria-hidden="true"><path d="M4 15h16l-2 5H6zM7 15V9h10v6M10 9V5h4v4"></path></svg>',
+  car: '<svg class="ic" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linejoin="round" aria-hidden="true"><path d="M4 16v-4l2-5h12l2 5v4zM6 16v3M18 16v3"></path></svg>',
+  cone: '<svg class="ic" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linejoin="round" aria-hidden="true"><path d="M10 3h4l5 16H5zM4 20h16"></path></svg>',
+};
+
+// ------------------------------------------------------------------ state and the switches above the frame
+const Q = new URLSearchParams(location.search);
+const S = { view: Q.get('view') || 'layers', v: Q.get('v') || 'a', frame: Q.get('frame') || '390', sport: Q.get('sport') || 'hike', data: Q.get('data') || 'usual', q: Q.get('q') || 'water', route: Q.get('route') || 'none', look: Q.get('look') || 'light' };
+const mine = {}; // the kinds on, per sport (the user's own choice once changed)
+const opened = new Set(['water']); // B's groups open
+let step = null; // the quick drawer's open tile
+const kindsOn = () => (mine[S.sport] ||= defaultsFor(S.sport));
+const differs = () => { const d = defaultsFor(S.sport), m = kindsOn(); return d.size !== m.size || [...d].some((k) => !m.has(k)); };
+const worst = () => S.data === 'worst';
+const soft = (t) => t.replaceAll('|', '\u00AD'); // a long word breaks at its soft hyphens, as the app's labels do
+const label = (k) => soft(worst() ? k[2] : k[1]);
+const gname = (g) => soft(worst() ? g.fi : g.name);
+const save = () => { const u = new URL(location.href); for (const k of Object.keys(S)) u.searchParams.set(k, S[k]); try { history.replaceState(null, '', u); } catch { /* (a sandboxed frame) */ } };
+const SWITCHES = [
+  ['view', 'View', { layers: 'Layers', drawer: 'Quick drawer', search: 'Search' }],
+  ['v', 'Layers', { a: 'A: every kind', b: 'B: a switch per group', main: 'Today (main)' }, () => S.view === 'layers'],
+  ['q', 'Typed', { empty: 'Nothing yet', water: '“water”', laavu: '“laavu”' }, () => S.view === 'search'],
+  ['route', 'Route', { none: 'None', drawn: 'Drawn' }, () => S.view === 'search'],
+  ['frame', 'Frame', { 390: '390 × 844', 200: '390 at 200 %', 1440: '1440 × 900' }],
+  ['sport', 'Sport', SPORTS],
+  ['data', 'Words', { usual: 'Usual', worst: 'Long Finnish words' }],
+  ['look', 'Look', { light: 'Light', dark: 'Dark' }],
+];
+function renderBar() {
+  const bar = document.getElementById('bar');
+  bar.innerHTML = '';
+  for (const [key, title, opts, shown] of SWITCHES) {
+    const sw = document.createElement('div');
+    sw.className = 'mk-sw';
+    sw.setAttribute('role', 'group');
+    sw.setAttribute('aria-label', title);
+    sw.hidden = shown ? !shown() : false;
+    sw.innerHTML = `<b>${title}</b>` + Object.entries(opts).map(([v, t]) => `<button type="button" data-k="${key}" data-v="${v}" aria-pressed="${String(S[key]) === v}">${t}</button>`).join('');
+    bar.append(sw);
+  }
+}
+document.getElementById('bar').addEventListener('click', (e) => {
+  const b = e.target.closest('button[data-k]');
+  if (!b) return;
+  S[b.dataset.k] = b.dataset.v;
+  if (b.dataset.k === 'view') step = null;
+  save(); render();
+});
+
+// ------------------------------------------------------------------ the full Layers panel
+let uid = 0;
+const toggle = (text, on, attrs = '', mark = '', small = '') => {
+  const id = `t-${++uid}`;
+  return `<label class="tg" for="${id}"><span class="tg-text">${mark}${mark ? `<span>${text}${small ? `<small>${small}</small>` : ''}</span>` : `${text}${small ? `<small>${small}</small>` : ''}`}</span><input type="checkbox" id="${id}" role="switch" aria-label="${text.replace(/<[^>]+>/g, '').replaceAll('\u00AD', '')}" ${on ? 'checked' : ''} ${attrs}><span class="tg-ui" aria-hidden="true"></span></label>`;
+};
+const folded = (id, title, count = '') => `<details class="lg-group" data-group="${id}"><summary><span class="lg-title">${title}</span>${count ? `<span class="lg-count">${count}</span>` : ''}</summary><p class="note">…</p></details>`;
+const kindRow = (g, k) => toggle(label(k), kindsOn().has(k[0]), `data-kind="${k[0]}"`, disc(k[3], g.colour));
+const landmarkKey = () => `<details class="lg-key"><summary>Map key</summary><div><h3>In the map, in every sport</h3>${LANDMARKS.map((l) => `<div class="lg-item">${disc(l[3], l[4], 18)}<span>${soft(worst() ? l[2] : l[1])}</span></div>`).join('')}</div></details>`;
+function placesA() {
+  const on = kindsOn();
+  return `<details class="lg-group" data-group="places" open><summary><span class="lg-title">Places</span><span class="lg-count">${on.size} on</span></summary>
+    ${GROUPS.map((g) => `<h3 class="menu-h">${gname(g)}</h3>${g.kinds.map((k) => kindRow(g, k)).join('')}`).join('')}
+    ${landmarkKey()}
+    ${differs() ? `<button type="button" class="btn small quiet pk-reset" data-reset>Back to ${SPORTS[S.sport]}’s places</button>` : ''}
+  </details>`;
+}
+function placesB() {
+  const on = kindsOn();
+  return `<details class="lg-group" data-group="places" open><summary><span class="lg-title">Places</span><span class="lg-count">${on.size} on</span></summary>
+    ${GROUPS.map((g) => {
+      const n = g.kinds.filter((k) => on.has(k[0])).length, open = opened.has(g.id);
+      return `<div class="pk-g">${toggle(gname(g), n > 0, `data-group-tg="${g.id}"`, disc(g.kinds[0][3], g.colour), n && n < g.kinds.length ? `${n} of ${g.kinds.length}` : '')}<button type="button" class="tool" data-open="${g.id}" aria-expanded="${open}" aria-label="${gname(g)}: each kind">${SVG.down}</button></div>
+        <div class="bt" ${open ? '' : 'hidden'}>${g.kinds.map((k) => kindRow(g, k)).join('')}</div>`;
+    }).join('')}
+    ${landmarkKey()}
+    ${differs() ? `<button type="button" class="btn small quiet pk-reset" data-reset>Back to ${SPORTS[S.sport]}’s places</button>` : ''}
+  </details>`;
+}
+function placesMain() {
+  const lip = { hike: 'Lean-tos, huts, campfire & landing sites (LIPAS)', mtb: 'Lean-tos, huts, campfire & landing sites (LIPAS)', road: 'Campfire sites (LIPAS)', paddle: 'Landing sites & lean-tos (LIPAS)' }[S.sport];
+  const d = { hike: [1, 1, 1], mtb: [1, 1, 0], road: [0, 0, 1], paddle: [1, 1, 0] }[S.sport];
+  return `<details class="lg-group" data-group="places" open><summary><span class="lg-title">Places</span><span class="lg-count">${d.filter(Boolean).length} on</span></summary>
+    ${toggle(lip, d[0])}${toggle('OSM outdoor places', d[1])}${toggle('Shops and food', d[2])}
+    <details class="lg-key"><summary>Map key</summary><div><div class="lg-item"><span class="lg-dot" style="background:#b45309"></span><span>Lean-to / kota</span></div><div class="lg-item"><span class="lg-dot" style="background:#92400e"></span><span>Wilderness hut</span></div><div class="lg-item"><span class="lg-dot" style="background:#dc2626"></span><span>Campfire site</span></div><div class="lg-item"><span class="lg-dot" style="background:#0284c7"></span><span>Landing place</span></div></div></details>
+  </details>`;
+}
+function layersPanel() {
+  const places = S.v === 'main' ? placesMain() : S.v === 'b' ? placesB() : placesA();
+  return `<aside id="layers-panel" class="panel" aria-label="All map layers"><div class="qd-grab" aria-hidden="true"></div>
+    <div class="panel-head"><button class="panel-back tool" type="button" aria-label="Back to quick layers">${SVG.back}</button><h2>All layers</h2><button class="panel-close tool" type="button" aria-label="Close">${SVG.x}</button></div>
+    <div class="panel-body" id="layers-body">
+      ${folded('onnow', 'On now', '7 on')}${folded('base', 'Base map')}${folded('terrain', 'Terrain')}${folded('trails', 'Trails &amp; difficulty', '3 on')}${folded('winter', 'Winter')}${folded('dark', 'After dark')}${folded('routes', 'Marked routes', '1 on')}
+      ${places}
+      ${folded('water', 'Water &amp; nautical')}${folded('safety', 'Traffic &amp; safety', '1 on')}${folded('roads', 'Roads (Digiroad)')}${folded('weather', 'Weather on the map')}
+    </div></aside>`;
+}
+
+// ------------------------------------------------------------------ the quick drawer
+const TILES = {
+  hike: [['wmtHiking', 'Waymarked hiking', SVG.sign, 1], ['lipasRoutes', 'Official routes', SVG.flag, 1], ['places:sleep', null, null, 0], ['trailDetails', 'Trail details', SVG.details, 1], ['wx:rain', 'Rain radar', SVG.rain, 0]],
+  mtb: [['trailColors', 'Trail colours', SVG.trail, 1, 'Difficulty'], ['trailDetails', 'Trail details', SVG.details, 1], ['lipasRoutes', 'Official routes', SVG.flag, 1], ['places:rest', null, null, 0], ['wx:rain', 'Rain radar', SVG.rain, 0]],
+  road: [['sfTraffic', 'Busy roads', SVG.car, 1], ['sfRoadworks', 'Road works', SVG.cone, 1], ['places:food', null, null, 0], ['wmtCycling', 'Waymarked cycling', SVG.sign, 1], ['wx:wind', 'Wind', SVG.wind, 0]],
+  paddle: [['nautical', 'Nautical marks', SVG.buoy, 1], ['depths', 'Depths', SVG.depth, 1, 'Not for navigation'], ['sfShips', 'Ships', SVG.ship, 1, 'Live AIS'], ['places:boat', null, null, 0], ['wx:wind', 'Wind', SVG.wind, 0]],
+};
+const MAIN_TILE = { hike: ['lipasPoints', 'Huts & lean-tos'], mtb: ['sfRoadcond', 'Rain radar'], road: ['sfRoadcond', 'Road conditions'], paddle: ['lipasPoints', 'Landing sites & lean-tos'] };
+function tile([id, name, ic, on, small]) {
+  if (id.startsWith('places:')) {
+    const g = GROUPS.find((x) => x.id === id.slice(7)), n = g.kinds.filter((k) => kindsOn().has(k[0])).length;
+    return `<div class="qt ${n ? 'on' : ''}" data-id="${id}"><button type="button" class="qt-tog" aria-pressed="${!!n}" data-tile="${id}"><span class="qt-ic">${disc(g.kinds[0][3], g.colour, 20)}</span><span class="qt-l">${gname(g)}${n && n < g.kinds.length ? `<small>${n} of ${g.kinds.length}</small>` : ''}</span></button><button type="button" class="qt-opt" data-opts="${g.id}" aria-label="${gname(g)}: each kind">${SVG.chev}</button></div>`;
+  }
+  return `<div class="qt ${on ? 'on' : ''}"><button type="button" class="qt-tog" aria-pressed="${!!on}"><span class="qt-ic">${ic}</span><span class="qt-l">${name}${small ? `<small>${small}</small>` : ''}</span></button></div>`;
+}
+function drawer() {
+  if (step) {
+    const g = GROUPS.find((x) => x.id === step);
+    return `<div id="quick-layers" class="qd open" role="dialog" aria-label="Map layers"><div class="qd-grab" aria-hidden="true"></div>
+      <div class="qd-head"><button type="button" class="qd-back" data-step-back aria-label="Back to quick layers">${SVG.back}</button><h2>${gname(g)}</h2><button type="button" class="qd-x" aria-label="Close">${SVG.x}</button></div>
+      <div class="qd-body qd-opts">${g.kinds.map((k) => kindRow(g, k)).join('')}</div></div>`;
+  }
+  return `<div id="quick-layers" class="qd open" role="dialog" aria-label="Map layers"><div class="qd-grab" aria-hidden="true"></div>
+    <div class="qd-head"><h2>Map layers</h2><button type="button" class="qd-x" aria-label="Close">${SVG.x}</button></div>
+    <div class="qd-body"><h3 class="qd-lab">Map</h3><p class="note" style="margin:0 0 12px">(the base maps, as on main)</p>
+      <div class="qd-lab"><h3>On the map · <b>${SPORTS[S.sport]}</b></h3><button type="button" class="qd-edit-btn">Edit</button></div>
+      <div class="qd-tiles">${TILES[S.sport].map(tile).join('')}<div class="qt"><button type="button" class="qt-more qt-tog"><span class="qt-l">More</span><span class="chev">${SVG.chev}</span></button></div></div>
+    </div></div>`;
+}
+
+// ------------------------------------------------------------------ search
+const R = {
+  water: {
+    title: 'Drinking water', near: [['Haukkalammen kaivo', 'Drinking water', '380 m', 'tap', '#0369a1'], ['', 'Spring · drinking water', '1.1 km', 'spring', '#0369a1'], ['Kattilajärven vesipiste', 'Drinking water', '2.4 km', 'tap', '#0369a1'], ['Nuuksion luontokeskus Haltia', 'Drinking water', '5.8 km', 'tap', '#0369a1'], ['', 'Drinking water', '6.3 km', 'tap', '#0369a1']],
+    along: [['Haukkalammen kaivo', 'Drinking water', 'at 0.4 km', 'tap', '#0369a1'], ['', 'Spring · drinking water', 'at 3.2 km', 'spring', '#0369a1'], ['Kattilajärven vesipiste', 'Drinking water', 'at 7.9 km', 'tap', '#0369a1']],
+    names: [['Vesitorni', 'Water tower · Espoo'], ['Vesijärvenkatu', 'Street · Espoo']],
+  },
+  laavu: {
+    title: 'Lean-tos and kotas', near: [['Haukankallion laavu', 'Lean-to and kota · LIPAS', '650 m', 'laavu', '#8a4b12'], ['Holma-Saarijärven laavu', 'Lean-to and kota · LIPAS', '1.4 km', 'laavu', '#8a4b12'], ['Mustalammen laavu', 'Lean-to and kota', '2.0 km', 'laavu', '#8a4b12'], ['Kolmoislammen kota', 'Lean-to and kota · LIPAS', '2.7 km', 'laavu', '#8a4b12'], ['', 'Lean-to and kota', '3.1 km', 'laavu', '#8a4b12']],
+    along: [['Haukankallion laavu', 'Lean-to and kota · LIPAS', 'at 1.2 km', 'laavu', '#8a4b12'], ['Mustalammen laavu', 'Lean-to and kota', 'at 5.6 km', 'laavu', '#8a4b12']],
+    names: [['Laavutie', 'Street · Vantaa']],
+  },
+};
+const LONG = ['Nuuksion kansallispuiston Haukkalammen pysäköintialueen juomavesikaivo', 'Pyhä-Luoston kansallispuiston luontokeskus Naava', 'Kuusamon Karhunkierroksen Ristikallion päivätupa', 'Kattilajärven ulkoilu- ja leirikeskuksen vesipiste', 'Vähä-Kolmoislammen laavu'];
+const recent = () => [['Haltia', 'Nature centre · Espoo'], ['Kolmikulmalampi', 'Lake · Espoo']];
+const KINDS_ROW = [['water', 'Water', 'tap', '#0369a1'], ['toilets', 'Toilets', 'wc', '#0369a1'], ['food', 'Food', 'basket', '#7a2e8a'], ['shelter', 'Shelter', 'laavu', '#8a4b12'], ['help', 'Help', 'H', '#c62828']];
+const KINDS_FI = { water: 'Juoma|vesi', toilets: 'Käymälät', food: 'Ruoka|kauppa', shelter: 'Laavut ja tuvat', help: 'Apu ja ensi|apu' };
+let where = 'near';
+function results() {
+  if (S.q === 'empty') {
+    return `<ul id="search-results" role="listbox">
+      <li class="r-kinds" role="presentation"><div class="side-wrap"><div class="side-x" role="group" aria-label="Search a kind">${KINDS_ROW.map(([id, t, g, c]) => `<button type="button" class="chip" data-kindq="${id}">${disc(g, c, 20)}<span>${soft(worst() ? KINDS_FI[id] : t)}</span></button>`).join('')}</div></div></li>
+      <li class="r-group" role="presentation">Recent</li>${recent().map(([n, s]) => `<li role="option"><span class="r-name">${n}</span><span class="r-sub">${s}</span></li>`).join('')}
+    </ul>`;
+  }
+  const r = R[S.q], route = S.route === 'drawn', w = route ? where : 'near';
+  const list = (w === 'along' ? r.along : r.near).map((x, i) => (worst() && x[0] ? [LONG[i % LONG.length], ...x.slice(1)] : x));
+  return `<ul id="search-results" role="listbox">
+    <li class="r-group" role="presentation">${worst() && S.q === 'water' ? 'Juomavesi ja juomakelpoiset lähteet' : r.title} ${w === 'along' ? 'along the route' : 'nearby'}</li>
+    ${route ? `<li class="r-where" role="presentation"><div class="seg small" role="group" aria-label="Where"><button type="button" data-where="near" aria-pressed="${w === 'near'}">Near the map</button><button type="button" data-where="along" aria-pressed="${w === 'along'}">Along the route</button></div></li>` : ''}
+    ${list.map(([n, kind, d, g, c], i) => `<li role="option" class="${i === 0 ? 'active' : ''}"><span class="r-row">${disc(g, c, 24)}<span><span class="r-name">${n || kind.split(' · ')[0]}</span><span class="r-sub">${n ? kind : 'No name'} · ${d}</span></span></span></li>`).join('')}
+    ${w === 'along' ? '<li class="r-gap" role="presentation">Not checked from 9.8 km to the end: the map’s data didn’t load there.</li>' : ''}
+    <li class="r-group" role="presentation">Places</li>${r.names.map(([n, s]) => `<li role="option"><span class="r-name">${n}</span><span class="r-sub">${s}</span></li>`).join('')}
+  </ul>`;
+}
+function searchBar() {
+  return `<div class="topbar"><a class="brand" href="#" aria-label="Polku">${SVG.brand}</a>
+    <div class="search" role="combobox" aria-expanded="true" aria-owns="search-results">${SVG.search}<input id="search-input" type="search" value="${S.q === 'empty' ? '' : S.q}" placeholder="Search places or paste coordinates" aria-label="Search places">${results()}</div>
+    <button type="button" class="top-btn" style="width:auto;padding:0 10px" aria-label="Sport: ${SPORTS[S.sport]}">${SPORTS[S.sport]} ▾</button><button type="button" class="top-btn" aria-label="Settings">⚙</button></div>`;
+}
+
+// ------------------------------------------------------------------ the frame and the notes
+const BG = { phone: 'https://raw.githubusercontent.com/TommiContursi/Polku/pr-screenshots/claude/places-catalogue-plan/bg-390.jpg', desk: 'https://raw.githubusercontent.com/TommiContursi/Polku/pr-screenshots/claude/places-catalogue-plan/bg-1440.jpg' };
+function render() {
+  document.documentElement.dataset.theme = S.look;
+  renderBar();
+  uid = 0;
+  const desk = S.frame === '1440', w = desk ? 1440 : S.frame === '200' ? 195 : 390, hgt = desk ? 900 : S.frame === '200' ? 422 : 844;
+  const body = S.view === 'layers' ? layersPanel() : S.view === 'drawer' ? drawer() : searchBar();
+  const stage = document.getElementById('stage');
+  const avail = Math.min(stage.parentElement.clientWidth, 1500) - 2;
+  const z = desk ? Math.min(1, avail / 1440) : S.frame === '200' ? Math.min(2, avail / 195) : Math.min(1, avail / 390);
+  stage.innerHTML = `<div class="mk-zoom" style="width:${w}px;height:${hgt}px;transform:scale(${z});margin:0 ${w * z - w}px ${hgt * z - hgt}px 0">
+    <div class="mk-frame ${desk ? 'desk' : 'mk-phone'}" style="width:${w}px;height:${hgt}px;--mk-h:${hgt}px;background-image:url(${desk ? BG.desk : BG.phone})">${body}</div></div>`;
+  const places = stage.querySelector('[data-group="places"]');
+  const pb = stage.querySelector('.panel-body');
+  if (places && pb) pb.scrollTop = (places.getBoundingClientRect().top - pb.getBoundingClientRect().top) / z - 4;
+  renderNotes();
+}
+function renderNotes() {
+  const n = {
+    layers: {
+      a: ['<b>A, recommended (question 1):</b> every kind its own switch, under its group’s small heading (<code>menu-h</code>), its mark from the map before its name. 31 switches in seven groups.', 'The count beside Places (<code>lg-count</code>) is the kinds on. <b>Back to Hike’s places</b> (<code>btn small quiet</code>) shows only once you’ve changed a switch: try one.', '<b>Map key</b> lists the landmarks drawn in the basemap in every sport, with no switch (question 2).', 'LIPAS’s lean-tos, huts, campsites, lodges, fire places, landing places and beaches are rows of their kinds, not a switch of their own (question 5).', 'Pharmacies are in Help, moved from Shops and food.'],
+      b: ['<b>B:</b> a switch per group, with ⌄ opening its kinds in place under it (the faint box, <code>bt</code>). Seven rows; Water and toilets is open.', 'A group’s switch is on while any of its kinds is, and says “2 of 3” when not all are: that state is <b>a new kind of control</b>, proposed here, not one of DEVELOPING’s shared controls.', 'Turning a group off turns its kinds off; on again brings back the ones you had, as the Depths tile does.'],
+      main: ['<b>Today</b> on main at 7b2fe3be: three switches, each hiding which kinds it holds; LIPAS’s switch changes its kinds and its words with the sport (Road: campfire sites only; Paddle: landing sites and lean-tos).', 'Outdoor places hides car parks, guideposts and toilets with the rest; Road and Run have it off.'],
+    }[S.v],
+    drawer: ['A tile per group, in place of today’s <b>' + MAIN_TILE[S.sport][1] + '</b> where a sport had one; MTB and Road gain one. It works as the Depths tile does: off turns the group off and remembers which kinds were on.', 'The tile’s › opens the group’s kinds, the full panel’s own switches (<code>qd-opts</code>): try it.', 'A tile with only some kinds on says “2 of 3” under its name, as a tile’s small line does today (<code>qt-l small</code>).'],
+    search: S.q === 'empty'
+      ? ['<b>Question 3:</b> with the field empty, chips search the kinds people look for most with one tap (<code>chip</code> in a row that scrolls sideways where it doesn’t fit). Recent stays under them.', 'A chip types its kind into the field, as if you had: try one.', '(For the build: the chips sit in the results list; a screen reader needs them as a group outside the listbox.)']
+      : ['Typing a kind lists the nearest of that kind first, with its distance; Photon’s names come under it as today (<code>r-group</code>, <code>r-name</code>, <code>r-sub</code>, each with its mark).', 'A place with no name says its kind, and “No name”.', S.route === 'drawn' ? 'With a route drawn, <b>Near the map · Along the route</b> (<code>seg small</code>) chooses where; along the route each says how far from the start, and a stretch the data didn’t reach says so.' : 'Draw a route (above) to see <b>Near the map · Along the route</b>.', 'Reading Polku’s own tiles sends only which tiles; beyond them Photon gets the map’s middle rounded to about a kilometre, as search does today.'],
+  }[S.view];
+  const sizes = S.frame === '200' ? '<li>At 200 % the frame is 195 CSS px wide, drawn twice its size: the drawer’s tiles go to one column, the switches’ names wrap.</li>' : '';
+  document.getElementById('notes').innerHTML = `<h2>${{ layers: 'Layers › Places', drawer: 'The quick drawer', search: 'Search by kind' }[S.view]}</h2><ul>${n.map((x) => `<li>${x}</li>`).join('')}${sizes}</ul>
+    <h2>Shared controls</h2><ul><li>From DEVELOPING’s table: <code>tg</code>, <code>lg-group</code>, <code>lg-count</code>, <code>menu-h</code>, <code>lg-key</code>, <code>btn small quiet</code>, <code>qt</code>, <code>seg small</code>, <code>chip</code>, <code>bt</code>.</li><li>New, proposed: a kind’s mark before its name in a switch (<code>pk-ic</code>); B’s group switch with “2 of 3”.</li></ul>
+    <h2>Not drawn</h2><ul><li>Check’s <b>On the way</b> (question 4): its own mock-up comes with its part.</li><li>The map’s marks themselves: the pictograms are sketches; the build draws them from the standards in the plan.</li></ul>`;
+}
+
+// ------------------------------------------------------------------ what a tap does
+document.getElementById('stage').addEventListener('change', (e) => {
+  const t = e.target, on = kindsOn();
+  if (t.dataset.kind) { t.checked ? on.add(t.dataset.kind) : on.delete(t.dataset.kind); render(); }
+  if (t.dataset.groupTg) setGroup(t.dataset.groupTg, t.checked);
+});
+const back = {}; // a group's kinds as they were, for its switch or tile to bring back
+function setGroup(id, val) {
+  const g = GROUPS.find((x) => x.id === id), on = kindsOn(), ids = g.kinds.map((k) => k[0]);
+  if (!val) { back[id] = ids.filter((k) => on.has(k)); ids.forEach((k) => on.delete(k)); }
+  else (back[id] && back[id].length ? back[id] : ids).forEach((k) => on.add(k));
+  render();
+}
+document.getElementById('stage').addEventListener('click', (e) => {
+  const b = e.target.closest('button');
+  if (!b) return;
+  if (b.dataset.reset !== undefined) { mine[S.sport] = defaultsFor(S.sport); render(); }
+  else if (b.dataset.open) { opened.has(b.dataset.open) ? opened.delete(b.dataset.open) : opened.add(b.dataset.open); render(); }
+  else if (b.dataset.tile) { const g = b.dataset.tile.slice(7); setGroup(g, b.getAttribute('aria-pressed') !== 'true'); }
+  else if (b.dataset.opts) { step = b.dataset.opts; render(); }
+  else if (b.dataset.stepBack !== undefined) { step = null; render(); }
+  else if (b.dataset.where) { where = b.dataset.where; render(); }
+  else if (b.dataset.kindq) { S.q = b.dataset.kindq === 'shelter' ? 'laavu' : 'water'; save(); render(); }
+});
+addEventListener('resize', render);
+render();
+</script>
+</body>
+</html>
