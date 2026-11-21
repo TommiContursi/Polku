@@ -1,7 +1,7 @@
 // Map icons drawn on canvas at runtime (no extra sprite sheet needed).
 // Registered lazily through the map's `styleimagemissing` event.
 
-import { LIPAS_TYPES, WARN_COLORS } from './config.js';
+import { LIPAS_TYPES, PLACE_KINDS, WARN_COLORS } from './config.js';
 
 const S = 2; // pixel ratio of generated images
 
@@ -16,6 +16,8 @@ const GLYPHS = {
   landing: 'M3 15 C6 13 9 13 12 15 C15 17 18 17 21 15 V18 C18 20 15 20 12 18 C9 16 6 16 3 18 Z M12 3 L16 8 H13 V13 H11 V8 H8 Z',
   info: 'M11 10 H13 V19 H11 Z M12 5 A1.6 1.6 0 1 1 11.99 5 Z',
   swim: 'M15 4 A2.2 2.2 0 1 1 14.99 4 Z M5 12 L10 8.5 L13.5 11 L10 13.5 Z M3 16 C5.5 14.5 8 14.5 10.5 16 C13 17.5 15.5 17.5 18 16 C19 15.4 20 15.2 21 15.4 V18 C20 17.8 19 18 18 18.6 C15.5 20 13 20 10.5 18.6 C8 17.2 5.5 17.2 3 18.6 Z',
+  // a post with two signs, as OSM's standard map draws a guidepost
+  guidepost: 'M11 3 H13 V21 H11 Z M13 5 H18.5 L21 7.5 L18.5 10 H13 Z M11 11 H5.5 L3 13.5 L5.5 16 H11 Z',
   target: 'M12 3 A9 9 0 1 1 11.99 3 Z M12 6 A6 6 0 1 0 12.01 6 Z M12 9 A3 3 0 1 1 11.99 9 Z M11 1 H13 V7 H11 Z M11 17 H13 V23 H11 Z M1 11 H7 V13 H1 Z M17 11 H23 V13 H17 Z',
 };
 
@@ -608,6 +610,7 @@ export function makeIcon(id) {
   if (id.startsWith('strike-')) return strike(id.slice(7));
   if (id === 'uphill-arrow') return doubleChevron();
   if (id.startsWith('td-') && TRAIL_ICONS[id.slice(3)]) return trailIcon(id.slice(3));
+  if (id.startsWith('place-') && PLACE_KINDS[id.slice(6)]) { const k = PLACE_KINDS[id.slice(6)]; return lipasIcon(k.icon, k.color); }
   if (id.startsWith('lipas-')) {
     const name = id.slice(6);
     const type = Object.values(LIPAS_TYPES).find((t) => t.icon === name);

@@ -15,7 +15,15 @@ ways to avoid it, and asks seven questions, each with one recommendation.
 
 ## Where it stands
 
-- **Plan, 2026-11-21.** Nothing is built yet.
+- **Plan, 2026-11-21.**
+- **Built, part 1: guideposts and winter roads.** Guideposts are
+  `poi-guidepost` from zoom 15 with a brown disc and a post with two signs,
+  the first row of `PLACE_KINDS` (`js/config.js`), the list part 3's kinds
+  join and the catalogue of place kinds (#121) takes over. MML's winter roads
+  are `mml-winter-road` in **Winter ways**, in the look of OSM's winter-only
+  ways, only while it's winter, on the vector bases (the Maastokartta draws its
+  own), under LIPAS's routes. Their card says what they're for and that Polku
+  can't see whether the ice holds.
 - **Decided, 2026-11-21: the points are icons** in the map's style for
   places, not dots (on #1173 and #1179): [the look](#question-4-which-points).
 - **Decided, 2026-11-21: all seven recommendations below,** on the Decided
