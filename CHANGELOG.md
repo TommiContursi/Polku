@@ -4,9 +4,9 @@ What's new in [Polku](https://polku.si), from the latest updates back to the fir
 
 ## 2026-11-21
 
-### One switch for picking plots ([#1199](https://github.com/TommiContursi/Polku/issues/1199))
+### One switch for property details ([#1199](https://github.com/TommiContursi/Polku/issues/1199))
 
-- **Plot selection**, under **Property boundaries** in **Layers → More → Terrain**, turns off both the plot tinted and named under the mouse pointer and the plot's card on a click or a tap. It's there on phones too. With it off, a click or a tap on a plot opens what's under it, such as a park or the water, or nothing, and a long press opens the spot's card, as without the layer. The boundaries and property IDs stay on the map.
+- A switch of its own, **Property details**, under **Property boundaries** in **Layers → More → Terrain**, turns off both the plot tinted and named under the mouse pointer and the plot's card on a click or a tap. It's there on phones too. With it off, a click or a tap on a plot opens what's under it, such as a park or the water, or nothing, and a long press opens the spot's card, as without the layer. The boundaries and property IDs stay on the map.
 
 ### A tap on the National Land Survey's terrain says what it is ([#1175](https://github.com/TommiContursi/Polku/issues/1175))
 
