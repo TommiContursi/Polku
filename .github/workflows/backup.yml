@@ -34,6 +34,7 @@ jobs:
             || { echo "::error::Set the secret BITBUCKET_TOKEN and the variable BITBUCKET_REPOSITORY"; exit 1; }
 
       - name: The code
+        shell: bash # -e -o pipefail: a failed API call must fail the run
         run: |
           bb="https://x-token-auth:${BITBUCKET_TOKEN}@bitbucket.org/${BITBUCKET_REPOSITORY}.git"
           git init -q code && cd code
@@ -41,13 +42,14 @@ jobs:
           git config http.https://github.com/.extraheader "Authorization: Basic $(printf 'x-access-token:%s' "$GH_TOKEN" | base64 -w0)"
           # pr-screenshots is about 800 MB of images: never fetched, so never pushed
           specs=()
-          while read -r b; do specs+=("+refs/heads/$b:refs/heads/$b"); done \
-            < <(gh api --paginate "repos/${GITHUB_REPOSITORY}/branches" --jq '.[].name' | grep -vx pr-screenshots)
+          branches=$(gh api --paginate "repos/${GITHUB_REPOSITORY}/branches" --jq '.[].name')
+          while read -r b; do specs+=("+refs/heads/$b:refs/heads/$b"); done < <(grep -vx pr-screenshots <<< "$branches")
           git fetch -q --no-tags origin "${specs[@]}" '+refs/tags/*:refs/tags/*'
           # shortcut: a branch deleted on GitHub stays in the backup, which is what a backup is for
           git push --force "$bb" 'refs/heads/*:refs/heads/*' 'refs/tags/*:refs/tags/*'
 
       - name: The issues, PRs, comments and milestones
+        shell: bash # -e -o pipefail: a failed page must fail the run, not leave a partial export
         run: |
           bb="https://x-token-auth:${BITBUCKET_TOKEN}@bitbucket.org/${BITBUCKET_REPOSITORY}.git"
           git init -q -b github-export export && cd export
