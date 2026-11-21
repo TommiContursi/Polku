@@ -66,7 +66,7 @@ headers a `<meta>` tag can't set (HSTS, `frame-ancestors`, `X-Frame-Options`, th
 - **Published files are an allowlist**, so a new document is never published by accident:
   `index.html`, `sw.js`, `js/` (with `js/vendor/`), `css/`, `fonts/`, `img/`, `data/`,
   `profiles/`, `CHANGELOG.md` (What's new reads it), `LICENSE`, `THIRD_PARTY_NOTICES.md`,
-  `robots.txt`, `.well-known/tdmrep.json` and `_headers`. A check fails the build when a
+  and what the build writes: `robots.txt`, `.well-known/tdmrep.json` and `_headers`. A check fails the build when a
   file the app requests is missing from it.
 - **One build script** (`tools/site.sh` or similar) copies the allowlist into `site/`,
   minifies, writes the deploy id and the headers. Cloudflare runs it to publish, and a session
@@ -186,9 +186,11 @@ enforced (the `startfail` smoke group). No other `on…=` attribute is in `index
 - **Only the app is published, minified and without comments** (above). Comments carry the
   reasons behind the design; names and structure are what a copier gets.
 - **A copyright line** at the top of every file of Polku's own in `js/`, `css/` and `sw.js`,
-  and as an HTML comment in `index.html`:
-  `/*! © 2026 Tommi Contursi. All rights reserved. See https://polku.si/LICENSE */`. It
-  survives minifying and travels with a copy.
+  and as an HTML comment in `index.html`, added by the build (esbuild's `banner`), so the
+  source files and the PRs beside it don't change, and a new file gets it on its own:
+  `/*! © 2026 Tommi Contursi. All rights reserved. No text and data mining or AI training (EU 2019/790, art. 4(3)). See https://polku.si/LICENSE · <deploy id> */`
+  (`sw.js` without the id). It travels with a copy. The address is one variable in
+  `tools/site.sh`, so a new domain is a one-line change there.
 - **The licence says it outright:** a sentence added to `LICENSE` that no permission is given
   for text and data mining or for training machine-learning models, which reserves the right
   under Article 4 of the EU copyright directive. Tomba approves the wording.
@@ -371,7 +373,7 @@ checks the result after it.
 | Part | Who | What | Waits for | Done when |
 | --- | --- | --- | --- | --- |
 | 1a | session | The app ready for Cloudflare: `sw.js` reading `X-Polku-Deploy` with its `Last-Modified` fallback (and `startfail` with it), the start-failure banner's handler, What's new's links into the repository as plain text (its failure message too), the credits' `Polku © Tommi Contursi` as plain text, the licence sentence. Built in #1243; the copyright line moved to 1b's build, and where to report problems waits (both decided 2026-11-21) | this plan merged | merged, the groups it touches passing (`startfail` and `changelog` among them) |
-| 1b | session | The built site: `tools/site.sh`, esbuild with its lockfile, `wrangler.jsonc`, `_headers` with the policy report-only, `robots.txt`, `tdmrep.json`, `serve.py`'s built mode, AGENTS.md ("Testing", the built site) and DEVELOPING | 1a | merged, the groups it touches passing against `site/` with the policy enforced |
+| 1b | session | The built site: `tools/site.sh` with the copyright lines, esbuild with its lockfile, `wrangler.jsonc`, `_headers` with the policy report-only, `robots.txt`, `tdmrep.json`, `serve.py`'s built mode, AGENTS.md ("Testing", the built site) and DEVELOPING | 1a | merged, the groups it touches passing against `site/` with the policy enforced |
 | 2 | session, Tomba | The `workers.dev` address checked: the headers, `tdmrep.json`, the walk-through (Share and the compass on Tomba's phone); the Cloudflare GitHub app sees only Polku | Tomba's step 2 | nothing in the walk-through fails or reports a violation |
 | 3 | Tomba | The DNS to Cloudflare (step 3) | part 2 | step 3's checks pass |
 | 4 | session, Tomba | polku.si on Cloudflare checked: the redirects (`curl -I http://polku.si/`, `https://www.polku.si/?r=x`, `/index.html?r=x` keeping the query), `index.html` byte for byte against a `site/` built at the same commit, share links, offline, routing, the walk-through | step 3.4 | all of it passes |

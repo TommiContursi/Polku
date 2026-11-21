@@ -16346,13 +16346,14 @@ def weather_menu(chrome):
             fails.append(f"the timeline's time cut on a desktop: “{t['text']}” (#990)")
         pg.c.send('Emulation.setEmulatedMedia', {'features': [{'name': 'prefers-reduced-motion', 'value': 'reduce'}]}, pg.s)
         fails += pg.js(WX_STILL, timeout=30000)
-        # reduced motion turned off with the still wind shown: it moves again, without a move of the map (Codex on #1021)
+        # reduced motion turned off with the still wind shown: it moves again, without a move of the map (Codex on #1021).
+        # The media query's change event can take a second on a busy runner (971 ms in run 44898066118), so it waits for the loop
         wind = "document.querySelector('#wx-bar .tl-layers [data-k=wind]').click(); true"
         pg.js(wind)
         time.sleep(1)
         stopped = pg.js('polku.weather.anim')
         pg.c.send('Emulation.setEmulatedMedia', {'features': [{'name': 'prefers-reduced-motion', 'value': 'no-preference'}]}, pg.s)
-        moves = pg.js("(async () => { const cv = polku.weather.windCv, px = () => cv.getContext('2d').getImageData(0, 0, cv.width, cv.height).data, wait = (ms) => new Promise((r) => setTimeout(r, ms)); await wait(400); const a = px(); await wait(400); const b = px(); return !!polku.weather.anim && a.some((v, i) => v !== b[i]); })()")
+        moves = pg.js("(async () => { const cv = polku.weather.windCv, px = () => cv.getContext('2d').getImageData(0, 0, cv.width, cv.height).data, wait = (ms) => new Promise((r) => setTimeout(r, ms)); for (let t = 0; t < 3000 && !polku.weather.anim; t += 100) await wait(100); await wait(400); const a = px(); await wait(400); const b = px(); return !!polku.weather.anim && a.some((v, i) => v !== b[i]); })()")
         if stopped or not moves:
             fails.append(f'reduced motion turned off with the still wind shown: the loop stopped before {not stopped}, the wind moving after {moves}')
         pg.js(wind)
