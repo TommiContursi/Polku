@@ -79,7 +79,7 @@ What Polku does that its neighbours don't do together:
 
 **Polku's words:** Plan; the planner's tabs Route and Check, the trip's box and the weather card; Heads-up and Avoid; Other ways; Round trip; Route style and Your speed; Save offline and Preview offline; Follow me; On the way (planned); Layers and Settings; S0–S6 and ↑S0–↑S5 for difficulty.
 
-**Code licensing:** Polku's original code is proprietary, with all rights reserved; see [LICENSE](LICENSE). Third-party rights are preserved in [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md). The licence protects Polku's own work, so that no company can take its implementation, repackage it and put its features behind a paywall (2026-11-21). It covers Polku's original work only: not general ideas, established functionality, open geographic standards or third-party material. How agents learn from and reuse others' work is in AGENTS.md ("Learn from others, reuse what fits"). Any future integration of copyleft code needs a compatibility check first (#279).
+**Code licensing:** Polku's original software, design, documentation and other original materials are proprietary and protected by applicable intellectual property laws. All rights reserved; see [LICENSE](LICENSE). These rights protect Polku's original work against unauthorized copying, modification, distribution and commercial exploitation. Third-party materials remain subject to their respective licences and rights; see [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md). Any future integration of copyleft code requires a compatibility review first (#279).
 
 **Not decided yet:**
 - which countries come after Finland, and when (#176);
