@@ -32,14 +32,15 @@ export const isHttp = (u) => /^https?:\/\//i.test(u) ? u : /^www\./i.test(u) ? `
 // Layers a click can inspect, and the order it picks from when several are
 // under the pointer. The hover tooltip uses the same order, so it previews
 // exactly what a click opens.
-const INSPECTABLE = /^(cameras$|td-points$|td-barriers$|td-gates$|td-gates-all$|td-way-tree$|td-way-ford$|winter-way$|winter-ski$|winter-closed$|nm-marks|nm-navline$|nm-sector|nm-restrict-fill|nm-fairway|sf-ships|sf-points|sf-lines|sf-aadt|military-fill|lipas-point|poi-outdoor|poi-minor|poi-parking|poi-shops|label-peak|lipas-route$|uphill-line|path-|track-|cycleway-|road-|water$|property-plot$|pier$|pier-area$|mml-(bog|paludified|overgrowing|shoal|rock|boulders|cliff|power|rock-point|reed|pylon|rapids|flow|jetty|open|landuse|open-forest|forest|parking|parking-p)$)/;
+const INSPECTABLE = /^(cameras$|td-points$|td-barriers$|td-gates$|td-gates-all$|td-way-tree$|td-way-ford$|winter-way$|winter-ski$|winter-closed$|nm-marks|nm-navline$|nm-sector|nm-restrict-fill|nm-fairway|sf-ships|sf-points|sf-lines|sf-aadt|military-fill|lipas-point|poi-outdoor|poi-minor|poi-parking|poi-shops|label-peak|lipas-route$|uphill-line|path-|track-|cycleway-|road-|water$|property-plot$|pier$|pier-area$|lift$|mml-(bog|paludified|overgrowing|shoal|rock|boulders|cliff|power|rock-point|reed|pylon|rapids|flow|jetty|lift|mast|gate|open|landuse|open-forest|forest|parking|parking-p)$)/;
 // An official (LIPAS) route drawn over a trail is what a click there means: its card
 // links to the trail under it, and the trail's card back to the route.
 // MML's terrain (#1175): its marks and lines (and OSM's piers, #1234), after the ways, and its overgrowing water and shoals, before the
 // water they're drawn over; its areas under the water last, after a property's plot (whose tint shows what a click picks), and before a
 // park (inspector below); the forest's marks after them, as a bog under one is what the ground is.
-const PRIORITY = [/^cameras$/, /^sf-ships/, /^nm-marks/, /^sf-points/, /^td-/, /^lipas-point/, /^poi-|^label-peak|^mml-parking-p$/, /^sf-lines/, /^lipas-route/, /^uphill-line/, /^(path|track|cycleway)-/, /^winter-/,
-  /^sf-aadt/, /^road-/, /^(mml-(cliff|power|rock-point|reed|pylon|rapids|flow|jetty)|pier|pier-area)$/, /^nm-sector/, /^nm-navline/, /^nm-restrict/, /^military/, /^nm-fairway/, /^mml-(overgrowing|shoal)$/, /^water$/, /^property-plot$/, /^mml-(?!forest$)/, /^mml-forest$/];
+// A gate's and a mast's mark stands up over the ways (#1172), so a tap on one is it, as on the trail details' marks.
+const PRIORITY = [/^cameras$/, /^sf-ships/, /^nm-marks/, /^sf-points/, /^td-/, /^mml-(gate|mast)$/, /^lipas-point/, /^poi-|^label-peak|^mml-parking-p$/, /^sf-lines/, /^lipas-route/, /^uphill-line/, /^(path|track|cycleway)-/, /^winter-/,
+  /^sf-aadt/, /^road-/, /^(mml-(cliff|power|rock-point|reed|pylon|rapids|flow|jetty|lift)|pier|pier-area|lift)$/, /^nm-sector/, /^nm-navline/, /^nm-restrict/, /^military/, /^nm-fairway/, /^mml-(overgrowing|shoal)$/, /^water$/, /^property-plot$/, /^mml-(?!forest$)/, /^mml-forest$/];
 
 // a finger covers more than a mouse pointer: a wider box to find what's under it
 export const hitBox = (pt, touch) => { const r = touch ? 14 : 7; return [[pt.x - r, pt.y - r], [pt.x + r, pt.y + r]]; };
@@ -132,7 +133,7 @@ export function initInspector(map, app) {
     if (f.layer.id === 'cameras') { app.openCamera(f.properties.id, f.properties.name); return; }
     if (/^sf-ships/.test(f.layer.id)) { app.openShip(f.properties.mmsi); return; }
     // a way, a place, a LIPAS route or place, a lake, a park: the planner's card at the spot (25d part 6)
-    if (!/^(nm-|sf-|military|property-|mml-|pier)/.test(f.layer.id)) { app.openSpot(f, ll, e.point, touch); return; }
+    if (!/^(nm-|sf-|military|property-|mml-|pier|lift$)/.test(f.layer.id)) { app.openSpot(f, ll, e.point, touch); return; }
     // the map's other things (road works, a sea mark, MML's terrain, a pier…): the same card (#564)
     app.openThing(f, ll);
   });
@@ -289,6 +290,7 @@ export function thingOf(f, map) {
   if (id === 'property-plot') return { title: `Property ${p.kiinteistotunnuksenEsitysmuoto}`, sub: 'National Land Survey', rows: [['Property ID', p.kiinteistotunnuksenEsitysmuoto]],
     info: 'The plot you picked is tinted; a property can have more than one plot. From the National Land Survey’s property map.' };
   if (/^pier/.test(id)) return { title: 'Pier', src: 'From OpenStreetMap', rows: [] };
+  if (id === 'lift') return { ...liftOf(p), src: 'From OpenStreetMap', rows: [] };
   if (/^mml-/.test(id)) {
     const t = mmlTerrain(f);
     return { title: t.title, sub: t.line, src: 'From the National Land Survey', group: 'The bog', rows: t.survey ? [['Survey class', t.survey]] : [],
@@ -367,7 +369,12 @@ export const MML_TERRAIN = {
   32710: ['Coniferous forest'], 32713: ['Deciduous forest'], 32714: ['Mixed forest'], 32715: ['Heath'],
   // car parks (#1219): MML's motor traffic areas
   32421: ['Car park', 'Or a rest or loading area'],
+  // structures (#1172): dams and breakwaters with the jetties, ski lifts, masts and chimneys, gates
+  30300: ['Dam'], 44100: ['Breakwater'], 44500: ['Ski lift or cableway'], 44800: ['Mast'], 45300: ['Chimney'], 45200: ['Gate', 'Not mapped who may pass'],
 };
+// an OSM lift's card and hover (#1172): its name, and its kind from OpenFreeMap's subclass
+const LIFT_KIND = { chair_lift: 'Chair lift', gondola: 'Gondola', mixed_lift: 'Gondola', cable_car: 'Cable car', drag_lift: 'Drag lift', 't-bar': 'Drag lift', 'j-bar': 'Drag lift', platter: 'Drag lift', rope_tow: 'Rope tow', magic_carpet: 'Magic carpet', zip_line: 'Zip line', goods: 'Goods cableway' };
+export const liftOf = (p) => { const kind = LIFT_KIND[p.subclass] || 'Ski lift'; return p.name ? { title: p.name, sub: kind } : { title: kind }; };
 // { title, line, survey }: survey is a bog's crossing class, 3541x easier and 3542x hard, as MML's survey has it. Only zoom
 // 13's and 14's tiles have it right: zoom 12's are generalised (a bog hard to cross at 13 can be easier at 12) and 11's have
 // none (2026-11-20), so it's read by the feature's own tile (MapLibre's `_z`: in 3D the far tiles are lower).

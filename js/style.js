@@ -418,14 +418,15 @@ export function buildStyle(s, ctx) {
     });
     // a lift's chair, upright, every so often along it; the two sources' chairs give way to each other, so a lift both have
     // shows one row of them
-    const chair = { 'symbol-placement': 'line', 'symbol-spacing': 300, 'icon-image': `lift-${hex(P.cliff)}`, 'icon-rotation-alignment': 'viewport', 'icon-pitch-alignment': 'viewport', 'icon-size': zi(14, 0.9, 18, 1.1) };
+    const chair = { 'symbol-placement': 'line', 'symbol-spacing': 300, 'icon-image': `lift-${hex(P.cliff)}-${hex(P.halo)}`, 'icon-rotation-alignment': 'viewport', 'icon-pitch-alignment': 'viewport', 'icon-size': zi(14, 0.9, 18, 1.1) };
     add({ id: 'lift-chair', type: 'symbol', source: 'ofm', 'source-layer': 'transportation', minzoom: 14, filter: aerialway, layout: chair });
     add({ id: 'mml-lift-chair', type: 'symbol', source: 'mml', 'source-layer': 'rakennelma', minzoom: 14, filter: ['==', cls, 44500], layout: chair });
     // masts and chimneys (#1172), in zoom 14's tiles only, standing up as the Maastokartta draws them; the height (`korkeus`,
-    // 44803 a mast's, 45303 a chimney's) sits where MML sets it, its dx and dy (millimetres on the ground) from the mark: up to
-    // 120 m, a few dozen pixels at zooms 14 and 15, so it isn't drawn closer in
-    add({ id: 'mml-mast', type: 'symbol', source: 'mml', 'source-layer': 'poi', minzoom: 14, filter: ['in', cls, ['literal', [44800, 45300]]], layout: { 'icon-image': ['match', cls, 44800, `mast-${hex(P.cliff)}`, `chimney-${hex(P.cliff)}`], 'icon-anchor': 'bottom', 'icon-size': zi(14, 1, 17, 1.3), 'icon-allow-overlap': true, 'icon-ignore-placement': true } });
-    add({ id: 'mml-mast-height', type: 'symbol', source: 'mml', 'source-layer': 'korkeus', minzoom: 14, maxzoom: 16, filter: ['in', cls, ['literal', [44803, 45303]]], layout: { 'text-field': ['concat', metres('korkeusarvo'), ' m'], 'text-font': FONT, 'text-size': 10, 'text-optional': true }, paint: { 'text-color': P.cliff, 'text-halo-color': P.halo, 'text-halo-width': 1 } });
+    // 44803 a mast's, 45303 a chimney's) sits where MML sets it, its dx and dy (millimetres on the ground) from the mark. Each
+    // comes in group 57, and about half also in group 62, further off (median 70 m against 49, 2026-11-21): 57's only, up to
+    // 120 m away, a few dozen pixels at zooms 14 and 15, so it isn't drawn closer in
+    add({ id: 'mml-mast', type: 'symbol', source: 'mml', 'source-layer': 'poi', minzoom: 14, filter: ['in', cls, ['literal', [44800, 45300]]], layout: { 'icon-image': ['match', cls, 44800, `mast-${hex(P.cliff)}-${hex(P.halo)}`, `chimney-${hex(P.cliff)}-${hex(P.halo)}`], 'icon-anchor': 'bottom', 'icon-size': zi(14, 1, 17, 1.3), 'icon-allow-overlap': true, 'icon-ignore-placement': true } });
+    add({ id: 'mml-mast-height', type: 'symbol', source: 'mml', 'source-layer': 'korkeus', minzoom: 14, maxzoom: 16, filter: ['all', ['in', cls, ['literal', [44803, 45303]]], ['==', ['get', 'kohderyhma'], 57]], layout: { 'text-field': ['concat', metres('korkeusarvo'), ' m'], 'text-font': FONT, 'text-size': 10, 'text-optional': true }, paint: { 'text-color': P.cliff, 'text-halo-color': P.halo, 'text-halo-width': 1 } });
     add({ id: 'mml-pylon', type: 'symbol', source: 'mml', 'source-layer': 'rakennelma', minzoom: 15, filter: ['==', cls, 22392], layout: { 'icon-image': `pylon-${hex(P.power)}`, 'icon-size': zi(15, 1, 18, 1.5), ...flat } });
     add({ id: 'building', type: 'fill', source: 'ofm', 'source-layer': 'building', minzoom: 13, paint: { 'fill-color': s.base === 'trail' ? '#bdb8b0' : P.building, 'fill-outline-color': s.base === 'trail' ? '#918b81' : P.buildingLine, 'fill-opacity': zi(13, 0.5, 15, 1) } });
     add({ id: 'aeroway', type: 'line', source: 'ofm', 'source-layer': 'aeroway', minzoom: 11, filter: ['in', ['get', 'class'], ['literal', ['runway', 'taxiway']]], paint: { 'line-color': '#c9c6c0', 'line-width': ze(1.5, 11, 1, 16, 30) } });
