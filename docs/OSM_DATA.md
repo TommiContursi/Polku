@@ -150,19 +150,21 @@ pinned in `OSM_DATA_COMMIT`; a change to that code reaches Polku's credentials o
 a PR here that moves the pin.
 
 - **A candidate built after the live release** (`publish.py candidate`, public HTTP only):
-  `tools/smoke.py osmdata` and `measure_browser.py --country all` run against
-  `preview.py --manifest` on the candidate. Then, with this repository's
-  `osm-data-production` environment, `publish.py promote` requires the same manifest bytes
-  (by SHA-256), every file at its size and nothing else in the folder, a release built after
-  the live one, and that live geometry isn't dropped. It switches `current.json` with the
-  same guarded swap as before, and `health.py` checks polku.si in a browser and rolls back to
-  the saved predecessor if that fails. The full SHA-256 readback happened at upload, in the
-  public repository.
+  the `check` job runs `tools/smoke.py osmdata` and `measure_browser.py --country all`
+  against `preview.py --manifest` on the candidate, without credentials. The `promote` job
+  holds only the build's code at the pin, never Polku's, no GitHub token, and this
+  repository's `osm-data-production` environment: `publish.py promote` requires the same
+  manifest bytes (by SHA-256), every file at its size and nothing else in the folder, a
+  release built after the live one, and that live geometry isn't dropped, then switches
+  `current.json` with the same guarded swap as before. The `live` job, without credentials,
+  checks polku.si in a browser (`health.py`); if that fails, the `restore` job, set up like
+  `promote`, rolls back to the saved predecessor unless another release went live meanwhile.
+  The full SHA-256 readback happened at upload, in the public repository.
 - **No newer candidate:** the live release is checked in a browser, weekly instead of daily;
   the public repository checks its files daily without a browser.
 - **A pull request** that changes the job or the app's checks runs the checks against the
   live release's own manifest, and never promotes.
-- **Rollback** is a manual operation of the same workflow, as below.
+- **Rollback** by hand is an operation of the same workflow, in a job set up like `promote`.
 
 Until the new path has promoted a release, `osm-data.yml` below keeps building and
 publishing; then it leaves Polku.
