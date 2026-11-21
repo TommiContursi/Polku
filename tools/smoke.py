@@ -1333,7 +1333,8 @@ def mml_cards(chrome):
                 ('reeds', mid(9352, 4721), 'mml-reed', [38100], 'Reeds', ['From the National Land Survey'], 'maasto_piste'),
                 ('a stone above the surface', mid(9416, 4714), 'mml-rock-point', [38513], 'Stone above the surface', ['From the National Land Survey'], 'maasto_piste'),
                 ("a river's flow arrow", mid(9352, 4721), 'mml-flow', [36392], 'Flow direction', ['Flows to the ', 'From the National Land Survey'], 'symboli'),
-                ('a field', mid(9318, 4263), 'mml-landuse', [32611], 'Field', ['From the National Land Survey'], None)):
+                # (a field near the tile's middle, so a phone's view has it too)
+                ('a field', [24.75611, 65.0026], 'mml-landuse', [32611], 'Field', ['From the National Land Survey'], None)):
             pg.js(f"(async () => {{ const m=polku.map; m.jumpTo({{center:{json.dumps(center)},zoom:14.6}}); await new Promise(r=>setTimeout(r,300)); "
                   "await Promise.race([new Promise(r=>{m.once('idle',r);m.triggerRepaint();}),new Promise(r=>setTimeout(r,10000))]); return true; })()")
             at = pg.js(f"({spot})('{layer}', {json.dumps(classes)}, {json.dumps(phone)}, {json.dumps(src)})")
