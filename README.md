@@ -19,9 +19,10 @@ is not open source: see [LICENSE](LICENSE). The data keeps OpenStreetMap's licen
    Range, CORS and cache headers, and names it in `candidates/current.json`. The live
    `current.json` is not touched.
 3. **Polku's own weekly job** finds the candidate (`publish.py candidate`), runs the app's
-   checks against it in a browser, and promotes it with Polku's credentials
-   (`publish.py promote`, then `health.py`, which rolls back if the live checks fail).
-   Rollback is Polku's too. This repository never checks out Polku, and holds no token
+   checks against it in a browser, and promotes it with Polku's credentials in a job that holds
+   only this repository's code at a pinned commit (`publish.py promote`). A job without
+   credentials then checks polku.si in a browser (`health.py`), and another rolls back
+   (`publish.py rollback`) if that fails. Rollback by hand is Polku's too. This repository never checks out Polku, and holds no token
    of Polku's.
 4. **Daily at 07:17 UTC** this repository checks the live files: freshness (at most 14 days
    old), the manifest and Range reads of every archive. Polku's weekly job checks them in a
@@ -41,8 +42,17 @@ is a PR here first, then a PR in Polku's reader with new fixtures. The fixtures 
 
 ```sh
 python3.14 -m venv .venv
-.venv/bin/pip install -r tools/osm_data/requirements.txt -r tools/osm_data/sftp-requirements.txt
+.venv/bin/pip install --require-hashes -r tools/osm_data/requirements.txt -r tools/osm_data/sftp-requirements.txt
 .venv/bin/python -m unittest discover -s tools/osm_data -p 'test_*.py'
+```
+
+The `.txt` files lock every package by hash, since the SFTP jobs hold the host's password. They
+are made from the `.in` files, taking only releases at least two weeks old:
+
+```sh
+cd tools/osm_data
+uv pip compile --generate-hashes --python-version 3.14 --universal --exclude-newer YYYY-MM-DD --no-header requirements.in -o requirements.txt
+uv pip compile --generate-hashes --python-version 3.14 --universal --exclude-newer YYYY-MM-DD --no-header sftp-requirements.in -o sftp-requirements.txt
 ```
 
 Building, the host's configuration, recovery and retention are in

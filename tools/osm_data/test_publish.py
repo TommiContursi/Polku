@@ -627,10 +627,8 @@ class PublishTests(unittest.TestCase):
         saved, = self.release_dir.glob('rollback-*.json')
         self.assertEqual(json.loads(saved.read_bytes()), json.loads(self.previous))
         self.assertTrue(all('/maintenance/' in name for name, _, _ in self.host.uploads))
-        from tools.osm_data import health
-        with patch.object(health.subprocess, 'run', side_effect=RuntimeError('browser failed')):
-            with self.assertRaisesRegex(RuntimeError, 'browser failed'):
-                health.verify(Path(self.tmp.name) / 'health', self.release_dir)
+        # A failed live check after promotion: the rollback job restores the saved predecessor
+        publish.rollback(saved, expected_current='new-release')
         self.assertEqual(json.loads(self.host.files[ROOT + '/current.json']), json.loads(self.previous))
 
     def test_resume_partial_stage_verifies_prefix_and_sends_only_missing_suffix(self):

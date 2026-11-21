@@ -11,7 +11,7 @@ builds the data; nothing runs on the host. Keep sources and output out of Git (`
 
 ```sh
 python3.14 -m venv osm-build/venv
-osm-build/venv/bin/pip install -r tools/osm_data/requirements.txt
+osm-build/venv/bin/pip install --require-hashes -r tools/osm_data/requirements.txt
 curl --fail --location --retry 3 https://download.geofabrik.de/europe/finland-latest.osm.pbf -o osm-build/finland.osm.pbf
 curl --fail --location --retry 3 https://download.geofabrik.de/europe/finland-latest.osm.pbf.md5 -o osm-build/finland.osm.pbf.md5
 osm-build/venv/bin/python tools/osm_data/builder.py osm-build/finland.osm.pbf osm-build/release --md5 osm-build/finland.osm.pbf.md5
@@ -64,28 +64,37 @@ completed `main` build of this repository whose bundle passed, and its unexpired
 
 ## Promotion, in Polku
 
-Polku's `osm-promote.yml` runs weekly. It reads `candidates/current.json`; a candidate built
-after the live release is checked in Polku's app in a browser, reading the candidate's own
-manifest where it lies on the host (`preview.py --manifest`): `tools/smoke.py osmdata` and
-`measure_browser.py --country all`. Then, from Polku's checkout and with Polku's
-`osm-data-production` environment, it runs this repository's code at a pinned commit:
+Polku's `osm-promote.yml` runs weekly, in jobs that keep Polku's code and the publishing
+credentials apart:
 
-```sh
-python osm/tools/osm_data/publish.py promote RELEASE --sha256 SHA --directory osm-promote
-python osm/tools/osm_data/health.py osm-health --release-dir osm-promote
-```
+1. **check** (Polku's checkout and this repository's at a pinned commit, no credentials):
+   reads `candidates/current.json` (`publish.py candidate`). A candidate built after the live
+   release is checked in Polku's app in a browser, reading the candidate's own manifest where
+   it lies on the host (`preview.py --manifest`): `tools/smoke.py osmdata` and
+   `measure_browser.py --country all`. Without one, the live release is checked instead.
+2. **promote** (only this repository's checkout at the pin, no GitHub token, Polku's
+   `osm-data-production` environment limited to `main`):
 
-`promote` requires the manifest bytes Polku checked (by SHA-256), every file at its size and
-nothing else in the folder, a release built after the live one, and that live geometry isn't
-dropped. It checks the public Range reads again, writes a pending receipt naming the true
-predecessor, renames a temporary pointer over `current.json`, reads it back and checks the
-release over HTTPS, and restores the predecessor if that fails. The predecessor is saved in
-the directory for rollback. `health.py` then runs Polku's browser checks against polku.si,
-and rolls back to that predecessor if they fail; the run stays failed either way. A rerun
-after promotion only finishes the receipt.
+   ```sh
+   python tools/osm_data/publish.py promote RELEASE --sha256 SHA --directory osm-promote
+   ```
 
-Rollback (`publish.py rollback --manifest`) is an operation of Polku's job too: it verifies
-an existing release's every file over SFTP and HTTPS before switching the pointer.
+   It requires the manifest bytes Polku checked (by SHA-256), every file at its size and
+   nothing else in the folder, a release built after the live one, and that live geometry
+   isn't dropped. It checks the public Range reads again, writes a pending receipt naming the
+   true predecessor, renames a temporary pointer over `current.json`, reads it back and checks
+   the release over HTTPS, and restores the predecessor if that fails. The predecessor is
+   saved for rollback. A rerun after promotion only finishes the receipt.
+3. **live** (Polku's checkout, no credentials): `health.py osm-health --release-dir osm-promote`
+   requires the promoted release to be live and runs Polku's browser checks against polku.si.
+4. **rollback**, only when the live check failed (only this repository's checkout, the
+   environment): `publish.py rollback --manifest <the saved predecessor> --expected-current
+   RELEASE` verifies the predecessor's every file over SFTP and HTTPS and switches the pointer
+   back, unless another release has gone live meanwhile. The run stays failed.
+
+Rollback by hand runs the same way, with a release ID. The pin moves only through a Polku PR;
+when the contract changes, the PR here comes first, and Polku's PR moves the pin together with
+its reader.
 
 ## Monitoring
 

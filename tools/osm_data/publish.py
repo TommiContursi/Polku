@@ -670,7 +670,9 @@ def main():
     promotion.add_argument('--directory', type=Path, required=True, help='where the predecessor is saved for rollback')
     commands.add_parser('inspect').add_argument('directory', type=Path)
     commands.add_parser('inspect-retention')
-    commands.add_parser('rollback').add_argument('--manifest', type=Path, required=True)
+    restore = commands.add_parser('rollback')
+    restore.add_argument('--manifest', type=Path, required=True)
+    restore.add_argument('--expected-current', help='only if this release is live: never undo another publication')
     commands.add_parser('check').add_argument('url')
     commands.add_parser('verify-access')
     commands.add_parser('test-host')
@@ -692,7 +694,7 @@ def main():
             print('Metadata only; no remote files changed or hashes verified.')
             return
         elif args.command == 'rollback':
-            rollback(args.manifest)
+            rollback(args.manifest, expected_current=args.expected_current)
         elif args.command == 'test-host':
             print(json.dumps(test_host(), sort_keys=True))
         elif args.command == 'verify-access':

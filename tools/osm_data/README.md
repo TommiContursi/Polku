@@ -5,7 +5,7 @@ defaults. Install the two pinned build-only dependencies in a virtual environmen
 
 ```sh
 python3.14 -m venv work/osm-venv
-work/osm-venv/bin/pip install -r tools/osm_data/requirements.txt
+work/osm-venv/bin/pip install --require-hashes -r tools/osm_data/requirements.txt
 work/osm-venv/bin/python -m unittest tools.osm_data.test_builder
 ```
 

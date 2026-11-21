@@ -1,4 +1,4 @@
-"""Live browser failure restores only the exact retained predecessor."""
+"""The live release in a browser, and that it is the one just promoted."""
 import json
 import os
 from pathlib import Path
@@ -23,47 +23,16 @@ class HealthTests(unittest.TestCase):
             with self.assertRaisesRegex(RuntimeError,'browser failed'): health.verify(self.root/'out')
         rollback.assert_not_called()
 
-    def test_post_publish_failure_rolls_back_and_remains_a_failed_run(self):
+    def test_post_promotion_failure_fails_without_touching_the_host(self):
+        # The check runs without publishing credentials; Polku's rollback job restores the predecessor
         with patch.object(health.p,'get',return_value=encoded(pointer(self.m))),patch.object(health.subprocess,'run',side_effect=subprocess.TimeoutExpired('browser',180)),patch.object(health.p,'rollback') as rollback:
             with self.assertRaises(subprocess.TimeoutExpired): health.verify(self.root/'out',self.release)
-        copied=self.root/'out'/'recovery'/'previous.json'
-        rollback.assert_called_once_with(copied, expected_current='new')
-        self.assertEqual(copied.read_bytes(),self.saved.read_bytes())
-        self.assertTrue((self.root/'out'/'rollback.json').exists())
+        rollback.assert_not_called()
 
-    def test_changed_live_release_fails_before_browser_and_restores_previous(self):
-        with patch.object(health.p,'get',return_value=encoded(pointer(manifest('different')))),patch.object(health.subprocess,'run') as browser,patch.object(health.p,'rollback') as rollback:
+    def test_changed_live_release_fails_before_browser(self):
+        with patch.object(health.p,'get',return_value=encoded(pointer(manifest('different')))),patch.object(health.subprocess,'run') as browser:
             with self.assertRaisesRegex(ValueError,'release'): health.verify(self.root/'out',self.release)
-        browser.assert_not_called();rollback.assert_not_called()
-
-    def test_ambiguous_rollback_is_explicit_and_does_not_pick_one(self):
-        (self.release/'rollback-second.json').write_bytes(self.saved.read_bytes())
-        with patch.object(health.p,'get',side_effect=RuntimeError('host failed')),patch.object(health.p,'rollback') as rollback:
-            with self.assertRaisesRegex(RuntimeError,'rollback'): health.verify(self.root/'out',self.release)
-        rollback.assert_not_called()
-
-    def test_rechecking_live_release_never_claims_a_rollback_to_itself(self):
-        self.saved.write_bytes(encoded(pointer(self.m)))
-        with patch.object(health.p,'get',side_effect=RuntimeError('host failed')),patch.object(health.p,'rollback') as rollback:
-            with self.assertRaisesRegex(RuntimeError,'distinct predecessor'): health.verify(self.root/'out',self.release)
-        rollback.assert_not_called()
-
-    def test_failed_recovery_can_retry_without_mixing_its_own_checkpoint(self):
-        calls=[];original=self.saved.read_bytes()
-        def interrupted(path,**kwargs):
-            calls.append(path)
-            (Path(path).parent/'rollback-recovery.json').write_bytes(encoded(pointer(self.m)))
-            raise RuntimeError('interrupted recovery')
-        with patch.object(health.p,'get',return_value=encoded(pointer(self.m))),patch.object(health.subprocess,'run',side_effect=RuntimeError('browser failed')),patch.object(health.p,'rollback',side_effect=interrupted):
-            for attempt in range(2):
-                with self.assertRaisesRegex(RuntimeError,'rollback also failed'): health.verify(self.root/'out',self.release)
-        self.assertEqual(len(calls),2)
-        self.assertEqual(list(self.release.glob('rollback-*.json')),[self.saved])
-        self.assertEqual(self.saved.read_bytes(),original)
-
-    def test_rollback_failure_is_not_reported_as_success(self):
-        with patch.object(health.p,'get',side_effect=RuntimeError('host failed')),patch.object(health.p,'rollback',side_effect=RuntimeError('rollback failed')):
-            with self.assertRaisesRegex(RuntimeError,'rollback also failed'): health.verify(self.root/'out',self.release)
+        browser.assert_not_called()
 
     def test_success_requires_all_current_archives_and_32_browser_cases(self):
         live=pointer(self.m)

@@ -39,7 +39,7 @@ jobs:
         with:
           python-version: '3.14.3'
       - name: Install pinned data dependencies
-        run: python -m pip install -r tools/osm_data/requirements.txt -r tools/osm_data/sftp-requirements.txt
+        run: python -m pip install --require-hashes -r tools/osm_data/requirements.txt -r tools/osm_data/sftp-requirements.txt
       - name: Test extraction, reading and publishing without credentials
         run: |
           python -m unittest discover -s tools/osm_data -p 'test_*.py' -v
@@ -57,7 +57,7 @@ jobs:
         with:
           python-version: '3.14.3'
       - name: Install pinned SFTP dependency
-        run: python -m pip install -r tools/osm_data/sftp-requirements.txt
+        run: python -m pip install --require-hashes -r tools/osm_data/sftp-requirements.txt
       - name: Verify credentials and directory without uploading
         env:
           OSM_OPERATION: ${{ inputs.operation }}
@@ -82,7 +82,7 @@ jobs:
         with:
           python-version: '3.14.3'
       - name: Install pinned SFTP dependency
-        run: python -m pip install -r tools/osm_data/sftp-requirements.txt
+        run: python -m pip install --require-hashes -r tools/osm_data/sftp-requirements.txt
       - name: Check disposable SFTP transfer, overwrite, rename and public HTTP
         env:
           OSM_FTP_HOST: ${{ secrets.OSM_FTP_HOST }}
@@ -139,7 +139,7 @@ jobs:
           python-version: '3.14.3'
       - name: Build dependencies and checks
         run: |
-          python -m pip install -r tools/osm_data/requirements.txt -r tools/osm_data/sftp-requirements.txt
+          python -m pip install --require-hashes -r tools/osm_data/requirements.txt -r tools/osm_data/sftp-requirements.txt
           python -m unittest discover -s tools/osm_data -p 'test_*.py' -v
       - name: Download one complete country, checksum and clipping polygon
         timeout-minutes: 40
@@ -223,7 +223,7 @@ jobs:
       - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1
         with:
           python-version: '3.14.3'
-      - run: python -m pip install -r tools/osm_data/requirements.txt
+      - run: python -m pip install --require-hashes -r tools/osm_data/requirements.txt
       - name: Select the current or a verified completed country run
         id: source
         env:
@@ -331,7 +331,7 @@ jobs:
       - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1
         with:
           python-version: '3.14.3'
-      - run: python -m pip install -r tools/osm_data/requirements.txt
+      - run: python -m pip install --require-hashes -r tools/osm_data/requirements.txt
       - name: Check measured assembly disk budget
         run: python -c 'import shutil; assert shutil.disk_usage(".").free >= 25 * 1024**3, "OSM candidate assembly requires 25 GiB free disk"'
       - uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53
@@ -403,7 +403,7 @@ jobs:
           name: nordic-osm-release
           path: osm-build/release
       - name: Install pinned SFTP dependency
-        run: python -m pip install -r tools/osm_data/sftp-requirements.txt
+        run: python -m pip install --require-hashes -r tools/osm_data/sftp-requirements.txt
       - name: Upload, verify and name the candidate
         env:
           OSM_ALLOW_PUBLISH: 'true'
@@ -455,7 +455,7 @@ jobs:
           github-token: ${{ github.token }}
           run-id: ${{ steps.source.outputs.run_id }}
       - name: Install pinned SFTP dependency
-        run: python -m pip install -r tools/osm_data/sftp-requirements.txt
+        run: python -m pip install --require-hashes -r tools/osm_data/sftp-requirements.txt
       - name: Inspect, resume or upload the verified OSM release
         env:
           OSM_ALLOW_PUBLISH: ${{ inputs.operation == 'inspect-existing' && 'false' || 'true' }}
