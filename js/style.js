@@ -371,7 +371,8 @@ export function buildStyle(s, ctx) {
     const pier = ['==', ['get', 'class'], 'pier'], wide = (w) => ['match', cls, 45112, w * 1.6, w];
     add({ id: 'pier-area', type: 'fill', source: 'ofm', 'source-layer': 'transportation', minzoom: 14, filter: ['all', pier, ['==', ['geometry-type'], 'Polygon']], paint: { 'fill-color': P.bg, 'fill-outline-color': P.cliff } });
     add({ id: 'pier', type: 'line', source: 'ofm', 'source-layer': 'transportation', minzoom: 14, filter: ['all', pier, ['==', ['geometry-type'], 'LineString']], paint: { 'line-color': P.cliff, 'line-width': zi(14, 1, 16, 2, 18, 4) } });
-    add({ id: 'mml-jetty', type: 'line', source: 'mml', 'source-layer': 'rakennelma', minzoom: 14, filter: ['in', cls, ['literal', [45111, 45112]]], paint: { 'line-color': P.cliff, 'line-width': zi(14, wide(1), 16, wide(2), 18, wide(4)) } });
+    // dams and breakwaters (#1172) in the same dark line: built across or into the water, where a boat doesn't pass
+    add({ id: 'mml-jetty', type: 'line', source: 'mml', 'source-layer': 'rakennelma', minzoom: 14, filter: ['in', cls, ['literal', [45111, 45112, 30300, 44100]]], paint: { 'line-color': P.cliff, 'line-width': zi(14, wide(1), 16, wide(2), 18, wide(4)) } });
     // MML's cliffs, power lines and points in Finland (#1147), over the water, so a shore's cliff, a line across a lake
     // and the reeds show.
     // A cliff is a line with ticks on its lower side: MML draws its cliffs with the lower side on the right (37 of 37 by
@@ -385,6 +386,11 @@ export function buildStyle(s, ctx) {
       add({ id: `${id}-ticks`, type: 'line', source, 'source-layer': layer, minzoom: 13, filter, paint: { 'line-color': P.cliff, 'line-width': tick, 'line-offset': zi(13, 1.4, 16, 2.4, 18, 3.4), 'line-dasharray': [0.4, 1.4] } });
     }
     // power lines as thin grey lines from zoom 13 (110 kV and up, and under 110 kV)
+    // ski lifts and cableways from zoom 13 (#1172): OSM's everywhere and MML's in Finland, a dark line in one look, the two within
+    // a metre of each other where both have one (2026-11-21), so they read as one line; a chair along it, from the marks below
+    const aerialway = ['==', ['get', 'class'], 'aerialway'], liftLine = { 'line-color': P.cliff, 'line-width': zi(13, 1, 16, 1.6, 18, 2.2) };
+    add({ id: 'lift', type: 'line', source: 'ofm', 'source-layer': 'transportation', minzoom: 13, filter: aerialway, paint: liftLine });
+    add({ id: 'mml-lift', type: 'line', source: 'mml', 'source-layer': 'rakennelma', minzoom: 13, filter: ['==', cls, 44500], paint: liftLine });
     add({ id: 'mml-power', type: 'line', source: 'mml', 'source-layer': 'rakennelma', minzoom: 13, filter: ['in', cls, ['literal', [22311, 22312]]], paint: { 'line-color': P.power, 'line-width': zi(13, 0.6, 16, 1, 18, 1.4) } });
     // MML's points, side by side (each symbol layer splits 3D's draped layers): from zoom 14, as only zoom 14's tiles have
     // them, flat on the ground and never hiding a label or a place. Rocks too small for an area, stones and sparse
@@ -410,6 +416,16 @@ export function buildStyle(s, ctx) {
       id: 'mml-forest', type: 'symbol', source: 'mml', 'source-layer': 'symboli', minzoom: 14, filter: ['in', cls, ['literal', [32710, 32713, 32714, 32715]]],
       layout: { 'icon-image': ['match', cls, 32710, `tree-conifer-${hex(P.treeMark)}`, 32713, `tree-broadleaf-${hex(P.treeMark)}`, 32714, `tree-mixed-${hex(P.treeMark)}`, `tree-heath-${hex(P.treeMark)}`], 'icon-size': zi(14, 0.8, 18, 1.3), ...flat },
     });
+    // a lift's chair, upright, every so often along it; the two sources' chairs give way to each other, so a lift both have
+    // shows one row of them
+    const chair = { 'symbol-placement': 'line', 'symbol-spacing': 300, 'icon-image': `lift-${hex(P.cliff)}`, 'icon-rotation-alignment': 'viewport', 'icon-pitch-alignment': 'viewport', 'icon-size': zi(14, 0.9, 18, 1.1) };
+    add({ id: 'lift-chair', type: 'symbol', source: 'ofm', 'source-layer': 'transportation', minzoom: 14, filter: aerialway, layout: chair });
+    add({ id: 'mml-lift-chair', type: 'symbol', source: 'mml', 'source-layer': 'rakennelma', minzoom: 14, filter: ['==', cls, 44500], layout: chair });
+    // masts and chimneys (#1172), in zoom 14's tiles only, standing up as the Maastokartta draws them; the height (`korkeus`,
+    // 44803 a mast's, 45303 a chimney's) sits where MML sets it, its dx and dy (millimetres on the ground) from the mark: up to
+    // 120 m, a few dozen pixels at zooms 14 and 15, so it isn't drawn closer in
+    add({ id: 'mml-mast', type: 'symbol', source: 'mml', 'source-layer': 'poi', minzoom: 14, filter: ['in', cls, ['literal', [44800, 45300]]], layout: { 'icon-image': ['match', cls, 44800, `mast-${hex(P.cliff)}`, `chimney-${hex(P.cliff)}`], 'icon-anchor': 'bottom', 'icon-size': zi(14, 1, 17, 1.3), 'icon-allow-overlap': true, 'icon-ignore-placement': true } });
+    add({ id: 'mml-mast-height', type: 'symbol', source: 'mml', 'source-layer': 'korkeus', minzoom: 14, maxzoom: 16, filter: ['in', cls, ['literal', [44803, 45303]]], layout: { 'text-field': ['concat', metres('korkeusarvo'), ' m'], 'text-font': FONT, 'text-size': 10, 'text-optional': true }, paint: { 'text-color': P.cliff, 'text-halo-color': P.halo, 'text-halo-width': 1 } });
     add({ id: 'mml-pylon', type: 'symbol', source: 'mml', 'source-layer': 'rakennelma', minzoom: 15, filter: ['==', cls, 22392], layout: { 'icon-image': `pylon-${hex(P.power)}`, 'icon-size': zi(15, 1, 18, 1.5), ...flat } });
     add({ id: 'building', type: 'fill', source: 'ofm', 'source-layer': 'building', minzoom: 13, paint: { 'fill-color': s.base === 'trail' ? '#bdb8b0' : P.building, 'fill-outline-color': s.base === 'trail' ? '#918b81' : P.buildingLine, 'fill-opacity': zi(13, 0.5, 15, 1) } });
     add({ id: 'aeroway', type: 'line', source: 'ofm', 'source-layer': 'aeroway', minzoom: 11, filter: ['in', ['get', 'class'], ['literal', ['runway', 'taxiway']]], paint: { 'line-color': '#c9c6c0', 'line-width': ze(1.5, 11, 1, 16, 30) } });
@@ -899,6 +915,7 @@ function addRoads(s, P, hc, layers, ctx) {
   const aerial = isAerial(s.base);
   const mmlBase = isTopo(s.base);
   const darkBase = aerial || s.base === 'night';
+  const mmlTerrain = !aerial && !mmlBase; // the bases with MML's terrain (the `mml` source)
   const plainHalo = darkBase ? 'rgba(0,0,0,0.5)' : 'rgba(255,255,255,0.85)';
   const roadsDim = isWater(act) ? 0.55 : 1;
   const k = hc ? 1.35 : 1;
@@ -1228,6 +1245,17 @@ function addRoads(s, P, hc, layers, ctx) {
   const tdIcon = { 'icon-size': zi(15, 0.72, 18, 1), 'icon-allow-overlap': true, 'icon-rotation-alignment': 'viewport', 'icon-pitch-alignment': 'viewport' };
   if (s.trailDetails) {
     // fences, walls and hedges (the vector tiles have none): where you can't go through
+    // MML's fences and hedges in Finland (#1172) under OSM's, in their look: where both have one, they lie within 1–2 m
+    if (mmlTerrain) {
+      add({
+        id: 'mml-fence', type: 'line', source: 'mml', 'source-layer': 'rakennelma', minzoom: 15, filter: ['in', ['get', 'kohdeluokka'], ['literal', [44211, 44213]]],
+        paint: {
+          'line-color': ['match', ['get', 'kohdeluokka'], 44213, darkBase ? '#6fbf6f' : '#4d8a3a', darkBase ? '#b0b0b0' : '#545454'],
+          'line-width': zi(15, 1, 18, 2.4),
+          'line-dasharray': ['match', ['get', 'kohdeluokka'], 44211, ['literal', [2.4, 1.2]], ['literal', [1, 0]]],
+        },
+      });
+    }
     add({
       id: 'td-fence', type: 'line', source: 'trailWays', minzoom: 15, filter: ['has', 'fence'],
       paint: {
@@ -1263,6 +1291,9 @@ function addRoads(s, P, hc, layers, ctx) {
   // 165 marks in Helsinki's centre); at 16 they give way to each other and to names, and from 17 every one is drawn
   if (accessOn) {
     const gate = ['in', ['get', 'kind'], ['literal', ['gate', 'gate-no']]], mark = { 'icon-image': ['get', 'icon'], ...tdIcon };
+    // MML's gates in Finland (#1172): points with no say on who may pass, so the plain gate's unmapped mark; under OSM's, giving
+    // way to them, as where both have one they lie a few metres apart (0–6 m, 2026-11-21)
+    if (mmlTerrain) add({ id: 'mml-gate', type: 'symbol', source: 'mml', 'source-layer': 'rakennelma', minzoom: 16, filter: ['==', ['get', 'kohdeluokka'], 45200], layout: { 'icon-image': 'td-gate-unknown', ...tdIcon, 'icon-allow-overlap': false } });
     add({ id: 'td-barriers', type: 'symbol', source: 'trailPoints', minzoom: 15, filter: ['in', ['get', 'kind'], ['literal', ['stile', 'cycle']]], layout: mark });
     add({ id: 'td-gates', type: 'symbol', source: 'trailPoints', minzoom: 16, maxzoom: 17, filter: gate, layout: { ...mark, 'icon-allow-overlap': false } });
     add({ id: 'td-gates-all', type: 'symbol', source: 'trailPoints', minzoom: 17, filter: gate, layout: mark });
