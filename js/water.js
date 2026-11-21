@@ -613,7 +613,7 @@ function eventsAlong(grid, coords, comfort, got) {
       for (const kind of Object.keys(on)) {
         if (on[kind]) {
           if (!runs[kind]) runs[kind] = { at, len: 0, max: 0 };
-          runs[kind].len += len;
+          runs[kind].len = kind === 'rapids' ? at - runs[kind].at + len : runs[kind].len + len; // (a rapid spans the gaps it's joined over)
           if (kind === 'rough') runs[kind].max = Math.max(runs[kind].max, grid.wave[i]);
         } else if (runs[kind] && at - (runs[kind].at + runs[kind].len) > (kind === 'rapids' ? 50 : 3 * grid.res)) close(kind); // (a rapid can be two of MML's lines apart)
       }

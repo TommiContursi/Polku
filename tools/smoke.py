@@ -2865,21 +2865,23 @@ WATER_RAPIDS = """(async () => {
   const outside = await (await fetch(location.origin + '/tools/fixtures/mml-taustakartta-14-9318-4808.pbf')).arrayBuffer();
   const D = await import(location.origin + '/js/waterdata.js');
   const W = await import(location.origin + '/js/water.js');
+  const G = await import(location.origin + '/js/geo.js');
   const { OVERPASS, OSM_DATA_MANIFEST, OPEN_METEO, MML_TERRAIN_TILES } = await import(location.origin + '/js/config.js');
   const MML = MML_TERRAIN_TILES.split('{z}')[0], realFetch = window.fetch;
   window.fetch = (url, init = {}) => {
     const u = String(url);
     if (u.startsWith(MML)) return Promise.resolve(new Response(u.includes('/14/4545/9364.pbf') ? tile : outside));
     if (u.startsWith(new URL(OSM_DATA_MANIFEST).origin) || u.startsWith(OPEN_METEO)) return Promise.reject(new TypeError('Failed to fetch'));
-    // OSM: one rapid in Stockholm, and one made up on Eerolanpuro, a stream in Jyväskylä
+    // OSM: one rapid in Stockholm, and two made up on Eerolanpuro, a stream in Jyväskylä, 75 m apart: one rapid
     const way = (id, c) => ({ type: 'way', id, tags: { waterway: 'rapids' }, geometry: c.map(([lon, lat]) => ({ lon, lat })) });
-    if (OVERPASS.some((m) => u.startsWith(m))) return Promise.resolve(new Response(JSON.stringify({ elements: String(init.body || '').includes('rapids') ? [way(1, [[18.045, 59.32], [18.05, 59.321]]), way(2, stream)] : [] })));
+    if (OVERPASS.some((m) => u.startsWith(m))) return Promise.resolve(new Response(JSON.stringify({ elements: String(init.body || '').includes('rapids') ? [way(1, [[18.045, 59.32], [18.05, 59.321]]), way(2, stream.slice(2, 6)), way(3, stream.slice(8, 11))] : [] })));
     if (u.startsWith('https://avoinapi.vaylapilvi.fi/')) return Promise.resolve(new Response('{"type":"FeatureCollection","features":[]}'));
     if (u.includes('/data/depths/')) return Promise.resolve(new Response('{"tiles":[]}'));
     return realFetch(url, init);
   };
   const from = [25.7519622, 62.2575603], to = [25.7573529, 62.2487162]; // down Tourujoki, through Kangas
-  const stream = [[25.7222802, 62.247649], [25.7227633, 62.248052], [25.7227942, 62.2484233], [25.722784, 62.2486344]];
+  // Eerolanpuro, as OSM has it (way 32236945)
+  const stream = [[25.7202401, 62.2468368], [25.7212426, 62.2469252], [25.721466, 62.2470774], [25.7216424, 62.2471702], [25.7218033, 62.2472764], [25.7220657, 62.2474629], [25.7221925, 62.2475523], [25.7222802, 62.247649], [25.7227633, 62.248052], [25.7227942, 62.2484233], [25.722784, 62.2486344], [25.7228068, 62.2487868], [25.7228374, 62.2488752], [25.723022, 62.2490427], [25.7231434, 62.2491561]];
   const p = polku.planner;
   const rapids = () => (p.analysis ? p.headsUp().read.filter((w) => /^Rapids for/.test(w.text)) : []);
   const row = () => (p.analysis ? p.lookedAt(p.analysis).find((r) => r.what === 'Rapids') : null);
@@ -2904,7 +2906,9 @@ WATER_RAPIDS = """(async () => {
       else {
         const carried = p.legs[0].result.portage.length, n0 = p.nogos.length;
         act.fn();
-        if (p.nogos.length - n0 < 5) errs.push(`Avoid it put ${p.nogos.length - n0} places to avoid along the rapids`);
+        // every 40 m along the rapid, 30 m round each: no gap between them however the route was sampled
+        const added = p.nogos.slice(n0), gap = Math.max(...added.slice(1).map((n, k) => G.dist(added[k].ll, n.ll)));
+        if (added.length < 5 || gap > 41) errs.push(`Avoid it put ${added.length} places to avoid along the rapids, up to ${Math.round(gap)} m apart`);
         for (let k = 0; k < 120 && !(routed() && !rapids().length); k++) await wait(250);
         if (rapids().length || !(p.legs[0].result.portage.length > carried)) errs.push(`after Avoid it: ${rapids().map((w) => w.text).join(' / ') || 'no rapids'}, ${p.legs[0].result.portage.length} carries (${carried} before)`);
       }
@@ -2914,7 +2918,12 @@ WATER_RAPIDS = """(async () => {
     if (!ig.water.events.some((e) => e.kind === 'rapids')) errs.push(`Rocks & shoals: Ignore, no rapids on the leg: ${ig.water.events.map((e) => e.kind).join(', ') || 'no events'}`);
     // a rapid on a stream, which the router follows at a stream's cost
     const brook = await W.routeWater([25.7212426, 62.2469252], [25.7231434, 62.2491561], { at: 0, wind: 'ignore' });
-    if (!brook.water.events.some((e) => e.kind === 'rapids')) errs.push(`up Eerolanpuro, no rapids: ${brook.water.events.map((e) => e.kind).join(', ') || 'no events'} (missing ${brook.water.missing.join(', ') || 'nothing'})`);
+    const br = brook.water.events.filter((e) => e.kind === 'rapids');
+    if (br.length !== 1) errs.push(`up Eerolanpuro, ${br.length} rapids, not one: ${brook.water.events.map((e) => `${e.kind} ${Math.round(e.at)}+${Math.round(e.len)}`).join(', ') || 'no events'} (missing ${brook.water.missing.join(', ') || 'nothing'})`);
+    else { // the two lines' rapid ends past the second line's end, gap and all
+      const near = G.nearestOnLine(stream[10], brook.coords), end = G.lineLength([...brook.coords.slice(0, near.i + 1), G.lerp(brook.coords[near.i], brook.coords[near.i + 1], near.t)]);
+      if (br[0].at + br[0].len < end + 10) errs.push(`up Eerolanpuro, the rapid ends at ${Math.round(br[0].at + br[0].len)} m, before the second line's end at ${Math.round(end)} m`);
+    }
     // OSM's rapids are rapids, not a rock's zone
     const osm = await D.waterInputs([18.04, 59.31, 18.06, 59.33], { hazards: true, rapids: true }, 0);
     const rf = (osm.rapids && osm.rapids.features) || [];

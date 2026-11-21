@@ -10,7 +10,7 @@ import { detailsAlong, forgetFailures as forgetTrailFailures, obstacleText } fro
 import { iconUrl, warnMarkId } from './icons.js';
 import { speedsFor, speedSummary, renderSpeedEditor, pace, pace100 } from './speeds.js';
 import { ProfileChart, COLOR_MODES, COLOR_GROUPS, PICK_MODES, colorAt, routeReadout, breakdownKey, breakdownRows, sampleRows, skyIcon, noTerrain, downClass } from './chart.js';
-import { dist, encodePolyline, decodePolyline, fmtDist, fmtDuration, compass, bbox, nearestOnLine, simplify, lineLength, pointSegment, bearing } from './geo.js';
+import { dist, encodePolyline, decodePolyline, fmtDist, fmtDuration, compass, bbox, nearestOnLine, simplify, lineLength, pointSegment, bearing, lerp } from './geo.js';
 import { lipasPlace, stitch, clipAlong } from './lipas.js';
 import { onWaterData, prefetchWater, forgetWaterFailures } from './waterdata.js';
 import { sunTimes, darkness, nightAt, sunPosition } from './sun.js';
@@ -7416,8 +7416,16 @@ export class Planner {
       const [i0, i1] = this.itemSpan(w);
       const avoid = w.items ? w.items.map((p) => ({ ll: p.lngLat, r: 25, label: p.text }))
         : w.avoid ? [{ ...w.avoid, label: w.text }]
-          : w.avoidAlong ? avoidAlong(a, i0, i1, w.text)
+          : w.avoidAlong ? []
           : w.noAvoid || /^(Straight line|Carry)/.test(w.text) || w.ranges === null ? null : [{ ll: a.pts[Math.round((i0 + i1) / 2)], r: Math.max(25, Math.min(150, (w.len || 50) / 2 + 15)), label: w.text }];
+      // a rapid: places to avoid 30 m round every 40 m all along it, so the route carries round (#153)
+      if (w.avoidAlong) {
+        for (let d = w.at, k = Math.max(0, i0 - 1); ; d = Math.min(w.at + w.len, d + 40)) {
+          while (k < a.along.length - 2 && a.along[k + 1] < d) k++;
+          avoid.push({ ll: lerp(a.pts[k], a.pts[k + 1], Math.min(1, Math.max(0, (d - a.along[k]) / (a.along[k + 1] - a.along[k] || 1)))), r: 30, label: w.text });
+          if (d >= w.at + w.len) break;
+        }
+      }
       if (avoid) main = { label: w.items && avoid.length > 1 ? `Avoid all ${avoid.length}` : 'Avoid it', icon: 'avoid', fn: () => this.addNogos(avoid) };
     }
     const kind = g === 'not' ? null : hideKind(w), more = [];
@@ -8383,12 +8391,6 @@ function runsAlong(along, on) {
     if (on(i)) { if (s < 0) s = i - 1; } else if (s >= 0) { out.push([along[s], along[i - 1] - along[s]]); s = -1; }
   }
   if (s >= 0) out.push([along[s], along[along.length - 1] - along[s]]);
-  return out;
-}
-// Places to avoid all along an item's stretch, 30 m round every 40 m, so the route carries round a rapid (#153)
-function avoidAlong(a, i0, i1, label) {
-  const out = [];
-  for (let k = i0, last = -Infinity; k <= i1; k++) if (a.along[k] - last >= 40 || k === i1) { out.push({ ll: a.pts[k], r: 30, label }); last = a.along[k]; }
   return out;
 }
 // who an item of Check is, through a new analysis (its objects are made again): its group, its words and its place
