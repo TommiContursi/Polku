@@ -1299,8 +1299,8 @@ def mml_rock(chrome):
 
 
 # #1175: a tap or a click on MML's terrain opens its card (the map's other things'), from the recorded tiles, never live MML:
-# a bog hard to cross with the survey's caveat (Seitseminen), reeds in the water (Porvoo) and a stone above the surface (Kotka, #1170),
-# by touch at 390 × 844 and by mouse
+# a bog hard to cross with the survey's caveat (Seitseminen), reeds in the water (Porvoo), a stone above the surface (Kotka, #1170),
+# a river's flow arrow (Porvoo) and heath (Pallas, #1169, #1234), by touch at 390 × 844 and by mouse
 # at 1440 × 900, where the pointer's tooltip says the same first. A bog's crossing class only from zoom 13's tiles, and a name
 # for every class the inspected layers draw.
 def mml_cards(chrome):
@@ -1316,7 +1316,7 @@ def mml_cards(chrome):
       const at=pt&&m.project(pt.geometry.coordinates);
       for(let y=at?at.y:140;y<(at?at.y+1:innerHeight-180);y+=9)for(let x=at?at.x:24;x<(at?at.x+1:innerWidth-100);x+=9){
         const fs=featuresAt(m,{x,y},hitBox({x,y},touch),inspectLayers(m)), f=pickFeature(fs);
-        if(f&&f.layer.id===layer&&classes.includes(f.properties.kohdeluokka)&&fs.every((g)=>g.layer.id===layer||/^(water|mml-shoal)$/.test(g.layer.id)))return [R.left+x,R.top+y];
+        if(f&&f.layer.id===layer&&classes.includes(f.properties.kohdeluokka)&&fs.every((g)=>/^(water|mml-)/.test(g.layer.id)))return [R.left+x,R.top+y];
       }
       return null;
     })"""
@@ -1327,11 +1327,13 @@ def mml_cards(chrome):
         pg = chrome.page(w, h_, phone)
         # (zoom 10: under the source's zoom 11, so MML is asked for nothing before the test answers it)
         pg.open_app({'activity': 'mtb', 'base': 'trail'}, hash_='#10/61.92/23.478')
-        pg.js("""(async () => { const m=polku.map, FX=['14/9260/4578','14/9352/4721','14/9416/4714'];""" + MML_FIXTURES + """ return true; })()""")
+        pg.js("""(async () => { const m=polku.map, FX=['14/9260/4578','14/9352/4721','14/9416/4714','14/9286/3913'];""" + MML_FIXTURES + """ return true; })()""")
         for what, center, layer, classes, title, words, src in (
                 ('a bog hard to cross', mid(9260, 4578), 'mml-bog', [35421], 'Open bog', ['Survey class', 'Hard to cross', 'not a promise about the ground today', 'From the National Land Survey'], None),
                 ('reeds', mid(9352, 4721), 'mml-reed', [38100], 'Reeds', ['From the National Land Survey'], 'maasto_piste'),
-                ('a stone above the surface', mid(9416, 4714), 'mml-rock-point', [38513], 'Stone above the surface', ['From the National Land Survey'], 'maasto_piste')):
+                ('a stone above the surface', mid(9416, 4714), 'mml-rock-point', [38513], 'Stone above the surface', ['From the National Land Survey'], 'maasto_piste'),
+                ("a river's flow arrow", mid(9352, 4721), 'mml-flow', [36392], 'Flow direction', ['Flows to the ', 'From the National Land Survey'], 'symboli'),
+                ('heath', mid(9286, 3913), 'mml-open', [39120], 'Heath', ['From the National Land Survey'], None)):
             pg.js(f"(async () => {{ const m=polku.map; m.jumpTo({{center:{json.dumps(center)},zoom:14.6}}); await new Promise(r=>setTimeout(r,300)); "
                   "await Promise.race([new Promise(r=>{m.once('idle',r);m.triggerRepaint();}),new Promise(r=>setTimeout(r,10000))]); return true; })()")
             at = pg.js(f"({spot})('{layer}', {json.dumps(classes)}, {json.dumps(phone)}, {json.dumps(src)})")
@@ -1407,6 +1409,9 @@ def mml_cards(chrome):
               const dry={getLayer:(id)=>id!=='water'&&m.getLayer(id), queryRenderedFeatures:(pt,o)=>m.queryRenderedFeatures(pt,o)};
               if(!q)errs.push('(the test) no MML lake drawn from the recorded tile');
               else if(I.areaUnder(dry,q)!=='water')errs.push(`MML's lake without OSM's over it is ${I.areaUnder(dry,q)}, not the water`);
+              // a flow arrow says which way the river flows: suunta is 1/10,000 radian counter-clockwise from east (Porvoo's -21374 is south-west)
+              for(const [suunta,want] of [[-21374,'SW'],[0,'E'],[15708,'N'],[31416,'W']]){const t=I.mmlTerrain({properties:{kohdeluokka:36392,suunta}});
+                if(t.line!==`Flows to the ${want}`)errs.push(`a flow arrow with suunta ${suunta} says ${t.line}`);}
               // every class the inspected MML layers draw has its words
               for(const id of I.inspectLayers(m).filter((id)=>id.startsWith('mml-'))) {
                 const f=JSON.stringify(m.getFilter(id)), ks=(f.match(/\\b\\d{5}\\b/g)||[]).map(Number);

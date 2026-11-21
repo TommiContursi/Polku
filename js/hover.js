@@ -221,6 +221,7 @@ export function describe(f, feats, ctx) {
   }
   if (id === 'military-fill') return { title: 'Military area', bits: ['May be closed or have live firing'] };
   if (id === 'property-plot') return { title: `Property ${p.kiinteistotunnuksenEsitysmuoto}`, bits: ['National Land Survey'] };
+  if (id.startsWith('pier')) return { title: 'Pier', bits: [] };
   if (id.startsWith('mml-')) { const t = mmlTerrain(f); return { title: t.title, bits: [t.line, t.survey && `Survey class: ${t.survey.toLowerCase()}`].filter(Boolean) }; }
   if (id === 'lipas-point') return { title: p.name || p.typeName || 'Place', bits: [e(p.typeName || ''), e(p.city || '')].filter(Boolean) };
   if (id === 'lipas-route') {

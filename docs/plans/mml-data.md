@@ -301,7 +301,8 @@ Plain and Night maps, in MTB and paddle; its PR lists what else it covered.
 5. **Heath, clear-cuts and open ground** ([#1169](https://github.com/TommiContursi/Polku/issues/1169)): with the forest
    symbols and OSM's heath and scrub in the same looks (#1203).
 6. **A tap on the terrain** ([#1175](https://github.com/TommiContursi/Polku/issues/1175)): its card and the pointer's
-   tooltip, for the water's stones, shoals and rapids too. Done.
+   tooltip, for the water's stones, shoals and rapids too. Done. The flow arrows, jetties, open ground and
+   forest marks followed ([#1234](https://github.com/TommiContursi/Polku/issues/1234)).
 7. Later, each its own issue in Map style: paths
    and winter roads where OSM has none (#1171), fences, gates, ski lifts and
    masts (#1172), fire places, springs and monuments (#1173), place names
