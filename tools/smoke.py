@@ -16111,19 +16111,28 @@ def runner(chrome):
     listed = [line.split()[0] for line in r.stdout.splitlines() if line.strip()]
     if r.returncode != 0 or listed[:-1] != [n for n, _, _ in GROUPS]:
         fails.append(f'--list exits {r.returncode} and lists {listed}')
-    # with both slots taken (this run holds one, and here the other unless a run beside it does), a third run waits,
-    # before its Chrome starts (#1241, #1317); with no dev server at its address, one that didn't wait would stop at once
-    # rather than start a Chrome
-    held = [f for f in (open(p, 'a+') for p in SLOTS) if try_lock(f)]
+    # with both slots taken, a third run waits, before its Chrome starts (#1241, #1317). This check holds both, in a home
+    # of its own, so a run beside it that ends can't free one; with no dev server at its address, a run that didn't wait
+    # would stop at once rather than start a Chrome
+    import shutil
+    import tempfile
+    home = tempfile.mkdtemp(prefix='polku-slots-')
+    os.makedirs(os.path.join(home, '.cache', 'polku-tools'))
+    held = [open(os.path.join(home, '.cache', 'polku-tools', os.path.basename(p)), 'a+') for p in SLOTS]
+    for f in held:
+        fcntl.flock(f, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        f.write(f'pid {os.getpid()}, the runner')
+        f.flush()
     p = subprocess.Popen([sys.executable, me, 'changelog'], stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True,
-                         env={**os.environ, 'POLKU_URL': 'http://localhost:9/'})
+                         env={**os.environ, 'HOME': home, 'POLKU_URL': 'http://localhost:9/'})
     said = p.stdout.readline()
     p.kill()
     p.wait()
     for f in held:
         f.close()
-    if f'Waiting for one of the other two smoke runs to end (' not in said or f'pid {os.getpid()}, ' not in said:
-        fails.append(f'a third run didn\'t wait for this one and the one beside it: it said {said.strip()[:160]!r}')
+    shutil.rmtree(home)
+    if 'Waiting for one of the other two smoke runs to end (' not in said or said.count(f'pid {os.getpid()}, the runner') != 2:
+        fails.append(f'a third run didn\'t wait while two slots were taken: it said {said.strip()[:160]!r}')
 
     ran = []
 
