@@ -4,6 +4,11 @@ What's new in [Polku](https://polku.si), from the latest updates back to the fir
 
 ## 2026-11-21
 
+### Reeds in the water look the same everywhere ([#1248](https://github.com/TommiContursi/Polku/issues/1248))
+
+- On the Trail, Plain and Night maps, reeds in the water are reed tufts on the water's blue, whether they come from OpenStreetMap's reedbeds or, in Finland, from the National Land Survey's overgrowing water. Before, the same reedy shore could be tufts on a pale ground, which read as land, or blue dashes on the water. Blue dashes now mean bogs and wetlands only.
+- Reedbeds that OpenStreetMap maps inside a lake now show. Before, the lake covered them.
+
 ### The sport pill's name on phones ([#1214](https://github.com/TommiContursi/Polku/issues/1214))
 
 - On a phone, where the sport pill shows only its icon, a screen reader names it by its sport again, as on a desktop.
