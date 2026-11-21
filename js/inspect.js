@@ -46,9 +46,10 @@ export const hitBox = (pt, touch) => { const r = touch ? 14 : 7; return [[pt.x -
 // ground drawn at the point itself, so neither the forest beside a bog nor a lake, a town, a building or OSM's own rock or
 // wetland drawn over one is it (#1175). (The parks' tint is see-through.)
 const MML_AREA = /^mml-(bog|paludified|overgrowing|shoal|rock|boulders)$/;
-const ground = (map) => map.getLayersOrder().filter((id) => { const l = map.getLayer(id); return /^fill/.test(l.type) && ['ofm', 'mml', 'reedbeds'].includes(l.source) && id !== 'park-fill'; });
 export function featuresAt(map, pt, box, layers) {
-  const areas = layers.filter((id) => MML_AREA.test(id)), top = areas.length && map.queryRenderedFeatures([pt.x, pt.y], { layers: ground(map) })[0];
+  const areas = layers.filter((id) => MML_AREA.test(id));
+  // (the top of the basemap's fills at the point: OSM's, MML's and the reedbeds', the buildings too)
+  const top = areas.length && map.queryRenderedFeatures([pt.x, pt.y], { layers: map.getLayersOrder().filter((id) => { const l = map.getLayer(id); return /^fill/.test(l.type) && ['ofm', 'mml', 'reedbeds'].includes(l.source) && id !== 'park-fill'; }) })[0];
   return [...map.queryRenderedFeatures(box, { layers: layers.filter((id) => !MML_AREA.test(id)) }), ...(top && areas.includes(top.layer.id) ? [top] : [])];
 }
 
