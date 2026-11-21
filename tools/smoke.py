@@ -16990,7 +16990,7 @@ BT_STATES = """(async () => {
     polku.planner.btRedraw(polku.planner.cards.current);
     await BT.until(() => BT.box()?.querySelector('.stale-note, .bt-fail') && BT.done());
     const old = BT.box().querySelector('.stale-note')?.textContent || '';
-    if (!/^Older forecast \(from /.test(old) || !BT.box().querySelector('.bt-best')) errs.push(`an hour on with the forecast failing: “${BT.box().textContent.slice(0, 160)}”, not the older forecast, said`);
+    if (!/^Older forecast \\(from /.test(old) || !BT.box().querySelector('.bt-best')) errs.push(`an hour on with the forecast failing: “${BT.box().textContent.slice(0, 160)}”, not the older forecast, said`);
   } finally { Date.now = now; W.fail = false; }
   return errs;
 })()"""
@@ -17203,7 +17203,7 @@ BT_WATER = """(async () => {
   const cross = () => [...BT.box().querySelectorAll('.bt-cross')].map((e) => e.textContent);
   const step = async (k) => { BT.box().querySelector('[data-k=bt-next]').click(); return BT.until(() => BT.box()?.querySelector('.bt-day b')?.textContent.includes(new Date(BT.day(k, 12) * 1000).toLocaleDateString([], { weekday: 'short' })) && BT.done(), 30000); };
   await step(2);
-  const two = /^Leave between (\S+) and (\S+) to cross in small waves/.exec(cross()[0] || '');
+  const two = /^Leave between (\\S+) and (\\S+) to cross in small waves/.exec(cross()[0] || '');
   if (!two || two[1] !== BT.clock(BT.day(2, 10)) || ![BT.clock(BT.day(2, 13)), BT.clock(BT.day(2, 14))].includes(two[2])) errs.push(`the day after tomorrow, calm from 10:00 to 15:00: “${cross().join(' / ')}”`);
   for (const k of [3, 4, 5]) await step(k);
   if (cross().length) errs.push(`five days ahead (${BT.box().querySelector('.bt-day b')?.textContent}), past the forecast: “${cross().join(' / ')}”`);
