@@ -43,7 +43,7 @@ const PALETTES = {
   trail: {
     bg: '#f5f3ee', wood: '#dbeacd', woodOpacity: 0.9, grass: '#e8f1d9', farmland: '#f7f0cf',
     wetland: '#dce5e3', wetlandDash: '#8fb0d3', bogWood: '#deebd0', reed: '#5f8a5a', heath: '#ebe6c4', openForest: '#c6dcb2', treeMark: '#6b8a5c', sand: '#f3e7bb', rock: '#e2dfd8', cliff: '#5e574e', ice: '#f4fbff',
-    residential: '#ece8e2', industrial: '#e8e2e8', cemetery: '#dde7d3', sport: '#dcefd3', bridge: '#2c2721', oneway: '#6b6458', onewayBike: '#1f2fa0',
+    residential: '#ece8e2', industrial: '#e8e2e8', cemetery: '#dde7d3', sport: '#dcefd3', cityPark: '#d3ebbf', bridge: '#2c2721', oneway: '#6b6458', onewayBike: '#1f2fa0',
     park: '#3f8f3f', water: '#a8d1ef', waterLine: '#6fa9d6', waterText: '#24618f', shoal: '#ffffff',
     building: '#d9d1c8', buildingLine: '#c4b9ad',
     motorway: '#f2a35e', trunk: '#f6c46b', primary: '#fbd77b', secondary: '#fde7a2', tertiary: '#fff3c9',
@@ -54,7 +54,7 @@ const PALETTES = {
   plain: {
     bg: '#f7f7f5', wood: '#eef3ea', woodOpacity: 0.7, grass: '#f1f4ed', farmland: '#f7f6ef',
     wetland: '#eef4f2', wetlandDash: '#b4c9de', bogWood: '#f1f4ed', reed: '#9bb796', heath: '#f2efdf', openForest: '#dde8d4', treeMark: '#9bb796', sand: '#f4f1e6', rock: '#efeeec', cliff: '#948d83', ice: '#fafdff',
-    residential: '#f0efed', industrial: '#efedf0', cemetery: '#eaefe6', sport: '#eaf1e6', bridge: '#5a554e', oneway: '#8a847a', onewayBike: '#4a6890',
+    residential: '#f0efed', industrial: '#efedf0', cemetery: '#eaefe6', sport: '#eaf1e6', cityPark: '#e4f0d8', bridge: '#5a554e', oneway: '#8a847a', onewayBike: '#4a6890',
     park: '#7aa27a', water: '#c3dcef', waterLine: '#9bbfdc', waterText: '#4a7ca3', shoal: '#ffffff',
     building: '#e6e3df', buildingLine: '#d6d1cb',
     motorway: '#e9c8a5', trunk: '#eed6ad', primary: '#f3e2b8', secondary: '#f6eccb', tertiary: '#faf5e4',
@@ -65,7 +65,7 @@ const PALETTES = {
   night: {
     bg: '#161a1f', wood: '#1b2620', woodOpacity: 1, grass: '#1d241f', farmland: '#23231d',
     wetland: '#18232a', wetlandDash: '#2f5679', bogWood: '#1b2620', reed: '#4f7a55', heath: '#26261c', openForest: '#26362a', treeMark: '#567a5c', sand: '#2a271f', rock: '#22221f', cliff: '#a39a8c', ice: '#20262b',
-    residential: '#1e2126', industrial: '#211f25', cemetery: '#1c231d', sport: '#1b241d', bridge: '#c9c2b5', oneway: '#aaa498', onewayBike: '#a9c4ea',
+    residential: '#1e2126', industrial: '#211f25', cemetery: '#1c231d', sport: '#1b241d', cityPark: '#1e3524', bridge: '#c9c2b5', oneway: '#aaa498', onewayBike: '#a9c4ea',
     park: '#4e8f5b', water: '#10304a', waterLine: '#1f5a85', waterText: '#7fb6e3', shoal: '#2f6f9e',
     building: '#272b31', buildingLine: '#30353c',
     motorway: '#8a5a2f', trunk: '#80633a', primary: '#6f6040', secondary: '#5b5443', tertiary: '#4a4740',
@@ -193,8 +193,18 @@ export function buildStyle(s, ctx) {
   if (vectorFills) {
     const lc = (id, cls, color, extra = {}) =>
       add({ id, type: 'fill', source: 'ofm', 'source-layer': 'landcover', filter: ['in', ['get', 'class'], ['literal', cls]], paint: { 'fill-color': color, 'fill-antialias': false, ...extra } });
+    // the town's land use under the land cover (#1220), so a park or a lawn in a block shows (whole parks in Tallinn's and
+    // Stockholm's districts, which are mapped as land use)
+    const lu = (id, cls, color, minzoom = 8) =>
+      add({ id, type: 'fill', source: 'ofm', 'source-layer': 'landuse', minzoom, filter: ['in', ['get', 'class'], ['literal', cls]], paint: { 'fill-color': color } });
+    lu('lu-residential', ['residential', 'suburb', 'neighbourhood'], P.residential, 9);
+    lu('lu-industrial', ['industrial', 'commercial', 'retail', 'railway', 'garages', 'quarry'], P.industrial, 11);
+    lu('lu-cemetery', ['cemetery'], P.cemetery, 12);
     lc('lc-farmland', ['farmland'], P.farmland);
     lc('lc-grass', ['grass'], P.grass);
+    // parks, gardens, village greens and recreation grounds (#1220) in a clearer green than lawns, under the forest, so a wooded
+    // park keeps its trees
+    add({ id: 'lc-park', type: 'fill', source: 'ofm', 'source-layer': 'landcover', filter: ['in', ['get', 'subclass'], ['literal', ['park', 'garden', 'village_green', 'recreation_ground']]], paint: { 'fill-color': P.cityPark, 'fill-antialias': false } });
     lc('lc-wood', ['wood'], P.wood, { 'fill-opacity': P.woodOpacity });
     // MML's terrain in Finland (#1147): its background map's tiles, from zoom 11
     sources.mml = { type: 'vector', tiles: [`${MML_TERRAIN_TILES}?api-key=${encodeURIComponent(mmlKey)}`], minzoom: 11, maxzoom: 14, bounds: FINLAND_BOUNDS, attribution: '© Maanmittauslaitos, Maastotietokanta, CC BY 4.0' };
@@ -237,12 +247,7 @@ export function buildStyle(s, ctx) {
     // OSM's scree (#1178) dotted the same, over MML's rock so it shows where MML calls it rock
     add({ id: 'lc-scree', type: 'fill', source: 'ofm', 'source-layer': 'landcover', minzoom: 13, filter: ['==', ['get', 'subclass'], 'scree'], paint: { 'fill-pattern': `boulders-${hex(P.rock)}-${hex(P.cliff)}` } });
     lc('lc-ice', ['ice'], P.ice);
-
-    const lu = (id, cls, color, minzoom = 8) =>
-      add({ id, type: 'fill', source: 'ofm', 'source-layer': 'landuse', minzoom, filter: ['in', ['get', 'class'], ['literal', cls]], paint: { 'fill-color': color } });
-    lu('lu-residential', ['residential', 'suburb', 'neighbourhood'], P.residential, 9);
-    lu('lu-industrial', ['industrial', 'commercial', 'retail', 'railway', 'garages', 'quarry'], P.industrial, 11);
-    lu('lu-cemetery', ['cemetery'], P.cemetery, 12);
+    // pitches and playgrounds over the land cover: they're often in a park
     lu('lu-sport', ['pitch', 'stadium', 'playground', 'track'], P.sport, 13);
   }
 
@@ -1263,6 +1268,9 @@ function addLabels(s, P, hc, layers) {
   if (s.overlays.lipasRoutes) {
     add({ id: 'lipas-route-label', type: 'symbol', source: 'lipasRoutes', minzoom: 13, layout: { 'symbol-placement': 'line', 'text-pitch-alignment': 'viewport', 'text-field': ['get', 'name'], 'text-font': FONT_B, 'text-size': 11, 'symbol-spacing': 400 }, paint: { 'text-color': ['match', ['get', 'type'], ...Object.entries(LIPAS_TYPES).filter(([k]) => +k > 4000).flatMap(([k, v]) => [+k, v.color]), '#444'], ...halo } });
   }
+  // city parks' names from 15 (#1220): OSM's parks and gardens are points in the tiles' poi layer, as the park layer holds
+  // protected areas only
+  add({ id: 'label-city-park', type: 'symbol', source: 'ofm', 'source-layer': 'poi', minzoom: 15, filter: ['all', ['in', ['get', 'class'], ['literal', ['park', 'garden']]], ['has', 'name']], layout: { 'symbol-sort-key': ['get', 'rank'], 'text-field': ['get', 'name'], 'text-font': FONT_I, 'text-size': 12, 'text-max-width': 8 }, paint: { 'text-color': isAerial(s.base) ? P.text : s.base === 'night' ? '#8fd18f' : '#2f6b2f', ...halo } });
   const place = (id, classes, minzoom, size, font = FONT) =>
     add({ id, type: 'symbol', source: 'ofm', 'source-layer': 'place', minzoom, filter: ['in', ['get', 'class'], ['literal', classes]], layout: { 'text-field': ['get', 'name'], 'text-font': font, 'text-size': size, 'text-max-width': 8 }, paint: { 'text-color': P.text, ...halo } });
   place('label-place-minor', ['hamlet', 'isolated_dwelling', 'locality', 'neighbourhood'], 13, 11);

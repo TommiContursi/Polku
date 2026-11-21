@@ -1351,6 +1351,39 @@ def town_oneway(chrome):
     return not fails
 
 
+# #1220: parks and small green spaces, on the Trail and Night maps at Toompea (Tallinn): the town's land use under the land
+# cover, so a park in a district mapped as land use shows; pitches and playgrounds over it; parks, gardens, village greens and
+# recreation grounds in their own green over the lawns and under the forest; city parks' names from zoom 15.
+def town_parks(chrome):
+    pg = chrome.page(1440, 900, False)
+    pg.open_app({'activity': 'mtb', 'base': 'trail'}, None, '#15.2/59.4365/24.7395')
+    fails = pg.js("""(async () => {
+      const errs=[], m=polku.map, wait=(ms)=>new Promise((r)=>setTimeout(r,ms));
+      const settle=async()=>{await wait(800);await Promise.race([new Promise(r=>{m.once('idle',r);m.triggerRepaint();}),wait(10000)]);await wait(300);};
+      const takes=(id,props)=>m.style.getLayer(id)._featureFilter.filter({zoom:15},{type:3,properties:props});
+      for(const [base,green] of [['trail','#d3ebbf'],['night','#1e3524']]) {
+        polku.set({base}); await settle();
+        const order=m.getLayersOrder(), at=(id)=>order.indexOf(id);
+        if(at('lc-park')<0||m.getPaintProperty('lc-park','fill-color')!==green){errs.push(`${base}: parks are ${at('lc-park')<0?'missing':m.getPaintProperty('lc-park','fill-color')}`);continue;}
+        for(const lu of ['lu-residential','lu-industrial','lu-cemetery'])if(!(at(lu)>=0&&at(lu)<at('lc-farmland')))errs.push(`${base}: ${lu} over the land cover`);
+        if(!(at('lc-grass')<at('lc-park')&&at('lc-park')<at('lc-wood')))errs.push(`${base}: parks not between the lawns and the forest`);
+        if(!(at('lu-sport')>at('lc-wood')))errs.push(`${base}: pitches under the land cover`);
+        for(const sub of ['park','garden','village_green','recreation_ground'])if(!takes('lc-park',{class:'grass',subclass:sub}))errs.push(`${base}: a ${sub} isn't a park`);
+        if(takes('lc-park',{class:'grass',subclass:'grass'}))errs.push(`${base}: a lawn drawn as a park`);
+        if(!m.queryRenderedFeatures({layers:['lc-park']}).length)errs.push(`${base}: no park drawn at Toompea`);
+        const names=m.queryRenderedFeatures({layers:['label-city-park']}).map((f)=>f.properties.name);
+        if(names.length<3)errs.push(`${base}: city parks' names: ${names.join(', ')||'none'}`);
+      }
+      polku.set({base:'trail'}); m.jumpTo({center:m.getCenter(),zoom:14.6}); await settle();
+      if(m.queryRenderedFeatures({layers:['label-city-park']}).length)errs.push("city parks' names at 14.6");
+      return errs;
+    })()""")
+    fails += [f'console: {e[:160]}' for e in pg.errors()]
+    pg.close()
+    print(f"{'ok  ' if not fails else 'FAIL'} parks over the town's land use, in their own green, named from zoom 15 (#1220)" + ''.join(f'\n     - {f}' for f in fails), flush=True)
+    return not fails
+
+
 def osm_cliffs(chrome):
     pg = chrome.page(1440, 900, False)
     pg.open_app({'activity': 'mtb', 'base': 'trail'}, hash_='#16/62.2289/25.7652')
@@ -26386,7 +26419,7 @@ GROUPS = [
     ('changelog', [changelog], 'release notes, retry, safe rendering, keyboard, route preservation and real worker offline'),
     ('pacing', [pacing, paced_legs, net_fails], 'calls made together go out paced and counted (mocked services, a fake clock); legs refused for a slot follow at it (#78); the calls that failed, in Data sources (#687)'),
     ('loading', [loading, routing_edits], 'cancel obsolete routing, edits/Undo/Clear, shared subscribers, refusal/recovery, deadlines, terrain slots and LIPAS viewport/cache (mocked)'),
-    ('layers', [layers, layer_coverage, cycleway_style, cycling_restrictions, waterway_style, property_lines, property_plots, wetland_style, reedbed_style, mml_bogs, mml_rock, mml_water, mml_open, osm_cliffs, saddles, mml_cards, town_gates, town_bridges, town_oneway], 'the Layers panel in every sport'),
+    ('layers', [layers, layer_coverage, cycleway_style, cycling_restrictions, waterway_style, property_lines, property_plots, wetland_style, reedbed_style, mml_bogs, mml_rock, mml_water, mml_open, osm_cliffs, saddles, mml_cards, town_gates, town_bridges, town_oneway, town_parks], 'the Layers panel in every sport'),
     ('raster', [raster_maps, aerial_fallback, aerial_labels], 'terrain and aerial detail, bounded high-density WMS symbols, depth boundaries and missing aerial detail (#649, #650, #653); the map\'s words on the aerial photos at 4.5:1 on their halo (#554)'),
     ('coarse', [coarse], 'a coarse map underneath (#1091): the base map\'s tile four zoom levels up stands in for one that hasn\'t come, at 1440 and 390'),
     ('offline', [mml_offline], 'Save offline keeps the National Land Survey\'s tiles (#1176): its terrain at zooms 11–14 and property boundaries while on, under addresses without the key, two at a time and ten a second at most; what Offline maps says an area lacks; offline, with the real worker, the bogs drawn from the saved tile and no message'),
