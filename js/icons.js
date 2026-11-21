@@ -494,10 +494,11 @@ function trailIcon(kind) {
 }
 
 // Gates and barriers (#1232): a mark for each kind on a disc coloured by who may pass, `td-<mark>-<unknown|closed|open>`. A closed
-// one also has a white padlock out of its lower right corner, on a canvas 4 px larger each side, so the disc stays on the point.
+// one also has a white padlock out of its lower right corner and an open one a white ✓, so neither is told by colour alone, on a
+// canvas 4 px larger each side, so the disc stays on the point.
 const WHO = { unknown: '#334155', closed: '#dc2626', open: '#15803d' };
 function barrierIcon(mark, who) {
-  const pad = who === 'closed' ? 4 : 0, [c, ctx] = canvas(22 + 2 * pad, 22 + 2 * pad);
+  const pad = who === 'unknown' ? 0 : 4, [c, ctx] = canvas(22 + 2 * pad, 22 + 2 * pad);
   ctx.translate(pad, pad);
   ctx.beginPath();
   ctx.arc(11, 11, 9.8, 0, Math.PI * 2);
@@ -569,6 +570,16 @@ function barrierIcon(mark, who) {
     ctx.beginPath();
     ctx.arc(19.5, 19, 1.8, Math.PI, 0);
     ctx.stroke();
+  } else if (who === 'open') {
+    ctx.fillStyle = '#ffffff';
+    ctx.strokeStyle = WHO.open;
+    ctx.lineWidth = 1.2;
+    ctx.beginPath();
+    ctx.arc(19.5, 19.5, 5.6, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+    ctx.lineCap = 'round';
+    line([[16.9, 19.6], [18.8, 21.5], [22.2, 17.6]], 1.6);
   }
   return ctx.getImageData(0, 0, c.width, c.height);
 }

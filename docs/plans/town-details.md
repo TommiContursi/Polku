@@ -84,7 +84,7 @@ The order to build them is at the end.
     halo is dark (the Night map and the aerial photos), 8.1:1 or more on every base.
   - House numbers (#1223): [#1274](https://github.com/TommiContursi/Polku/pull/1274). Added before the places, so every
     other name wins.
-  - The gates' marks (#1232): [#1290](https://github.com/TommiContursi/Polku/pull/1290), as B in its mock-up. The trail
+  - The gates' marks (#1232): [#1290](https://github.com/TommiContursi/Polku/pull/1290), as B in its mock-up, with a ✓ on open marks as the padlock on closed ones (Codex's review). The trail
     details now load whenever Access restrictions is on; the zoom hint follows Trail details.
   - Left: car parks beyond Finland, [#1216](https://github.com/TommiContursi/Polku/issues/1216).
 

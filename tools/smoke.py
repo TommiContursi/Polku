@@ -1538,8 +1538,12 @@ def town_gate_marks(chrome):
       const lifts=drawn(['td-gates-all']).filter((f)=>f.properties.icon==='td-lift-unknown');
       if(lifts.length<3)errs.push(`${lifts.length} lift gates drawn at 17.5`);
       if(!m.hasImage('td-lift-unknown'))errs.push("the lift gate's mark wasn't made");
-      const {makeIcon}=await import('/js/icons.js'), closed=makeIcon('td-gate-closed'), plain=makeIcon('td-gate-unknown');
-      if(!closed||!plain||closed.width<=plain.width)errs.push("a closed mark has no room for its padlock");
+      const {makeIcon}=await import('/js/icons.js'), closed=makeIcon('td-gate-closed'), open=makeIcon('td-gate-open'), plain=makeIcon('td-gate-unknown');
+      // a closed mark's padlock and an open one's ✓ stand out of the disc, so neither is told by colour alone
+      // (white in the badge, above the padlock's shackle and the ✓'s end: 25, 20 of the 30 px canvas)
+      const corner=(img)=>{const s=img.width/30, i=(Math.round(20*s)*img.width+Math.round(25*s))*4; return img.data[i+3]>200&&img.data[i]>200&&img.data[i+1]>200&&img.data[i+2]>200;};
+      if(!closed||!open||!plain||closed.width<=plain.width||open.width<=plain.width)errs.push("a closed or open mark has no room for its badge");
+      else if(!corner(closed)||!corner(open))errs.push("no white badge in a closed or open mark's corner");
       // Access restrictions off: no barrier, the fallen tree still (Trail details')
       polku.set({overlays:{...polku.state.overlays,access:false}}); m.jumpTo({center:[25.7652,62.2289],zoom:17.5}); await settle();
       if(BARRIERS.some((id)=>m.getLayer(id)))errs.push('barriers drawn with Access restrictions off');
