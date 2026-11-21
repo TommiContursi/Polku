@@ -103,7 +103,11 @@ MapLibre as `data:` URLs (`toDataURL()` in `js/radar.js` and `js/wxmap.js`), and
 loads images both as image elements and through `fetch`. The service list in step 1 below is
 therefore built from the code's `fetch`, image and worker uses too, not only `config.js` and
 `SOURCES`. `object-src 'none'`, `base-uri
-'none'`, `form-action 'none'`.
+'none'`, `form-action 'none'`. The policy allows no inline event handlers, so the one
+in `index.html` (the start-failure banner's **Reload**, `onclick="polkuRestart()"`) moves to
+`addEventListener` in the inline script, and the start-failure path is tested with the policy
+enforced (the `startfail` smoke group). No other `on…=` attribute is in `index.html` or the code
+(searched 2026-11-21).
 
 **Rolled out so routing can't break:**
 
