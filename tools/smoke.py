@@ -598,7 +598,7 @@ TRAILS = """(async () => {
   }
   m.jumpTo({ center: [25.7652, 62.2290], zoom: 17.2 });
   await wait(800); await idle();
-  const pts = m.queryRenderedFeatures({ layers: ['td-points'] });
+  const pts = m.queryRenderedFeatures({ layers: ['td-points', 'td-gates-all'] });
   if (!pts.some((f) => f.properties.kind === 'tree') || !pts.some((f) => f.properties.kind === 'gate-no')) errs.push(`icons: ${pts.map((f) => f.properties.kind).join(', ') || 'none'}`);
   if (!m.queryRenderedFeatures({ layers: ['td-fence'] }).length) errs.push('no fences drawn');
   if (m.getPaintProperty('td-fence', 'line-color').at(-1) !== '#545454') errs.push('fences are no longer grey, apart from the brown footways (#1163)');
@@ -1231,6 +1231,44 @@ def wetland_style(chrome):
 
 # #1178: OSM's cliffs drawn as MML's are, and its scree dotted like MML's boulder fields, from the tiles at Tykkikallio
 # (Jyväskylä), where MML has no cliff.
+# #1221: a town's gates from zoom 16, from the recorded trail details at Tykkikallio. At 15.5 no gate, a fallen tree still;
+# at 16.5 three lift gates a few metres apart give way to each other, and a tap on the one drawn opens its place's card; from
+# 17 all three, a tap too. At 16 they give way to names: below the labels, overlap off.
+def town_gates(chrome):
+    pg = chrome.page(1440, 900, False)
+    pg.open_app({'activity': 'mtb', 'base': 'trail'}, None, '#12/62.2289/25.7652')
+    pg.js(SEED_TRAILS)
+    fails = pg.js("""(async () => {
+      const errs=[], m=polku.map, wait=(ms)=>new Promise((r)=>setTimeout(r,ms));
+      const settle=async()=>{await wait(800);await Promise.race([new Promise(r=>{m.once('idle',r);m.triggerRepaint();}),wait(10000)]);await wait(400);};
+      const TD=['td-points','td-gates','td-gates-all'].filter((id)=>m.getLayer(id)), lifts=[1860369450,9713885733,9713885737];
+      const drawn=()=>m.queryRenderedFeatures({layers:TD});
+      const gates=()=>drawn().filter((f)=>/^gate/.test(f.properties.kind));
+      const tap=async(f)=>{const point=m.project(f.geometry.coordinates);m.fire('click',{point,lngLat:m.unproject(point),originalEvent:new MouseEvent('click')});await wait(400);
+        const c=polku.planner.cards.current, ok=c&&c.kind==='place'; polku.planner.cards.close(); return ok;};
+      // (a fallen tree, a gate and a locked gate within 250 m)
+      m.jumpTo({center:[25.7652,62.2289],zoom:15.5}); await settle();
+      if(!drawn().some((f)=>f.properties.kind==='tree'))errs.push('15.5: no fallen tree');
+      if(gates().length)errs.push(`15.5: ${gates().length} gates drawn`);
+      m.jumpTo({center:[25.75467,62.238343],zoom:16.5}); await settle();
+      const at16=gates().filter((f)=>lifts.includes(f.properties.osm));
+      if(at16.length<1||at16.length>2)errs.push(`16.5: ${at16.length} of the three lift gates drawn`);
+      else if(!await tap(at16[0]))errs.push("16.5: a tap on a gate didn't open its card");
+      m.jumpTo({center:[25.75467,62.238343],zoom:17.5}); await settle();
+      const at17=gates().filter((f)=>lifts.includes(f.properties.osm));
+      if(new Set(at17.map((f)=>f.properties.osm)).size!==3)errs.push(`17.5: ${at17.length} of the three lift gates drawn`);
+      else if(!await tap(at17[0]))errs.push("17.5: a tap on a gate didn't open its card");
+      const order=m.getLayersOrder(), g=order.indexOf('td-gates');
+      if(g<0||m.getLayoutProperty('td-gates','icon-allow-overlap')!==false)errs.push("td-gates doesn't give way");
+      else if(g>order.findIndex((id)=>id.startsWith('label-')))errs.push('td-gates is over the labels, so names give way to it');
+      return errs;
+    })()""")
+    fails += [f'console: {e[:160]}' for e in pg.errors()]
+    pg.close()
+    print(f"{'ok  ' if not fails else 'FAIL'} gates from zoom 16, giving way to each other and to names until 17 (#1221)" + ''.join(f'\n     - {f}' for f in fails), flush=True)
+    return not fails
+
+
 def osm_cliffs(chrome):
     pg = chrome.page(1440, 900, False)
     pg.open_app({'activity': 'mtb', 'base': 'trail'}, hash_='#16/62.2289/25.7652')
@@ -21191,7 +21229,7 @@ def route_card(chrome):
 # 22 px off too (some 50 m at z14, past legNear()'s 40 m): its card's Add a waypoint here adds one on the line.
 NL_SPOT = """(async (off) => {
   const p = polku.planner, m = polku.map, c = p.legs[0].result.coords, a = c[0], b = c[c.length - 1], ll = [a[0] + (b[0] - a[0]) * 0.25, a[1]];
-  for (const id of ['poi-outdoor', 'poi-minor', 'label-peak', 'lipas-point', 'td-points']) if (m.getLayer(id)) m.setLayoutProperty(id, 'visibility', 'none');
+  for (const id of ['poi-outdoor', 'poi-minor', 'label-peak', 'lipas-point', 'td-points', 'td-gates', 'td-gates-all']) if (m.getLayer(id)) m.setLayoutProperty(id, 'visibility', 'none');
   const v = p.viewPadding(0);
   m.jumpTo({ center: ll, zoom: 14, offset: [(v.left - v.right) / 2, (v.top - v.bottom) / 2] });
   await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
@@ -21268,7 +21306,7 @@ SC_HELP = """(() => {
     if (el !== m.getCanvas()) return no(`under ${el && (el.id || String(el.className.baseVal ?? el.className))}`);
     const box = (d) => [[q.x - d, q.y - d], [q.x + d, q.y + d]], layers = (ids) => ids.filter((id) => m.getLayer(id));
     if (line && layers(['route-casing']).length && m.queryRenderedFeatures(box(line), { layers: ['route-casing'] }).length) return no('on the route');
-    if (m.queryRenderedFeatures(box(16), { layers: layers(['poi-outdoor', 'poi-minor', 'label-peak', 'lipas-point', 'td-points']) }).length) return no('on a place');
+    if (m.queryRenderedFeatures(box(16), { layers: layers(['poi-outdoor', 'poi-minor', 'label-peak', 'lipas-point', 'td-points', 'td-gates', 'td-gates-all']) }).length) return no('on a place');
     return { x, y, ll: m.unproject(q).toArray() };
   };
   // (the map's middle as the finger went down and as it lifted: whether the gesture moved it, whatever moves it after)
@@ -21309,7 +21347,7 @@ SC_HELP = """(() => {
     },
     at: (ll, opts) => clear(ll, opts),
     // the map's places hidden (or back), so a hold or a tap on the free map is never on one, whatever the tiles have
-    places: (on) => { for (const id of ['poi-outdoor', 'poi-minor', 'label-peak', 'lipas-point', 'td-points']) if (m.getLayer(id)) m.setLayoutProperty(id, 'visibility', on ? 'visible' : 'none'); return true; },
+    places: (on) => { for (const id of ['poi-outdoor', 'poi-minor', 'label-peak', 'lipas-point', 'td-points', 'td-gates', 'td-gates-all']) if (m.getLayer(id)) m.setLayoutProperty(id, 'visibility', on ? 'visible' : 'none'); return true; },
     // the map at a share of its width and height, if it's free there
     spotAt(fx, fy, opts) { const r = R(); return clear(m.unproject([r.width * fx, r.height * fy]).toArray(), opts); },
     // a way under the screen at a share of its height (a tap there shows its card with the planner put away), clear of the places
@@ -25290,7 +25328,7 @@ PICK_SEED = """(async () => {
   const W = await import(location.origin + '/js/ways.js'), fx = await (await fetch(location.origin + '/tools/fixtures/ways-tampere.json')).json();
   W.holdWays();
   // (no place's icon, and no road works, under a tap: the ways are what's tapped)
-  for (const id of ['poi-outdoor', 'poi-minor', 'label-peak', 'lipas-point', 'td-points', 'sf-points', 'sf-lines']) if (polku.map.getLayer(id)) polku.map.setLayoutProperty(id, 'visibility', 'none');
+  for (const id of ['poi-outdoor', 'poi-minor', 'label-peak', 'lipas-point', 'td-points', 'td-gates', 'td-gates-all', 'sf-points', 'sf-lines']) if (polku.map.getLayer(id)) polku.map.setLayoutProperty(id, 'visibility', 'none');
   for (const [k, d] of Object.entries(fx.tiles)) { const [x, y] = k.split('/').map(Number); W.seedWays(x, y, d); }
   window.__fx = fx;
   return true;
@@ -26271,7 +26309,7 @@ GROUPS = [
     ('changelog', [changelog], 'release notes, retry, safe rendering, keyboard, route preservation and real worker offline'),
     ('pacing', [pacing, paced_legs, net_fails], 'calls made together go out paced and counted (mocked services, a fake clock); legs refused for a slot follow at it (#78); the calls that failed, in Data sources (#687)'),
     ('loading', [loading, routing_edits], 'cancel obsolete routing, edits/Undo/Clear, shared subscribers, refusal/recovery, deadlines, terrain slots and LIPAS viewport/cache (mocked)'),
-    ('layers', [layers, layer_coverage, cycleway_style, cycling_restrictions, waterway_style, property_lines, property_plots, wetland_style, reedbed_style, mml_bogs, mml_rock, mml_water, mml_open, osm_cliffs, saddles, mml_cards], 'the Layers panel in every sport'),
+    ('layers', [layers, layer_coverage, cycleway_style, cycling_restrictions, waterway_style, property_lines, property_plots, wetland_style, reedbed_style, mml_bogs, mml_rock, mml_water, mml_open, osm_cliffs, saddles, mml_cards, town_gates], 'the Layers panel in every sport'),
     ('raster', [raster_maps, aerial_fallback, aerial_labels], 'terrain and aerial detail, bounded high-density WMS symbols, depth boundaries and missing aerial detail (#649, #650, #653); the map\'s words on the aerial photos at 4.5:1 on their halo (#554)'),
     ('coarse', [coarse], 'a coarse map underneath (#1091): the base map\'s tile four zoom levels up stands in for one that hasn\'t come, at 1440 and 390'),
     ('offline', [mml_offline], 'Save offline keeps the National Land Survey\'s tiles (#1176): its terrain at zooms 11–14 and property boundaries while on, under addresses without the key, two at a time and ten a second at most; what Offline maps says an area lacks; offline, with the real worker, the bogs drawn from the saved tile and no message'),

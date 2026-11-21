@@ -4,6 +4,12 @@ What's new in [Polku](https://polku.si), from the latest updates back to the fir
 
 ## 2026-11-21
 
+### Fewer gates on a town's map ([#1221](https://github.com/TommiContursi/Polku/issues/1221))
+
+- With **Trail details** on, gates now show from zoom 16 instead of 15. In a town most of them are courtyard gates on the pavements, which covered the streets: on a phone in Helsinki's centre they were 130 of the 165 marks at zoom 15.
+- At zoom 16, gates that would overlap each other or a name give way, and from zoom 17 every gate is drawn. Fallen trees, stiles, cycle barriers and fords still show from zoom 15.
+- A route through a closed gate still gets its **Heads-up** item, whatever the zoom.
+
 ### Reeds in the water look the same everywhere ([#1248](https://github.com/TommiContursi/Polku/issues/1248))
 
 - On the Trail, Plain and Night maps, reeds in the water are reed tufts on the water's blue, whether they come from OpenStreetMap's reedbeds or, in Finland, from the National Land Survey's overgrowing water. Before, the same reedy shore could be tufts on a pale ground, which read as land, or blue dashes on the water. Blue dashes now mean bogs and wetlands only.
