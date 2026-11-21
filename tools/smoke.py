@@ -2013,13 +2013,17 @@ def guideposts(chrome):
       if(!I.inspectLayers(m).includes('poi-guidepost'))errs.push("a click can't pick a guidepost");
       const img=makeIcon('place-guidepost'); if(!img||!img.data.some((v,i)=>i%4===3&&v>0))errs.push("the guidepost's icon isn't drawn");
       await settle();
-      const g=m.querySourceFeatures('ofm',{sourceLayer:'poi'}).find((f)=>f.properties.subclass==='guidepost');
-      if(!g)return [...errs,"(the test) no guidepost in Nuuksio's tiles"];
-      m.jumpTo({center:g.geometry.coordinates,zoom:14.8}); await settle();
+      const gps=m.querySourceFeatures('ofm',{sourceLayer:'poi'}).filter((f)=>f.properties.subclass==='guidepost');
+      if(!gps.length)return [...errs,"(the test) no guidepost in Nuuksio's tiles"];
+      m.jumpTo({center:gps[0].geometry.coordinates,zoom:14.8}); await settle();
       if(m.queryRenderedFeatures({layers:['poi-guidepost']}).length)errs.push('guideposts drawn under zoom 15');
-      m.jumpTo({center:g.geometry.coordinates,zoom:16}); await settle();
-      const p=m.project(g.geometry.coordinates), f=m.queryRenderedFeatures([[p.x-8,p.y-8],[p.x+8,p.y+8]],{layers:['poi-guidepost','poi-minor']})[0];
-      if(!f||f.layer.id!=='poi-guidepost')errs.push(`the guidepost at 16 is ${f?f.layer.id:'not drawn'}`);
+      // (one that isn't hidden by another place's icon or name)
+      let f=null;
+      for(const g of gps.slice(0,6)){ if(f)break; m.jumpTo({center:g.geometry.coordinates,zoom:16}); await settle();
+        for(let k=0;k<12&&!f;k++){f=m.queryRenderedFeatures({layers:['poi-guidepost']})[0]; if(!f)await wait(250);} }
+      if(!f)errs.push('no guidepost drawn at 16');
+      if(m.queryRenderedFeatures({layers:['poi-minor']}).some((x)=>x.properties.subclass==='guidepost'))errs.push('a guidepost drawn as an information board');
+      const p=f&&m.project(f.geometry.coordinates);
       if(!m.hasImage('place-guidepost'))errs.push("the guidepost's icon isn't on the map");
       if(f){ polku.planner.openSpotCard(m.unproject([p.x,p.y]),{pt:p}); let c=null; for(let k=0;k<20&&!(c=polku.planner.cards.current);k++)await wait(100);
         if(!c||c.kind!=='place'||!(c.title||'').length)errs.push(`a tap on a guidepost opened ${c?c.kind+' '+c.title:'nothing'}`);
