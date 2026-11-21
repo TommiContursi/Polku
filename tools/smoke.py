@@ -8019,7 +8019,7 @@ MML_OFFLINE_SAVE = r"""
     for (const id of ['smoke-old', 'smoke-oslo', part.id]) await off.removeArea(id);
     asked.length = 0;
     const whole = await save('smoke-mml', { key: 'own-test', property: true });
-    if (whole.mml.failed || !whole.mml.tiles) f.push(`saved whole, the area says ${JSON.stringify(whole.mml)} of MML's terrain tiles failed`);
+    if (!whole.mml || whole.mml.failed || !whole.mml.tiles) f.push(`saved whole, the area says ${JSON.stringify(whole.mml)} of MML's terrain tiles failed`);
     if (!mmlKeys(whole).some((k) => k.includes('/kiinteistojaotus/default/v3/WGS84_Pseudo-Mercator/14/'))) f.push('property boundaries not kept with their layer on');
     if (mmlKeys(whole).some((k) => k.includes('?'))) f.push(`MML's tiles kept under an address with its key: ${mmlKeys(whole).find((k) => k.includes('?'))}`);
     if (asked.some(([, u]) => new URL(u).searchParams.get('api-key') !== 'own-test')) f.push('your own key not used for MML\'s tiles');
