@@ -9,7 +9,7 @@ cd "$(dirname "$0")/.."
 ORIGIN=https://polku.si # the site's address: a new domain is this line
 DEPLOY=${WORKERS_CI_COMMIT_SHA:-$(git rev-parse HEAD)}
 ESBUILD=node_modules/.bin/esbuild # (npm ci installs the pinned one; npx could fetch another)
-COPYRIGHT="© 2026 Tommi Contursi. All rights reserved. See $ORIGIN/LICENSE"
+COPYRIGHT="© 2026 Tommi Contursi. All rights reserved. No text and data mining or AI training (EU 2019/790, art. 4(3)). See $ORIGIN/LICENSE"
 
 rm -rf site
 mkdir site

@@ -188,7 +188,7 @@ enforced (the `startfail` smoke group). No other `on…=` attribute is in `index
 - **A copyright line** at the top of every file of Polku's own in `js/`, `css/` and `sw.js`,
   and as an HTML comment in `index.html`, added by the build (esbuild's `banner`), so the
   source files and the PRs beside it don't change, and a new file gets it on its own:
-  `/*! © 2026 Tommi Contursi. All rights reserved. See https://polku.si/LICENSE · <deploy id> */`
+  `/*! © 2026 Tommi Contursi. All rights reserved. No text and data mining or AI training (EU 2019/790, art. 4(3)). See https://polku.si/LICENSE · <deploy id> */`
   (`sw.js` without the id). It travels with a copy. The address is one variable in
   `tools/site.sh`, so a new domain is a one-line change there.
 - **The licence says it outright:** a sentence added to `LICENSE` that no permission is given
