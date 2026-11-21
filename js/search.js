@@ -1,3 +1,4 @@
+/*! © 2026 Tommi Contursi. All rights reserved. See https://polku.si/LICENSE */
 // Search, grouped: places (Photon / OSM, biased to the view), LIPAS routes and
 // stops by name (js/lipas.js), named trails on the loaded map, and coordinates
 // like "61.497, 23.761". Each group shows as it arrives. Picking a route fits it

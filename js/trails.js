@@ -1,3 +1,4 @@
+/*! © 2026 Tommi Contursi. All rights reserved. See https://polku.si/LICENSE */
 // Trail details from OpenStreetMap: how wide a trail is, how visible it is on
 // the ground, overgrown and wet stretches, and what's in the way (fallen trees,
 // gates, stiles, cycle barriers, fords). OpenFreeMap's tiles don't carry these,

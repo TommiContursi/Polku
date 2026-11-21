@@ -1,3 +1,4 @@
+/*! © 2026 Tommi Contursi. All rights reserved. See https://polku.si/LICENSE */
 // "Data sources" in Layers: calls per free service this session and today,
 // counted the way each provider counts them, against their published limits, and those that failed this session.
 

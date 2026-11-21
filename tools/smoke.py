@@ -10344,11 +10344,15 @@ def changelog(chrome):
         })()""")
         fails += [f'{w}: {e}' for e in errs]
         if pg.js('!!document.querySelector(".modal-changelog[open]")'):
+            # past the dialog's last control the focus goes to the browser's own controls (body, here), then back to its first
+            inside = 'document.querySelector(".modal-changelog").contains(document.activeElement)'
             for _ in range(12):
                 chrome.send('Input.dispatchKeyEvent', {'type': 'rawKeyDown', 'key': 'Tab', 'code': 'Tab', 'windowsVirtualKeyCode': 9}, pg.s)
-                if not pg.js('document.querySelector(".modal-changelog").contains(document.activeElement)'):
+                if not pg.js(f'{inside} || document.activeElement === document.body'):
                     fails.append(f'{w}: Tab escaped the native dialog')
                     break
+            if not pg.js(inside):
+                chrome.send('Input.dispatchKeyEvent', {'type': 'rawKeyDown', 'key': 'Tab', 'code': 'Tab', 'windowsVirtualKeyCode': 9}, pg.s)
             chrome.send('Input.dispatchKeyEvent', {'type': 'rawKeyDown', 'key': 'Escape', 'code': 'Escape', 'windowsVirtualKeyCode': 27}, pg.s)
             pg.js('new Promise(r => setTimeout(r,100))')
             if not pg.js('!document.querySelector(".modal-changelog").open && document.activeElement === notesOpener && !document.querySelector("#settings-panel").hidden && notesSnapshot() === notesBefore'):
@@ -10356,16 +10360,16 @@ def changelog(chrome):
             errs = pg.js("""(async () => {
               const errs=[], wait=ms=>new Promise(r=>setTimeout(r,ms));
               const real=window.fetch; let calls=0, release;
-              const fixture='# Changelog\\n\\n## 2026-10-17\\n\\n### A safe update\\n- **Bold** and `code` with [source](docs/USING.md), [unsafe](javascript:alert%281%29) and <img src=x onerror=alert(1)>.';
+              const fixture='# Changelog\\n\\n## 2026-10-17\\n\\n### A safe update\\n- **Bold** and `code` with [source](docs/USING.md), [an issue](https://github.com/TommiContursi/Polku/issues/1), [the site](https://polku.si), [unsafe](javascript:alert%281%29) and <img src=x onerror=alert(1)>.';
               window.fetch=(url,opts)=>String(url).endsWith('/CHANGELOG.md') ? (++calls===1 ? Promise.resolve(new Response('unavailable',{status:503})) : calls===2 ? Promise.resolve(new Response(fixture)) : new Promise(r=>{release=r;})) : real(url,opts);
               notesOpener.click(); await wait(100);
               const d=document.querySelector('.modal-changelog'), b=d.querySelector('.modal-body'), status=d.querySelector('[role=status]');
               const retry=[...b.querySelectorAll('button')].find(x=>x.textContent==='Retry');
-              if (!/could not be loaded/.test(status.textContent) || retry.hidden || !b.querySelector('a[href*="github.com"]')) errs.push('failure has no honest message/retry/full source');
+              if (!/could not be loaded/.test(status.textContent) || retry.hidden) errs.push('failure has no honest message/retry');
               retry.click(); await wait(100);
               const n=b.querySelector('.changelog-notes');
               if (!n.querySelector('code') || n.querySelector('img,script') || n.querySelector('a[href^="javascript:"]') || !n.textContent.includes('<img')) errs.push('unsafe Markdown rendered as executable content or no inline code');
-              if (n.querySelector('a')?.href !== 'https://github.com/TommiContursi/Polku/blob/main/docs/USING.md') errs.push('relative document link has wrong source');
+              if ([...n.querySelectorAll('a')].map(a=>a.href).join() !== 'https://polku.si/' || !n.textContent.includes('source, an issue, the site')) errs.push('links into the private repository not plain text, or the site link lost');
               d.querySelector('[aria-label=Close]').click(); await wait(100);
               if (document.activeElement!==notesOpener) errs.push('close button did not restore focus');
               notesOpener.click(); await wait(100);
@@ -11797,7 +11801,7 @@ def start_fails(chrome):
               new Response('export class SafetyLayers {}', { headers: { 'Content-Type': 'text/javascript', 'Last-Modified': 'Thu, 01 Jan 2026 00:00:00 GMT' } }))).then(() => true)""")
             chrome.send('Fetch.enable', {'patterns': [{'urlPattern': '*js/safety.js'}]}, ws)
         else:
-            # (serve.py gives each file its own time; GitHub Pages gives every file the deploy's: the page's, here)
+            # (serve.py gives each file its own time and no deploy id; GitHub Pages gives every file the deploy's time: the page's, here)
             pg.js("""(async () => { const c = await caches.open('polku-shell-v1'), js = new URL('js/', location.href).href;
               const d = (await c.match(new URL('./', location.href).href)).headers.get('last-modified');
               for (const r of await c.keys()) if (r.url.startsWith(js)) { const a = await c.match(r), h = new Headers(a.headers); h.set('Last-Modified', d); await c.put(r, new Response(await a.blob(), { headers: h })); }

@@ -1,3 +1,4 @@
+/*! © 2026 Tommi Contursi. All rights reserved. See https://polku.si/LICENSE */
 // Best time to leave (#273, #856; docs/plans/best-time-to-leave.md): for a day, what each hour's departure makes of the
 // trip. It only reads: every departure is timed through the planner's timing(), never through When, and its weather is
 // windAlong()'s, from the forecasts the route already has (past two days, the route's ten-day one, asked for once).

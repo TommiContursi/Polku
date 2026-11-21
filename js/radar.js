@@ -1,3 +1,4 @@
+/*! © 2026 Tommi Contursi. All rights reserved. See https://polku.si/LICENSE */
 // Finnish rain radar from FMI's open data *download* service: one GeoTIFF of the
 // national rain-rate composite per update, read here and drawn in Polku's
 // own rain colours. FMI asks apps to fetch radar this way and draw it

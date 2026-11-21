@@ -1,3 +1,4 @@
+/*! © 2026 Tommi Contursi. All rights reserved. See https://polku.si/LICENSE */
 // When you leave (#364, #869): the departure and its one control. The planner holds one (`planner.when`); every time on
 // the route counts from start(), and js/trip.js says them. A row (the first screen's and the start's card's) or a pill
 // (Go's) opens the same menu, and When says the departure again in each of them after a change (put()). Arrive by

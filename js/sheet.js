@@ -1,3 +1,4 @@
+/*! © 2026 Tommi Contursi. All rights reserved. See https://polku.si/LICENSE */
 // One swipe for every sheet (#96, #123): the planner's sheet and the quick layer drawer use it.
 //
 // - A drag starts from wherever the sheet allows (grab()), after SWIPE.start px of mostly vertical

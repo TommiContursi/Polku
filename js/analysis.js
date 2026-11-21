@@ -1,3 +1,4 @@
+/*! © 2026 Tommi Contursi. All rights reserved. See https://polku.si/LICENSE */
 // Route analysis: elevation profile from the lidar DEM, grades, climbs with an
 // uphill-difficulty grade, surface / way-type breakdown, warnings and timing.
 

@@ -1,3 +1,4 @@
+/*! © 2026 Tommi Contursi. All rights reserved. See https://polku.si/LICENSE */
 // Data sources, activity profiles and palettes. Everything here is free; the National Land Survey's (MML) tiles
 // need an API key: Polku's, or a person's own from Settings.
 

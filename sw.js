@@ -1,3 +1,4 @@
+/*! © 2026 Tommi Contursi. All rights reserved. See https://polku.si/LICENSE */
 // Polku service worker: keeps the app and saved offline areas working without
 // a connection.
 //
@@ -42,9 +43,11 @@ self.addEventListener('activate', (e) => e.waitUntil(self.clients.claim()));
 // pages that got the saved copy of an app file (the server didn't answer in time), so the
 // page can say it may be an older Polku
 const savedFor = new Set();
-// each page's deploy: the Last-Modified of the page it got (GitHub Pages gives every file the deploy's time); not known
-// for a page the worker didn't open (claimed, or after the worker restarted)
+// each page's deploy: the deploy id Cloudflare sends with every file, else (GitHub Pages, until the move is checked) the
+// Last-Modified of the page it got, since Pages gives every file the deploy's time; not known for a page the worker
+// didn't open (claimed, or after the worker restarted)
 const deployOf = new Map();
+const deployIn = (r) => r.headers.get('x-polku-deploy') || r.headers.get('last-modified');
 
 self.addEventListener('message', (e) => {
   if (e.data && e.data.type === 'saved-copy?') {
@@ -69,7 +72,7 @@ self.addEventListener('fetch', (e) => {
       // stored without the query (?r=… share links) and hash
       const page = e.resultingClientId || e.clientId;
       e.respondWith(networkFirst(req, url.origin + url.pathname, 3000, page).then((r) => {
-        if (page) { deployOf.set(page, r.headers.get('last-modified')); if (deployOf.size > 50) deployOf.delete(deployOf.keys().next().value); }
+        if (page) { deployOf.set(page, deployIn(r)); if (deployOf.size > 50) deployOf.delete(deployOf.keys().next().value); }
         return r;
       }));
     // one version of the app per page (#481): after the wait, only a saved copy from the page's own deploy (an older
@@ -83,7 +86,7 @@ self.addEventListener('fetch', (e) => {
   else if (previewNow !== false) e.respondWith(previewOn().then((on) => (on ? Response.error() : fetch(req))));
 });
 
-// `deploy`, when known: after the wait, only a saved copy with this Last-Modified
+// `deploy`, when known: after the wait, only a saved copy from this deploy
 async function networkFirst(req, key, ms, client = '', deploy = null) {
   const cache = await caches.open(SHELL);
   const match = () => cache.match(key);
@@ -91,7 +94,7 @@ async function networkFirst(req, key, ms, client = '', deploy = null) {
   // the saved copy instead of the network's: remember which page got it
   const saved = async (late) => {
     const r = await match();
-    if (!r || (late && deploy && r.headers.get('last-modified') !== deploy)) return null;
+    if (!r || (late && deploy && deployIn(r) !== deploy)) return null;
     if (client) { savedFor.add(client); if (savedFor.size > 50) savedFor.delete(savedFor.values().next().value); }
     return r;
   };

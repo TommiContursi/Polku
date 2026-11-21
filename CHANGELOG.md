@@ -1,8 +1,13 @@
 # Changelog
 
-What's new in [Polku](https://polku.si), from the latest updates back to the first release. These notes describe features available in the app, not work still in progress. For upcoming changes, see the [issues](https://github.com/TommiContursi/Polku/issues) and [roadmap](docs/ROADMAP.md).
+What's new in [Polku](https://polku.si), from the latest updates back to the first release. These notes describe features available in the app, not work still in progress.
 
 ## 2026-11-21
+
+### Where to report a problem ([#115](https://github.com/TommiContursi/Polku/issues/115))
+
+- **Settings → About Polku** gives the address to report a problem to: feedback@polku.si.
+- What's new no longer links to GitHub: the issue numbers beside its entries are shown as plain text, and so are the map's credits, which name Polku and Tommi Contursi.
 
 ### The sport pill's name on phones ([#1214](https://github.com/TommiContursi/Polku/issues/1214))
 

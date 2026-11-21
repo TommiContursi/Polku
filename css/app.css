@@ -1,3 +1,4 @@
+/*! © 2026 Tommi Contursi. All rights reserved. See https://polku.si/LICENSE */
 /* Polku's two typefaces (Mine 9, #382), served from fonts/ and kept by the service worker; both SIL Open Font License
    (fonts/OFL-*.txt), cut as DEVELOPING's "Hover and colours" says. Bricolage Grotesque for numbers and headings, Atkinson
    Hyperlegible Next for words; every figure is Bricolage's (Polku Figures, by unicode-range), so there is one zero. */
@@ -2760,8 +2761,7 @@ body.dropping .drop-hint { display: flex; }
 .changelog-notes p { margin: 8px 0; }
 .changelog-notes ul { padding-left: 22px; margin: 8px 0 16px; }
 .changelog-notes li { margin: 7px 0; }
-.changelog-source { font-size: 13px; }
-.changelog-notes a, .changelog-source a { color: var(--accent); text-underline-offset: 2px; }
+.changelog-notes a { color: var(--accent); text-underline-offset: 2px; }
 
 /* ---------------------------------------------------------------- the planner's toolbox (25a) */
 /* Phones: floating at the bottom left above the sheet, or docked into it as its first row. Desktops: a labelled

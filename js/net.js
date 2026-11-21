@@ -1,3 +1,4 @@
+/*! © 2026 Tommi Contursi. All rights reserved. See https://polku.si/LICENSE */
 // Requests to the free public services Polku relies on, through one door:
 //
 // - Back-off: when a service refuses (429) or fails (5xx, unreachable), it is

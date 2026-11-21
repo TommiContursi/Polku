@@ -1,3 +1,4 @@
+/*! © 2026 Tommi Contursi. All rights reserved. See https://polku.si/LICENSE */
 // Small geodesy helpers. Coordinates are [lon, lat] everywhere.
 
 const R = 6371008.8;

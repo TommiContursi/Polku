@@ -1,3 +1,4 @@
+/*! © 2026 Tommi Contursi. All rights reserved. See https://polku.si/LICENSE */
 // One pick (#574): what a tap or a hold picks, from the spot to everything known about it. A pick fills in as the data
 // comes, and each step says so (`changed()`), so the card shows what the map's own tile knows at once and never sits
 // empty: the ways of its tile from Overpass (js/ways.js) joined into one thing, then its heights (js/analysis.js), then
