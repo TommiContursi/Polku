@@ -2243,6 +2243,15 @@ TRACKS_FROM_13 = """(async () => {
   if (at14 < 10) errs.push(`${at14} tracks drawn from the trail data at 14.03`);
   const own = m.queryRenderedFeatures({ layers: ['track-ground'] }).filter(inside).length;
   if (own) errs.push(`${own} of the map's own tracks drawn under the trail data's at 14.03`);
+  // ... nor those crossing from one loaded tile into the next, or past the loaded tiles' edge by the tiles' buffer
+  {
+    const want = polku.trailDetails.want, b = want.map(([x, y]) => G.tileBounds(x, y, 13));
+    const [W, S, E, N] = [Math.min(...b.map((t) => t[0])), Math.min(...b.map((t) => t[1])), Math.max(...b.map((t) => t[2])), Math.max(...b.map((t) => t[3]))];
+    const tile = (E - W) / (Math.max(...want.map((t) => t[0])) - Math.min(...want.map((t) => t[0])) + 1), pad = tile * 0.02;
+    const loaded = (f) => (f.geometry.type === 'LineString' ? f.geometry.coordinates : f.geometry.coordinates.flat()).every(([x, y]) => x > W - pad && x < E + pad && y > S - pad / 2 && y < N + pad / 2);
+    const across = m.queryRenderedFeatures({ layers: ['track-ground'] }).filter((f) => loaded(f) && !inside(f)).length;
+    if (across) errs.push(`${across} of the map's own tracks crossing between loaded tiles drawn under the trail data's at 14.03`);
+  }
   // below 14 a tile the hosted data hasn't (one in the Atlantic) isn't asked of Overpass
   const N = await import('/js/net.js'), asked = () => N.usage().find((u) => u.id === 'overpass').session, before = asked();
   T.holdFetches(false);
