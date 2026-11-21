@@ -9,7 +9,14 @@ cd "$(dirname "$0")/.."
 ORIGIN=https://polku.si # the site's address: a new domain is this line
 DEPLOY=${WORKERS_CI_COMMIT_SHA:-$(git rev-parse HEAD)}
 ESBUILD=node_modules/.bin/esbuild # (npm ci installs the pinned one; npx could fetch another)
-COPYRIGHT="© 2026 Tommi Contursi. All rights reserved. No text and data mining or AI training (EU 2019/790, art. 4(3)). See $ORIGIN/LICENSE"
+# ASCII only: the files go out as text/javascript and text/css with no charset, so a browser showing one guesses it
+COPYRIGHT="Copyright (c) 2026 Tommi Contursi. All rights reserved.
+No automated scraping, text and data mining, or AI training.
+No copying or reuse of Polku's proprietary implementation in other products or services.
+Text and data mining rights reserved under EU Directive 2019/790, Art. 4(3).
+License: $ORIGIN/LICENSE"
+BUILT="$COPYRIGHT
+Build: $DEPLOY"
 
 rm -rf site
 mkdir site
@@ -21,9 +28,9 @@ find site -name .DS_Store -delete
 # a new worker, which forgets the open pages' deploys and saved copies. js/vendor/ is published as it is. sw.js is a
 # classic script, so its top-level names are left alone.
 "$ESBUILD" $(find js -name '*.js' -not -path 'js/vendor/*') --outbase=js --outdir=site/js --format=esm \
-  --minify --legal-comments=none --charset=utf8 --log-level=warning --banner:js="/*! $COPYRIGHT · $DEPLOY */"
+  --minify --legal-comments=none --charset=utf8 --log-level=warning --banner:js="/*! $BUILT */"
 "$ESBUILD" css/app.css --outfile=site/css/app.css \
-  --minify --legal-comments=none --charset=utf8 --log-level=warning --banner:css="/*! $COPYRIGHT · $DEPLOY */"
+  --minify --legal-comments=none --charset=utf8 --log-level=warning --banner:css="/*! $BUILT */"
 "$ESBUILD" sw.js --outfile=site/sw.js \
   --minify --legal-comments=none --charset=utf8 --log-level=warning --banner:js="/*! $COPYRIGHT */"
 
@@ -36,7 +43,7 @@ printf 'User-agent: *\nAllow: /\nDisallow: /*?\n' > site/robots.txt
 # The headers say the same (TDM_FREE below). The first rule that matches decides.
 printf '[{ "location": "/fonts/", "tdm-reservation": 0 }, { "location": "/data/*-coverage.geojson", "tdm-reservation": 0 }, { "location": "/", "tdm-reservation": 1 }]\n' > site/.well-known/tdmrep.json
 
-node --input-type=module - "$COPYRIGHT · $DEPLOY" "$DEPLOY" <<'EOF'
+node --input-type=module - "$BUILT" "$DEPLOY" <<'EOF'
 import { readFileSync as read, writeFileSync as write, readdirSync, existsSync } from 'node:fs';
 import { createHash } from 'node:crypto';
 import { transformSync } from 'esbuild';
