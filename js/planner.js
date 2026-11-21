@@ -23,7 +23,7 @@ import { windAlong, windClass, rainBand, recentRain, pointForecasts, sampleAt, L
 import { keyFacts, factLine, sportFacts, hardestClimb, climbWords, tileTags } from './facts.js';
 import { icon, h, $, toast, store, escapeHtml, popMenu, tooltip, settleControls, mouseDrag, infoDot, sideways, holdArrow } from './ui.js';
 import { sweepDay, nameDay, good, dayStart, dayOffset, clockMins } from './besttime.js';
-import { osmDetails, OSM_KEYS, hitBox, inspectLayers, pickFeature, keepInView, areaUnder } from './inspect.js';
+import { osmDetails, OSM_KEYS, hitBox, tapLayers, pickFeature, keepInView, areaUnder } from './inspect.js';
 import { describe, hoverCapable } from './hover.js';
 import { CardHost, item, rows, foldFacts } from './card.js';
 import { darkWords } from './palette.js';
@@ -4116,25 +4116,26 @@ export class Planner {
 
   // What's there (part 5): a place's card on its icon, else the spot's, with the way or what else the map has there.
   // `place`: a place to show (from search, part 6); `from`: the card it's opened from (Back goes back to it)
-  openSpotCard(lngLat, { pt = null, touch = false, place = null, from = 'map', pin = false, name = '' } = {}) {
+  // `ways`, `areas`: false where Settings keeps a tap off the ways or the water and parks (#1244)
+  openSpotCard(lngLat, { pt = null, touch = false, place = null, from = 'map', pin = false, name = '', ways = true, areas = true } = {}) {
     const ll = Array.isArray(lngLat) ? lngLat : [+lngLat.lng.toFixed(6), +lngLat.lat.toFixed(6)], p = pt || this.map.project(ll);
     place = place || this.placeAt(p, touch);
     if (place) { this.openPlaceCard(place, ll, { from, pin }); return; }
     // (MML's terrain and a pier are named by a tap: a hold's card stays the spot's, whose words OpenStreetMap's answer replaces, #1175)
-    const feats = this.map.queryRenderedFeatures(hitBox(p, touch), { layers: inspectLayers(this.map).filter((id) => !/^(mml-|pier)/.test(id)) });
+    const feats = this.map.queryRenderedFeatures(hitBox(p, touch), { layers: tapLayers(this.map, areas ? 'all' : 'lines', ways ? 'whole' : 'off').filter((id) => !/^(mml-|pier)/.test(id)) });
     const route = feats.find((x) => x.layer.id === 'lipas-route');
     const f = pickFeature(feats), way = feats.find((x) => /^(path|track|cycleway|road)-/.test(x.layer.id)), bike = groupOf(this.app.activity()) === 'bike';
     const d = f && describe(f, feats, { ll, bike, mtb: this.app.activity() === 'mtb' });
     // the hover's bits are HTML, its title text (hover.js): a bit's words, read in a document of its own, which loads and runs nothing (#1247)
     const text = (html) => new DOMParser().parseFromString(html, 'text/html').body.textContent;
     // (the water or a park the map draws there: what OpenStreetMap says it is, where no way is in reach; the line waits for the ways)
-    const area = areaUnder(this.map, p);
+    const area = areas ? areaUnder(this.map, p) : null;
     // (the tile joins ways of one kind into one feature: the line of them nearest the tap, drawn while the ways come)
     const lines = feats.filter((x) => /^(path|track|cycleway|road)-/.test(x.layer.id)).flatMap((x) => (x.geometry.type === 'LineString' ? [x.geometry.coordinates] : x.geometry.type === 'MultiLineString' ? x.geometry.coordinates : []));
     const near = lines.map((c) => [nearestOnLine(ll, c).d, c]).sort((a, b) => a[0] - b[0])[0];
     const card = spotCard(this, { ll, pin, geom: near && { type: 'LineString', coordinates: near[1] }, title: d ? d.title : area === 'water' ? 'Water' : name || 'This spot', line: d ? d.bits.filter((b) => !b.startsWith('<i class="dot"')).map(text).join(', ') : '',
       tags: way ? tileTags(way.properties) : {}, way: !!way, osm: way && way.properties.osm ? { type: 'way', id: way.properties.osm } : way ? { type: 'way', id: null } : null,
-      partOf: route && route.properties.name ? { props: route.properties, ll } : null, touch, area });
+      partOf: route && route.properties.name ? { props: route.properties, ll } : null, touch, area, ways });
     this.openCard(card, ll, from);
   }
   // What a tap picked, drawn on the map like a route (#574): its colours along it, a street's other side, an area's outline;

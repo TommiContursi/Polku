@@ -189,9 +189,10 @@ const cycle = (w) => !w.rel && kindOf(w.tags) === 'cycleway';
 const turn = (a, b) => { const d = Math.abs(a - b) % 360; return d > 180 ? 360 - d : d; };
 const sameRef = (a, b) => !(a.tags.ref && b.tags.ref && a.tags.ref !== b.tags.ref);
 
-/** { chain: [{ w, rev }], stops: { start, end: { why, at } } }: `why` is end, junction, loop or long (joinWay() adds `unloaded`). */
-export function walk(seed) {
-  const key = joinKey(seed), used = new Set([seed]), stops = {}, bike = cycle(seed);
+/** { chain: [{ w, rev }], stops: { start, end: { why, at } } }: `why` is end, junction, loop or long (joinWay() adds `unloaded`).
+ * `piece`: every way stops at a junction, as an unnamed path does, and a cycleway doesn't cross to the next (Settings, #1244). */
+export function walk(seed, piece = false) {
+  const key = joinKey(seed), used = new Set([seed]), stops = {}, bike = !piece && cycle(seed);
   let name = seed.tags.name;
   // (a cycleway's own piece, named or not, but never another name)
   const kin = (w) => bike && cycle(w) && (!w.tags.name || !name || w.tags.name === name);
@@ -203,7 +204,7 @@ export function walk(seed) {
     let at = side === 'end' ? c0[c0.length - 1] : c0[0], from = side === 'end' ? c0[c0.length - 2] : c0[1];
     for (;;) {
       const here = ends.get(node) || [];
-      const junction = key.startsWith('k:') && here.length > 2;
+      const junction = (piece || key.startsWith('k:')) && here.length > 2;
       if (junction && !bike) { stops[side] = { why: 'junction', at }; break; }
       const out = bearing(from, at);
       const head = (w, n) => { const fwd = w.nodes[0] === n, c = w.coords; return { w, fwd, turn: turn(out, bearing(at, fwd ? c[1] : c[c.length - 2])) }; };
@@ -238,7 +239,7 @@ export function walk(seed) {
 
 // A street with two carriageways is one street: the other side is the same name, one way, running the other way, within
 // 70 m of the tapped side's middle. Its own walk, drawn too; the card counts only the side you tapped.
-function otherSide(seed, chain) {
+function otherSide(seed, chain, piece) {
   const t = seed.tags;
   if (!t.name || !['yes', '-1'].includes(t.oneway)) return [];
   const mid = seed.coords[Math.floor(seed.coords.length / 2)], dir = (w) => { const c = w.coords, b = bearing(c[0], c[c.length - 1]); return w.tags.oneway === '-1' ? (b + 180) % 360 : b; };
@@ -253,7 +254,7 @@ function otherSide(seed, chain) {
       if (d < 70 && (!best || d < best.d)) best = { w, d };
     }
   }
-  return best ? walk(best.w).chain.map((x) => x.w).filter((w) => !mine.has(w)) : [];
+  return best ? walk(best.w, piece).chain.map((x) => x.w).filter((w) => !mine.has(w)) : [];
 }
 
 // west to east (or south to north where it runs straight north), so "the way it runs" is the same each time
@@ -266,11 +267,11 @@ function oriented(chain) {
  * The pick for a tapped piece: the chain, the other carriageway and where it stopped; the tiles its ends run into are
  * loaded first (up to six rounds for Overpass, 64 for static reads), and `grew(walk)` has the chain so far before each.
  */
-export async function joinWay(seed, at, grew = () => {}) {
+export async function joinWay(seed, at, grew = () => {}, piece = false) {
   // (the tapped piece as the index has it now: a tile loaded since may have cut it, index(); the part nearest the tap)
   const near = (w) => Math.min(...w.coords.slice(1).map((c, i) => pointSegment(at, w.coords[i], c).d));
   const again = () => { const now = ofWay.get(seed.id) || []; if (!now.includes(seed)) seed = now.reduce((b, p) => (near(p) < near(b) ? p : b)); return seed; };
-  let j = walk(again());
+  let j = walk(again(), piece);
   let rounds = staticOSM && !tiles.get(wayTile(at).join('/'))?.overpass ? 64 : 6;
   for (let k = 0; k < rounds; k++) {
     const out = Object.values(j.stops).filter((s) => s.why === 'end' && !waysLoaded(s.at));
@@ -278,11 +279,11 @@ export async function joinWay(seed, at, grew = () => {}) {
     grew(j);
     await Promise.all(out.map((s) => loadWays(wayTile(s.at)).catch(() => null)));
     if (out.some((s) => tiles.get(wayTile(s.at).join('/'))?.overpass)) rounds = 6;
-    j = walk(again());
+    j = walk(again(), piece);
   }
   // (an end in a tile that didn't load: the way may go on, and the card says so)
   for (const s of Object.values(j.stops)) s.unloaded = s.why === 'end' && !waysLoaded(s.at);
-  return { chain: oriented(j.chain), side: otherSide(seed, j.chain), stops: j.stops };
+  return { chain: oriented(j.chain), side: otherSide(seed, j.chain, piece), stops: j.stops };
 }
 
 /** A chain as one line for the analysis: its points, and the tags of the piece each segment is on. */

@@ -26106,6 +26106,153 @@ def route_card_actions(chrome):
     return not fails
 
 
+# Settings' choices for a tap (#1244): what a tap, a click and the pointer pick on the map, and on a way, chosen in Settings → Map and
+# planner as a person does. By mouse at 1440 × 900 on the recorded ways (PICK_SEED): The piece stops Hämeenkatu at its junctions,
+# Off opens nothing on a way and shows no hand there while a hold (a right-click) still opens it, No areas leaves a lake shut, and
+# Nothing the S5 path. By touch at 390 × 844: both rows show, and with Nothing a tap on the path opens no card.
+TAP_BUTTON = """[...document.querySelectorAll('#settings-body [data-group="settings-map"] .seg button')].find((b) => b.textContent === %s)"""
+# Settings open with Map and planner unfolded, the button in view
+TAP_SETTINGS = """(async () => {
+  if (document.querySelector('#settings-panel').hidden) document.querySelector('#btn-settings').click();
+  await new Promise((r) => setTimeout(r, 500));
+  const g = document.querySelector('#settings-body [data-group="settings-map"]');
+  if (!g.open) g.querySelector(':scope > summary').click();
+  await new Promise((r) => setTimeout(r, 300));
+  g.querySelector('.seg').scrollIntoView({ block: 'center' });
+  return [...g.querySelectorAll('.tg-text')].map((e) => e.textContent).filter((t) => t.startsWith('A tap'));
+})()"""
+TAP_CLOSE = "(() => { document.querySelector('#settings-panel .panel-close').click(); return true; })()"
+# a spot on the map where only the water is under a click (no way, place or mark), clear of the top bar and the map's buttons
+TAP_LAKE = """(async () => {
+  const m = polku.map, I = await import('/js/inspect.js'), R = m.getCanvas().getBoundingClientRect();
+  for (let y = 160; y < innerHeight - 160; y += 12) for (let x = 360; x < innerWidth - 120; x += 12) {
+    const fs = I.featuresAt(m, { x, y }, I.hitBox({ x, y }, false), I.inspectLayers(m));
+    if (fs.length && fs.every((f) => f.layer.id === 'water') && I.areaUnder(m, [x, y]) === 'water') return { x: R.left + x, y: R.top + y };
+  }
+  return null;
+})()"""
+
+
+def tap_choices(chrome):
+    fails = []
+    pg = chrome.page(1440, 900, False)
+    try:
+        pg.c.send('Page.addScriptToEvaluateOnNewDocument', {'source': f"{DEM_MOCK.replace(chr(39) + 'fail' + chr(39) + ', asked', chr(39) + 'ok' + chr(39) + ', asked')};{EMPTY_DEPTHS};{WX_FIXED};"}, pg.s)
+        pg.open_app({'activity': 'gravel'}, {'polku:winter': '"off"'}, '#16/61.5107/23.8159')
+        pg.js(PICK_SEED)
+        rows = pg.js(TAP_SETTINGS)
+        if rows != ['A tap on the map', 'A tap on a way']:
+            fails.append(f'1440x900: Settings → Map and planner has {rows} (A tap on the map, A tap on a way)')
+
+        def choose(label):
+            if not _ca_tap(pg, TAP_BUTTON % json.dumps(label), touch=False):
+                fails.append(f'1440x900: no {label} in Settings')
+            return pg.js("[polku.state.tapOpens, polku.state.tapWay, JSON.parse(localStorage.getItem('polku:settings')) || {}]")
+
+        def click(at, right=False):
+            """A click (or a right-click: a hold) at window px `at`, then the card it opened once its ways are in: None for none."""
+            pg.js("polku.planner.cards.close(); true")
+            for kind in ('mouseMoved', 'mousePressed', 'mouseReleased'):
+                pg.c.send('Input.dispatchMouseEvent', {'type': kind, 'x': at['x'], 'y': at['y'], 'button': 'none' if kind == 'mouseMoved' else 'right' if right else 'left',
+                                                      'buttons': (2 if right else 1) if kind == 'mousePressed' else 0, 'clickCount': 1}, pg.s)
+            return pg.js("""(async () => { const p = polku.planner, t0 = Date.now();
+              for (;;) { const c = p.cards.current, w = c && c.pick && c.pick.ways;
+                if ((c && (!c.pick || (w !== undefined && !(w && w.growing)))) || (!c && Date.now() - t0 > 2500) || Date.now() - t0 > 30000) break;
+                await new Promise((r) => setTimeout(r, 250)); }
+              await new Promise((r) => setTimeout(r, 300));
+              const c = p.cards.current, w = c && c.pick && c.pick.ways;
+              return c && { kind: c.kind, title: c.title, area: c.spot && c.spot.area || null, len: w && typeof w === 'object' ? Math.round(w.len) : null,
+                stops: w && typeof w === 'object' ? Object.values(w.stops).map((s) => s.why) : null }; })()""", timeout=40000)
+
+        def hand(at):
+            """The pointer resting at `at`: the cursor, and the readout's words or None."""
+            pg.c.send('Input.dispatchMouseEvent', {'type': 'mouseMoved', 'x': at['x'] + 1, 'y': at['y'], 'button': 'none'}, pg.s)
+            return pg.js("new Promise((ok) => setTimeout(() => { const t = document.querySelector('.hover-tip'); ok([polku.map.getCanvas().style.cursor, t && !t.hidden ? t.textContent : null]); }, 900))")
+
+        # Hämeenkatu, way 7956116 of the recording, centred: a street of many pieces (about 1 km whole, pick_card)
+        ham = pg.js("""(async () => { const w = Object.values(__fx.tiles).flatMap((t) => t.w).find((x) => x[0] === 7956116), f = w[4], i = Math.floor(f.length / 4) * 2, ll = [f[i], f[i + 1]], m = polku.map;
+          m.jumpTo({ center: ll, zoom: 16.5 }); await new Promise((r) => setTimeout(r, 300)); await Promise.race([new Promise((r) => { m.once('idle', r); m.triggerRepaint(); }), new Promise((r) => setTimeout(r, 15000))]);
+          const q = m.project(ll), R = m.getCanvas().getBoundingClientRect(); return { x: R.left + q.x, y: R.top + q.y }; })()""", timeout=30000)
+        pg.js(TAP_CLOSE)
+        whole = click(ham)
+        pg.js(TAP_SETTINGS)
+        got = choose('The piece')
+        pg.js(TAP_CLOSE)
+        if got[1] != 'piece' or got[2].get('tapWay') != 'piece':
+            fails.append(f'1440x900: The piece chose {got[1]}, saved {got[2].get("tapWay")}')
+        piece = click(ham)
+        if not whole or not piece or piece['title'] != 'Hämeenkatu' or not piece['len'] or piece['len'] >= whole['len'] or any(s not in ('junction', 'end') for s in piece['stops'] or ['?']):
+            fails.append(f'1440x900: Hämeenkatu whole {whole}, its piece {piece} (shorter, stopping at its junctions)')
+        # (the walk: a cycleway's piece stops at the side street's crossing, CYCLE_WALK's node 2)
+        got = pg.js(f"({CYCLE_WALK.replace('W.walk(seed)', 'W.walk(seed, true)')})('/js/ways.js')")
+        if got != [901]:
+            fails.append(f'a cycleway beside a street, its piece: {got} (901 alone, to the side street)')
+        pg.js(TAP_SETTINGS)
+        choose('Off')
+        pg.js(TAP_CLOSE)
+        # (where a park lies under the street, its card: what's under a way answers instead)
+        off, cur = click(ham), hand(ham)
+        if (off and (off['len'] or not off['area'])) or cur != ['', None]:
+            fails.append(f'1440x900: with Off, a click on Hämeenkatu opened {off}, the pointer {cur} (nothing, no hand, no words)')
+        held = click(ham, right=True)
+        if not held or held['title'] != 'Hämeenkatu' or not held['len'] or held['len'] < whole['len'] - 5:
+            fails.append(f'1440x900: with Off, a hold on Hämeenkatu opened {held} (its whole card, as before)')
+        pg.js(TAP_SETTINGS)
+        choose('The whole way')
+        pg.js(TAP_CLOSE)
+        # a lake: its card with Everything, nothing with No areas, nor a hand
+        lake = pg.js("""(async () => { const m = polku.map; m.jumpTo({ center: [23.7395, 61.5085], zoom: 15 }); await new Promise((r) => setTimeout(r, 300));
+          await Promise.race([new Promise((r) => { m.once('idle', r); m.triggerRepaint(); }), new Promise((r) => setTimeout(r, 15000))]); return true; })()""", timeout=30000) and pg.js(TAP_LAKE)
+        if not lake:
+            fails.append('1440x900: (the test) no spot on the lake where only the water is under a click')
+        else:
+            water, cur = click(lake), hand(lake)
+            if not water or water['area'] != 'water' or cur[0] != 'pointer':
+                fails.append(f'1440x900: with Everything, a click on the lake opened {water}, the pointer {cur} (the water, a hand)')
+            pg.js(TAP_SETTINGS)
+            choose('No areas')
+            pg.js(TAP_CLOSE)
+            water, cur = click(lake), hand(lake)
+            if water or cur[0]:
+                fails.append(f'1440x900: with No areas, a click on the lake opened {water}, the pointer {cur} (nothing, no hand)')
+        # Nothing: the S5 path opens nothing, and the pointer shows no hand
+        pg.js(TAP_SETTINGS)
+        choose('Nothing')
+        pg.js(TAP_CLOSE)
+        s5 = pg.js("""(async () => { const m = polku.map, ll = [23.81593, 61.51065]; m.jumpTo({ center: ll, zoom: 16.5 }); await new Promise((r) => setTimeout(r, 300));
+          await Promise.race([new Promise((r) => { m.once('idle', r); m.triggerRepaint(); }), new Promise((r) => setTimeout(r, 15000))]);
+          const q = m.project(ll), R = m.getCanvas().getBoundingClientRect(); return { x: R.left + q.x, y: R.top + q.y, path: m.queryRenderedFeatures([[q.x - 7, q.y - 7], [q.x + 7, q.y + 7]]).some((f) => /^path-/.test(f.layer.id)) }; })()""", timeout=30000)
+        none, cur = click(s5), hand(s5)
+        if not s5['path'] or none or cur != ['', None]:
+            fails.append(f'1440x900: with Nothing, a click on the S5 path (drawn: {s5["path"]}) opened {none}, the pointer {cur} (nothing, no hand, no words)')
+        fails += [f'1440x900: console: {e[:160]}' for e in pg.errors()]
+    finally:
+        pg.close()
+    # by touch: the rows show, and a finger's choice holds
+    pg = chrome.page(390, 844, True)
+    try:
+        pg.open_app({'activity': 'gravel'}, {'polku:winter': '"off"'}, '#16.5/61.51065/23.81593')
+        rows = pg.js(TAP_SETTINGS)
+        shown = pg.js(f"[{TAP_BUTTON % json.dumps('Nothing')}, {TAP_BUTTON % json.dumps('The piece')}].map((b) => !!b && b.getClientRects().length > 0)")
+        if rows != ['A tap on the map', 'A tap on a way'] or shown != [True, True]:
+            fails.append(f'390x844: Settings → Map and planner has {rows}, Nothing and The piece shown {shown}')
+        if not _ca_tap(pg, TAP_BUTTON % json.dumps('Nothing')) or pg.js('polku.state.tapOpens') != 'none':
+            fails.append(f"390x844: a tap on Nothing chose {pg.js('polku.state.tapOpens')}")
+        pg.js(TAP_CLOSE)
+        at = pg.js("""(async () => { const m = polku.map, ll = [23.81593, 61.51065]; await Promise.race([new Promise((r) => { m.once('idle', r); m.triggerRepaint(); }), new Promise((r) => setTimeout(r, 15000))]);
+          const q = m.project(ll), R = m.getCanvas().getBoundingClientRect(); return [R.left + q.x, R.top + q.y]; })()""", timeout=30000)
+        pg.quick_tap(*at)
+        time.sleep(1.5)
+        c = pg.js('polku.planner.cards.current && polku.planner.cards.current.kind')
+        if c:
+            fails.append(f'390x844: with Nothing, a tap on the S5 path opened a {c} card')
+        fails += [f'390x844: console: {e[:160]}' for e in pg.errors()]
+    finally:
+        pg.close()
+    print(f"{'ok  ' if not fails else 'FAIL'} a tap's choices in Settings (#1244)" + ''.join(f'\n     - {f}' for f in fails), flush=True)
+    return not fails
+
+
 def pick_card_settings(chrome):
     """A spot's card (#690): its action row, and ⋯ beside ✕ is Card settings, as the list's settings are built: its name
     and ✕ on a row of their own, Colour by and Colours on the map; a tap outside closes the menu alone, the card stays;
@@ -26459,7 +26606,7 @@ GROUPS = [
     ('button3dphone', [button3d_phones], 'the 3D button on phones (#226): touch, the column at every sheet size, none at 200 %'),
     ('pointcard', [point_card, point_card_actions], 'a point\'s card (25d): a tap, a hold and a right-click open the same card, when you\'re there and the profile up to it, with its actions, in the peek or at the point, its numbers, Make it a stop, Stay the night, Change sport from here, Move by a tap, Rename, Remove and Undo, Back and the back gesture, the route\'s view, 200 % and Finnish (straight legs)'),
     ('routecard', [route_card, near_line, route_card_actions], 'the route\'s card and a stretch\'s (25d 1b): a tap on the route, a tap just beside it while drawing (#725), Add a waypoint here at the spot, This stretch, What\'s here, Edit this stretch, On the profile, Avoid this spot, the whole route, the start\'s Back to start, End not Finish (straight legs, mocked BRouter)'),
-    ('pickcard', [pick_card, pick_card_settings], 'a pick (#574): road works on the same card with their years (#564, #565), a phone\'s tap opening the card at its peek, the hover; a way\'s pieces joined into one thing from a recorded tile, the S5 path\'s grade and incline in Gravel (#561), nothing "not mapped" that wasn\'t loaded (#562), a street in many pieces, Way type on a trail across kinds (the legend\'s lengths add up; recorded ways, set terrain and weather)'),
+    ('pickcard', [pick_card, pick_card_settings, tap_choices], 'a pick (#574): road works on the same card with their years (#564, #565), a phone\'s tap opening the card at its peek, the hover; a way\'s pieces joined into one thing from a recorded tile, the S5 path\'s grade and incline in Gravel (#561), nothing "not mapped" that wasn\'t loaded (#562), a street in many pieces, Way type on a trail across kinds (the legend\'s lengths add up; recorded ways, set terrain and weather)'),
     ('spotcard', [spot_card, spot_card_foot, spot_card_actions, spot_card_names], 'hold the map to see what\'s there (25d part 5): a finger held 0.5 s or a right-click, the ring, a tap, a move and two fingers, a busy page (#293), the spot\'s and a place\'s cards, Add to my route where it fits or on the line, Start here and End here, the line\'s hold and right-click, the route\'s view, the planner put away (straight legs, mocked BRouter)'),
     ('crosshair', [crosshair], 'the keyboard\'s crosshair (25d part 5b): Tab to the map, the keys listed, Enter as a tap (a point, the route\'s card), Shift+F10 and the menu key as a hold, Escape and the focus, the crosshair gone with the focus, never by touch (straight legs)'),
     ('facts', [facts], 'facts on the card (#574, What\'s here\'s levels before): the same facts in every sport, All OpenStreetMap details and Copy (a failure, a late answer), Not right?, a toilet\'s and an obstacle\'s facts, a LIPAS place\'s, a late height, a path\'s card with the planner put away, a ship\'s own card (recorded ways, Overpass answered here)'),

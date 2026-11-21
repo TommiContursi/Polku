@@ -575,7 +575,7 @@ export function spotCard(pl, spot) {
 // line what OpenStreetMap doesn't have. The same facts for every sport. It shows what the map's own tile knows at once
 // and fills in as the ways, the heights and the weather come, saying so while it waits.
 export function pickCard(pl, spot) {
-  const pick = newPick(spot, { sport: pl.app.activity(), sec: pl.app.weatherSec(), zoom: pl.map.getZoom(), touch: !!spot.touch });
+  const pick = newPick(spot, { sport: pl.app.activity(), sec: pl.app.weatherSec(), zoom: pl.map.getZoom(), touch: !!spot.touch, piece: pl.app.tapWay() === 'piece' });
   const here = () => pl.cards.stack.some((e) => e.card === card);
   const card = {
     kind: 'spot', key: spot.ll, spot, pick, osm: null, pinned: true,
