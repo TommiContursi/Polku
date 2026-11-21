@@ -57,7 +57,7 @@ export function featuresAt(map, pt, box, layers) {
 export const inspectLayers = (map) => map.getLayersOrder().filter((id) => INSPECTABLE.test(id) && !id.endsWith('-casing') && !id.endsWith('-nobike'));
 // What a tap, a click and the pointer pick, as Settings chooses (#1244): `opens` 'all', 'lines' (no lake, park, plot or
 // terrain area, nor the forest's marks) or 'none'; `way` 'whole', 'piece' or 'off' (no way, nor the winter, uphill and
-// trail-detail lines drawn on one). A hold, search and a share link keep inspectLayers().
+// trail-detail lines drawn on one). A hold, search and a share link pick from everything ('all', 'whole').
 const AREAS = /^(water|property-plot|mml-(bog|paludified|overgrowing|shoal|rock|boulders|open|landuse|open-forest|forest))$/;
 const WAYS = /^((path|track|cycleway|road)-|winter-|uphill-line|td-way-)/;
 export const tapLayers = (map, opens, way) => (opens === 'none' ? [] : inspectLayers(map).filter((id) => !(opens === 'lines' && AREAS.test(id)) && !(way === 'off' && WAYS.test(id))));

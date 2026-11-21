@@ -23,7 +23,7 @@ import { windAlong, windClass, rainBand, recentRain, pointForecasts, sampleAt, L
 import { keyFacts, factLine, sportFacts, hardestClimb, climbWords, tileTags } from './facts.js';
 import { icon, h, $, toast, store, escapeHtml, popMenu, tooltip, settleControls, mouseDrag, infoDot, sideways, holdArrow } from './ui.js';
 import { sweepDay, nameDay, good, dayStart, dayOffset, clockMins } from './besttime.js';
-import { osmDetails, OSM_KEYS, hitBox, inspectLayers, pickFeature, keepInView, areaUnder } from './inspect.js';
+import { osmDetails, OSM_KEYS, hitBox, tapLayers, pickFeature, keepInView, areaUnder } from './inspect.js';
 import { describe, hoverCapable } from './hover.js';
 import { CardHost, item, rows, foldFacts } from './card.js';
 import { darkWords } from './palette.js';
@@ -4122,7 +4122,7 @@ export class Planner {
     place = place || this.placeAt(p, touch);
     if (place) { this.openPlaceCard(place, ll, { from, pin }); return; }
     // (MML's terrain and a pier are named by a tap: a hold's card stays the spot's, whose words OpenStreetMap's answer replaces, #1175)
-    const feats = this.map.queryRenderedFeatures(hitBox(p, touch), { layers: inspectLayers(this.map).filter((id) => !/^(mml-|pier)/.test(id) && (ways || !/^(path|track|cycleway|road)-/.test(id))) });
+    const feats = this.map.queryRenderedFeatures(hitBox(p, touch), { layers: tapLayers(this.map, areas ? 'all' : 'lines', ways ? 'whole' : 'off').filter((id) => !/^(mml-|pier)/.test(id)) });
     const route = feats.find((x) => x.layer.id === 'lipas-route');
     const f = pickFeature(feats), way = feats.find((x) => /^(path|track|cycleway|road)-/.test(x.layer.id)), bike = groupOf(this.app.activity()) === 'bike';
     const d = f && describe(f, feats, { ll, bike, mtb: this.app.activity() === 'mtb' });
