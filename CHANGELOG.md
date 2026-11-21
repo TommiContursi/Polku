@@ -4,6 +4,12 @@ What's new in [Polku](https://polku.si), from the latest updates back to the fir
 
 ## 2026-11-21
 
+### Choose what a tap opens on the map ([#1244](https://github.com/TommiContursi/Polku/issues/1244))
+
+- **Settings → Map and planner → A tap on the map** chooses what a tap or a click opens: **Everything**, as before; **No areas**, where a lake, a park, a bog, rock, open ground or a forest opens nothing and ways, places and the map's marks still do; or **Nothing**, where only your route opens. On a desktop, the pointer turns into a hand and names a thing only where a click would open it.
+- **A tap on a way** chooses what a tap on a street, a trail or a cycleway picks: **The whole way**, as before; **The piece**, from junction to junction, with that piece's length and profile; or **Off**, where a tap on a way opens nothing.
+- Holding the map, or a right-click, still opens the spot's card whatever you choose, with the way's piece when you've chosen **The piece**. Search and links to a spot open their cards as before.
+
 ### A tap on a river's flow arrow, a jetty or open ground says what it is ([#1234](https://github.com/TommiContursi/Polku/issues/1234))
 
 - In Finland, a tap or a click on the National Land Survey's flow arrows beside rivers, jetties, heath, open forest land (mostly clear-cuts), meadows, open shores, fields, sand and the forest's marks now opens a card that names it, and on a desktop resting the pointer on one says the same. A flow arrow's card says which way the river flows, such as "Flows to the SW".
