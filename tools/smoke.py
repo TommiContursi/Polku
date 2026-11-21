@@ -8051,6 +8051,24 @@ MML_OFFLINE_MAP = r"""
 })()
 """
 
+# MML out of reach with the device still online (a signal without data): zoomed out through the saved zooms, the message
+# comes once, not again each time a saved tile loads after one that failed
+MML_UNREACHABLE = r"""
+(async () => {
+  const f = [], m = polku.map, wait = (ms) => new Promise((r) => setTimeout(r, ms));
+  const center = [(9260.5 / 2 ** 14) * 360 - 180, Math.atan(Math.sinh(Math.PI * (1 - (2 * 4578.5) / 2 ** 14))) * 180 / Math.PI];
+  for (const zoom of [14.5, 13.5, 12.5, 11.5]) {
+    m.jumpTo({ center, zoom });
+    for (let k = 0; k < 40 && !m.areTilesLoaded(); k++) await wait(250);
+    await wait(800);
+  }
+  const said = (window.__toasts || []).filter((t) => t.includes('National Land Survey'));
+  if (!navigator.onLine) f.push('(the test) the device says it\'s offline');
+  else if (said.length !== 1) f.push(`the message that MML's terrain didn't load came ${said.length} times, not once`);
+  return f;
+})()
+"""
+
 
 def mml_offline(chrome):
     """Save offline keeps MML's terrain at its zooms, property boundaries while their layer is on, under addresses
@@ -8092,6 +8110,22 @@ def mml_offline(chrome):
             fails += [f'offline: {e}' for e in pg.js(MML_OFFLINE_MAP, timeout=60000)]
         finally:
             network(False)
+        pg.reload()
+        pg.js(toasts)
+        time.sleep(0.5)
+        sessions += [e['params']['sessionId'] for e in pg.c.events if e.get('method') == 'Target.attachedToTarget' and e.get('sessionId') == pg.s and e['params']['sessionId'] not in sessions]
+
+        def block(urls):
+            for s_ in sessions:
+                try:
+                    chrome.send('Network.setBlockedURLs', {'urls': urls}, s_)
+                except RuntimeError:
+                    pass
+        try:
+            block(['*avoin-karttakuva.maanmittauslaitos.fi*'])
+            fails += [f'MML out of reach: {e}' for e in pg.js(MML_UNREACHABLE, timeout=90000)]
+        finally:
+            block([])
             for s_ in attached:
                 chrome.send('Target.detachFromTarget', {'sessionId': s_})
         preview = "new Promise((ok) => { navigator.serviceWorker.addEventListener('message', (e) => e.data.type === 'offline-preview' && ok(true)); navigator.serviceWorker.controller.postMessage({ type: 'offline-preview', on: %s }); setTimeout(() => ok(false), 3000); })"

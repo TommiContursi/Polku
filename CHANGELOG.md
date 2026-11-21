@@ -8,7 +8,8 @@ What's new in [Polku](https://polku.si), from the latest updates back to the fir
 
 - In Finland, **Save offline** now also keeps the National Land Survey's terrain along the route: bogs, rock, cliffs, power lines, the water's marks and lake depths, heath and open ground. Offline, a saved area looks as it does online. With **Property boundaries** on, their lines are kept too.
 - This adds about half again to an area's size: a 17 km loop at Seitseminen with a 1 km corridor grows from about 6 MB to about 9 MB. The size shown before you save includes it.
-- An area saved before this change shows OpenStreetMap's wetlands, rock and cliffs offline, as before, and Settings → Offline maps says it was saved without the National Land Survey's terrain. Save it again to add it. If some of the terrain didn't load while saving, the area says that too.
+- An area saved before this change shows OpenStreetMap's wetlands, rock and cliffs offline, and Settings → Offline maps says it was saved without the National Land Survey's terrain. Save it again to add it. If some of the terrain didn't load while saving, the area says that too.
+- Offline and in **Preview offline**, the message that the National Land Survey's terrain didn't load no longer comes up. The map always reaches past a saved area, and the offline message already says that only saved areas have the detailed map.
 - Outside Finland nothing changes: the map is OpenStreetMap's there, online and offline.
 
 ## 2026-11-20

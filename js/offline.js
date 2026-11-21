@@ -123,7 +123,7 @@ export async function saveArea({ name, line, bbox, route }, { buffer, terrain, m
             const n = await keep(cache, key, res); // (not `bytes += await …`: six workers would overwrite each other's sums)
             bytes += n;
             fresh.push(key);
-          } else if (res.status !== 404) fail(); // 404: no terrain there (sea)
+          } else if (res.status !== 404 || isMml(t.kind)) fail(); // 404: no terrain there (sea); MML answers every tile in its bounds
           if (gap) await new Promise((r) => setTimeout(r, gap - (Date.now() - asked)));
         }
       } catch {
@@ -220,6 +220,10 @@ export async function setPreview(on) {
 let previewing = false;
 /** Whether the map has only what's saved: the device offline, or Preview offline on. */
 export const savedOnly = () => previewing || !navigator.onLine;
+/** Whether MML's terrain tile z/x/y is kept in a saved area (#1176). */
+export async function mmlSaved(z, x, y) {
+  try { return !!(await (await caches.open(TILES)).match(MML_TERRAIN_TILES.replace('{z}', z).replace('{x}', x).replace('{y}', y))); } catch { return false; }
+}
 
 /** Banner while previewing, and a toast when Polku opens offline or the connection drops or returns. */
 export async function initOfflineStatus() {
