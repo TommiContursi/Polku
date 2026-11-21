@@ -4,6 +4,12 @@ What's new in [Polku](https://polku.si), from the latest updates back to the fir
 
 ## 2026-11-21
 
+### Parks show in towns, with their names ([#1220](https://github.com/TommiContursi/Polku/issues/1220))
+
+- Parks and lawns inside a residential, commercial or industrial area now show, so whole parks that were missing in Tallinn's and Stockholm's centres are back, such as those round Toompea.
+- Parks, gardens, village greens and recreation grounds are a clearer green than lawns, and a wooded park keeps its trees.
+- City parks' names show from zoom 15, in green italics as the national parks' and nature reserves' names.
+
 ### Choose what a tap opens on the map ([#1244](https://github.com/TommiContursi/Polku/issues/1244))
 
 - **Settings → Map and planner → A tap on the map** chooses what a tap or a click opens: **Everything**, as before; **No areas**, where a lake, a park, a bog, rock, open ground or a forest opens nothing and ways, places and the map's marks still do; or **Nothing**, where only your route opens. On a desktop, the pointer turns into a hand and names a thing only where a click would open it.
