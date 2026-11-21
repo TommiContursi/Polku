@@ -31,7 +31,7 @@ routing are called from the browser exactly as now. What changes behind it:
 | Keys in the browser | Only MML's, which is public by design (it is in every tile URL) |
 | Licence | Already proprietary, "All rights reserved" |
 | Forks, stars | 0 forks, 2 stars |
-| Actions, 2026-10-21 to 11-20 | about 12,300 minutes in GitHub's usage report: the smoke suite 8,843, the OSM data build and checks about 3,400 (job by job in "Actions budget") |
+| Actions, 2026-10-21 to 11-20 | about 12,300 minutes in GitHub's usage report: the smoke suite 8,843, the OSM data build and checks about 3,400 (the suite counted job by job, 10,087, in "Actions budget") |
 | GitHub-only features in use | the ruleset "Protect main" (no deletion or force push, PRs required, linear history); the environment `osm-data-production` holding the SFTP secrets, limited to `main` |
 
 What follows from it:
@@ -42,7 +42,7 @@ What follows from it:
 - **Actions cost money in a private repository.** Pro includes 18 $ a month (about 3,000
   Linux minutes at 0.006 $ a minute). Public repositories stay free, so the OSM data build,
   which has needed many runs, moves to a public repository. The smoke suite alone used
-  more than three times Pro's allowance; "Actions budget" below keeps Polku within it.
+  about three times Pro's allowance; "Actions budget" below keeps Polku within it.
 - **Cloudflare's documented headers have no `Last-Modified`**, which `sw.js` uses to keep one deploy's files
   together (DEVELOPING, "One deploy's files per page"). The deploy gets an id of its own.
 - **The app links to the repository** in the map's credits (`js/main.js`) and in What's new:
@@ -72,25 +72,30 @@ headers a `<meta>` tag can't set (HSTS, `frame-ancestors`, `X-Frame-Options`, th
   minifies, writes the deploy id and the headers. Cloudflare runs it to publish, and a session
   runs it to test the built site (below); the app itself keeps running from the repository as
   it is, with no build step. `wrangler.jsonc` names the Worker and points it at `site/`;
-  Cloudflare's build runs `tools/site.sh` and then `npx wrangler deploy`.
-- **Minified with esbuild**, pinned with its integrity hash in a lockfile (`npm ci` in
-  Cloudflare's build only): each file
+  Cloudflare's build runs `npm ci`, `tools/site.sh` and then `npx wrangler deploy`. A session
+  runs `npm ci` once in its worktree; `node_modules/` and `site/` stay out of git. GitHub's
+  smoke suite keeps testing the repository as it is.
+- **Minified with esbuild**, pinned with its integrity hash in a lockfile (`package.json`
+  and `package-lock.json`): each file
   transformed on its own (no bundling, so modules and `import.meta.url` stay as they are),
   comments and whitespace removed, local names shortened, no source maps. The one-line
   copyright comment is kept (`legalComments`). `js/vendor/` is published as it is. Whole-line
   comments are also stripped from `index.html` (13 lines) and `profiles/*.brf` (323 lines, the
   routing's reasons; BRouter ignores them).
-- **The deploy id** comes from the commit Cloudflare builds (`WORKERS_CI_COMMIT_SHA`). It is
-  sent as a header on every file, and stamped into every published `.js` and `.css` file but
-  `sw.js`, and into `index.html` (the copyright comment carries it), so every file's hash, and
-  so its ETag, changes with every deploy, as GitHub's does today. Otherwise an unchanged file
+- **The deploy id** is the commit Cloudflare builds (`WORKERS_CI_COMMIT_SHA`; a local build
+  uses `git rev-parse HEAD`, the same value). It is sent on every file as the header
+  `X-Polku-Deploy`, and stamped into Polku's own `.js` and `.css` files and `index.html` (the
+  copyright comment carries it), so their hashes, and so their ETags, change with every deploy,
+  as GitHub's do today. The rest isn't stamped: `js/vendor/` (versioned in its file names),
+  fonts, images, `data/`, `profiles/` and `CHANGELOG.md`. A saved copy of one of those can
+  carry an older id after a 304, and is then used only when the network fails. Otherwise an unchanged file
   would revalidate to a 304, and Cloudflare's docs don't say whether `_headers` headers come
-  with a 304: the browser could keep an older deploy's id. `sw.js` is left out: the browser
+  with a 304: the browser could keep an older deploy's id. `sw.js` isn't stamped either: the browser
   fetches it directly, never through the worker, and a stamp would install a new worker on
   every deploy, one that forgets the open pages' deploys and saved copies (`deployOf`,
   `savedFor`). `sw.js` reads the deploy-id header and
   falls back to `Last-Modified`, because parts 1a and 1b run on GitHub Pages for days before the DNS
-  moves (and again after a rollback to Pages); the fallback goes once part 4 has passed. The
+  moves (and again after a rollback to Pages); the fallback goes in part 5. The
   `startfail` check that sets saved copies' `Last-Modified` changes with it. Locally, as now,
   files have no shared deploy time.
 - **The same origin, exactly:** `https://polku.si`. A Workers custom domain serves the app,
@@ -102,9 +107,9 @@ headers a `<meta>` tag can't set (HSTS, `frame-ancestors`, `X-Frame-Options`, th
   it is the **test address** until polku.si is served from Cloudflare (part 4), and is turned
   off in part 5 (`workers_dev: false`), so no copy stays public there.
 - **Rollback:** Cloudflare keeps earlier versions, and one can be made current from its
-  dashboard. Until the repository is private, the DNS can also point back to GitHub Pages, and
-  until DNSSEC is on at Cloudflare (Tomba's step 3.6) the nameservers can go back to OVH, whose
-  zone stays as it was.
+  dashboard. Until part 5, the DNS can also point back to GitHub Pages (part 5 removes `sw.js`'s
+  `Last-Modified` fallback and lengthens HSTS), and until DNSSEC is on at Cloudflare (Tomba's
+  step 3.5) the nameservers can go back to OVH, whose zone stays as it was.
 - **Previews:** builds for other branches are off at first: every branch would build, and
   those without the build script (`pr-screenshots` too) would fail. Turning them on for PR
   branches is a choice for later.
@@ -115,8 +120,9 @@ headers a `<meta>` tag can't set (HSTS, `frame-ancestors`, `X-Frame-Options`, th
 ### Testing the built site
 
 The smoke groups run against `site/` before the PR leaves draft: `serve.py` gets a way to
-serve the built folder with the `_headers` rules applied, so minification, the headers and the
-content security policy are all tested together. The smoke checks load their fixtures and
+serve the built folder with the `_headers` rules applied, and with the policy enforced (it sends
+`Content-Security-Policy-Report-Only` as `Content-Security-Policy`), so minification, the
+headers and the policy are all tested together. The smoke checks load their fixtures and
 helpers from the page's own server (`/tools/fixtures/…` in 22 places, `/tools/loading_checks.js`,
 `/tools/osm_data/smoke_checks.js`), so the built mode serves `site/` and falls back to the
 checkout for `/tools/` only. A failure that appears only on the built site is the build's, and
@@ -126,7 +132,7 @@ is fixed there. The app itself requests nothing outside the allowlist (checked 2
 
 | Header | Value (to confirm while building) | Why |
 | --- | --- | --- |
-| `Strict-Transport-Security` | `max-age=86400` until part 4 has passed, then a week, then a year | HTTPS only. Short at first, so certificate trouble during a rollback to Pages can still be clicked through. No `includeSubDomains` or preload: preload is hard to undo |
+| `Strict-Transport-Security` | `max-age=86400` until part 5, then a year | HTTPS only. Short at first, so certificate trouble during a rollback to Pages can still be clicked through. No `includeSubDomains` or preload: preload is hard to undo |
 | `Content-Security-Policy` | see below | stops injected scripts |
 | `X-Content-Type-Options` | `nosniff` | files are read as what they are |
 | `Referrer-Policy` | `strict-origin-when-cross-origin` | services see polku.si, not the route in the address |
@@ -168,8 +174,8 @@ enforced (the `startfail` smoke group). No other `on…=` attribute is in `index
    on polku.si with the console open (and the workers' consoles): routing in every sport,
    water routes and carries, round trips, weather along the route with the radar, search,
    every layer, 3D and hover, offline save and preview, share links (old ones too), GPX and KML
-   import, GPX export, Share, the compass, Settings' own BRouter, the start-failure banner;
-   and the smoke groups against the built site with the policy **enforced**.
+   import, GPX export, Share and the compass (Tomba, on his phone), Settings' own BRouter, the
+   start-failure banner; and the smoke groups against the built site with the policy **enforced**.
 4. Then it is enforced on polku.si. A week of Tomba's own use in report-only mode before that
    is optional.
 
@@ -179,7 +185,8 @@ enforced (the `startfail` smoke group). No other `on…=` attribute is in `index
   history. What was public until now has probably been copied and stays so.
 - **Only the app is published, minified and without comments** (above). Comments carry the
   reasons behind the design; names and structure are what a copier gets.
-- **A copyright line** at the top of every file of Polku's own in `js/`, `css/` and `sw.js`:
+- **A copyright line** at the top of every file of Polku's own in `js/`, `css/` and `sw.js`,
+  and as an HTML comment in `index.html`:
   `/*! © 2026 Tommi Contursi. All rights reserved. See https://polku.si/LICENSE */`. It
   survives minifying and travels with a copy.
 - **The licence says it outright:** a sentence added to `LICENSE` that no permission is given
@@ -236,8 +243,8 @@ host, and Polku reads them from `OSM_DATA_MANIFEST`.
 - **Secrets can't be copied out of GitHub.** Tomba re-enters them in the new repository from
   OVH (or makes a new SFTP key). The new repository gets the same "Protect main" ruleset,
   free in a public repository.
-- **Done when** the new repository has published one release and its daily check has passed;
-  then the workflows are removed from Polku.
+- **Done when** a candidate the new repository uploaded has been promoted by Polku's job, and
+  the new repository's daily check has passed; then the workflows leave Polku.
 
 ## Security check
 
@@ -258,8 +265,8 @@ reach. Each finding is filed; each fix gets a smoke check that fails before it.
 - **Outside links and scripts:** `rel="noopener"`, unpkg's integrity hashes.
 - **GitHub:** workflows (pinned actions, permissions, no `pull_request_target`), secrets in the
   history (a scan before the repository goes private; anything found is rotated, since the
-  history was public), dependencies of the tools, the Cloudflare GitHub app limited to
-  **Only select repositories**, and esbuild's lockfile.
+  history was public), and dependencies of the tools. The Cloudflare GitHub app's access is
+  checked in part 2, and esbuild's lockfile in part 1b.
 - **Accounts:** two-step sign-in, a passkey where offered, on GitHub, Cloudflare and OVH, and
   the transfer lock on polku.si at OVH. These are Tomba's; the check lists them.
 
@@ -316,60 +323,64 @@ checks the result after it.
    - Verify polku.si for GitHub Pages, one TXT record at OVH ([GitHub's guide](https://docs.github.com/en/pages/configuring-a-custom-domain-for-your-github-pages-site/verifying-your-custom-domain-for-github-pages)),
      so nobody else can serve it from GitHub once Pages is off. Done when GitHub shows polku.si
      as verified.
-   - Export OVH's DNS zone as a text file, and keep it.
+   - Choose the address people report problems to (proposal: `feedback@polku.si`, an alias at
+     OVH to your mailbox), and approve the licence sentence when part 1a shows it.
 1. **Merge this plan** (#1236).
 2. **Cloudflare, once part 1b has merged:** an account on the free plan with two-step sign-in;
    the Worker connected to the repository through Cloudflare's GitHub app, with **Only select
-   repositories** (Polku alone). Done when the Worker has built `main` and its `workers.dev`
-   address opens Polku; part 2 then checks it.
+   repositories** (Polku alone); builds for other branches off. Done when the Worker has built
+   `main` and its `workers.dev` address opens Polku; part 2 then checks it.
 3. **The DNS to Cloudflare, once part 2 has passed.** Over two days, in this order:
    1. At OVH, DNSSEC off. Then a day's wait: the DS record's time to live is 2 hours, a day is
       safe.
-   2. In Cloudflare, polku.si added and OVH's zone file imported with **Proxy imported DNS
+   2. OVH's zone exported as a text file now, so it has the verification record from step 0.
+      In Cloudflare, polku.si added and that file imported with **Proxy imported DNS
       records** unticked. Compared with OVH's list record by record; `ftp` deleted; every record
       DNS-only (grey cloud), since a proxied `mail`, `imap`, `smtp` or `pop3` breaks every mail
       client, and a proxied apex still on GitHub can loop under Flexible SSL. Always Use HTTPS,
-      AI Crawl Control and the managed `robots.txt` on. Done when every OVH record is there and
+      AI Crawl Control and the managed `robots.txt` on; Email Address Obfuscation and Rocket
+      Loader off, since they rewrite pages. Done when every OVH record but `ftp` is there and
       none is proxied.
    3. At OVH, the nameservers changed to Cloudflare's two. polku.si is still served by GitHub
-      meanwhile, so nothing changes for anyone. Done when Cloudflare shows the zone active and
-      a session sees 1.1.1.1, 8.8.8.8 and 9.9.9.9 return Cloudflare's nameservers.
-   4. In Cloudflare, at a quiet hour: polku.si added to the Worker as its custom domain, the
-      GitHub records deleted (4 A, 4 AAAA and `www`'s CNAME), and `www` given a proxied
-      `AAAA 100::` with a redirect rule, 301 to `https://polku.si`, keeping the path and query.
-      polku.si may not answer for a minute or two. Done when part 4's checks pass.
-   5. Mail sent and received in a mail client that uses `imap` and `smtp`.
-   6. A day after 3.3 at the earliest, so no resolver still asks OVH: DNSSEC on in Cloudflare,
+      meanwhile, so nothing changes for anyone. Done when Cloudflare shows the zone active, a
+      session sees 1.1.1.1, 8.8.8.8 and 9.9.9.9 return Cloudflare's nameservers, and mail is
+      sent and received in a mail client that uses `imap` and `smtp`.
+   4. In Cloudflare, at a quiet hour, in this order: the apex's GitHub records deleted (4 A,
+      4 AAAA); polku.si added to the Worker as its custom domain (Cloudflare makes its record);
+      `www`'s CNAME deleted and a proxied `AAAA 100::` added in its place, with a redirect
+      rule, 301 to `https://polku.si`, keeping the path and query. polku.si may not answer for a
+      minute or two. Done when part 4's checks pass.
+   5. A day after 3.3 at the earliest, so no resolver still asks OVH: DNSSEC on in Cloudflare,
       and its DS record added at OVH. A resolver still asking OVH would get a DS that doesn't
       match OVH's keys, and polku.si and its mail would fail for it ([Cloudflare's guidance](https://developers.cloudflare.com/learning-paths/dns-best-practices/concepts/phase-4/)).
       Done when a session sees polku.si validate.
 4. **The OSM data's public repository, when part 6 asks:** the repository, its environment,
    and the SFTP secrets entered again from OVH (or a new SFTP key); a second SFTP user limited
-   to a candidates folder, if OVH allows it.
+   to a candidates folder, if OVH allows it. Done when the new repository's first run has
+   uploaded a candidate.
 5. **Bitbucket, when part 9 asks:** a private repository, and an access token with write access
-   to it only, stored as a secret in GitHub.
-6. **Last: Pro and the private repository, once parts 4 and 6 and part 7's history scan are
+   to it only, stored as a secret in GitHub. Done when the backup's first run has passed.
+6. **Last: Pro and the private repository, once parts 5 and 6 and part 7's history scan are
    done:** GitHub Pro; an Actions budget of 0 $ with **Stop usage when budget limit is reached**
    on; a check that Codex's and Claude's GitHub access include the repository; GitHub Pages
    off; the repository made private. Done when polku.si, the OSM data and the sessions still
    work, which a session checks.
 
-Two answers are needed on the way: the licence sentence's wording (part 1a brings it), and
-where people report problems (before step 6).
+
 
 ## Order
 
 | Part | Who | What | Waits for | Done when |
 | --- | --- | --- | --- | --- |
-| 1a | session | The app ready for Cloudflare: copyright lines, `sw.js` reading the deploy id with its `Last-Modified` fallback (and `startfail` with it), the start-failure banner's handler, What's new's and the credits' links, the licence sentence | this plan merged | merged, the groups it touches passing (`startfail` and `changelog` among them) |
+| 1a | session | The app ready for Cloudflare: copyright lines, `sw.js` reading `X-Polku-Deploy` with its `Last-Modified` fallback (and `startfail` with it), the start-failure banner's handler, What's new's links as plain text, the credits' `Polku © Tommi Contursi` as plain text, where to report problems in Settings → About Polku (step 0's address), the licence sentence | this plan merged | merged, the groups it touches passing (`startfail` and `changelog` among them) |
 | 1b | session | The built site: `tools/site.sh`, esbuild with its lockfile, `wrangler.jsonc`, `_headers` with the policy report-only, `robots.txt`, `tdmrep.json`, `serve.py`'s built mode, AGENTS.md ("Testing", the built site) and DEVELOPING | 1a | merged, the groups it touches passing against `site/` with the policy enforced |
-| 2 | session | The `workers.dev` address checked: the headers, `tdmrep.json`, the walk-through | Tomba's step 2 | nothing in the walk-through fails or reports a violation |
+| 2 | session, Tomba | The `workers.dev` address checked: the headers, `tdmrep.json`, the walk-through (Share and the compass on Tomba's phone); the Cloudflare GitHub app sees only Polku | Tomba's step 2 | nothing in the walk-through fails or reports a violation |
 | 3 | Tomba | The DNS to Cloudflare (step 3) | part 2 | step 3's checks pass |
-| 4 | session | polku.si on Cloudflare checked: the redirects (`curl -I http://polku.si/`, `https://www.polku.si/?r=x`, `/index.html?r=x` keeping the query), `index.html` byte for byte, share links, offline, routing, the walk-through, DNSSEC | part 3 | all of it passes |
-| 5 | session | The policy enforced; HSTS a year; `sw.js`'s `Last-Modified` fallback removed; `workers_dev` off | part 4 | merged, the groups it touches passing |
-| 6 | session, Tomba (step 4) | The OSM data build moved | this plan merged | the new repository has published a release, Polku's weekly job has promoted it, the workflows have left Polku |
+| 4 | session, Tomba | polku.si on Cloudflare checked: the redirects (`curl -I http://polku.si/`, `https://www.polku.si/?r=x`, `/index.html?r=x` keeping the query), `index.html` byte for byte against a `site/` built at the same commit, share links, offline, routing, the walk-through | step 3.4 | all of it passes |
+| 5 | session | The policy enforced; HSTS a year; `sw.js`'s `Last-Modified` fallback removed; `workers_dev` and `preview_urls` off; "GitHub Pages" made "Cloudflare" in AGENTS.md, PRODUCT.md and DEVELOPING | part 4, then a week on Cloudflare without trouble | merged, the groups it touches passing |
+| 6 | session, Tomba (step 4) | The OSM data build moved | this plan merged | a candidate from the new repository promoted by Polku's job, its daily check passed, the workflows gone from Polku |
 | 7 | session | The security check and its fixes, the history scan first | this plan merged | every finding filed; the history scanned and anything found rotated |
-| 8 | Tomba | Pro, budget, private (step 6) | parts 4 and 6, part 7's history scan, step 0 | step 6's check passes |
+| 8 | Tomba | Pro, budget, private (step 6) | parts 5 and 6, part 7's history scan, step 0 | step 6's check passes |
 | 9 | session, Tomba (step 5) | The backup to Bitbucket | this plan merged | one weekly run done, and a restore tried |
 
 Parts 1a, 6, 7 and 9 can run side by side, each in a session of its own.
@@ -389,9 +400,8 @@ would also send positions through Polku (PRODUCT.md).
 
 ## Open questions
 
-- **Where people report problems** once GitHub is private. Proposal: an e-mail address on
-  polku.si, shown in Settings → About Polku.
-- **The licence sentence's wording,** for Tomba to approve.
+- **Where people report problems** once GitHub is private, and **the licence sentence's
+  wording:** Tomba's step 0.
 - **Should `main` keep publishing polku.si,** or should a release be a tagged commit, with
   `main` going to the test address first (#115's review of 2026-10-18)? This plan keeps
   `main` publishing; a release step can come later.
