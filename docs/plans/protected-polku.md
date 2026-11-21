@@ -66,13 +66,15 @@ headers a `<meta>` tag can't set (HSTS, `frame-ancestors`, `X-Frame-Options`, th
 - **Published files are an allowlist**, so a new document is never published by accident:
   `index.html`, `sw.js`, `js/` (with `js/vendor/`), `css/`, `fonts/`, `img/`, `data/`,
   `profiles/`, `CHANGELOG.md` (What's new reads it), `LICENSE`, `THIRD_PARTY_NOTICES.md`,
-  `robots.txt`, `.well-known/tdmrep.json` and `_headers`. A check fails the build when a
+  and what the build writes: `robots.txt`, `.well-known/tdmrep.json` and `_headers`. A check fails the build when a
   file the app requests is missing from it.
 - **One build script** (`tools/site.sh` or similar) copies the allowlist into `site/`,
   minifies, writes the deploy id and the headers. Cloudflare runs it to publish, and a session
   runs it to test the built site (below); the app itself keeps running from the repository as
   it is, with no build step. `wrangler.jsonc` names the Worker and points it at `site/`;
-  Cloudflare's build runs `npm ci`, `tools/site.sh` and then `npx wrangler deploy`. A session
+  Cloudflare's build runs `npm ci`, `tools/site.sh` and then `npm run deploy`, whose script runs
+  wrangler at an exact version (`npx --yes wrangler@…`), so a new release can't change a deploy;
+  it isn't a devDependency, so no worktree installs it. A session
   runs `npm ci` once in its worktree; `node_modules/` and `site/` stay out of git. GitHub's
   smoke suite keeps testing the repository as it is.
 - **Minified with esbuild**, pinned with its integrity hash in a lockfile (`package.json`
@@ -105,7 +107,9 @@ headers a `<meta>` tag can't set (HSTS, `frame-ancestors`, `X-Frame-Options`, th
   with the path and query kept. **Always Use HTTPS** is turned on, so `http://` keeps
   redirecting. Before the DNS moves, the Worker's only address is `polku.<account>.workers.dev`:
   it is the **test address** until polku.si is served from Cloudflare (part 4), and is turned
-  off in part 5 (`workers_dev: false`), so no copy stays public there.
+  off in part 5 (`workers_dev: false`), so no copy stays public there. Preview URLs, a public
+  address for every uploaded version, are off from the start (`preview_urls: false`): they would
+  keep serving old builds, and nothing uses them.
 - **Rollback:** Cloudflare keeps earlier versions, and one can be made current from its
   dashboard. Until part 5, the DNS can also point back to GitHub Pages (part 5 removes `sw.js`'s
   `Last-Modified` fallback and lengthens HSTS), and until DNSSEC is on at Cloudflare (Tomba's
@@ -186,9 +190,11 @@ enforced (the `startfail` smoke group). No other `on…=` attribute is in `index
 - **Only the app is published, minified and without comments** (above). Comments carry the
   reasons behind the design; names and structure are what a copier gets.
 - **A copyright line** at the top of every file of Polku's own in `js/`, `css/` and `sw.js`,
-  and as an HTML comment in `index.html`:
-  `/*! © 2026 Tommi Contursi. All rights reserved. See https://polku.si/LICENSE */`. It
-  survives minifying and travels with a copy.
+  and as an HTML comment in `index.html`, added by the build (esbuild's `banner`), so the
+  source files and the PRs beside it don't change, and a new file gets it on its own:
+  `/*! © 2026 Tommi Contursi. All rights reserved. No text and data mining or AI training (EU 2019/790, art. 4(3)). See https://polku.si/LICENSE · <deploy id> */`
+  (`sw.js` without the id). It travels with a copy. The address is one variable in
+  `tools/site.sh`, so a new domain is a one-line change there.
 - **The licence says it outright:** a sentence added to `LICENSE` that no permission is given
   for text and data mining or for training machine-learning models, which reserves the right
   under Article 4 of the EU copyright directive. Tomba approves the wording.
@@ -371,11 +377,11 @@ checks the result after it.
 | Part | Who | What | Waits for | Done when |
 | --- | --- | --- | --- | --- |
 | 1a | session | The app ready for Cloudflare: `sw.js` reading `X-Polku-Deploy` with its `Last-Modified` fallback (and `startfail` with it), the start-failure banner's handler, What's new's links into the repository as plain text (its failure message too), the credits' `Polku © Tommi Contursi` as plain text, the licence sentence. Built in #1243; the copyright line moved to 1b's build, and where to report problems waits (both decided 2026-11-21) | this plan merged | merged, the groups it touches passing (`startfail` and `changelog` among them) |
-| 1b | session | The built site: `tools/site.sh`, esbuild with its lockfile, `wrangler.jsonc`, `_headers` with the policy report-only, `robots.txt`, `tdmrep.json`, `serve.py`'s built mode, AGENTS.md ("Testing", the built site) and DEVELOPING | 1a | merged, the groups it touches passing against `site/` with the policy enforced |
+| 1b | session | The built site: `tools/site.sh` with the copyright lines, esbuild with its lockfile, `wrangler.jsonc`, `_headers` with the policy report-only, `robots.txt`, `tdmrep.json`, `serve.py`'s built mode, AGENTS.md ("Testing", the built site) and DEVELOPING | 1a | merged, the groups it touches passing against `site/` with the policy enforced |
 | 2 | session, Tomba | The `workers.dev` address checked: the headers, `tdmrep.json`, the walk-through (Share and the compass on Tomba's phone); the Cloudflare GitHub app sees only Polku | Tomba's step 2 | nothing in the walk-through fails or reports a violation |
 | 3 | Tomba | The DNS to Cloudflare (step 3) | part 2 | step 3's checks pass |
 | 4 | session, Tomba | polku.si on Cloudflare checked: the redirects (`curl -I http://polku.si/`, `https://www.polku.si/?r=x`, `/index.html?r=x` keeping the query), `index.html` byte for byte against a `site/` built at the same commit, share links, offline, routing, the walk-through | step 3.4 | all of it passes |
-| 5 | session | The policy enforced; HSTS a year; `sw.js`'s `Last-Modified` fallback removed; `workers_dev` and `preview_urls` off; "GitHub Pages" made "Cloudflare" in AGENTS.md, PRODUCT.md and DEVELOPING | part 4, then a week on Cloudflare without trouble | merged, the groups it touches passing |
+| 5 | session | The policy enforced; HSTS a year; `sw.js`'s `Last-Modified` fallback removed; `workers_dev` off; "GitHub Pages" made "Cloudflare" in AGENTS.md, PRODUCT.md and DEVELOPING | part 4, then a week on Cloudflare without trouble | merged, the groups it touches passing |
 | 6 | session, Tomba (step 4) | The OSM data build moved | this plan merged | a candidate from the new repository promoted by Polku's job, its daily check passed, the workflows gone from Polku |
 | 7 | session | The security check and its fixes, the history scan first | this plan merged | every finding filed; the history scanned and anything found rotated |
 | 8 | Tomba | Pro, budget, private (step 6) | parts 5 and 6, part 7's history scan, step 0 | step 6's check passes |

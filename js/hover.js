@@ -7,7 +7,7 @@
 
 import { DIFF_COLORS, MTB_COLORS, MTB_SCALE_TEXT, mtbClass, UPHILL_TEXT, LIPAS_TYPES } from './config.js';
 import { WINTER_TEXT } from './winter.js';
-import { inspectLayers, pickFeature, pickAt, hitBox, featuresAt, winterAt, WAY_NAMES, MARK_TYPE, SECTOR_NAME, mmlTerrain } from './inspect.js';
+import { tapLayers, pickFeature, pickAt, hitBox, featuresAt, winterAt, WAY_NAMES, MARK_TYPE, SECTOR_NAME, mmlTerrain } from './inspect.js';
 import { NAV_TEXT } from './nautical.js';
 import { aadtColor, fmtAadt } from './safety.js';
 import { gradeHere } from './uphill.js';
@@ -23,7 +23,7 @@ const ALT_LAYERS = ['route-alts-line', 'route-alts-casing', 'route-alts-glow', '
 
 export const hoverCapable = () => matchMedia('(hover: hover) and (pointer: fine)').matches;
 
-/** app: { enabled(), isPlanning(), isDrawing(), hoverRoute(props | null), headAt(point, touch) } */
+/** app: { enabled(), isPlanning(), isDrawing(), hoverRoute(props | null), headAt(point, touch), taps(), tapWay() (Settings' choices, tapLayers()) } */
 export function initHover(map, app) {
   const canvas = map.getCanvas();
   const tip = h('div', { class: 'hover-tip', 'aria-hidden': 'true', hidden: true });
@@ -69,7 +69,7 @@ export function initHover(map, app) {
     if (enrich) detailTimer = 0; else timer = 0;
     if (!at || !app.enabled() || map.isMoving() || map.getContainer().querySelector('.polku-popup')) return;
     const planning = app.isPlanning();
-    const layers = inspectLayers(map).filter((id) => id !== 'water' && !id.endsWith('-halo') && !id.startsWith('road-tunnel'));
+    const layers = tapLayers(map, app.taps(), app.tapWay()).filter((id) => id !== 'water' && !id.endsWith('-halo') && !id.startsWith('road-tunnel'));
     if (planning) layers.push(...['route-casing', 'nogo-fill', ...ALT_LAYERS].filter((id) => map.getLayer(id)));
     const [x, y] = at;
     const feats = featuresAt(map, { x, y }, [[x - RADIUS, y - RADIUS], [x + RADIUS, y + RADIUS]], layers);
@@ -128,7 +128,7 @@ export function initHover(map, app) {
     if (!at || app.isDrawing()) { pointer = false; light(null); return; }
     // what a click picks first is what's lit: your route's line, an alternative route (#1029) and a place's icon win over
     // a LIPAS route (inspect.js)
-    const layers = [...inspectLayers(map), ...['route-casing', 'heads-icon', 'heads-on-icon', ...ALT_LAYERS].filter((id) => map.getLayer(id))];
+    const layers = [...tapLayers(map, app.taps(), app.tapWay()), ...['route-casing', 'heads-icon', 'heads-on-icon', ...ALT_LAYERS].filter((id) => map.getLayer(id))];
     const feats = featuresAt(map, { x: at[0], y: at[1] }, hitBox({ x: at[0], y: at[1] }, false), layers);
     const hit = feats.some((f) => f.layer.id !== 'route-casing' || f.properties.kind !== 'gap');
     pointer = hit; canvas.style.cursor = hit ? 'pointer' : '';

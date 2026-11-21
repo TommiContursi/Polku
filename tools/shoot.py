@@ -55,6 +55,10 @@ WAIT = "(async () => { " + SEED_WINTER + " await new Promise((r) => setTimeout(r
 WINTER_LAYERS = ("(async () => { const wait = (ms) => new Promise((r) => setTimeout(r, ms)); " + SEED_WINTER + " await wait(3000); document.querySelector('#btn-layers').click(); document.querySelector('#quick-layers .qt-more').click(); await wait(500);"
                  " const g = [...document.querySelectorAll('#layers-body .lg-group')].find((x) => /^Winter/.test(x.querySelector('.lg-title').textContent));"
                  " if (g) { g.open = true; g.scrollIntoView({ block: 'start' }); } await wait(600); return true; })()")
+SETTINGS_MAP = ("(async () => { const wait = (ms) => new Promise((r) => setTimeout(r, ms)); document.querySelector('#btn-settings').click(); await wait(500);"
+                " const g = document.querySelector('#settings-body [data-group=settings-map]'); g.open = true; await wait(300);"
+                " const at = (w) => [...g.querySelectorAll('.tg-text')].find((e) => e.textContent.startsWith(w)), t = at('A tap on the map') || at('Details on hover') || at('Trees');"
+                " if (t) t.scrollIntoView({ block: 'center' }); await wait(400); return true; })()")
 SNOW_ON = ("(async () => { const wait = (ms) => new Promise((r) => setTimeout(r, ms)); const c = document.querySelector('.tl-layers [data-k=snow]'); if (c) c.click();"
            " await wait(5000); return true; })()")
 # Phase 15b: winter on a route through Laajavuori (local BRouter), with a made-up forecast of
@@ -466,6 +470,9 @@ SCENES = {
     'desk-layers': dict(DESK, timeline=False, js="document.querySelector('#btn-layers').click(); document.querySelector('#quick-layers .qt-more').click(); true"),
     'phone-layers': dict(PHONE, timeline=False, js="document.querySelector('#btn-layers').click(); document.querySelector('#quick-layers .qt-more').click(); true"),
     'phone-settings': dict(PHONE, timeline=False, js="document.querySelector('#btn-settings') && document.querySelector('#btn-settings').click(); true"),
+    # Settings' Map and planner, at what a tap opens (#1244; before it, at Details on hover, or by touch the shadows)
+    'desk-settings-map': dict(DESK, timeline=False, js=SETTINGS_MAP),
+    'phone-settings-map': dict(PHONE, timeline=False, js=SETTINGS_MAP),
     'desk-quick': dict(DESK, timeline=False, js=QUICK()),
     'phone-quick': dict(PHONE, timeline=False, js=QUICK()),
     'phone-quick-360': dict(PHONE, w=360, h=740, timeline=False, js=QUICK()),
