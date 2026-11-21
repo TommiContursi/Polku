@@ -209,7 +209,9 @@ Not recommended.
   11–14) along the route in Finland, and the property tiles (zoom 14)
   when that layer is on, so offline the map looks as it does online. An
   area saved before, or whose MML tiles failed in part, says so in
-  Settings → Offline maps.
+  Settings → Offline maps. Offline and in Preview offline, the message that
+  MML's terrain didn't load stays quiet, as the view reaches past the
+  corridor and the offline message already says what's missing there.
 - **Attribution.** "© Maanmittauslaitos" with the dataset, CC BY 4.0. The
   dataset's date is left out, since the tiles are live.
 - **Bases.** Terrain on the Trail, Plain and Night maps. The Maastokartta
