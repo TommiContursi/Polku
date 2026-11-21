@@ -37,8 +37,9 @@ export const OPEN_METEO = 'https://api.open-meteo.com/v1/forecast';
 
 // Polku's MML API key (#1148). Not a secret: the browser sends it in every MML tile's address. It's only scrambled
 // here, so it isn't plain text in the source for scrapers to pick up. A person's own key is used instead.
-// (XOR with 'polku', then base64; style.js unscrambles it.)
-export const MML_KEY = 'SAoIWBFIWFhGQxQLVUZBFFlbRk1DDV9GExNXD1pHQV9UXBYT';
+// (XOR with 'polku', then base64; mmlApiKey() unscrambles it.)
+const MML_KEY = 'SAoIWBFIWFhGQxQLVUZBFFlbRk1DDV9GExNXD1pHQV9UXBYT';
+export const mmlApiKey = (own) => own || [...atob(MML_KEY)].map((c, i) => String.fromCharCode(c.charCodeAt(0) ^ 'polku'.charCodeAt(i % 5))).join('');
 // MML's property map as vector tiles, zooms 0–14 (#1148); the key goes after it
 export const MML_PROPERTY_TILES = 'https://avoin-karttakuva.maanmittauslaitos.fi/kiinteisto-avoin/tiles/wmts/1.0.0/kiinteistojaotus/default/v3/WGS84_Pseudo-Mercator/{z}/{y}/{x}.pbf';
 // MML's background map as vector tiles, zooms 0–14: the terrain in Finland, bogs first (#1147); the key goes after it

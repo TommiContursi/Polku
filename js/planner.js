@@ -10,7 +10,7 @@ import { detailsAlong, forgetFailures as forgetTrailFailures, obstacleText } fro
 import { iconUrl, warnMarkId } from './icons.js';
 import { speedsFor, speedSummary, renderSpeedEditor, pace, pace100 } from './speeds.js';
 import { ProfileChart, COLOR_MODES, COLOR_GROUPS, PICK_MODES, colorAt, routeReadout, breakdownKey, breakdownRows, sampleRows, skyIcon, noTerrain, downClass } from './chart.js';
-import { dist, encodePolyline, decodePolyline, fmtDist, fmtDuration, compass, bbox, nearestOnLine, simplify, lineLength, pointSegment, bearing, inFinland, finlandInView } from './geo.js';
+import { dist, encodePolyline, decodePolyline, onEarth, fmtDist, fmtDuration, compass, bbox, nearestOnLine, simplify, lineLength, pointSegment, bearing, inFinland, finlandInView } from './geo.js';
 import { lipasPlace, stitch, clipAlong } from './lipas.js';
 import { onWaterData, prefetchWater, forgetWaterFailures } from './waterdata.js';
 import { sunTimes, darkness, nightAt, sunPosition } from './sun.js';
@@ -4118,13 +4118,14 @@ export class Planner {
     const route = feats.find((x) => x.layer.id === 'lipas-route');
     const f = pickFeature(feats), way = feats.find((x) => /^(path|track|cycleway|road)-/.test(x.layer.id)), bike = groupOf(this.app.activity()) === 'bike';
     const d = f && describe(f, feats, { ll, bike, mtb: this.app.activity() === 'mtb' });
-    const text = (html) => { const e = document.createElement('span'); e.innerHTML = html; return e.textContent; };
+    // the hover's bits are HTML, its title text (hover.js): a bit's words, read in a document of its own, which loads and runs nothing (#1247)
+    const text = (html) => new DOMParser().parseFromString(html, 'text/html').body.textContent;
     // (the water or a park the map draws there: what OpenStreetMap says it is, where no way is in reach; the line waits for the ways)
     const area = areaUnder(this.map, p);
     // (the tile joins ways of one kind into one feature: the line of them nearest the tap, drawn while the ways come)
     const lines = feats.filter((x) => /^(path|track|cycleway|road)-/.test(x.layer.id)).flatMap((x) => (x.geometry.type === 'LineString' ? [x.geometry.coordinates] : x.geometry.type === 'MultiLineString' ? x.geometry.coordinates : []));
     const near = lines.map((c) => [nearestOnLine(ll, c).d, c]).sort((a, b) => a[0] - b[0])[0];
-    const card = spotCard(this, { ll, pin, geom: near && { type: 'LineString', coordinates: near[1] }, title: d ? text(d.title) : area === 'water' ? 'Water' : name || 'This spot', line: d ? d.bits.filter((b) => !b.startsWith('<i class="dot"')).map(text).join(', ') : '',
+    const card = spotCard(this, { ll, pin, geom: near && { type: 'LineString', coordinates: near[1] }, title: d ? d.title : area === 'water' ? 'Water' : name || 'This spot', line: d ? d.bits.filter((b) => !b.startsWith('<i class="dot"')).map(text).join(', ') : '',
       tags: way ? tileTags(way.properties) : {}, way: !!way, osm: way && way.properties.osm ? { type: 'way', id: way.properties.osm } : way ? { type: 'way', id: null } : null,
       partOf: route && route.properties.name ? { props: route.properties, ll } : null, touch, area });
     this.openCard(card, ll, from);
@@ -8435,7 +8436,7 @@ export function parseShared(params) {
   if (!r) return null;
   try {
     const points = decodePolyline(r);
-    if (points.length < 1) return null;
+    if (points.length < 1 || !points.every(onEarth)) return null; // (a point off the earth: no route, not a Polku that stops)
     const lipas = (params.get('lr') || '').split(',').map((x) => {
       const m = x.match(/^(\d+):(\d+)\.(\d+)\.([\w-]+)\.(\d+)\.(\d+)$/);
       return m && { i: +m[1], t: +m[2], id: +m[3], seq: m[4], a: +m[5], b: +m[6] };

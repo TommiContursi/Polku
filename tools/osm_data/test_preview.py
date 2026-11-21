@@ -9,7 +9,7 @@ import tempfile
 from threading import Thread
 import unittest
 
-from tools.osm_data.preview import Preview
+from tools.osm_data.preview import Preview, Server
 
 
 class PreviewTests(unittest.TestCase):
@@ -128,6 +128,10 @@ class PreviewTests(unittest.TestCase):
         self.assertIn(f"OSM_DATA_MANIFEST = '{url}'", body.decode())
         self.assertEqual(self.request('/__osm/current.json')[0], 404, 'nothing local is served as data')
         self.assertEqual(self.request('/index.html')[2], b'Polku preview')
+
+    def test_the_server_holds_a_page_of_module_requests(self):
+        self.assertGreaterEqual(Server.request_queue_size, 128)
+
 
 if __name__ == '__main__':
     unittest.main()
