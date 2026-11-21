@@ -338,13 +338,14 @@ const point = (e) => {
 const HOSTED = { wetlands: ['lc-reedbed', reedbed], points: ['poi-points', point] };
 
 export class HostedLayer {
-  constructor(map, url, dataset, onData) {
+  constructor(map, url, dataset, onData, onStatus = null) {
     this.map = map;
     this.url = url;
     this.dataset = dataset;
     [this.layer, this.feature] = HOSTED[dataset];
     this.tiles = hostedTiles[dataset];
     this.onData = onData;
+    this.onStatus = onStatus;
     this.timer = 0;
     this.want = [];
     this.shown = null;
@@ -353,6 +354,8 @@ export class HostedLayer {
   }
   // an update still to run, or a tile in view on its way: what comes after the map stops waits for it (#1091)
   get busy() { return !!this.timer || this.want.some((k) => this.tiles.get(k)?.data === null); }
+  // a tile in view that didn't load (a release without the product, a place outside its coverage, a failed read): Layers says so
+  get failing() { return this.want.length <= 36 && this.want.some((k) => this.tiles.get(k)?.failedAt); }
   schedule(ms = 300) { clearTimeout(this.timer); this.timer = setTimeout(() => { this.timer = 0; this.update(); }, ms); }
   update() {
     const map = this.map, tiles = this.tiles;
@@ -375,6 +378,7 @@ export class HostedLayer {
     }
     if (tiles.size > 64) for (const [k, t] of tiles) { if (tiles.size <= 64) break; if (!this.want.includes(k) && t.data !== null) tiles.delete(k); }
     this.publish(this.want.filter((k) => tiles.get(k)?.data));
+    this.onStatus?.();
   }
   publish(keys) {
     const key = keys.join(';');
