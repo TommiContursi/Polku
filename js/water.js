@@ -19,7 +19,7 @@
 // of them).
 
 import { OFM_TILEJSON } from './config.js';
-import { dist, lonLatToTile } from './geo.js';
+import { dist, inPolygon, lonLatToTile } from './geo.js';
 import { waterInputs, lateAnswers, waveHeight, waveWind, COMFORT_WAVE } from './waterdata.js';
 
 const MAX_PX = 1400;
@@ -637,20 +637,6 @@ function nameAt(fairways, coords, at) {
   }
   const f = fairways.find((x) => x.properties.cls === 'ship' && inPolygon(p, x.geometry));
   return f ? f.properties.name : '';
-}
-
-function inPolygon(p, g) {
-  const polys = g.type === 'Polygon' ? [g.coordinates] : g.type === 'MultiPolygon' ? g.coordinates : [];
-  return polys.some((rings) => {
-    let inside = false;
-    for (const ring of rings) {
-      for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
-        const [xi, yi] = ring[i], [xj, yj] = ring[j];
-        if ((yi > p[1]) !== (yj > p[1]) && p[0] < ((xj - xi) * (p[1] - yi)) / (yj - yi) + xi) inside = !inside;
-      }
-    }
-    return inside;
-  });
 }
 
 const memo = new Map(); // same leg, same costs, same wind class: the same route (re-timing a trip doesn't re-run A*)

@@ -2536,7 +2536,7 @@ body.dropping .drop-hint { display: flex; }
   .brand svg { width: 44px; height: 44px; }
   .search kbd { display: none; }
   .act-current { padding: 0 8px 0 11px; }
-  .act-current span:not(.act-winter) { display: none; }
+  .act-current span:not(.act-winter) { position: absolute; width: 1px; height: 1px; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; } /* (out of sight, still the pill's name, #1214) */
   .act-menu { position: fixed; top: 62px; left: 12px; right: 12px; width: auto; max-height: calc(100dvh - 74px); overflow-y: auto; overscroll-behavior: contain; }
   /* the map controls keep their place (bottom right, thumb reach); the sheet is full
      width here, so they ride above it */
@@ -2760,8 +2760,7 @@ body.dropping .drop-hint { display: flex; }
 .changelog-notes p { margin: 8px 0; }
 .changelog-notes ul { padding-left: 22px; margin: 8px 0 16px; }
 .changelog-notes li { margin: 7px 0; }
-.changelog-source { font-size: 13px; }
-.changelog-notes a, .changelog-source a { color: var(--accent); text-underline-offset: 2px; }
+.changelog-notes a { color: var(--accent); text-underline-offset: 2px; }
 
 /* ---------------------------------------------------------------- the planner's toolbox (25a) */
 /* Phones: floating at the bottom left above the sheet, or docked into it as its first row. Desktops: a labelled

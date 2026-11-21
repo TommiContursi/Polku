@@ -205,8 +205,13 @@ Not recommended.
   tile has loaded in between (#1160, #1168). Property boundaries show "No
   data now" in the Layers panel, as other overlays do (#1157). A tile with
   nothing in it is a successful empty tile.
-- **Offline.** Offline areas don't save MML's tiles; offline, the layers
-  are missing and the message says so.
+- **Offline** (#1176). Save offline keeps MML's terrain tiles (zooms
+  11–14) along the route in Finland, and the property tiles (zoom 14)
+  when that layer is on, so offline the map looks as it does online. An
+  area saved before, or whose MML tiles failed in part, says so in
+  Settings → Offline maps. Offline and in Preview offline, the message that
+  MML's terrain didn't load stays quiet, as the view reaches past the
+  corridor and the offline message already says what's missing there.
 - **Attribution.** "© Maanmittauslaitos" with the dataset, CC BY 4.0. The
   dataset's date is left out, since the tiles are live.
 - **Bases.** Terrain on the Trail, Plain and Night maps. The Maastokartta
@@ -270,8 +275,9 @@ Plain and Night maps, in MTB and paddle; its PR lists what else it covered.
   Night and the aerial maps), from zoom 14, property IDs from zoom 16, in
   the Layers panel under Terrain, off by default, with an **Opacity**
   slider. A plot is tinted under the mouse pointer and when picked, which
-  opens a card with its property ID (#1159); **Plot under the pointer** is
-  its own switch, on at first. No transition.
+  opens a card with its property ID (#1159); **Property details** is its own
+  switch for both, on at first, with a mouse and by touch (#1199). No
+  transition.
 - **Tap and hover** (#1175): a tap or a click on the terrain opens the
   card the map's other things use, naming what it is, and the pointer's
   tooltip says the same. A bog's card has its survey class, easier or hard

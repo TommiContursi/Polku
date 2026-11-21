@@ -867,6 +867,136 @@ def waterway_style(chrome):
     return not fails
 
 
+# #1200: the Finnish sources and Digitraffic's ships, answered at once with nothing, each request logged in window.__asked
+FINNISH_HELD = """(() => {
+  const real = window.fetch.bind(window);
+  window.__asked = [];
+  window.fetch = (input, init) => {
+    const url = String(input && input.url ? input.url : input);
+    let u = null;
+    try { u = new URL(url, location.href); } catch {}
+    if (!u || !/^(lipas\\.fi|avoinapi\\.vaylapilvi\\.fi|meri\\.digitraffic\\.fi|tie\\.digitraffic\\.fi)$/.test(u.hostname)) return real(input, init);
+    window.__asked.push(u.href);
+    const body = /\\/vessels$/.test(u.pathname) ? [] : { type: 'FeatureCollection', features: [] };
+    return Promise.resolve(new Response(JSON.stringify(body), { headers: { 'Content-Type': 'application/json' } }));
+  };
+})();"""
+
+
+# #1200: a layer from a Finnish source says "Finland only" on its tile and its switch where none of Finland is in view (Luleå's
+# archipelago, inside the box the code once tested), and Paddle's defaults don't count it as on there; Marked routes asks you to zoom
+# in on Finland there, and nothing is asked of LIPAS or Väylävirasto. With Tornio in view, or in Finland, nothing changes. Traficom's
+# depths and lanes reach into the Gulf of Finland past the outline (off Kalbådagrund). Ships and Sea ice reach farther: they say so
+# only beyond the northern Baltic and the Baltic, beyond it no ships are asked for, and near Tallinn a move asks for them at once.
+# In Gravel, nothing is asked of Fintraffic's roads or Digiroad in Luleå, nor does Check list them for a route there; in Tornio it does.
+def layer_coverage(chrome):
+    pg = chrome.page(1440, 900, False)
+    try:
+        pg.c.send('Page.addScriptToEvaluateOnNewDocument', {'source': EMPTY_DEPTHS + FINNISH_HELD}, pg.s)
+        pg.open_app({'activity': 'paddle'}, None, '#11/65.45/22.4')
+        fails = pg.js("""(async () => {
+          const errs=[], m=polku.map, frame=()=>new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)));
+          const until=async(ok,ms=5000)=>{const t0=performance.now();while(!ok()&&performance.now()-t0<ms)await frame();return ok();};
+          const go=async(center,zoom)=>{m.jumpTo({center,zoom});await frame();await new Promise(r=>setTimeout(r,400));};
+          const small=(id)=>{const s=document.querySelector(`#quick-layers .qt[data-id="${id}"] .qt-l small`);return s&&!s.hidden?s.textContent:'';};
+          const more=()=>document.querySelector('#quick-layers .qt-more')?.getAttribute('aria-label');
+          const row=(name)=>[...document.querySelectorAll('#layers-panel label.tg')].find(l=>l.querySelector('.tg-text').firstChild.textContent.trim()===name);
+          const note=(name)=>row(name)?.querySelector('.tg-text small')?.textContent||'';
+          const chips=()=>[...document.querySelectorAll('#layers-panel .on-chip span')].map(s=>s.textContent);
+          const count=(g)=>document.querySelector(`#layers-panel [data-group="${g}"] .lg-count`)?.textContent||'';
+          const FI=['Official routes (LIPAS)','Shipping lanes','Depth areas','Nautical marks & fairways'];
+          const asked=(host,path='')=>window.__asked.filter(u=>{const x=new URL(u);return x.hostname===host&&x.pathname.includes(path);});
+          const pause=(ms)=>new Promise(r=>setTimeout(r,ms));
+          // Luleå's archipelago, Sweden: Marked routes asks you to zoom in on Finland, and the drawer's tiles
+          await polku.planner.listMarked();
+          if(polku.planner.marked.state!=='far')errs.push(`Luleå: Marked routes is “${polku.planner.marked.state}”, not asking you to zoom in on Finland`);
+          document.querySelector('#btn-layers').click();
+          if(!await until(()=>document.querySelector('#quick-layers .qt[data-id="nautical"]')))return ['Layers opened no Paddle tiles'];
+          for(const id of ['nautical','lipasPoints'])if(small(id)!=='Finland only')errs.push(`Luleå: the ${id} tile says “${small(id)}”, not Finland only`);
+          if(small('depths')!=='Finland only · not for navigation')errs.push(`Luleå: the Depths tile says “${small('depths')}”`);
+          if(small('sfShips')==='Northern Baltic only')errs.push('Luleå: the Ships tile says Northern Baltic only, inside the area Digitraffic sees');
+          // (Paddle's other layers on: Official routes and Shipping lanes, from Finland; Outdoor places and Military areas, everywhere)
+          if(more()!=='More: all layers, 2 more on')errs.push(`Luleå: ${more()}, not 2 more on`);
+          if(!polku.state.overlays.fairways||!polku.state.overlays.lipasRoutes)errs.push('Luleå: Paddle\\'s Finnish layers were switched off, not just not counted');
+          for(const host of ['lipas.fi','avoinapi.vaylapilvi.fi'])if(asked(host).length)errs.push(`Luleå: asked ${host} for ${asked(host).length} things`);
+          // the full panel: not counted as on, and each switch says so in words
+          document.querySelector('#quick-layers .qt-more').click();
+          if(!await until(()=>row('Shipping lanes')))return [...errs,'More opened no Shipping lanes switch'];
+          const on=FI.filter(n=>chips().includes(n));
+          if(on.length)errs.push(`Luleå: On now lists ${on.join(', ')}`);
+          if(!chips().includes('Ships (live AIS)'))errs.push('Luleå: On now leaves out Ships');
+          if(count('water')!=='1 on')errs.push(`Luleå: Water & nautical says “${count('water')}”, not 1 on`);
+          if(!note('Shipping lanes').startsWith('Finland only'))errs.push(`Luleå: the Shipping lanes switch says “${note('Shipping lanes')}”`);
+          if(note('Official routes (LIPAS)')!=='Finland only')errs.push(`Luleå: the Official routes switch says “${note('Official routes (LIPAS)')}”`);
+          if(!row('Shipping lanes').querySelector('input').checked)errs.push('Luleå: the Shipping lanes switch is off');
+          // Helsinki, with the panel open: as in Finland always
+          await go([24.95,60.15],11);
+          if(!await until(()=>!note('Shipping lanes').startsWith('Finland only')))errs.push('Helsinki: the Shipping lanes switch still says Finland only');
+          if(count('water')!=='6 on')errs.push(`Helsinki: Water & nautical says “${count('water')}”, not 6 on`);
+          const off=FI.filter(n=>!chips().includes(n));
+          if(off.length)errs.push(`Helsinki: On now leaves out ${off.join(', ')}`);
+          if(note('Official routes (LIPAS)'))errs.push(`Helsinki: the Official routes switch says “${note('Official routes (LIPAS)')}”`);
+          await polku.planner.listMarked();
+          if(polku.planner.marked.state==='far')errs.push('Helsinki: Marked routes asks you to zoom in on Finland');
+          // off Kalbådagrund, in the Gulf of Finland past Finland's territorial sea, where Traficom's depths and lanes draw
+          const {finlandInView}=await import('/js/geo.js');
+          await go([25.75,59.875],13);
+          const vb=m.getBounds();
+          if(finlandInView&&finlandInView([vb.getWest(),vb.getSouth(),vb.getEast(),vb.getNorth()]))errs.push('(the test) the view off Kalbådagrund reaches Finland\\'s outline');
+          if(!await until(()=>row('Shipping lanes')&&!note('Shipping lanes').startsWith('Finland only')))errs.push(`off Kalbådagrund: the Shipping lanes switch says “${note('Shipping lanes')}”, where Traficom draws them`);
+          if(note('Depth areas').startsWith('Finland only'))errs.push(`off Kalbådagrund: the Depth areas switch says “${note('Depth areas')}”, where Traficom draws them`);
+          // Haparanda, Sweden, with Tornio across the river in view: a view partly in Finland counts as in it
+          const {inFinland}=await import('/js/geo.js');
+          if(!inFinland||inFinland([24.12,65.83])||!inFinland([24.2,65.85]))errs.push('(the test) Haparanda is in Finland, or Tornio isn\\'t');
+          window.__asked.length=0;
+          await go([24.12,65.83],12);
+          if(!await until(()=>count('water')==='6 on'))errs.push(`Haparanda with Tornio in view: Water & nautical says “${count('water')}”, not 6 on`);
+          if(!await until(()=>asked('lipas.fi').length&&asked('avoinapi.vaylapilvi.fi','/vaylatiedot/ows').length))errs.push(`Haparanda with Tornio in view: LIPAS asked ${asked('lipas.fi').length} times, Väylävirasto's marks ${asked('avoinapi.vaylapilvi.fi').length}`);
+          // Lofoten, Norway: Ships and Sea ice say where they reach
+          window.__asked.length=0;
+          await go([14.5,68.2],10);
+          const water=document.querySelector('#layers-panel [data-group="water"]');
+          if(water&&!water.open)water.querySelector('summary').click();
+          if(!await until(()=>note('Ships (live AIS)')==='Northern Baltic only'))errs.push(`Lofoten: the Ships switch says “${note('Ships (live AIS)')}”`);
+          await pause(21000); // (past a tick of the ships' 20 s timer)
+          for(const [host,path] of [['lipas.fi',''],['avoinapi.vaylapilvi.fi',''],['meri.digitraffic.fi','/ais/v1/locations']])if(asked(host,path).length)errs.push(`Lofoten: asked ${host}${path}`);
+          if(!note('Sea ice').startsWith('Baltic Sea only'))errs.push(`Lofoten: the Sea ice switch says “${note('Sea ice')}”`);
+          // back in the drawer, which keeps its tiles' words as the map moves
+          document.querySelector('#layers-panel .panel-back').click();
+          if(!await until(()=>small('sfShips')==='Northern Baltic only'))errs.push(`Lofoten: the Ships tile says “${small('sfShips')}”`);
+          // near Tallinn, outside Finland where Digitraffic sees ships: a move asks for them at once, without the timer
+          clearInterval(polku.safety.shipTimer);
+          window.__asked.length=0;
+          await go([24.75,59.5],10);
+          if(!await until(()=>asked('meri.digitraffic.fi','/ais/v1/locations').length,3000))errs.push('near Tallinn: no ships asked for on a move');
+          await go([22.4,65.45],11);
+          if(!await until(()=>small('nautical')==='Finland only'))errs.push(`back in Luleå with the drawer open: Nautical marks says “${small('nautical')}”`);
+          await go([24.95,60.15],11);
+          if(!await until(()=>small('nautical')!=='Finland only'))errs.push('Helsinki with the drawer open: Nautical marks still says Finland only');
+          if(small('depths')!=='Not for navigation')errs.push(`Helsinki: the Depths tile says “${small('depths')}”`);
+          if(more()!=='More: all layers, 4 more on')errs.push(`Helsinki: ${more()}, not 4 more on`);
+          // Gravel: nothing asked of Fintraffic's road layers or Digiroad in Luleå, and Check's road hazards not for a route there
+          polku.set({activity:'gravel'});
+          window.__asked.length=0;
+          await go([22.15,65.58],11);
+          await pause(1500);
+          const roads=()=>[...asked('tie.digitraffic.fi','/api/traffic-message/'),...asked('avoinapi.vaylapilvi.fi','/digiroad/')];
+          if(roads().length)errs.push(`Luleå in Gravel: asked Fintraffic and Digiroad ${roads().length} times`);
+          const p=polku.planner, route=async(a,b)=>{p.setActive(true);p.clear();p.setMode('line');p.addPoint(a);p.addPoint(b);
+            await until(()=>p.analysis&&p.analysis.pts&&Math.abs(p.analysis.pts[0][0]-a[0])<0.005,20000);return p.lookedAt().map(r=>r.what);};
+          if((await route([22.1,65.57],[22.2,65.59])).some(w=>/^(Road works|Busy roads)/.test(w)))errs.push('a route in Luleå: What Polku looked at lists Fintraffic and Digiroad');
+          await go([24.12,65.83],12);
+          if(!await until(()=>roads().length))errs.push('Haparanda with Tornio in view, in Gravel: nothing asked of Fintraffic or Digiroad');
+          if(!(await route([24.16,65.84],[24.21,65.85])).includes('Road works and incidents'))errs.push('a route in Tornio: What Polku looked at leaves out Fintraffic');
+          return errs;
+        })()""", timeout=120000)
+        fails += [f'console: {e[:160]}' for e in pg.errors()]
+    finally:
+        pg.close()
+    print(f"{'ok  ' if not fails else 'FAIL'} Finland-only layers say so beyond Finland, and aren't counted as on there (#1200)" + ''.join(f'\n     - {f}' for f in fails), flush=True)
+    return not fails
+
+
 # #1148: Property boundaries, a switch in Layers' Terrain with its opacity, off in every sport: MML's property map from zoom 14 in Finland, with
 # Polku's key (not plain text in the source) or a person's own, drawn and named at Jyväskylä's centre.
 def property_lines(chrome):
@@ -915,12 +1045,13 @@ def property_lines(chrome):
     return not fails
 
 
-# #1148: with Property boundaries on (and its Plot under the pointer, on at first), the plot under the pointer is tinted, and a click on a plot opens its card with its ID
-# and tints it more, by its id (all its tiles' pieces), until the card closes.
+# #1148: with Property boundaries on (and its Property details switch, on at first), the plot under the pointer is tinted, and a click on a plot opens its card with its ID
+# and tints it more, by its id (all its tiles' pieces), until the card closes. #1199: with Property details off, no plot is tinted or
+# picked by a mouse, a hold or a tap, and the switch is there by touch too.
 def property_plots(chrome):
     pg = chrome.page(1440, 900, False)
     pg.open_app({'activity': 'mtb', 'overlaysByActivity': {'mtb': {'propertyLines': True}}}, None, '#16.5/62.2415/25.748')
-    fails = pg.js("""(async () => {
+    r = pg.js("""(async () => {
       const errs=[], m=polku.map, wait=(ms)=>new Promise(r=>setTimeout(r,ms)), frame=()=>new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)));
       const t0=performance.now();
       while(performance.now()-t0<30000&&!m.queryRenderedFeatures({layers:['property-plot']}).length)await wait(250);
@@ -928,7 +1059,8 @@ def property_plots(chrome):
       const {inspectLayers,pickFeature,hitBox}=await import(location.origin+'/js/inspect.js');
       let spot=null;
       for(let y=200;y<800&&!spot;y+=23)for(let x=200;x<1200&&!spot;x+=29){const f=pickFeature(m.queryRenderedFeatures(hitBox({x,y},false),{layers:inspectLayers(m)}));if(f&&f.layer.id==='property-plot'&&f.id!=null)spot={x,y,f};}
-      if(!spot)return ['no spot at Jyväskylä where a click picks a plot'];
+      if(!spot)return {errs:['no spot at Jyväskylä where a click picks a plot']};
+      const ll=m.unproject([spot.x,spot.y]).toArray();
       const st=(id)=>m.getFeatureState({source:'ov-propertyLines',sourceLayer:'PalstanSijaintitiedot',id});
       const cv=m.getCanvas(), R=cv.getBoundingClientRect();
       const ev=(type)=>cv.dispatchEvent(new MouseEvent(type,{bubbles:true,cancelable:true,clientX:R.left+spot.x,clientY:R.top+spot.y,button:0,buttons:type==='mouseup'?0:1}));
@@ -965,26 +1097,106 @@ def property_plots(chrome):
         else if(/^Property /.test(c.title))errs.push('a click in a park opened the property under it, not the park');
         polku.planner.cards.close(); await frame();
       }
-      // Plot under the pointer, under the switch in Layers: off, the pointer tints nothing, and a click still picks the plot
+      // Property details, under the switch in Layers (#1199): off, the pointer, a click and a hold pick no plot, and what's under it
+      // opens as without the layer; the plot whose card is open as it goes off is no longer tinted, and its card closes
+      const idle=()=>Promise.race([new Promise(r=>{m.once('idle',r);m.triggerRepaint();}),wait(5000)]);
+      const tinted=()=>m.getLayer('property-plot')&&m.queryRenderedFeatures([spot.x,spot.y],{layers:['property-plot']}).some(f=>f.id===spot.f.id)&&(st(spot.f.id).lit||st(spot.f.id).hover);
+      const move=(dx)=>cv.dispatchEvent(new PointerEvent('pointermove',{bubbles:true,pointerType:'mouse',clientX:R.left+spot.x+dx,clientY:R.top+spot.y,buttons:0}));
+      ev('mousedown'); ev('mouseup'); ev('click'); await wait(600);
+      if(!/^Property \\d/.test(polku.planner.cards.current?.title||''))errs.push('before Property details goes off, a click on the plot opens no card of it');
       document.querySelector('#btn-layers').click(); await frame();
       [...document.querySelectorAll('button')].find(b=>/^More: all layers/.test(b.getAttribute('aria-label')||''))?.click(); await frame();
-      const sub=[...document.querySelectorAll('[data-group=terrain] input[role=switch]')].find(i=>i.closest('label')?.textContent.includes('Plot under the pointer'));
-      if(!sub)errs.push('no Plot under the pointer switch under Property boundaries');
+      const sub=[...document.querySelectorAll('[data-group=terrain] input[role=switch]')].find(i=>i.closest('label')?.textContent.includes('Property details'));
+      if(!sub)errs.push('no Property details switch under Property boundaries');
       else {
-        if(!sub.checked)errs.push('Plot under the pointer is off at first');
-        sub.click(); await frame(); polku.set({}); await frame();
-        cv.dispatchEvent(new PointerEvent('pointermove',{bubbles:true,pointerType:'mouse',clientX:R.left+spot.x+1,clientY:R.top+spot.y,buttons:0})); await frame(); await frame();
-        if(st(spot.f.id).hover)errs.push('the plot is tinted with Plot under the pointer off');
-        if(polku.state.plotHover!==false)errs.push('Plot under the pointer stays on after its switch');
+        if(!sub.checked)errs.push('Property details is off at first');
+        if(!/^Property /.test(polku.planner.cards.current?.title||''))errs.push("the plot's card closed as Layers opened");
+        sub.click(); await idle();
+        if(polku.state.plotSelect!==false)errs.push('Property details stays on after its switch');
+        if(tinted())errs.push('the picked plot stays tinted after Property details goes off');
+        if(polku.planner.cards.current)errs.push(`the plot's card stays open after Property details goes off: ${polku.planner.cards.current.title}`);
+        polku.planner.cards.close(); await frame();
+        move(1); await frame(); await frame();
+        if(tinted())errs.push('the plot under the pointer is tinted with Property details off');
+        if(cv.style.cursor==='pointer')errs.push('the pointer cursor over a plot with Property details off');
         ev('mousedown'); ev('mouseup'); ev('click'); await wait(600);
-        if(!st(spot.f.id).lit)errs.push('with Plot under the pointer off, a click no longer picks the plot');
+        let c=polku.planner.cards.current;
+        if(c)errs.push(`with Property details off, a click on a plot with nothing else there opened ${c.title}`);
+        polku.planner.cards.close(); await frame();
+        // a hold (the right button, whose contextmenu MapLibre passes on at its mouseup): the spot's card, not the property's
+        for(const t of ['mousedown','contextmenu','mouseup'])cv.dispatchEvent(new MouseEvent(t,{bubbles:true,cancelable:true,clientX:R.left+spot.x,clientY:R.top+spot.y,button:2,buttons:t==='mousedown'?2:0}));
+        await wait(600); c=polku.planner.cards.current;
+        if(!c)errs.push('with Property details off, a hold on a plot opens no card');
+        else if(/^Property /.test(c.title))errs.push(`with Property details off, a hold on a plot opens ${c.title}`);
+        polku.planner.cards.close(); await frame();
+        if(park){
+          for(const t of ['mousedown','mouseup','click'])cv.dispatchEvent(new MouseEvent(t,{bubbles:true,cancelable:true,clientX:R.left+park.x,clientY:R.top+park.y,button:0,buttons:t==='mousedown'?1:0}));
+          await wait(800); c=polku.planner.cards.current;
+          if(!c||/^Property /.test(c.title))errs.push(`with Property details off, a click in the park opened ${c?c.title:'no card'}`);
+          polku.planner.cards.close(); await frame();
+        }
+        // on again: the plot under the pointer tinted, and a click opens its card
+        sub.click(); await idle();
+        move(0); await frame(); await frame();
+        if(!tinted())errs.push('the plot under the pointer is not tinted with Property details back on');
+        ev('mousedown'); ev('mouseup'); ev('click'); await wait(600);
+        c=polku.planner.cards.current;
+        if(!c||!/^Property \\d/.test(c.title))errs.push(`with Property details back on, a click on the plot opened ${c?c.title:'no card'}`);
         polku.planner.cards.close();
       }
-      return errs;
+      return {errs, ll};
     })()""", timeout=90000)
+    fails, ll = r['errs'], r.get('ll')
     fails += [f'console: {e[:160]}' for e in pg.errors()]
     pg.close()
-    print(f"{'ok  ' if not fails else 'FAIL'} a property's plot tinted under the pointer and picked (#1148)" + ''.join(f'\n     - {f}' for f in fails), flush=True)
+    # by touch, at a phone's size (#1199): Property details is there too, and with it off a tap on the plot opens nothing
+    # (at the plot the mouse picked: the phone's view of the centre is all park)
+    pg = chrome.page(390, 844, True)
+    pg.open_app({'activity': 'mtb', 'overlaysByActivity': {'mtb': {'propertyLines': True}}}, None, f'#17/{ll[1]:.6f}/{ll[0]:.6f}' if ll else '#17/62.2415/25.748')
+    at = pg.js("""(async () => {
+      const m=polku.map, wait=(ms)=>new Promise(r=>setTimeout(r,ms)), t0=performance.now();
+      while(performance.now()-t0<30000&&!(m.isSourceLoaded('ov-propertyLines')&&m.queryRenderedFeatures({layers:['property-plot']}).length))await wait(250);
+      const {inspectLayers,pickFeature,hitBox,areaUnder}=await import(location.origin+'/js/inspect.js'), R=m.getCanvas().getBoundingClientRect();
+      for(let y=200;y<560;y+=17)for(let x=40;x<350;x+=19){const f=pickFeature(m.queryRenderedFeatures(hitBox({x,y},true),{layers:inspectLayers(m)}));if(f&&f.layer.id==='property-plot'&&!areaUnder(m,[x,y]))return [R.left+x,R.top+y];}
+      return null;
+    })()""", timeout=40000)
+    title = "new Promise(r=>setTimeout(()=>r(polku.planner.cards.current?.title||''),800))"
+    if not at:
+        fails.append('by touch: no spot at Jyväskylä where a tap picks a plot')
+    else:
+        pg.quick_tap(*at)
+        t = pg.js(title)
+        if not t.startswith('Property '):
+            fails.append(f'by touch: before Property details goes off, a tap on the plot opened {t or "no card"}')
+        sw = pg.js("""(async () => {
+          const frame=()=>new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)));
+          polku.planner.cards.close(); await frame();
+          if (document.querySelector('#layers-panel').hidden) { document.querySelector('#btn-layers').click(); await frame(); document.querySelector('#quick-layers .qt-more').click(); await frame(); }
+          const sub=[...document.querySelectorAll('[data-group=terrain] input[role=switch]')].find(i=>i.closest('label')?.textContent.includes('Property details'));
+          if(!sub)return 'no Property details switch under Property boundaries';
+          sub.closest('label').scrollIntoView({block:'center'}); await new Promise(r=>setTimeout(r,400));
+          const r=(sub.offsetWidth?sub:sub.closest('label')).getBoundingClientRect();
+          return [r.left+r.width/2, r.top+r.height/2];
+        })()""")
+        if isinstance(sw, list):
+            pg.quick_tap(*sw)  # (the switch as a finger finds it)
+            sw = pg.js("""(async () => {
+          if(polku.state.plotSelect!==false)return "a tap on Property details doesn't turn it off";
+          document.querySelector('#layers-panel').dispatchEvent(new KeyboardEvent('keydown',{key:'Escape',bubbles:true}));
+          document.querySelector('#quick-layers').dispatchEvent(new KeyboardEvent('keydown',{key:'Escape',bubbles:true}));
+          await new Promise(r=>setTimeout(r,600));
+          return !document.querySelector('#layers-panel').hidden||document.querySelector('#quick-layers.open') ? 'Layers stays open after Escape' : '';
+        })()""")
+        if sw:
+            fails.append(f'by touch: {sw}')
+        else:
+            pg.quick_tap(*at)
+            t = pg.js(title)
+            if t:
+                fails.append(f'by touch: with Property details off, a tap on a plot with nothing else there opened {t}')
+    fails += [f'by touch, console: {e[:160]}' for e in pg.errors()]
+    pg.close()
+    print(f"{'ok  ' if not fails else 'FAIL'} a property's plot tinted under the pointer and picked, and Property details off by mouse and touch (#1148, #1199)" + ''.join(f'\n     - {f}' for f in fails), flush=True)
     return not fails
 
 
@@ -4026,6 +4238,11 @@ AVOID_OPENED = """(async (sent) => {
   q.set('av', Array.from({ length: 205 }, (_, i) => `24.9_60.${100 + i}_30`).join(','));
   const many = P.parseShared(q);
   if (!many || (many.nogos || []).length !== 200 || !many.nogosLost) errs.push(`205 circles in a link: ${many ? `${(many.nogos || []).length} read, lost: ${many.nogosLost}` : 'did not open'}`);
+  // (#1246) a route with a point off the earth isn't read: the map threw on it, and Polku stopped starting
+  const G = await import(location.origin + '/js/geo.js');
+  for (const off of [[24.95, 95], [200, 60.18]]) {
+    if (P.parseShared(new URLSearchParams({ r: G.encodePolyline([[24.94, 60.17], off]) }))) errs.push(`a link with a point at ${off} was read as a route`);
+  }
   return errs;
 })"""
 # a reload: the saved route keeps them
@@ -5069,9 +5286,10 @@ HEADS = """(async () => {
   expect('winterWarnings, on the water', p.winterWarnings.call(wt, { ...wa, snow: null, winterCls: null, attr: attrs('paddle', [[0, 60, {}, 'water']]), wind: { ...wa.wind, temp: fill(0), precip: fill(0), snowfall: fill(0) } }), [[/^Ice season/, 'read', ...F]]);
   expect('iceWarnings', p.iceWarnings({ along, attr: Array.from(along, () => ({ ice: true })) }), [[/^On the ice/, 'read', 'calculated', 'your route over the ice']]);
   // thunder in the forecast where you'd be (#869): a warning in any season, from where it starts; none past the forecast's reach
-  const storm = Uint8Array.from({ length: n }, (_, i) => (i >= 20 && i < 30 ? 1 : 0));
-  expect('thunderWarnings', p.thunderWarnings({ along, pts, tAt, start: Date.now() / 1000, activity: 'mtb', attr: attrs('mtb', []), wind: { thunder: storm, beyond: -1 } }), [[/^Thunder possible around \\d\\d:\\d0, near km 1$/, 'read', ...F]]);
-  if (p.thunderWarnings({ along, pts, tAt, start: Date.now() / 1000, activity: 'mtb', attr: attrs('mtb', []), wind: { thunder: storm, beyond: 20 } }).length) errs.push('thunderWarnings: thunder past the forecast\\'s reach is a warning');
+  // (from noon on the day you leave, so the thunder an hour on is at 13:00 at any hour: from 23:00 it was the next day's, #1209)
+  const storm = Uint8Array.from({ length: n }, (_, i) => (i >= 20 && i < 30 ? 1 : 0)), noon = new Date(p.when.start() * 1000).setHours(12, 0, 0, 0) / 1000;
+  expect('thunderWarnings', p.thunderWarnings({ along, pts, tAt, start: noon, activity: 'mtb', attr: attrs('mtb', []), wind: { thunder: storm, beyond: -1 } }), [[new RegExp(`^Thunder possible around ${hhmm}, near km 1$`), 'read', ...F]]);
+  if (p.thunderWarnings({ along, pts, tAt, start: noon, activity: 'mtb', attr: attrs('mtb', []), wind: { thunder: storm, beyond: 20 } }).length) errs.push('thunderWarnings: thunder past the forecast\\'s reach is a warning');
   // the stops: the bike left behind, and a short night
   const sp = ['mtb', 'hike', 'mtb'], four = [[23.80, 61.5], [23.81, 61.5], [23.83, 61.5], [23.84, 61.5]];
   const st = p.stopWarnings.call({ legs: [{}, {}, {}], legSport: (i) => sp[i], points: four, carryAt: () => false, lengthTo: (i) => i * 1000, nameOf: (i) => `P${i}`, gearLabel: () => 'The bike', clockOf: () => '23:00' },
@@ -6412,6 +6630,11 @@ FIT_LIB = """(() => {
     // a KML line's empty values are missing too, not 0 (an empty altitude leaves the point as it is)
     const ls = G.parseTrackFile('<?xml version="1.0"?><kml xmlns="http://www.opengis.net/kml/2.2"><Placemark><LineString><coordinates>23.7,61.4,0 ,61.41,0 23.72,,0 23.73, 61.43 23.74,61.44,</coordinates></LineString></Placemark></kml>', 'bad.kml');
     if (ls.lines.map((l) => l.length).join() !== '2' || ls.lines.some((l) => l.some((c) => c.some((v) => !v)))) err(`a KML line with empty values: ${JSON.stringify(ls.lines)} (want 2 points, no zero)`);
+    // (#1246) a point off the earth is left out too: the map throws on a latitude beyond 90°, and Analyse & edit stopped there
+    const far = G.parseTrackFile(`<?xml version="1.0"?><gpx version="1.1"><trk><trkseg>${[pt('trkpt', 'lat="61.4" lon="23.7"'), pt('trkpt', 'lat="95" lon="23.71"'), pt('trkpt', 'lat="61.42" lon="23.72"'), pt('trkpt', 'lat="61.43" lon="190"')].join('')}</trkseg></trk>${pt('wpt', 'lat="-91" lon="23.7"')}</gpx>`, 'far.gpx');
+    if (far.lines.map((l) => l.length).join() !== '2' || far.points.length) err(`a GPX with points off the earth: lines of ${far.lines.map((l) => l.length).join()} points (want 2), ${far.points.length} waypoints (want 0)`);
+    const farKml = G.parseTrackFile('<?xml version="1.0"?><kml xmlns="http://www.opengis.net/kml/2.2"><Placemark><LineString><coordinates>23.7,61.4 23.71,95 23.72,61.42</coordinates></LineString></Placemark></kml>', 'far.kml');
+    if (farKml.lines.map((l) => l.length).join() !== '2') err(`a KML line with a point off the earth: lines of ${farKml.lines.map((l) => l.length).join()} points (want 2)`);
     p.setSheetState('half');
     return T.errs.splice(0);
   };
@@ -8626,6 +8849,191 @@ def coarse(chrome):
     return not fails
 
 
+# #1176: Save offline keeps MML's tiles, MML answered by the page from its recorded tile (14/9260/4578, Seitseminen; an
+# empty tile elsewhere), never live: how many it asks for at once and in a second, with whose key, and what it keeps.
+# Saved first with every MML tile failing (the pace held through failures too), then with MML's zoom 13 failing (Polku's
+# key, property boundaries off), then whole (your own key, property boundaries on). Offline maps says what each lacks,
+# beside two areas saved before MML's tiles were kept.
+MML_OFFLINE_SAVE = r"""
+(async () => {
+  const f = [], off = await import(location.origin + '/js/offline.js'), { idb } = await import(location.origin + '/js/idb.js');
+  const fx = await (await fetch('/tools/fixtures/mml-taustakartta-14-9260-4578.pbf')).arrayBuffer(), real = window.fetch, asked = [];
+  let now = 0, most = 0, failing = null;
+  window.fetch = async (u, o) => {
+    const url = String((u && u.url) || u);
+    if (!url.startsWith('https://avoin-karttakuva.maanmittauslaitos.fi/')) return real(u, o);
+    asked.push([Date.now(), url]); most = Math.max(most, ++now);
+    try {
+      await new Promise((r) => setTimeout(r, 30));
+      if (failing && failing.test(url)) throw new TypeError('Failed to fetch');
+      return new Response(url.includes('/14/4578/9260.pbf') ? fx.slice(0) : new ArrayBuffer(0));
+    } finally { now--; }
+  };
+  const line = [[23.474, 61.92], [23.481, 61.921]], save = (name, mml) => off.saveArea({ name, line, bbox: [23.474, 61.92, 23.481, 61.921], route: null }, { buffer: 1000, terrain: false, mml }, () => {}, new AbortController().signal);
+  const mmlKeys = (a) => a.keys.filter((k) => k.startsWith('https://avoin-karttakuva.maanmittauslaitos.fi/'));
+  // paced: two at a time, ten in any second at most
+  const paced = (what) => {
+    const peak = Math.max(...asked.map(([t]) => asked.filter(([s]) => s >= t && s < t + 1000).length));
+    if (most > 2 || peak > 10) f.push(`${what}, MML asked for ${most} tiles at once and ${peak} in a second`);
+    if (asked.length < 12) f.push(`(the test) ${what}, only ${asked.length} MML tiles asked for: too few to see the pace`);
+  };
+  try {
+    failing = /./;
+    const down = await save('smoke-down', { key: '', property: false });
+    if (!(down.mml && down.mml.tiles && down.mml.failed === down.mml.tiles)) f.push(`with every MML tile failing, the area says ${JSON.stringify(down.mml)} of MML's terrain tiles failed`);
+    paced('with every tile failing');
+    asked.length = 0; most = 0;
+    failing = /\/taustakartta\/.+\/13\/\d+\/\d+\.pbf/;
+    const part = await save('smoke-part', { key: '', property: false });
+    failing = null;
+    const z = (a) => [...new Set(mmlKeys(a).filter((k) => k.includes('/taustakartta/')).map((k) => +k.split('/').at(-3)))].sort((x, y) => x - y).join();
+    if (z(part) !== '11,12,13,14') f.push(`MML's terrain kept at zooms ${z(part)}, not 11–14`);
+    if (mmlKeys(part).some((k) => k.includes('/kiinteistojaotus/'))) f.push('property boundaries kept with their layer off');
+    if (!(part.mml && part.mml.failed > 0 && part.mml.failed < part.mml.tiles)) f.push(`with MML's zoom 13 failing, the area says ${JSON.stringify(part.mml)} of MML's terrain tiles failed`);
+    if (asked.some(([, u]) => !new URL(u).searchParams.get('api-key'))) f.push('MML asked for tiles without a key');
+    // what Offline maps says of each
+    await idb('offline').set('smoke-old', { id: 'smoke-old', name: 'smoke-old', created: 1, bbox: [23.47, 61.91, 23.49, 61.93], keys: [], bytes: 1, failed: 0 });
+    await idb('offline').set('smoke-oslo', { id: 'smoke-oslo', name: 'smoke-oslo', created: 2, bbox: [10.7, 59.9, 10.8, 59.95], keys: [], bytes: 1, failed: 0 });
+    const box = document.createElement('div');
+    await off.renderOfflineSection(box, { open: () => {} });
+    const said = Object.fromEntries([...box.querySelectorAll('.off-area-text')].map((el) => [el.querySelector('b').textContent, el.textContent]));
+    if (!/National Land Survey’s terrain is missing in parts: save the area again/.test(said['smoke-part'])) f.push(`an area whose MML tiles failed in part says: ${said['smoke-part']}`);
+    if (!/National Land Survey’s terrain didn’t load: save the area again/.test(said['smoke-down'])) f.push(`an area whose MML tiles all failed says: ${said['smoke-down']}`);
+    if (!/Saved without the National Land Survey’s terrain: save the area again/.test(said['smoke-old'])) f.push(`an area in Finland saved before MML's tiles were kept says: ${said['smoke-old']}`);
+    if (/National Land Survey/.test(said['smoke-oslo'])) f.push(`an area in Oslo says: ${said['smoke-oslo']}`);
+    for (const id of ['smoke-old', 'smoke-oslo', part.id, down.id]) await off.removeArea(id);
+    asked.length = 0; most = 0;
+    const whole = await save('smoke-mml', { key: 'own-test', property: true });
+    if (!whole.mml || whole.mml.failed || !whole.mml.tiles) f.push(`saved whole, the area says ${JSON.stringify(whole.mml)} of MML's terrain tiles failed`);
+    if (!mmlKeys(whole).some((k) => k.includes('/kiinteistojaotus/default/v3/WGS84_Pseudo-Mercator/14/'))) f.push('property boundaries not kept with their layer on');
+    if (mmlKeys(whole).some((k) => k.includes('?'))) f.push(`MML's tiles kept under an address with its key: ${mmlKeys(whole).find((k) => k.includes('?'))}`);
+    if (asked.some(([, u]) => new URL(u).searchParams.get('api-key') !== 'own-test')) f.push('your own key not used for MML\'s tiles');
+    paced('saved whole');
+    const c = await caches.open('polku-offline-tiles');
+    if (!await c.match('https://avoin-karttakuva.maanmittauslaitos.fi/vectortiles/taustakartta/wmts/1.0.0/taustakartta/default/v21/WGS84_Pseudo-Mercator/14/4578/9260.pbf')) f.push('the recorded tile isn\'t kept');
+  } finally { window.fetch = real; }
+  return f;
+})()
+"""
+
+# Offline and in Preview offline, with this commit's worker: MML's bogs from the saved tile, asked for with Polku's key
+# (saved with your own), and no message that MML's terrain didn't load, though the view reaches past the corridor
+MML_OFFLINE_MAP = r"""
+(async () => {
+  const f = [], m = polku.map, wait = (ms) => new Promise((r) => setTimeout(r, ms)), failed = [];
+  m.on('error', (e) => { if (e.sourceId === 'mml') failed.push(e.tile ? e.tile.tileID.canonical.toString() : String(e.error && e.error.message)); });
+  m.jumpTo({ center: [(9260.5 / 2 ** 14) * 360 - 180, Math.atan(Math.sinh(Math.PI * (1 - (2 * 4578.5) / 2 ** 14))) * 180 / Math.PI], zoom: 14.5 });
+  const bogs = () => m.queryRenderedFeatures({ layers: ['mml-bog'] }).length;
+  for (let k = 0; k < 60 && !(bogs() && m.areTilesLoaded()); k++) await wait(250);
+  await wait(1500);
+  if (!bogs()) f.push('no bogs drawn from the saved tile');
+  const said = (window.__toasts || []).filter((t) => t.includes('National Land Survey'));
+  if (said.length) f.push(`in the saved area: ${said[0]} (MML's tiles that failed: ${failed.join(' ')})`);
+  return f;
+})()
+"""
+
+# MML out of reach with the device still online (a signal without data): zoomed out through the saved zooms, the message
+# comes once, not again each time a saved tile loads after one that failed
+MML_UNREACHABLE = r"""
+(async () => {
+  const f = [], m = polku.map, wait = (ms) => new Promise((r) => setTimeout(r, ms));
+  const center = [(9260.5 / 2 ** 14) * 360 - 180, Math.atan(Math.sinh(Math.PI * (1 - (2 * 4578.5) / 2 ** 14))) * 180 / Math.PI];
+  for (const zoom of [14.5, 13.5, 12.5, 11.5]) {
+    m.jumpTo({ center, zoom });
+    for (let k = 0; k < 40 && !m.areTilesLoaded(); k++) await wait(250);
+    await wait(800);
+  }
+  const said = (window.__toasts || []).filter((t) => t.includes('National Land Survey'));
+  if (!navigator.onLine) f.push('(the test) the device says it\'s offline');
+  else if (said.length !== 1) f.push(`the message that MML's terrain didn't load came ${said.length} times, not once`);
+  return f;
+})()
+"""
+
+
+def mml_offline(chrome):
+    """Save offline keeps MML's terrain at its zooms, property boundaries while their layer is on, under addresses
+    without the key, paced (#1176); offline, with the real worker and the network off, the map draws them from there."""
+    fails = []
+    pg = chrome.page(390, 844, True)
+    try:
+        # (zoom 10: under the source's zoom 11, so the map asks MML for nothing)
+        pg.open_app({'activity': 'mtb', 'base': 'trail'}, hash_='#10/61.92/23.478')
+        fails += pg.js(MML_OFFLINE_SAVE, timeout=120000)
+        pg.c.send('Network.setBypassServiceWorker', {'bypass': False}, pg.s)
+        # this commit's worker, not one an earlier run on the port left in the profile (#1134)
+        pg.js("(async () => { for (const r of await navigator.serviceWorker.getRegistrations()) await r.unregister(); return true })()")
+        pg.js("Promise.race([navigator.serviceWorker.register('./sw.js').then(() => navigator.serviceWorker.ready), new Promise((_, no) => setTimeout(() => no(new Error('service worker not ready after 15 s')), 15000))]).then(() => true)", timeout=20000)
+        pg.reload()
+        if not pg.js('!!navigator.serviceWorker.controller'):
+            raise RuntimeError('the page is not controlled by the worker')
+        toasts = "new MutationObserver((ms) => { for (const m of ms) if (m.target.id === 'toast') (window.__toasts ||= []).push(m.target.textContent); }).observe(document, { childList: true, subtree: true }); true"
+        pg.js(toasts)
+        # the page, its own workers (MapLibre's, which fetch the tiles) and every service worker of this origin offline: CDP's
+        # offline for the page alone leaves the others' fetches online, and a tile the service worker leaves alone goes out
+        # from MapLibre's worker
+        pg.c.send('Target.setAutoAttach', {'autoAttach': True, 'waitForDebuggerOnStart': False, 'flatten': True}, pg.s)
+        time.sleep(0.5)
+        own = [e['params']['sessionId'] for e in pg.c.events if e.get('method') == 'Target.attachedToTarget' and e.get('sessionId') == pg.s]
+        workers = [t['targetId'] for t in chrome.send('Target.getTargets')['targetInfos'] if t['type'] == 'service_worker' and t['url'].startswith(BASE)]
+        attached = [chrome.send('Target.attachToTarget', {'targetId': t, 'flatten': True})['sessionId'] for t in workers]
+        sessions = [pg.s] + own + attached
+
+        def network(off):
+            for s_ in sessions:
+                try:
+                    chrome.send('Network.enable', {}, s_)
+                    chrome.send('Network.emulateNetworkConditions', {'offline': off, 'latency': 0, 'downloadThroughput': 0 if off else -1, 'uploadThroughput': 0 if off else -1}, s_)
+                except RuntimeError:  # (a worker gone since)
+                    pass
+        try:
+            network(True)
+            fails += [f'offline: {e}' for e in pg.js(MML_OFFLINE_MAP, timeout=60000)]
+            # a saved property tile, asked for with another key
+            fails += pg.js("""(async () => {
+              const { listAreas } = await import(location.origin + '/js/offline.js'), a = (await listAreas()).find((x) => x.name === 'smoke-mml');
+              const k = a && a.keys.find((u) => u.includes('/kiinteistojaotus/'));
+              if (!k) return ['offline: no property tile kept to ask for'];
+              const r = await fetch(k + '?api-key=another').catch(() => null);
+              return r && r.ok ? [] : [`offline: a saved property tile not answered: ${k}`];
+            })()""")
+        finally:
+            network(False)
+        pg.reload()
+        pg.js(toasts)
+        time.sleep(0.5)
+        sessions += [e['params']['sessionId'] for e in pg.c.events if e.get('method') == 'Target.attachedToTarget' and e.get('sessionId') == pg.s and e['params']['sessionId'] not in sessions]
+
+        def block(urls):
+            for s_ in sessions:
+                try:
+                    chrome.send('Network.setBlockedURLs', {'urls': urls}, s_)
+                except RuntimeError:
+                    pass
+        try:
+            block(['*avoin-karttakuva.maanmittauslaitos.fi*'])
+            fails += [f'MML out of reach: {e}' for e in pg.js(MML_UNREACHABLE, timeout=90000)]
+        finally:
+            block([])
+            for s_ in attached:
+                chrome.send('Target.detachFromTarget', {'sessionId': s_})
+        preview = "new Promise((ok) => { navigator.serviceWorker.addEventListener('message', (e) => e.data.type === 'offline-preview' && ok(true)); navigator.serviceWorker.controller.postMessage({ type: 'offline-preview', on: %s }); setTimeout(() => ok(false), 3000); })"
+        try:
+            pg.js(preview % 'true')
+            pg.reload()
+            pg.js(toasts)
+            fails += [f'Preview offline: {e}' for e in pg.js(MML_OFFLINE_MAP, timeout=60000)]
+        finally:
+            pg.js(preview % 'false')
+        pg.js("(async () => { const off = await import(location.origin + '/js/offline.js'); for (const a of await off.listAreas()) if (a.name === 'smoke-mml') await off.removeArea(a.id); return true })()")
+        fails += [f'console: {e[:160]}' for e in pg.errors()]
+    finally:
+        pg.close()
+    print(f"{'ok  ' if not fails else 'FAIL'} MML's tiles in offline areas: kept at its zooms, paced, without the key, drawn offline by the worker (#1176)" + ''.join(f'\n     - {f}' for f in fails), flush=True)
+    return not fails
+
+
 # Polku's own layers come in together (#1091): Väylävirasto's tiles and Digitraffic's faults answered by the page (an
 # empty chart, so no request leaves), before Polku loads: window.__nmDelay ms after they're asked for, or, while
 # window.__nmHeld is a list, once window.__nmRelease() is called
@@ -10591,6 +10999,8 @@ def changelog(chrome):
           const notes = document.querySelector('.changelog-notes'), status = document.querySelector('.modal-changelog [role=status]');
           if (!count() || !notes?.querySelector('h3') || !notes.querySelector('h4') || !notes.querySelector('li strong')) errs.push('real changelog did not render dates/headings/lists/bold');
           if (!/Release notes through \\d{4}-\\d{2}-\\d{2}/.test(status?.textContent || '')) errs.push('no source date');
+          // the repository is private (#115): its links (one in nearly every heading) are plain text
+          if (document.querySelector('.modal-changelog a[href*="github.com/TommiContursi"]') || !notes.textContent.includes('#1214')) errs.push('links into the repository, or their text gone');
           if ((net.usage().find(s => s.id === 'polku').session) !== before+1) errs.push('changelog did not use request()');
           const b = document.querySelector('.modal-changelog .modal-body'); b.scrollTop = 2000;
           if (b.scrollTop < 100 || b.scrollWidth > b.clientWidth+1) errs.push('notes do not scroll or overflow sideways');
@@ -10600,11 +11010,15 @@ def changelog(chrome):
         })()""")
         fails += [f'{w}: {e}' for e in errs]
         if pg.js('!!document.querySelector(".modal-changelog[open]")'):
+            # Tab never reaches the page behind. Past the dialog's last control it may leave the page for the browser's own,
+            # as a native modal dialog does: with the repository's links as text (#115) the dialog has only a few controls
             for _ in range(12):
                 chrome.send('Input.dispatchKeyEvent', {'type': 'rawKeyDown', 'key': 'Tab', 'code': 'Tab', 'windowsVirtualKeyCode': 9}, pg.s)
-                if not pg.js('document.querySelector(".modal-changelog").contains(document.activeElement)'):
-                    fails.append(f'{w}: Tab escaped the native dialog')
+                behind = pg.js('(() => { const a = document.activeElement; return a && a !== document.body && !document.querySelector(".modal-changelog").contains(a) ? a.outerHTML.slice(0, 80) : "" })()')
+                if behind:
+                    fails.append(f'{w}: Tab escaped the native dialog to {behind}')
                     break
+            pg.js('document.querySelector(".modal-changelog .changelog-notes").focus(); true')  # (back in the dialog, for Escape)
             chrome.send('Input.dispatchKeyEvent', {'type': 'rawKeyDown', 'key': 'Escape', 'code': 'Escape', 'windowsVirtualKeyCode': 27}, pg.s)
             pg.js('new Promise(r => setTimeout(r,100))')
             if not pg.js('!document.querySelector(".modal-changelog").open && document.activeElement === notesOpener && !document.querySelector("#settings-panel").hidden && notesSnapshot() === notesBefore'):
@@ -10612,16 +11026,16 @@ def changelog(chrome):
             errs = pg.js("""(async () => {
               const errs=[], wait=ms=>new Promise(r=>setTimeout(r,ms));
               const real=window.fetch; let calls=0, release;
-              const fixture='# Changelog\\n\\n## 2026-10-17\\n\\n### A safe update\\n- **Bold** and `code` with [source](docs/USING.md), [unsafe](javascript:alert%281%29) and <img src=x onerror=alert(1)>.';
+              const fixture='# Changelog\\n\\n## 2026-10-17\\n\\n### A safe update\\n- **Bold** and `code` with [source](docs/USING.md), [#1](https://github.com/TommiContursi/Polku/issues/1), [OpenStreetMap](https://www.openstreetmap.org/), [unsafe](javascript:alert%281%29) and <img src=x onerror=alert(1)>.';
               window.fetch=(url,opts)=>String(url).endsWith('/CHANGELOG.md') ? (++calls===1 ? Promise.resolve(new Response('unavailable',{status:503})) : calls===2 ? Promise.resolve(new Response(fixture)) : new Promise(r=>{release=r;})) : real(url,opts);
               notesOpener.click(); await wait(100);
               const d=document.querySelector('.modal-changelog'), b=d.querySelector('.modal-body'), status=d.querySelector('[role=status]');
               const retry=[...b.querySelectorAll('button')].find(x=>x.textContent==='Retry');
-              if (!/could not be loaded/.test(status.textContent) || retry.hidden || !b.querySelector('a[href*="github.com"]')) errs.push('failure has no honest message/retry/full source');
+              if (!/could not be loaded/.test(status.textContent) || retry.hidden || b.querySelector('a[href*="github.com"]')) errs.push('failure has no honest message/retry, or links to GitHub');
               retry.click(); await wait(100);
               const n=b.querySelector('.changelog-notes');
               if (!n.querySelector('code') || n.querySelector('img,script') || n.querySelector('a[href^="javascript:"]') || !n.textContent.includes('<img')) errs.push('unsafe Markdown rendered as executable content or no inline code');
-              if (n.querySelector('a')?.href !== 'https://github.com/TommiContursi/Polku/blob/main/docs/USING.md') errs.push('relative document link has wrong source');
+              if ([...n.querySelectorAll('a')].map(a => a.href).join() !== 'https://www.openstreetmap.org/' || !/with source, #1, OpenStreetMap,/.test(n.textContent)) errs.push('links into the repository (relative ones too) not plain text, or an outside link lost');
               d.querySelector('[aria-label=Close]').click(); await wait(100);
               if (document.activeElement!==notesOpener) errs.push('close button did not restore focus');
               notesOpener.click(); await wait(100);
@@ -12030,12 +12444,16 @@ def start_fails(chrome):
     pg.close()
 
     # The worker's saved copies (#481), a returning visitor on a slow network. Just after an update: the saved
-    # js/safety.js is from an older deploy (its Last-Modified isn't the page's) and the server's answer comes after
-    # 6 s, past the worker's 3 s: the page waits for it and opens once, all new, with no try more (main mixed the two,
-    # failed and tried again). With no update: the saved copies are the page's deploy's and every js/ file hangs for
-    # good, the page itself too ('saved'): it opens from them, and says it may be an older Polku.
-    for case in ('update', 'hang', 'saved'):
-        name = '390x844, ' + {'update': 'an older deploy’s js/safety.js saved, the new one 6 s late', 'hang': 'every js/ file hanging, the saved copies the page’s deploy’s',
+    # js/safety.js is from an older deploy (its Last-Modified isn't the page's; in 'update-id' its X-Polku-Deploy isn't,
+    # though its Last-Modified is) and the server's answer comes after 6 s, past the worker's 3 s: the page waits for it and opens once, all new, with no try
+    # more (main mixed the two, failed and tried again). With no update: the saved copies are the page's deploy's and
+    # every js/ file hangs for good, the page itself too ('saved'): it opens from them, and says it may be an older
+    # Polku. The deploy is X-Polku-Deploy where it's sent (Cloudflare), else Last-Modified (GitHub Pages, #115): 'hang'
+    # gives the js/ copies the page's X-Polku-Deploy beside their own Last-Modified, 'saved' only the page's Last-Modified.
+    for case in ('update', 'update-id', 'hang', 'saved'):
+        update = case.startswith('update')
+        name = '390x844, ' + {'update': 'an older deploy’s js/safety.js saved, the new one 6 s late',
+                              'update-id': 'an older deploy’s js/safety.js saved (by X-Polku-Deploy), the new one 6 s late', 'hang': 'every js/ file hanging, the saved copies the page’s deploy’s',
                               'saved': 'the page and every js/ file hanging, the saved copies the page’s deploy’s'}[case]
         pg = chrome.page(390, 844, True)
         pg.open_app({'activity': 'mtb'})
@@ -12048,20 +12466,22 @@ def start_fails(chrome):
         if not pg.js('!!navigator.serviceWorker.controller') or not worker:
             raise RuntimeError(f'{name}: the page has no service worker')
         ws = chrome.send('Target.attachToTarget', {'targetId': worker['targetId'], 'flatten': True})['sessionId']
-        if case == 'update':
-            pg.js("""caches.open('polku-shell-v1').then((c) => c.put(new URL('js/safety.js', location.href).href,
-              new Response('export class SafetyLayers {}', { headers: { 'Content-Type': 'text/javascript', 'Last-Modified': 'Thu, 01 Jan 2026 00:00:00 GMT' } }))).then(() => true)""")
+        if update:
+            pg.js("""caches.open('polku-shell-v1').then(async (c) => c.put(new URL('js/safety.js', location.href).href,
+              new Response('export class SafetyLayers {}', { headers: { 'Content-Type': 'text/javascript', ...(ID ? { 'X-Polku-Deploy': 'older',
+                'Last-Modified': (await c.match(new URL('./', location.href).href)).headers.get('last-modified') } : { 'Last-Modified': 'Thu, 01 Jan 2026 00:00:00 GMT' }) } }))).then(() => true)""".replace('ID', 'true' if case == 'update-id' else 'false'))
             chrome.send('Fetch.enable', {'patterns': [{'urlPattern': '*js/safety.js'}]}, ws)
         else:
-            # (serve.py gives each file its own time; GitHub Pages gives every file the deploy's: the page's, here)
-            pg.js("""(async () => { const c = await caches.open('polku-shell-v1'), js = new URL('js/', location.href).href;
-              const d = (await c.match(new URL('./', location.href).href)).headers.get('last-modified');
-              for (const r of await c.keys()) if (r.url.startsWith(js)) { const a = await c.match(r), h = new Headers(a.headers); h.set('Last-Modified', d); await c.put(r, new Response(await a.blob(), { headers: h })); }
-              return true; })()""")
+            # (serve.py gives each file its own time and no X-Polku-Deploy; GitHub Pages gives every file the deploy's time,
+            # Cloudflare its commit: the page's, here)
+            pg.js(f"""(async () => {{ const c = await caches.open('polku-shell-v1'), js = new URL('js/', location.href).href, p = (await c.match(new URL('./', location.href).href)).headers;
+              const [k, d] = {'true' if case == 'hang' else 'false'} ? ['X-Polku-Deploy', p.get('x-polku-deploy') || p.get('last-modified')] : ['Last-Modified', p.get('last-modified')];
+              for (const r of await c.keys()) if (r.url.startsWith(js)) {{ const a = await c.match(r), h = new Headers(a.headers); h.set(k, d); await c.put(r, new Response(await a.blob(), {{ headers: h }})); }}
+              return true; }})()""")
             chrome.send('Fetch.enable', {'patterns': [{'urlPattern': BASE + 'js/*'}] + ([{'urlPattern': BASE}] if case == 'saved' else [])}, ws)
         chrome.events = [e for e in chrome.events if e.get('sessionId') != pg.s]
         chrome.send('Page.reload', {}, pg.s)
-        t0, opened, let_go = time.time(), False, case != 'update'
+        t0, opened, let_go = time.time(), False, not update
         while time.time() - t0 < 30 and not opened:
             time.sleep(0.5)
             if not let_go and time.time() - t0 > 6:  # the new js/safety.js arrives
@@ -12074,16 +12494,16 @@ def start_fails(chrome):
                 opened = pg.js('!!window.polku', timeout=3000)
             except Exception:
                 pass  # (the page loading again)
-        if case != 'update':
+        if not update:
             chrome.send('Fetch.disable', {}, ws)
         chrome.send('Target.detachFromTarget', {'sessionId': ws})
         if not opened:
             fails.append(f'{name}: Polku didn’t open in 30 s, window.polku {pg.js("!!window.polku")}, the message {"shown" if pg.js(banner) else "not shown"}')
         else:
             older = pg.js("new Promise((ok) => setTimeout(() => ok(!!document.querySelector('.offline-banner.saved-copy:not(#start-failed)')?.checkVisibility()), 1500))")
-            if case == 'update' and tries(pg) != 1:
+            if update and tries(pg) != 1:
                 fails.append(f'{name}: {tries(pg)} tries, not 1')
-            if case != 'update' and not older:
+            if not update and not older:
                 fails.append(f'{name}: opened without saying it may be an older Polku')
             fails.extend(f'{name}: console: {e[:160]}' for e in pg.errors())
         pg.js("(async () => { for (const r of await navigator.serviceWorker.getRegistrations()) await r.unregister(); return true })()")
@@ -17236,7 +17656,7 @@ BT_STATES = """(async () => {
     polku.planner.btRedraw(polku.planner.cards.current);
     await BT.until(() => BT.box()?.querySelector('.stale-note, .bt-fail') && BT.done());
     const old = BT.box().querySelector('.stale-note')?.textContent || '';
-    if (!/^Older forecast \(from /.test(old) || !BT.box().querySelector('.bt-best')) errs.push(`an hour on with the forecast failing: “${BT.box().textContent.slice(0, 160)}”, not the older forecast, said`);
+    if (!/^Older forecast \\(from /.test(old) || !BT.box().querySelector('.bt-best')) errs.push(`an hour on with the forecast failing: “${BT.box().textContent.slice(0, 160)}”, not the older forecast, said`);
   } finally { Date.now = now; W.fail = false; }
   return errs;
 })()"""
@@ -17431,7 +17851,8 @@ BT_WATER = """(async () => {
   if (Math.max(...reach.f.map((f) => f?.[k] || 0)) < 1000) return [`no kilometre of open water on any side of the leg (${Math.max(...reach.f.map((f) => f?.[k] || 0))} m at most)`];
   const hourOf = (i) => new Date((Math.floor(Date.now() / 3600e3) * 3600 - 3600 + i * 3600) * 1000), tom = new Date(BT.tom(12) * 1000).getDate();
   const day2 = new Date(BT.day(2, 12) * 1000).getDate(); // (the day after tomorrow: a gale until 10:00 and from 15:00)
-  W.n = 100; W.dir = k * 45; W.gust = 0; W.speedAt = (i) => { const d = hourOf(i), hh = d.getHours(); return (d.getDate() === tom && hh >= 15) || (d.getDate() === day2 && (hh < 10 || hh >= 15)) ? 25 : 2; };
+  // (the forecast reaches 12:00 four days ahead at any hour: 100 hours from now reached the fifth day from 23:00, #1210)
+  W.n = (BT.day(4, 12) * 1000 - hourOf(0)) / 3600e3 + 1; W.dir = k * 45; W.gust = 0; W.speedAt = (i) => { const d = hourOf(i), hh = d.getHours(); return (d.getDate() === tom && hh >= 15) || (d.getDate() === day2 && (hh < 10 || hh >= 15)) ? 25 : 2; };
   polku.set({ activity: 'paddle' }); await wait(800);
   const p = polku.planner; p.setActive(true); p.clear(); p.setMode('water'); p.addPoint(from); p.addPoint(to);
   if (!(await BT.until(() => p.legs[0]?.result?.water?.reach && p.analysis))) return ['the planner’s water leg has no open water'];
@@ -17448,10 +17869,10 @@ BT_WATER = """(async () => {
   const cross = () => [...BT.box().querySelectorAll('.bt-cross')].map((e) => e.textContent);
   const step = async (k) => { BT.box().querySelector('[data-k=bt-next]').click(); return BT.until(() => BT.box()?.querySelector('.bt-day b')?.textContent.includes(new Date(BT.day(k, 12) * 1000).toLocaleDateString([], { weekday: 'short' })) && BT.done(), 30000); };
   await step(2);
-  const two = /^Leave between (\S+) and (\S+) to cross in small waves/.exec(cross()[0] || '');
+  const two = /^Leave between (\\S+) and (\\S+) to cross in small waves/.exec(cross()[0] || '');
   if (!two || two[1] !== BT.clock(BT.day(2, 10)) || ![BT.clock(BT.day(2, 13)), BT.clock(BT.day(2, 14))].includes(two[2])) errs.push(`the day after tomorrow, calm from 10:00 to 15:00: “${cross().join(' / ')}”`);
   for (const k of [3, 4, 5]) await step(k);
-  if (cross().length) errs.push(`five days ahead, past the forecast: “${cross().join(' / ')}”`);
+  if (cross().length) errs.push(`five days ahead (${BT.box().querySelector('.bt-day b')?.textContent}), past the forecast: “${cross().join(' / ')}”`);
   // a drawn leg on the water first, then a night, then the routed crossing: the first day's waves aren't known, and the
   // crossing isn't the first day's; without the night, both
   const p0 = [24.9520, 60.1600];
@@ -18518,7 +18939,8 @@ START_LIB = """(() => {
   T.pickSport = (label) => { const b = $$('.menu-pop [role=menuitemradio]').find((x) => (x.querySelector(':scope > span > span') || x).firstChild.textContent.trim() === label); if (b) b.dataset.stPick = '1'; return !!b; };
   T.sportIs = async (sport, label) => {
     await wait(300);
-    const pill = $('#activity-bar .act-current').getAttribute('title'), chip = ($('.pl-way .sport-chip') || { getAttribute: () => '' }).getAttribute('aria-label');
+    // (the pill's name is its sport in words, out of sight on a phone but never gone: no title since #1107, #1214)
+    const pill = $('#activity-bar .act-current').innerText.trim(), chip = ($('.pl-way .sport-chip') || { getAttribute: () => '' }).getAttribute('aria-label');
     if (polku.state.activity !== sport || !pill.includes(label) || !chip.includes(label)) err(`after picking ${label}: the map’s ${polku.state.activity}, the pill’s “${pill}”, the chip’s “${chip}”`);
     return T.errs.splice(0);
   };
@@ -25295,6 +25717,7 @@ def osm_data(chrome):
                              'tools.osm_data.test_builder.BuilderTests.test_sample_validation_reads_locations_without_overwriting_them',
                              'tools.osm_data.test_builder.BuilderTests.test_full_country_rejects_missing_required_sample_roads',
                              'tools.osm_data.test_preview.PreviewTests.test_preview_overrides_an_already_configured_live_source_in_response_only',
+                             'tools.osm_data.test_preview.PreviewTests.test_the_server_holds_a_page_of_module_requests',
                              'tools.osm_data.test_alerts.AlertTests.test_retry_runs_only_for_a_failed_main_build_below_the_attempt_cap',
                              'tools.osm_data.test_alerts.AlertTests.test_retry_reruns_the_build_only_when_geofabrik_refused_every_failed_job'],
                             cwd=Path(__file__).resolve().parent.parent, capture_output=True, text=True, timeout=30)
@@ -25422,6 +25845,42 @@ def point_card_actions(chrome):
 
 
 LIPAS_KOTA = {'name': 'Haukanlammen kota', 'typeName': 'Laavu, kota tai kammi', 'city': 'Tampere', 'lipasId': 72269, 'type': 206}
+
+
+# (#1247) a name from map data, with HTML in it, in each kind of feature whose name heads the spot card: the card
+# says it as written, and nothing in it loads (an image's request would mean it was put into the page as HTML)
+SPOT_NAMES = """(async () => {
+  const m = polku.map, p = polku.planner, at = m.getCenter(), errs = [], real = m.queryRenderedFeatures, IMG = '/__smoke-1247.png';
+  const name = `<img src="${IMG}" onerror="window.__ran1247 = 1">Kota & co`;
+  const kinds = [['winter-ski', { name, cls: 'ski' }], ['cameras', { name }], ['sf-points', { kind: 'roadcond', label: name }], ['lipas-route', { name, typeName: 'Hiking route' }]];
+  p.placeAt = () => null; // (on the spot: no place under it, whatever the tiles have)
+  try {
+    for (const [id, props] of kinds) {
+      window.__ran1247 = 0;
+      m.queryRenderedFeatures = () => [{ type: 'Feature', layer: { id }, source: 'x', properties: props, geometry: { type: 'LineString', coordinates: [[at.lng - 0.001, at.lat], [at.lng + 0.001, at.lat]] } }];
+      try { p.openSpotCard([at.lng, at.lat]); } finally { m.queryRenderedFeatures = real; }
+      await new Promise((r) => setTimeout(r, 500));
+      const card = document.querySelector('.pl-way.card');
+      if (window.__ran1247 || performance.getEntriesByName(location.origin + IMG).length) errs.push(`${id}: the name went into the page as HTML`);
+      else if (!card || !card.textContent.includes(name)) errs.push(`${id}: the card says ${card ? JSON.stringify(card.textContent.slice(0, 80)) : 'nothing'}, not the name as written`);
+      p.cards.close();
+    }
+  } finally { delete p.placeAt; }
+  return errs;
+})()"""
+
+
+def spot_card_names(chrome):
+    """A name with HTML in it, from LIPAS, a winter way or Fintraffic, is text in the spot card, never run (#1247)."""
+    pg = chrome.page(1440, 900, False)
+    try:
+        pg.open_app({'activity': 'mtb'}, {'polku:winter': '"off"'}, '#15/61.514/23.818')
+        pg.js("import(location.origin + '/js/ways.js').then((W) => { W.holdWays(); return true; })")  # (no answer from Overpass to name the spot instead)
+        fails = pg.js(SPOT_NAMES, timeout=30000) + [f'console: {e[:160]}' for e in pg.errors()]
+    finally:
+        pg.close()
+    print(' ', 'ok' if not fails else 'FAIL', 'a name with HTML in it is text in the spot card (#1247)', *(['\n    1440x900: ' + f for f in fails] if fails else []))
+    return not fails
 
 
 def spot_card_actions(chrome):
@@ -25792,9 +26251,10 @@ GROUPS = [
     ('changelog', [changelog], 'release notes, retry, safe rendering, keyboard, route preservation and real worker offline'),
     ('pacing', [pacing, paced_legs, net_fails], 'calls made together go out paced and counted (mocked services, a fake clock); legs refused for a slot follow at it (#78); the calls that failed, in Data sources (#687)'),
     ('loading', [loading, routing_edits], 'cancel obsolete routing, edits/Undo/Clear, shared subscribers, refusal/recovery, deadlines, terrain slots and LIPAS viewport/cache (mocked)'),
-    ('layers', [layers, cycleway_style, cycling_restrictions, waterway_style, property_lines, property_plots, wetland_style, reedbed_style, mml_bogs, mml_rock, mml_water, mml_open, osm_cliffs, saddles, mml_cards], 'the Layers panel in every sport'),
+    ('layers', [layers, layer_coverage, cycleway_style, cycling_restrictions, waterway_style, property_lines, property_plots, wetland_style, reedbed_style, mml_bogs, mml_rock, mml_water, mml_open, osm_cliffs, saddles, mml_cards], 'the Layers panel in every sport'),
     ('raster', [raster_maps, aerial_fallback, aerial_labels], 'terrain and aerial detail, bounded high-density WMS symbols, depth boundaries and missing aerial detail (#649, #650, #653); the map\'s words on the aerial photos at 4.5:1 on their halo (#554)'),
     ('coarse', [coarse], 'a coarse map underneath (#1091): the base map\'s tile four zoom levels up stands in for one that hasn\'t come, at 1440 and 390'),
+    ('offline', [mml_offline], 'Save offline keeps the National Land Survey\'s tiles (#1176): its terrain at zooms 11–14 and property boundaries while on, under addresses without the key, two at a time and ten a second at most; what Offline maps says an area lacks; offline, with the real worker, the bogs drawn from the saved tile and no message'),
     ('together', [together], 'Polku\'s own layers come in together after the map stops, 500 ms at most (#1091)'),
     ('fadein', [fadein], 'what comes after the map stops fades in, 0.2–0.4 s by how much it changes (#1091): after a move by mouse or touch and a search result\'s flight, never from the keys, ended by a touch, no picture over a moving map'),
     ('trails', [trails, uphill_late, mtb_grades], 'recorded trail details/card, late uphill colors, and consistent MTB 0−/S0 display (#435, #673)'),
@@ -25858,7 +26318,7 @@ GROUPS = [
     ('pointcard', [point_card, point_card_actions], 'a point\'s card (25d): a tap, a hold and a right-click open the same card, when you\'re there and the profile up to it, with its actions, in the peek or at the point, its numbers, Make it a stop, Stay the night, Change sport from here, Move by a tap, Rename, Remove and Undo, Back and the back gesture, the route\'s view, 200 % and Finnish (straight legs)'),
     ('routecard', [route_card, near_line, route_card_actions], 'the route\'s card and a stretch\'s (25d 1b): a tap on the route, a tap just beside it while drawing (#725), Add a waypoint here at the spot, This stretch, What\'s here, Edit this stretch, On the profile, Avoid this spot, the whole route, the start\'s Back to start, End not Finish (straight legs, mocked BRouter)'),
     ('pickcard', [pick_card, pick_card_settings], 'a pick (#574): road works on the same card with their years (#564, #565), a phone\'s tap opening the card at its peek, the hover; a way\'s pieces joined into one thing from a recorded tile, the S5 path\'s grade and incline in Gravel (#561), nothing "not mapped" that wasn\'t loaded (#562), a street in many pieces, Way type on a trail across kinds (the legend\'s lengths add up; recorded ways, set terrain and weather)'),
-    ('spotcard', [spot_card, spot_card_foot, spot_card_actions], 'hold the map to see what\'s there (25d part 5): a finger held 0.5 s or a right-click, the ring, a tap, a move and two fingers, a busy page (#293), the spot\'s and a place\'s cards, Add to my route where it fits or on the line, Start here and End here, the line\'s hold and right-click, the route\'s view, the planner put away (straight legs, mocked BRouter)'),
+    ('spotcard', [spot_card, spot_card_foot, spot_card_actions, spot_card_names], 'hold the map to see what\'s there (25d part 5): a finger held 0.5 s or a right-click, the ring, a tap, a move and two fingers, a busy page (#293), the spot\'s and a place\'s cards, Add to my route where it fits or on the line, Start here and End here, the line\'s hold and right-click, the route\'s view, the planner put away (straight legs, mocked BRouter)'),
     ('crosshair', [crosshair], 'the keyboard\'s crosshair (25d part 5b): Tab to the map, the keys listed, Enter as a tap (a point, the route\'s card), Shift+F10 and the menu key as a hold, Escape and the focus, the crosshair gone with the focus, never by touch (straight legs)'),
     ('facts', [facts], 'facts on the card (#574, What\'s here\'s levels before): the same facts in every sport, All OpenStreetMap details and Copy (a failure, a late answer), Not right?, a toilet\'s and an obstacle\'s facts, a LIPAS place\'s, a late height, a path\'s card with the planner put away, a ship\'s own card (recorded ways, Overpass answered here)'),
     ('sharespot', [share_spot], 'Share a spot and Weather here (25d part 6b): the share sheet and the copied link, the link\'s pin and card with a route as it was, a bad pin, an old route link, the timeline held at the spot and released, no request with the spot'),
