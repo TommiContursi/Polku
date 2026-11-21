@@ -307,7 +307,9 @@ Plain and Night maps, in MTB and paddle; its PR lists what else it covered.
    and winter roads where OSM has none (#1171), fences, gates, ski lifts and
    masts (#1172), fire places, springs and monuments (#1173), place names
    (#1174), MML's tiles in offline areas (#1176), and Polku's own archive
-   (#1155).
+   (#1155). The paths, points and names overlap what OSM has;
+   [mml-paths-places-names.md](mml-paths-places-names.md) plans them, with
+   OSM's guideposts, springs and caves (#1179).
 
 ## Not checked
 

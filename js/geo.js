@@ -66,6 +66,62 @@ export function bbox(coords) {
   return [w, s, e, n];
 }
 
+// Whether point p is inside a GeoJSON Polygon or MultiPolygon (even–odd, so holes count).
+export function inPolygon(p, g) {
+  const polys = g.type === 'Polygon' ? [g.coordinates] : g.type === 'MultiPolygon' ? g.coordinates : [];
+  return polys.some((rings) => {
+    let inside = false;
+    for (const ring of rings) {
+      for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
+        const [xi, yi] = ring[i], [xj, yj] = ring[j];
+        if ((yi > p[1]) !== (yj > p[1]) && p[0] < ((xj - xi) * (p[1] - yi)) / (yj - yi) + xi) inside = !inside;
+      }
+    }
+    return inside;
+  });
+}
+
+// Finland with its waters (#1200): Geofabrik's outline (data/finland-coverage.geojson) to two decimals, here so the
+// check answers at once, offline too. The sources that stop at the border (MML, LIPAS, Väylävirasto, Fintraffic's
+// roads, Digiroad) have data inside it, and none outside; Traficom's charts reach farther out to sea (js/main.js).
+const FINLAND = { type: 'Polygon', coordinates: [[
+  [27.97, 70.1], [28, 70.02], [28.16, 69.93], [28.35, 69.88], [28.35, 69.85], [29.14, 69.7], [29.35, 69.48],
+  [29.25, 69.4], [28.86, 69.22], [28.82, 69.11], [28.87, 69.08], [28.96, 69.06], [28.43, 68.91], [28.82, 68.87],
+  [28.72, 68.72], [28.64, 68.66], [28.54, 68.61], [28.54, 68.6], [28.45, 68.54], [28.66, 68.2], [29.33, 68.07],
+  [30.03, 67.68], [29.96, 67.52], [29.66, 67.33], [29.1, 67], [29.07, 66.95], [29.07, 66.87], [29.34, 66.67],
+  [29.48, 66.55], [29.72, 66.28], [29.93, 66.13], [30.08, 65.9], [30.12, 65.79], [30.15, 65.66], [29.74, 65.64],
+  [29.88, 65.56], [29.74, 65.45], [29.77, 65.33], [29.62, 65.25], [29.89, 65.22], [29.91, 65.19], [29.84, 65.15],
+  [29.93, 65.1], [29.64, 65.05], [29.65, 64.87], [29.72, 64.84], [29.7, 64.82], [30.06, 64.8], [30.11, 64.76],
+  [30.05, 64.74], [30.19, 64.64], [30.02, 64.59], [30.09, 64.39], [30.14, 64.36], [30.23, 64.35], [30.49, 64.26],
+  [30.51, 64.22], [30.48, 64.2], [30.57, 64.13], [30.54, 64.04], [30.27, 63.82], [29.98, 63.75], [30.61, 63.44],
+  [30.83, 63.4], [31.25, 63.22], [31.51, 63.01], [31.62, 62.91], [31.48, 62.77], [31.41, 62.67], [31.2, 62.44],
+  [30.97, 62.3], [30.72, 62.19], [30.08, 61.76], [29.62, 61.49], [29.35, 61.34], [29.19, 61.24], [28.97, 61.15],
+  [28.84, 61.11], [28.67, 60.94], [28.54, 60.94], [28.25, 60.78], [27.88, 60.59], [27.86, 60.56], [27.8, 60.54],
+  [27.75, 60.4], [27.58, 60.2], [26.93, 60.13], [26.49, 60.02], [25.06, 59.85], [20.58, 59.29], [19.78, 59.58],
+  [19.02, 60.19], [20.22, 63.33], [21.97, 64.02], [24.05, 65.51], [24.15, 65.72], [24.12, 65.79], [24.15, 65.81],
+  [24.14, 65.84], [24.12, 65.85], [23.85, 66.16], [23.66, 66.2], [23.6, 66.45], [23.76, 66.53], [23.79, 66.55],
+  [23.86, 66.57], [23.86, 66.78], [23.96, 66.82], [23.52, 67.17], [23.56, 67.2], [23.51, 67.25], [23.73, 67.31],
+  [23.71, 67.37], [23.67, 67.43], [23.46, 67.45], [23.36, 67.47], [23.45, 67.54], [23.44, 67.56], [23.53, 67.62],
+  [23.47, 67.67], [23.46, 67.87], [23.6, 67.95], [23.37, 68.05], [23.28, 68.15], [23.13, 68.12], [23.13, 68.24],
+  [22.64, 68.39], [22.03, 68.47], [21.37, 68.69], [20.77, 68.91], [20.88, 68.96], [20.57, 69.04], [20.54, 69.06],
+  [20.71, 69.13], [21.03, 69.06], [21.06, 69.09], [20.92, 69.22], [21.26, 69.33], [21.65, 69.28], [22.35, 68.86],
+  [22.38, 68.73], [22.56, 68.76], [23.04, 68.7], [23.17, 68.63], [23.69, 68.76], [23.77, 68.82], [23.92, 68.86],
+  [24.17, 68.79], [24.17, 68.76], [24.78, 68.66], [24.91, 68.61], [25.07, 68.64], [25.11, 68.8], [25.35, 68.89],
+  [25.64, 68.93], [25.73, 69.03], [25.67, 69.23], [25.79, 69.4], [25.78, 69.42], [25.82, 69.45], [25.85, 69.53],
+  [25.82, 69.55], [25.96, 69.61], [25.87, 69.67], [26.51, 69.97], [27.29, 69.96], [27.25, 69.98], [27.58, 70.08],
+  [27.97, 70.1]
+]] };
+export const inFinland = (p) => inPolygon(p, FINLAND);
+// Any of the box [w, s, e, n] in a Polygon or MultiPolygon: a corner of the box in it, or a corner of it in the box.
+// shortcut: a strip narrower than the box, crossing it with no corner in it, counts as outside; test the edges if one turns up.
+export const polygonInView = (g, [w, s, e, n]) => [[w, s], [w, n], [e, s], [e, n]].some((p) => inPolygon(p, g))
+  || (g.type === 'Polygon' ? [g.coordinates] : g.coordinates).flat(2).some(([x, y]) => x >= w && x <= e && y >= s && y <= n);
+export const finlandInView = (b) => polygonInView(FINLAND, b);
+// Whether two boxes [w, s, e, n] overlap.
+export const boxesMeet = (a, b) => a[0] <= b[2] && b[0] <= a[2] && a[1] <= b[3] && b[1] <= a[3];
+// Any of the box where Digitraffic's AIS sees ships: Finland and the northern Baltic round it (as checked on 2026-11-20, #1200).
+export const shipsInView = (b) => finlandInView(b) || boxesMeet(b, [17.8, 58.5, 30.5, 66]);
+
 // Distance (m) from point p to segment ab, using a local equirectangular projection.
 export function pointSegment(p, a, b) {
   const k = Math.cos(rad(p[1]));

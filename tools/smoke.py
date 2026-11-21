@@ -867,6 +867,136 @@ def waterway_style(chrome):
     return not fails
 
 
+# #1200: the Finnish sources and Digitraffic's ships, answered at once with nothing, each request logged in window.__asked
+FINNISH_HELD = """(() => {
+  const real = window.fetch.bind(window);
+  window.__asked = [];
+  window.fetch = (input, init) => {
+    const url = String(input && input.url ? input.url : input);
+    let u = null;
+    try { u = new URL(url, location.href); } catch {}
+    if (!u || !/^(lipas\\.fi|avoinapi\\.vaylapilvi\\.fi|meri\\.digitraffic\\.fi|tie\\.digitraffic\\.fi)$/.test(u.hostname)) return real(input, init);
+    window.__asked.push(u.href);
+    const body = /\\/vessels$/.test(u.pathname) ? [] : { type: 'FeatureCollection', features: [] };
+    return Promise.resolve(new Response(JSON.stringify(body), { headers: { 'Content-Type': 'application/json' } }));
+  };
+})();"""
+
+
+# #1200: a layer from a Finnish source says "Finland only" on its tile and its switch where none of Finland is in view (Luleå's
+# archipelago, inside the box the code once tested), and Paddle's defaults don't count it as on there; Marked routes asks you to zoom
+# in on Finland there, and nothing is asked of LIPAS or Väylävirasto. With Tornio in view, or in Finland, nothing changes. Traficom's
+# depths and lanes reach into the Gulf of Finland past the outline (off Kalbådagrund). Ships and Sea ice reach farther: they say so
+# only beyond the northern Baltic and the Baltic, beyond it no ships are asked for, and near Tallinn a move asks for them at once.
+# In Gravel, nothing is asked of Fintraffic's roads or Digiroad in Luleå, nor does Check list them for a route there; in Tornio it does.
+def layer_coverage(chrome):
+    pg = chrome.page(1440, 900, False)
+    try:
+        pg.c.send('Page.addScriptToEvaluateOnNewDocument', {'source': EMPTY_DEPTHS + FINNISH_HELD}, pg.s)
+        pg.open_app({'activity': 'paddle'}, None, '#11/65.45/22.4')
+        fails = pg.js("""(async () => {
+          const errs=[], m=polku.map, frame=()=>new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)));
+          const until=async(ok,ms=5000)=>{const t0=performance.now();while(!ok()&&performance.now()-t0<ms)await frame();return ok();};
+          const go=async(center,zoom)=>{m.jumpTo({center,zoom});await frame();await new Promise(r=>setTimeout(r,400));};
+          const small=(id)=>{const s=document.querySelector(`#quick-layers .qt[data-id="${id}"] .qt-l small`);return s&&!s.hidden?s.textContent:'';};
+          const more=()=>document.querySelector('#quick-layers .qt-more')?.getAttribute('aria-label');
+          const row=(name)=>[...document.querySelectorAll('#layers-panel label.tg')].find(l=>l.querySelector('.tg-text').firstChild.textContent.trim()===name);
+          const note=(name)=>row(name)?.querySelector('.tg-text small')?.textContent||'';
+          const chips=()=>[...document.querySelectorAll('#layers-panel .on-chip span')].map(s=>s.textContent);
+          const count=(g)=>document.querySelector(`#layers-panel [data-group="${g}"] .lg-count`)?.textContent||'';
+          const FI=['Official routes (LIPAS)','Shipping lanes','Depth areas','Nautical marks & fairways'];
+          const asked=(host,path='')=>window.__asked.filter(u=>{const x=new URL(u);return x.hostname===host&&x.pathname.includes(path);});
+          const pause=(ms)=>new Promise(r=>setTimeout(r,ms));
+          // Luleå's archipelago, Sweden: Marked routes asks you to zoom in on Finland, and the drawer's tiles
+          await polku.planner.listMarked();
+          if(polku.planner.marked.state!=='far')errs.push(`Luleå: Marked routes is “${polku.planner.marked.state}”, not asking you to zoom in on Finland`);
+          document.querySelector('#btn-layers').click();
+          if(!await until(()=>document.querySelector('#quick-layers .qt[data-id="nautical"]')))return ['Layers opened no Paddle tiles'];
+          for(const id of ['nautical','lipasPoints'])if(small(id)!=='Finland only')errs.push(`Luleå: the ${id} tile says “${small(id)}”, not Finland only`);
+          if(small('depths')!=='Finland only · not for navigation')errs.push(`Luleå: the Depths tile says “${small('depths')}”`);
+          if(small('sfShips')==='Northern Baltic only')errs.push('Luleå: the Ships tile says Northern Baltic only, inside the area Digitraffic sees');
+          // (Paddle's other layers on: Official routes and Shipping lanes, from Finland; Outdoor places and Military areas, everywhere)
+          if(more()!=='More: all layers, 2 more on')errs.push(`Luleå: ${more()}, not 2 more on`);
+          if(!polku.state.overlays.fairways||!polku.state.overlays.lipasRoutes)errs.push('Luleå: Paddle\\'s Finnish layers were switched off, not just not counted');
+          for(const host of ['lipas.fi','avoinapi.vaylapilvi.fi'])if(asked(host).length)errs.push(`Luleå: asked ${host} for ${asked(host).length} things`);
+          // the full panel: not counted as on, and each switch says so in words
+          document.querySelector('#quick-layers .qt-more').click();
+          if(!await until(()=>row('Shipping lanes')))return [...errs,'More opened no Shipping lanes switch'];
+          const on=FI.filter(n=>chips().includes(n));
+          if(on.length)errs.push(`Luleå: On now lists ${on.join(', ')}`);
+          if(!chips().includes('Ships (live AIS)'))errs.push('Luleå: On now leaves out Ships');
+          if(count('water')!=='1 on')errs.push(`Luleå: Water & nautical says “${count('water')}”, not 1 on`);
+          if(!note('Shipping lanes').startsWith('Finland only'))errs.push(`Luleå: the Shipping lanes switch says “${note('Shipping lanes')}”`);
+          if(note('Official routes (LIPAS)')!=='Finland only')errs.push(`Luleå: the Official routes switch says “${note('Official routes (LIPAS)')}”`);
+          if(!row('Shipping lanes').querySelector('input').checked)errs.push('Luleå: the Shipping lanes switch is off');
+          // Helsinki, with the panel open: as in Finland always
+          await go([24.95,60.15],11);
+          if(!await until(()=>!note('Shipping lanes').startsWith('Finland only')))errs.push('Helsinki: the Shipping lanes switch still says Finland only');
+          if(count('water')!=='6 on')errs.push(`Helsinki: Water & nautical says “${count('water')}”, not 6 on`);
+          const off=FI.filter(n=>!chips().includes(n));
+          if(off.length)errs.push(`Helsinki: On now leaves out ${off.join(', ')}`);
+          if(note('Official routes (LIPAS)'))errs.push(`Helsinki: the Official routes switch says “${note('Official routes (LIPAS)')}”`);
+          await polku.planner.listMarked();
+          if(polku.planner.marked.state==='far')errs.push('Helsinki: Marked routes asks you to zoom in on Finland');
+          // off Kalbådagrund, in the Gulf of Finland past Finland's territorial sea, where Traficom's depths and lanes draw
+          const {finlandInView}=await import('/js/geo.js');
+          await go([25.75,59.875],13);
+          const vb=m.getBounds();
+          if(finlandInView&&finlandInView([vb.getWest(),vb.getSouth(),vb.getEast(),vb.getNorth()]))errs.push('(the test) the view off Kalbådagrund reaches Finland\\'s outline');
+          if(!await until(()=>row('Shipping lanes')&&!note('Shipping lanes').startsWith('Finland only')))errs.push(`off Kalbådagrund: the Shipping lanes switch says “${note('Shipping lanes')}”, where Traficom draws them`);
+          if(note('Depth areas').startsWith('Finland only'))errs.push(`off Kalbådagrund: the Depth areas switch says “${note('Depth areas')}”, where Traficom draws them`);
+          // Haparanda, Sweden, with Tornio across the river in view: a view partly in Finland counts as in it
+          const {inFinland}=await import('/js/geo.js');
+          if(!inFinland||inFinland([24.12,65.83])||!inFinland([24.2,65.85]))errs.push('(the test) Haparanda is in Finland, or Tornio isn\\'t');
+          window.__asked.length=0;
+          await go([24.12,65.83],12);
+          if(!await until(()=>count('water')==='6 on'))errs.push(`Haparanda with Tornio in view: Water & nautical says “${count('water')}”, not 6 on`);
+          if(!await until(()=>asked('lipas.fi').length&&asked('avoinapi.vaylapilvi.fi','/vaylatiedot/ows').length))errs.push(`Haparanda with Tornio in view: LIPAS asked ${asked('lipas.fi').length} times, Väylävirasto's marks ${asked('avoinapi.vaylapilvi.fi').length}`);
+          // Lofoten, Norway: Ships and Sea ice say where they reach
+          window.__asked.length=0;
+          await go([14.5,68.2],10);
+          const water=document.querySelector('#layers-panel [data-group="water"]');
+          if(water&&!water.open)water.querySelector('summary').click();
+          if(!await until(()=>note('Ships (live AIS)')==='Northern Baltic only'))errs.push(`Lofoten: the Ships switch says “${note('Ships (live AIS)')}”`);
+          await pause(21000); // (past a tick of the ships' 20 s timer)
+          for(const [host,path] of [['lipas.fi',''],['avoinapi.vaylapilvi.fi',''],['meri.digitraffic.fi','/ais/v1/locations']])if(asked(host,path).length)errs.push(`Lofoten: asked ${host}${path}`);
+          if(!note('Sea ice').startsWith('Baltic Sea only'))errs.push(`Lofoten: the Sea ice switch says “${note('Sea ice')}”`);
+          // back in the drawer, which keeps its tiles' words as the map moves
+          document.querySelector('#layers-panel .panel-back').click();
+          if(!await until(()=>small('sfShips')==='Northern Baltic only'))errs.push(`Lofoten: the Ships tile says “${small('sfShips')}”`);
+          // near Tallinn, outside Finland where Digitraffic sees ships: a move asks for them at once, without the timer
+          clearInterval(polku.safety.shipTimer);
+          window.__asked.length=0;
+          await go([24.75,59.5],10);
+          if(!await until(()=>asked('meri.digitraffic.fi','/ais/v1/locations').length,3000))errs.push('near Tallinn: no ships asked for on a move');
+          await go([22.4,65.45],11);
+          if(!await until(()=>small('nautical')==='Finland only'))errs.push(`back in Luleå with the drawer open: Nautical marks says “${small('nautical')}”`);
+          await go([24.95,60.15],11);
+          if(!await until(()=>small('nautical')!=='Finland only'))errs.push('Helsinki with the drawer open: Nautical marks still says Finland only');
+          if(small('depths')!=='Not for navigation')errs.push(`Helsinki: the Depths tile says “${small('depths')}”`);
+          if(more()!=='More: all layers, 4 more on')errs.push(`Helsinki: ${more()}, not 4 more on`);
+          // Gravel: nothing asked of Fintraffic's road layers or Digiroad in Luleå, and Check's road hazards not for a route there
+          polku.set({activity:'gravel'});
+          window.__asked.length=0;
+          await go([22.15,65.58],11);
+          await pause(1500);
+          const roads=()=>[...asked('tie.digitraffic.fi','/api/traffic-message/'),...asked('avoinapi.vaylapilvi.fi','/digiroad/')];
+          if(roads().length)errs.push(`Luleå in Gravel: asked Fintraffic and Digiroad ${roads().length} times`);
+          const p=polku.planner, route=async(a,b)=>{p.setActive(true);p.clear();p.setMode('line');p.addPoint(a);p.addPoint(b);
+            await until(()=>p.analysis&&p.analysis.pts&&Math.abs(p.analysis.pts[0][0]-a[0])<0.005,20000);return p.lookedAt().map(r=>r.what);};
+          if((await route([22.1,65.57],[22.2,65.59])).some(w=>/^(Road works|Busy roads)/.test(w)))errs.push('a route in Luleå: What Polku looked at lists Fintraffic and Digiroad');
+          await go([24.12,65.83],12);
+          if(!await until(()=>roads().length))errs.push('Haparanda with Tornio in view, in Gravel: nothing asked of Fintraffic or Digiroad');
+          if(!(await route([24.16,65.84],[24.21,65.85])).includes('Road works and incidents'))errs.push('a route in Tornio: What Polku looked at leaves out Fintraffic');
+          return errs;
+        })()""", timeout=120000)
+        fails += [f'console: {e[:160]}' for e in pg.errors()]
+    finally:
+        pg.close()
+    print(f"{'ok  ' if not fails else 'FAIL'} Finland-only layers say so beyond Finland, and aren't counted as on there (#1200)" + ''.join(f'\n     - {f}' for f in fails), flush=True)
+    return not fails
+
+
 # #1148: Property boundaries, a switch in Layers' Terrain with its opacity, off in every sport: MML's property map from zoom 14 in Finland, with
 # Polku's key (not plain text in the source) or a person's own, drawn and named at Jyväskylä's centre.
 def property_lines(chrome):
@@ -4764,9 +4894,10 @@ HEADS = """(async () => {
   expect('winterWarnings, on the water', p.winterWarnings.call(wt, { ...wa, snow: null, winterCls: null, attr: attrs('paddle', [[0, 60, {}, 'water']]), wind: { ...wa.wind, temp: fill(0), precip: fill(0), snowfall: fill(0) } }), [[/^Ice season/, 'read', ...F]]);
   expect('iceWarnings', p.iceWarnings({ along, attr: Array.from(along, () => ({ ice: true })) }), [[/^On the ice/, 'read', 'calculated', 'your route over the ice']]);
   // thunder in the forecast where you'd be (#869): a warning in any season, from where it starts; none past the forecast's reach
-  const storm = Uint8Array.from({ length: n }, (_, i) => (i >= 20 && i < 30 ? 1 : 0));
-  expect('thunderWarnings', p.thunderWarnings({ along, pts, tAt, start: Date.now() / 1000, activity: 'mtb', attr: attrs('mtb', []), wind: { thunder: storm, beyond: -1 } }), [[/^Thunder possible around \\d\\d:\\d0, near km 1$/, 'read', ...F]]);
-  if (p.thunderWarnings({ along, pts, tAt, start: Date.now() / 1000, activity: 'mtb', attr: attrs('mtb', []), wind: { thunder: storm, beyond: 20 } }).length) errs.push('thunderWarnings: thunder past the forecast\\'s reach is a warning');
+  // (from noon on the day you leave, so the thunder an hour on is at 13:00 at any hour: from 23:00 it was the next day's, #1209)
+  const storm = Uint8Array.from({ length: n }, (_, i) => (i >= 20 && i < 30 ? 1 : 0)), noon = new Date(p.when.start() * 1000).setHours(12, 0, 0, 0) / 1000;
+  expect('thunderWarnings', p.thunderWarnings({ along, pts, tAt, start: noon, activity: 'mtb', attr: attrs('mtb', []), wind: { thunder: storm, beyond: -1 } }), [[new RegExp(`^Thunder possible around ${hhmm}, near km 1$`), 'read', ...F]]);
+  if (p.thunderWarnings({ along, pts, tAt, start: noon, activity: 'mtb', attr: attrs('mtb', []), wind: { thunder: storm, beyond: 20 } }).length) errs.push('thunderWarnings: thunder past the forecast\\'s reach is a warning');
   // the stops: the bike left behind, and a short night
   const sp = ['mtb', 'hike', 'mtb'], four = [[23.80, 61.5], [23.81, 61.5], [23.83, 61.5], [23.84, 61.5]];
   const st = p.stopWarnings.call({ legs: [{}, {}, {}], legSport: (i) => sp[i], points: four, carryAt: () => false, lengthTo: (i) => i * 1000, nameOf: (i) => `P${i}`, gearLabel: () => 'The bike', clockOf: () => '23:00' },
@@ -17126,7 +17257,8 @@ BT_WATER = """(async () => {
   if (Math.max(...reach.f.map((f) => f?.[k] || 0)) < 1000) return [`no kilometre of open water on any side of the leg (${Math.max(...reach.f.map((f) => f?.[k] || 0))} m at most)`];
   const hourOf = (i) => new Date((Math.floor(Date.now() / 3600e3) * 3600 - 3600 + i * 3600) * 1000), tom = new Date(BT.tom(12) * 1000).getDate();
   const day2 = new Date(BT.day(2, 12) * 1000).getDate(); // (the day after tomorrow: a gale until 10:00 and from 15:00)
-  W.n = 100; W.dir = k * 45; W.gust = 0; W.speedAt = (i) => { const d = hourOf(i), hh = d.getHours(); return (d.getDate() === tom && hh >= 15) || (d.getDate() === day2 && (hh < 10 || hh >= 15)) ? 25 : 2; };
+  // (the forecast reaches 12:00 four days ahead at any hour: 100 hours from now reached the fifth day from 23:00, #1210)
+  W.n = (BT.day(4, 12) * 1000 - hourOf(0)) / 3600e3 + 1; W.dir = k * 45; W.gust = 0; W.speedAt = (i) => { const d = hourOf(i), hh = d.getHours(); return (d.getDate() === tom && hh >= 15) || (d.getDate() === day2 && (hh < 10 || hh >= 15)) ? 25 : 2; };
   polku.set({ activity: 'paddle' }); await wait(800);
   const p = polku.planner; p.setActive(true); p.clear(); p.setMode('water'); p.addPoint(from); p.addPoint(to);
   if (!(await BT.until(() => p.legs[0]?.result?.water?.reach && p.analysis))) return ['the planner’s water leg has no open water'];
@@ -17146,7 +17278,7 @@ BT_WATER = """(async () => {
   const two = /^Leave between (\S+) and (\S+) to cross in small waves/.exec(cross()[0] || '');
   if (!two || two[1] !== BT.clock(BT.day(2, 10)) || ![BT.clock(BT.day(2, 13)), BT.clock(BT.day(2, 14))].includes(two[2])) errs.push(`the day after tomorrow, calm from 10:00 to 15:00: “${cross().join(' / ')}”`);
   for (const k of [3, 4, 5]) await step(k);
-  if (cross().length) errs.push(`five days ahead, past the forecast: “${cross().join(' / ')}”`);
+  if (cross().length) errs.push(`five days ahead (${BT.box().querySelector('.bt-day b')?.textContent}), past the forecast: “${cross().join(' / ')}”`);
   // a drawn leg on the water first, then a night, then the routed crossing: the first day's waves aren't known, and the
   // crossing isn't the first day's; without the night, both
   const p0 = [24.9520, 60.1600];
@@ -18213,7 +18345,8 @@ START_LIB = """(() => {
   T.pickSport = (label) => { const b = $$('.menu-pop [role=menuitemradio]').find((x) => (x.querySelector(':scope > span > span') || x).firstChild.textContent.trim() === label); if (b) b.dataset.stPick = '1'; return !!b; };
   T.sportIs = async (sport, label) => {
     await wait(300);
-    const pill = $('#activity-bar .act-current').getAttribute('title'), chip = ($('.pl-way .sport-chip') || { getAttribute: () => '' }).getAttribute('aria-label');
+    // (the pill's name is its sport in words, out of sight on a phone but never gone: no title since #1107, #1214)
+    const pill = $('#activity-bar .act-current').innerText.trim(), chip = ($('.pl-way .sport-chip') || { getAttribute: () => '' }).getAttribute('aria-label');
     if (polku.state.activity !== sport || !pill.includes(label) || !chip.includes(label)) err(`after picking ${label}: the map’s ${polku.state.activity}, the pill’s “${pill}”, the chip’s “${chip}”`);
     return T.errs.splice(0);
   };
@@ -25487,7 +25620,7 @@ GROUPS = [
     ('changelog', [changelog], 'release notes, retry, safe rendering, keyboard, route preservation and real worker offline'),
     ('pacing', [pacing, paced_legs, net_fails], 'calls made together go out paced and counted (mocked services, a fake clock); legs refused for a slot follow at it (#78); the calls that failed, in Data sources (#687)'),
     ('loading', [loading, routing_edits], 'cancel obsolete routing, edits/Undo/Clear, shared subscribers, refusal/recovery, deadlines, terrain slots and LIPAS viewport/cache (mocked)'),
-    ('layers', [layers, cycleway_style, cycling_restrictions, waterway_style, property_lines, property_plots, wetland_style, reedbed_style, mml_bogs, mml_rock, mml_water, mml_open, osm_cliffs, saddles, mml_cards], 'the Layers panel in every sport'),
+    ('layers', [layers, layer_coverage, cycleway_style, cycling_restrictions, waterway_style, property_lines, property_plots, wetland_style, reedbed_style, mml_bogs, mml_rock, mml_water, mml_open, osm_cliffs, saddles, mml_cards], 'the Layers panel in every sport'),
     ('raster', [raster_maps, aerial_fallback, aerial_labels], 'terrain and aerial detail, bounded high-density WMS symbols, depth boundaries and missing aerial detail (#649, #650, #653); the map\'s words on the aerial photos at 4.5:1 on their halo (#554)'),
     ('coarse', [coarse], 'a coarse map underneath (#1091): the base map\'s tile four zoom levels up stands in for one that hasn\'t come, at 1440 and 390'),
     ('together', [together], 'Polku\'s own layers come in together after the map stops, 500 ms at most (#1091)'),

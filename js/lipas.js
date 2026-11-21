@@ -4,7 +4,7 @@
 // one place with all its parts (to ride a route), and search by name.
 
 import { LIPAS_WFS, LIPAS_TYPES, isLipasRoute } from './config.js';
-import { lonLatToTile, tileBounds, tm35ToLonLat, dist, lineLength, nearestOnLine } from './geo.js';
+import { lonLatToTile, tileBounds, tm35ToLonLat, dist, lineLength, nearestOnLine, finlandInView } from './geo.js';
 import { request } from './net.js';
 
 // LIPAS answers in EPSG:3067 at full precision (its EPSG:4326 is rounded to ~10 m)
@@ -83,11 +83,6 @@ export class LipasLayer {
   // an update or a drawing still to run, or a tile in view on its way: what comes after the map stops waits for it (#1091)
   get busy() { return !!this.timer || !!this.publishTimer || [...this.view].some((k) => this.tiles.get(k) instanceof Promise); }
 
-  inFinland() {
-    const c = this.map.getCenter();
-    return c.lng > 19 && c.lng < 32 && c.lat > 59.4 && c.lat < 70.2;
-  }
-
   update() {
     const zoom = this.map.getZoom();
     const wanted = new Set();
@@ -98,7 +93,7 @@ export class LipasLayer {
     const b = this.map.getBounds();
     const [x0, y0] = lonLatToTile(b.getWest(), b.getNorth(), Z).map(Math.floor);
     const [x1, y1] = lonLatToTile(b.getEast(), b.getSouth(), Z).map(Math.floor);
-    if (this.inFinland() && zoom >= 8 && (x1 - x0 + 1) * (y1 - y0 + 1) <= 9) for (const type of types) {
+    if (finlandInView([b.getWest(), b.getSouth(), b.getEast(), b.getNorth()]) && zoom >= 8 && (x1 - x0 + 1) * (y1 - y0 + 1) <= 9) for (const type of types) {
       for (let x = x0; x <= x1; x++) {
         for (let y = y0; y <= y1; y++) {
           const key = `${type}/${x}/${y}`;

@@ -8,6 +8,10 @@ What's new in [Polku](https://polku.si), from the latest updates back to the fir
 
 - A switch of its own, **Property details**, under **Property boundaries** in **Layers → More → Terrain**, turns off both the plot tinted and named under the mouse pointer and the plot's card on a click or a tap. It's there on phones too. Turning it off closes a plot's card if one is open. With it off, a click or a tap on a plot opens what's under it, such as a park or the water, or nothing, and a long press opens the spot's card, as without the layer. The boundaries and property IDs stay on the map.
 
+### The sport pill's name on phones ([#1214](https://github.com/TommiContursi/Polku/issues/1214))
+
+- On a phone, where the sport pill shows only its icon, a screen reader names it by its sport again, as on a desktop.
+
 ### A tap on the National Land Survey's terrain says what it is ([#1175](https://github.com/TommiContursi/Polku/issues/1175))
 
 - In Finland, a tap or a click on the National Land Survey's bogs, paludified land, overgrowing water, rock, boulder fields, stones, cliffs, reeds, power lines and pylons opens a card that names what it is, and so does a tap on its stones, shoals, stone fields and rapids in the water. On a desktop, resting the pointer on one says the same.
@@ -16,6 +20,13 @@ What's new in [Polku](https://polku.si), from the latest updates back to the fir
 - A tap on the National Land Survey's water where OpenStreetMap has none, such as a marsh it cuts out of a lake or a small pond in a bog, opens the water's card, with its depth and **Paddle from here**. Its name is what OpenStreetMap has around it, such as a national park.
 
 ## 2026-11-20
+
+### Layers say where they have data ([#1200](https://github.com/TommiContursi/Polku/issues/1200))
+
+- About half of the layers come from Finnish sources: the National Land Survey's maps and property boundaries, LIPAS's routes and places, Väylävirasto's and Traficom's nautical marks, depths and shipping lanes, and Fintraffic's and Digiroad's road layers. Where none of Finland is in view, their tiles and their switches in Layers now say **Finland only**, instead of looking like layers with nothing to show.
+- **Ships** say **Northern Baltic only** beyond the reach of Finland's AIS stations, which also see the Gulf of Finland, the Åland Sea and the Gulf of Bothnia. **Sea ice** says **Baltic Sea only** beyond the Baltic.
+- There, a sport's layers from those sources aren't counted as on in **On now** or in the count on **More**. Their switches stay on, so the layers show again when the map is back in their area. A view that reaches into Finland counts as in it.
+- **Marked routes** on the first screen asks you to zoom in on Finland where none of it is in view, instead of saying there are no marked routes in view.
 
 ### A new leg on the water offline ([#1195](https://github.com/TommiContursi/Polku/issues/1195))
 
