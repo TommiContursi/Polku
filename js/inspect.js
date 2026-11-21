@@ -32,13 +32,13 @@ export const isHttp = (u) => /^https?:\/\//i.test(u) ? u : /^www\./i.test(u) ? `
 // Layers a click can inspect, and the order it picks from when several are
 // under the pointer. The hover tooltip uses the same order, so it previews
 // exactly what a click opens.
-const INSPECTABLE = /^(cameras$|td-points$|td-gates$|td-gates-all$|td-way-tree$|td-way-ford$|winter-way$|winter-ski$|winter-closed$|nm-marks|nm-navline$|nm-sector|nm-restrict-fill|nm-fairway|sf-ships|sf-points|sf-lines|sf-aadt|military-fill|lipas-point|poi-outdoor|poi-minor|label-peak|lipas-route$|uphill-line|path-|track-|cycleway-|road-|water$|property-plot$|pier$|pier-area$|mml-(bog|paludified|overgrowing|shoal|rock|boulders|cliff|power|rock-point|reed|pylon|rapids|flow|jetty|open|landuse|open-forest|forest)$)/;
+const INSPECTABLE = /^(cameras$|td-points$|td-gates$|td-gates-all$|td-way-tree$|td-way-ford$|winter-way$|winter-ski$|winter-closed$|nm-marks|nm-navline$|nm-sector|nm-restrict-fill|nm-fairway|sf-ships|sf-points|sf-lines|sf-aadt|military-fill|lipas-point|poi-outdoor|poi-minor|poi-parking|label-peak|lipas-route$|uphill-line|path-|track-|cycleway-|road-|water$|property-plot$|pier$|pier-area$|mml-(bog|paludified|overgrowing|shoal|rock|boulders|cliff|power|rock-point|reed|pylon|rapids|flow|jetty|open|landuse|open-forest|forest|parking|parking-p)$)/;
 // An official (LIPAS) route drawn over a trail is what a click there means: its card
 // links to the trail under it, and the trail's card back to the route.
 // MML's terrain (#1175): its marks and lines (and OSM's piers, #1234), after the ways, and its overgrowing water and shoals, before the
 // water they're drawn over; its areas under the water last, after a property's plot (whose tint shows what a click picks), and before a
 // park (inspector below); the forest's marks after them, as a bog under one is what the ground is.
-const PRIORITY = [/^cameras$/, /^sf-ships/, /^nm-marks/, /^sf-points/, /^td-/, /^lipas-point/, /^poi-|^label-peak/, /^sf-lines/, /^lipas-route/, /^uphill-line/, /^(path|track|cycleway)-/, /^winter-/,
+const PRIORITY = [/^cameras$/, /^sf-ships/, /^nm-marks/, /^sf-points/, /^td-/, /^lipas-point/, /^poi-|^label-peak|^mml-parking-p$/, /^sf-lines/, /^lipas-route/, /^uphill-line/, /^(path|track|cycleway)-/, /^winter-/,
   /^sf-aadt/, /^road-/, /^(mml-(cliff|power|rock-point|reed|pylon|rapids|flow|jetty)|pier|pier-area)$/, /^nm-sector/, /^nm-navline/, /^nm-restrict/, /^military/, /^nm-fairway/, /^mml-(overgrowing|shoal)$/, /^water$/, /^property-plot$/, /^mml-(?!forest$)/, /^mml-forest$/];
 
 // a finger covers more than a mouse pointer: a wider box to find what's under it
@@ -46,7 +46,7 @@ export const hitBox = (pt, touch) => { const r = touch ? 14 : 7; return [[pt.x -
 // The features of `layers` a tap, a click or the pointer at `pt` finds: within the box, but MML's areas only where one is the
 // ground drawn at the point itself, so neither the forest beside a bog nor a lake, a town, a building or OSM's own rock or
 // wetland drawn over one is it (#1175). (The parks' tint is see-through.)
-const MML_AREA = /^mml-(bog|paludified|overgrowing|shoal|rock|boulders|open|landuse|open-forest)$/;
+const MML_AREA = /^mml-(bog|paludified|overgrowing|shoal|rock|boulders|open|landuse|open-forest|parking)$/;
 export function featuresAt(map, pt, box, layers) {
   const areas = layers.filter((id) => MML_AREA.test(id));
   // (the top of the basemap's fills at the point: OSM's, MML's and the reedbeds', the buildings too)
@@ -357,6 +357,8 @@ export const MML_TERRAIN = {
   // the open ground and the forest's marks (#1169, #1234)
   39120: ['Heath'], 39130: ['Open shore'], 34300: ['Sand'], 32611: ['Field'], 32612: ['Garden'], 32800: ['Meadow'], 39110: ['Open forest land', 'Mostly clear-cuts'],
   32710: ['Coniferous forest'], 32713: ['Deciduous forest'], 32714: ['Mixed forest'], 32715: ['Heath'],
+  // car parks (#1219): MML's motor traffic areas
+  32421: ['Car park', 'Or a rest or loading area'],
 };
 // { title, line, survey }: survey is a bog's crossing class, 3541x easier and 3542x hard, as MML's survey has it. Only zoom
 // 13's and 14's tiles have it right: zoom 12's are generalised (a bog hard to cross at 13 can be easier at 12) and 11's have

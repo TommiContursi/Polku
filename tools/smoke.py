@@ -1384,6 +1384,57 @@ def town_parks(chrome):
     return not fails
 
 
+# #1219: car parks, from MML's recorded tile at Ratina (Tampere, tools/fixtures/mml-taustakartta-14-9273-4618.pbf), never live
+# MML: its motor traffic areas grey with an edge from zoom 14 on the Trail and Night maps, a P on each from 15 placed before
+# OSM's, and a click on the area or the P opens its card; OSM's P marks thinned to the named ones from 15.5, the rest from 17.
+def town_parking(chrome):
+    pg = chrome.page(1440, 900, False)
+    # (zoom 10: under the source's zoom 11, so MML is asked for nothing before the test answers it)
+    pg.open_app({'activity': 'mtb', 'base': 'trail'}, hash_='#10/61.4935/23.7655')
+    fails = pg.js("""(async () => {
+      const errs=[], m=polku.map, FX=['14/9273/4618'], wait=(ms)=>new Promise((r)=>setTimeout(r,ms));
+      const settle=async()=>{await wait(300);await Promise.race([new Promise(r=>{m.once('idle',r);m.triggerRepaint();}),wait(10000)]);await wait(300);};
+      if(m.style.tileManagers.mml.getIds().length)return ['MML was asked for tiles at zoom 10'];""" + MML_FIXTURES + """
+      const {inspectLayers,pickAt,hitBox,featuresAt}=await import('/js/inspect.js');
+      const takes=(id,props,type=3)=>m.style.getLayer(id)._featureFilter.filter({zoom:17},{type,properties:props});
+      const drawn=(id)=>m.queryRenderedFeatures({layers:[id]}).length;
+      for(const [base,fill,edge] of [['trail','#dcdcd8','#9a9488'],['night','#25282d','#454a52']]) {
+        polku.set({base}); m.jumpTo({center:tileMid(14,9273,4618),zoom:14.6}); await settle();
+        if(!m.getLayer('mml-parking')||m.getPaintProperty('mml-parking','fill-color')!==fill||m.getPaintProperty('mml-parking','fill-outline-color')!==edge){errs.push(`${base}: no car parks in ${fill} with ${edge}`);continue;}
+        if(!takes('mml-parking',{kohdeluokka:32421})||takes('mml-parking',{kohdeluokka:32421},2)||takes('mml-parking',{kohdeluokka:32611}))errs.push(`${base}: car parks' filter`);
+        if(!drawn('mml-parking'))errs.push(`${base}: no car park drawn from the recorded tile at 14.6`);
+        if(drawn('mml-parking-p'))errs.push(`${base}: a P at 14.6`);
+        const order=m.getLayersOrder();
+        if(!(order.indexOf('mml-parking-p')>order.indexOf('poi-parking')&&order.indexOf('mml-parking-p')>order.indexOf('poi-parking-all')))errs.push(`${base}: OSM's P placed before MML's`);
+      }
+      polku.set({base:'trail'}); m.jumpTo({center:tileMid(14,9273,4618),zoom:16}); await settle();
+      if(!drawn('mml-parking-p'))errs.push('no P on the car parks at 16');
+      if(takes('poi-minor',{class:'parking',name:'P-Ratina'},1))errs.push('car parks still in poi-minor');
+      if(!takes('poi-parking',{class:'parking',name:'P-Ratina'},1)||takes('poi-parking',{class:'parking'},1))errs.push("poi-parking isn't the named car parks");
+      if(!takes('poi-parking-all',{class:'parking'},1)||m.getLayer('poi-parking-all').minzoom!==17)errs.push('the unnamed car parks not from 17');
+      // a click on a car park, and on its P, opens the car park's card; and the P a place's card from the planner's tap
+      const found={};
+      for(let y=80;y<innerHeight-40&&Object.keys(found).length<2;y+=5)for(let x=24;x<innerWidth-24;x+=5){
+        const f=pickAt(m,[x,y],featuresAt(m,{x,y},hitBox({x,y},false),inspectLayers(m)));
+        if(f&&/^mml-parking(-p)?$/.test(f.layer.id)&&!found[f.layer.id])found[f.layer.id]={x,y};
+      }
+      const opened=async()=>{let c=null; for(let k=0;k<20&&!(c=polku.planner.cards.current);k++)await wait(100); polku.planner.cards.close(); await wait(300); return c||{};};
+      for(const id of ['mml-parking','mml-parking-p']) {
+        const point=found[id];
+        if(!point){errs.push(`no spot where a click picks ${id}`);continue;}
+        m.fire('click',{point,lngLat:m.unproject([point.x,point.y]),originalEvent:new MouseEvent('click')});
+        const c=await opened(); if(c.title!=='Car park')errs.push(`a click on ${id} opened ${c.title||'nothing'}`);
+      }
+      if(found['mml-parking-p']){const pt=found['mml-parking-p']; polku.planner.openSpotCard(m.unproject([pt.x,pt.y]),{pt});
+        const c=await opened(); if(c.kind!=='place'||c.title!=='Car park')errs.push(`the planner's tap on a P opened ${c.kind} ${c.title}`);}
+      return errs;
+    })()""")
+    fails += [f'console: {e[:160]}' for e in pg.errors()]
+    pg.close()
+    print(f"{'ok  ' if not fails else 'FAIL'} car parks from MML's tiles with a P, OSM's P marks thinned (#1219)" + ''.join(f'\n     - {f}' for f in fails), flush=True)
+    return not fails
+
+
 def osm_cliffs(chrome):
     pg = chrome.page(1440, 900, False)
     pg.open_app({'activity': 'mtb', 'base': 'trail'}, hash_='#16/62.2289/25.7652')
@@ -21339,7 +21390,7 @@ def route_card(chrome):
 # 22 px off too (some 50 m at z14, past legNear()'s 40 m): its card's Add a waypoint here adds one on the line.
 NL_SPOT = """(async (off) => {
   const p = polku.planner, m = polku.map, c = p.legs[0].result.coords, a = c[0], b = c[c.length - 1], ll = [a[0] + (b[0] - a[0]) * 0.25, a[1]];
-  for (const id of ['poi-outdoor', 'poi-minor', 'label-peak', 'lipas-point', 'td-points', 'td-gates', 'td-gates-all']) if (m.getLayer(id)) m.setLayoutProperty(id, 'visibility', 'none');
+  for (const id of ['poi-outdoor', 'poi-minor', 'label-peak', 'lipas-point', 'td-points', 'td-gates', 'td-gates-all', 'poi-parking', 'poi-parking-all']) if (m.getLayer(id)) m.setLayoutProperty(id, 'visibility', 'none');
   const v = p.viewPadding(0);
   m.jumpTo({ center: ll, zoom: 14, offset: [(v.left - v.right) / 2, (v.top - v.bottom) / 2] });
   await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
@@ -21416,7 +21467,7 @@ SC_HELP = """(() => {
     if (el !== m.getCanvas()) return no(`under ${el && (el.id || String(el.className.baseVal ?? el.className))}`);
     const box = (d) => [[q.x - d, q.y - d], [q.x + d, q.y + d]], layers = (ids) => ids.filter((id) => m.getLayer(id));
     if (line && layers(['route-casing']).length && m.queryRenderedFeatures(box(line), { layers: ['route-casing'] }).length) return no('on the route');
-    if (m.queryRenderedFeatures(box(16), { layers: layers(['poi-outdoor', 'poi-minor', 'label-peak', 'lipas-point', 'td-points', 'td-gates', 'td-gates-all']) }).length) return no('on a place');
+    if (m.queryRenderedFeatures(box(16), { layers: layers(['poi-outdoor', 'poi-minor', 'label-peak', 'lipas-point', 'td-points', 'td-gates', 'td-gates-all', 'poi-parking', 'poi-parking-all']) }).length) return no('on a place');
     return { x, y, ll: m.unproject(q).toArray() };
   };
   // (the map's middle as the finger went down and as it lifted: whether the gesture moved it, whatever moves it after)
@@ -21457,7 +21508,7 @@ SC_HELP = """(() => {
     },
     at: (ll, opts) => clear(ll, opts),
     // the map's places hidden (or back), so a hold or a tap on the free map is never on one, whatever the tiles have
-    places: (on) => { for (const id of ['poi-outdoor', 'poi-minor', 'label-peak', 'lipas-point', 'td-points', 'td-gates', 'td-gates-all']) if (m.getLayer(id)) m.setLayoutProperty(id, 'visibility', on ? 'visible' : 'none'); return true; },
+    places: (on) => { for (const id of ['poi-outdoor', 'poi-minor', 'label-peak', 'lipas-point', 'td-points', 'td-gates', 'td-gates-all', 'poi-parking', 'poi-parking-all']) if (m.getLayer(id)) m.setLayoutProperty(id, 'visibility', on ? 'visible' : 'none'); return true; },
     // the map at a share of its width and height, if it's free there
     spotAt(fx, fy, opts) { const r = R(); return clear(m.unproject([r.width * fx, r.height * fy]).toArray(), opts); },
     // a way under the screen at a share of its height (a tap there shows its card with the planner put away), clear of the places
@@ -21491,7 +21542,7 @@ SC_HELP = """(() => {
       for (let k = 0; k < 40; k++) {
         const r = R(), f = free();
         why = [];
-        for (const x of m.queryRenderedFeatures({ layers: ['poi-outdoor', 'lipas-point', 'poi-minor'].filter((id) => m.getLayer(id)) })) {
+        for (const x of m.queryRenderedFeatures({ layers: ['poi-outdoor', 'lipas-point', 'poi-minor', 'poi-parking', 'poi-parking-all'].filter((id) => m.getLayer(id)) })) {
           const q = m.project(x.geometry.coordinates), sx = r.left + q.x, sy = r.top + q.y, el = document.elementFromPoint(sx, sy);
           if (sx > 40 && sx < innerWidth - 90 && sy > f.top && sy < f.bottom + 20 && el === m.getCanvas()) return { x: Math.round(sx), y: Math.round(sy), name: x.properties.name || x.properties.class };
           why.push(`${Math.round(sx)},${Math.round(sy)} in ${Math.round(f.top)}–${Math.round(f.bottom)} under ${el && (el.id || String(el.className.baseVal ?? el.className))}`);
@@ -22346,7 +22397,7 @@ def share_spot(chrome):
         # shelter in it that is drawn in the link's page; the Back of the card above used to put the map there, #513.)
         pg.js("polku.planner.cards.close(); polku.map.jumpTo({ center: [23.76, 61.5025], zoom: 15 }); true")
         pg.idle()
-        place = pg.js("""(() => { const m = polku.map, f = m.queryRenderedFeatures({ layers: ['poi-outdoor', 'poi-minor', 'label-peak', 'lipas-point'].filter((id) => m.getLayer(id)) }).find((f) => f.geometry.type === 'Point');
+        place = pg.js("""(() => { const m = polku.map, f = m.queryRenderedFeatures({ layers: ['poi-outdoor', 'poi-minor', 'poi-parking', 'poi-parking-all', 'label-peak', 'lipas-point'].filter((id) => m.getLayer(id)) }).find((f) => f.geometry.type === 'Point');
           if (!f) return null;
           const point = m.project(f.geometry.coordinates);
           m.fire('contextmenu', { point, lngLat: m.unproject(point), originalEvent: new MouseEvent('contextmenu') });
@@ -25438,7 +25489,7 @@ PICK_SEED = """(async () => {
   const W = await import(location.origin + '/js/ways.js'), fx = await (await fetch(location.origin + '/tools/fixtures/ways-tampere.json')).json();
   W.holdWays();
   // (no place's icon, and no road works, under a tap: the ways are what's tapped)
-  for (const id of ['poi-outdoor', 'poi-minor', 'label-peak', 'lipas-point', 'td-points', 'td-gates', 'td-gates-all', 'sf-points', 'sf-lines']) if (polku.map.getLayer(id)) polku.map.setLayoutProperty(id, 'visibility', 'none');
+  for (const id of ['poi-outdoor', 'poi-minor', 'label-peak', 'lipas-point', 'td-points', 'td-gates', 'td-gates-all', 'poi-parking', 'poi-parking-all', 'sf-points', 'sf-lines']) if (polku.map.getLayer(id)) polku.map.setLayoutProperty(id, 'visibility', 'none');
   for (const [k, d] of Object.entries(fx.tiles)) { const [x, y] = k.split('/').map(Number); W.seedWays(x, y, d); }
   window.__fx = fx;
   return true;
@@ -26419,7 +26470,7 @@ GROUPS = [
     ('changelog', [changelog], 'release notes, retry, safe rendering, keyboard, route preservation and real worker offline'),
     ('pacing', [pacing, paced_legs, net_fails], 'calls made together go out paced and counted (mocked services, a fake clock); legs refused for a slot follow at it (#78); the calls that failed, in Data sources (#687)'),
     ('loading', [loading, routing_edits], 'cancel obsolete routing, edits/Undo/Clear, shared subscribers, refusal/recovery, deadlines, terrain slots and LIPAS viewport/cache (mocked)'),
-    ('layers', [layers, layer_coverage, cycleway_style, cycling_restrictions, waterway_style, property_lines, property_plots, wetland_style, reedbed_style, mml_bogs, mml_rock, mml_water, mml_open, osm_cliffs, saddles, mml_cards, town_gates, town_bridges, town_oneway, town_parks], 'the Layers panel in every sport'),
+    ('layers', [layers, layer_coverage, cycleway_style, cycling_restrictions, waterway_style, property_lines, property_plots, wetland_style, reedbed_style, mml_bogs, mml_rock, mml_water, mml_open, osm_cliffs, saddles, mml_cards, town_gates, town_bridges, town_oneway, town_parks, town_parking], 'the Layers panel in every sport'),
     ('raster', [raster_maps, aerial_fallback, aerial_labels], 'terrain and aerial detail, bounded high-density WMS symbols, depth boundaries and missing aerial detail (#649, #650, #653); the map\'s words on the aerial photos at 4.5:1 on their halo (#554)'),
     ('coarse', [coarse], 'a coarse map underneath (#1091): the base map\'s tile four zoom levels up stands in for one that hasn\'t come, at 1440 and 390'),
     ('offline', [mml_offline], 'Save offline keeps the National Land Survey\'s tiles (#1176): its terrain at zooms 11–14 and property boundaries while on, under addresses without the key, two at a time and ten a second at most; what Offline maps says an area lacks; offline, with the real worker, the bogs drawn from the saved tile and no message'),

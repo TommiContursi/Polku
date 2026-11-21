@@ -4,6 +4,11 @@ What's new in [Polku](https://polku.si), from the latest updates back to the fir
 
 ## 2026-11-21
 
+### Car parks on the map ([#1219](https://github.com/TommiContursi/Polku/issues/1219))
+
+- In Finland, car parks are drawn as light grey areas with a darker edge from zoom 14, from the National Land Survey's map, which has public car parks of about 1,000 m² and more, larger private ones, and rest and loading areas. With **Outdoor places** on, each gets a P from zoom 15, and a tap on one says it's a car park.
+- OpenStreetMap's P marks are fewer: named car parks show from zoom 15.5 and the rest from zoom 17, as many in towns are only a few kerbside spaces. Beyond Finland the map has the P marks only.
+
 ### Parks show in towns, with their names ([#1220](https://github.com/TommiContursi/Polku/issues/1220))
 
 - Parks and lawns inside a residential, commercial or industrial area now show, so whole parks that were missing in Tallinn's and Stockholm's centres are back, such as those round Toompea.

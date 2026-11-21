@@ -43,7 +43,7 @@ const PALETTES = {
   trail: {
     bg: '#f5f3ee', wood: '#dbeacd', woodOpacity: 0.9, grass: '#e8f1d9', farmland: '#f7f0cf',
     wetland: '#dce5e3', wetlandDash: '#8fb0d3', bogWood: '#deebd0', reed: '#5f8a5a', heath: '#ebe6c4', openForest: '#c6dcb2', treeMark: '#6b8a5c', sand: '#f3e7bb', rock: '#e2dfd8', cliff: '#5e574e', ice: '#f4fbff',
-    residential: '#ece8e2', industrial: '#e8e2e8', cemetery: '#dde7d3', sport: '#dcefd3', cityPark: '#d3ebbf', bridge: '#2c2721', oneway: '#6b6458', onewayBike: '#1f2fa0',
+    residential: '#ece8e2', industrial: '#e8e2e8', cemetery: '#dde7d3', sport: '#dcefd3', cityPark: '#d3ebbf', parking: '#dcdcd8', parkingLine: '#9a9488', bridge: '#2c2721', oneway: '#6b6458', onewayBike: '#1f2fa0',
     park: '#3f8f3f', water: '#a8d1ef', waterLine: '#6fa9d6', waterText: '#24618f', shoal: '#ffffff',
     building: '#d9d1c8', buildingLine: '#c4b9ad',
     motorway: '#f2a35e', trunk: '#f6c46b', primary: '#fbd77b', secondary: '#fde7a2', tertiary: '#fff3c9',
@@ -54,7 +54,7 @@ const PALETTES = {
   plain: {
     bg: '#f7f7f5', wood: '#eef3ea', woodOpacity: 0.7, grass: '#f1f4ed', farmland: '#f7f6ef',
     wetland: '#eef4f2', wetlandDash: '#b4c9de', bogWood: '#f1f4ed', reed: '#9bb796', heath: '#f2efdf', openForest: '#dde8d4', treeMark: '#9bb796', sand: '#f4f1e6', rock: '#efeeec', cliff: '#948d83', ice: '#fafdff',
-    residential: '#f0efed', industrial: '#efedf0', cemetery: '#eaefe6', sport: '#eaf1e6', cityPark: '#e4f0d8', bridge: '#5a554e', oneway: '#8a847a', onewayBike: '#4a6890',
+    residential: '#f0efed', industrial: '#efedf0', cemetery: '#eaefe6', sport: '#eaf1e6', cityPark: '#e4f0d8', parking: '#ebeae7', parkingLine: '#c4c0b8', bridge: '#5a554e', oneway: '#8a847a', onewayBike: '#4a6890',
     park: '#7aa27a', water: '#c3dcef', waterLine: '#9bbfdc', waterText: '#4a7ca3', shoal: '#ffffff',
     building: '#e6e3df', buildingLine: '#d6d1cb',
     motorway: '#e9c8a5', trunk: '#eed6ad', primary: '#f3e2b8', secondary: '#f6eccb', tertiary: '#faf5e4',
@@ -65,7 +65,7 @@ const PALETTES = {
   night: {
     bg: '#161a1f', wood: '#1b2620', woodOpacity: 1, grass: '#1d241f', farmland: '#23231d',
     wetland: '#18232a', wetlandDash: '#2f5679', bogWood: '#1b2620', reed: '#4f7a55', heath: '#26261c', openForest: '#26362a', treeMark: '#567a5c', sand: '#2a271f', rock: '#22221f', cliff: '#a39a8c', ice: '#20262b',
-    residential: '#1e2126', industrial: '#211f25', cemetery: '#1c231d', sport: '#1b241d', cityPark: '#1e3524', bridge: '#c9c2b5', oneway: '#aaa498', onewayBike: '#a9c4ea',
+    residential: '#1e2126', industrial: '#211f25', cemetery: '#1c231d', sport: '#1b241d', cityPark: '#1e3524', parking: '#25282d', parkingLine: '#454a52', bridge: '#c9c2b5', oneway: '#aaa498', onewayBike: '#a9c4ea',
     park: '#4e8f5b', water: '#10304a', waterLine: '#1f5a85', waterText: '#7fb6e3', shoal: '#2f6f9e',
     building: '#272b31', buildingLine: '#30353c',
     motorway: '#8a5a2f', trunk: '#80633a', primary: '#6f6040', secondary: '#5b5443', tertiary: '#4a4740',
@@ -249,6 +249,9 @@ export function buildStyle(s, ctx) {
     lc('lc-ice', ['ice'], P.ice);
     // pitches and playgrounds over the land cover: they're often in a park
     lu('lu-sport', ['pitch', 'stadium', 'playground', 'track'], P.sport, 13);
+    // car parks in Finland (#1219): MML's motor traffic areas (public car parks of 1,000 m² and more, larger private ones, rest
+    // and loading areas) from zoom 14, in OSM's grey, which is close to the town's ground: the edge and the P carry it
+    add({ id: 'mml-parking', type: 'fill', source: 'mml', 'source-layer': 'liikenne', minzoom: 14, filter: ['all', ['==', cls, 32421], ['==', ['geometry-type'], 'Polygon']], paint: { 'fill-color': P.parking, 'fill-outline-color': P.parkingLine } });
   }
 
   // Protected areas (national parks, nature reserves)
@@ -559,7 +562,7 @@ export function buildStyle(s, ctx) {
   if (s.overlays.pois) {
     // Things you plan an outing around show early; everyday services only up close.
     const outdoor = ['campsite', 'shelter', 'picnic_site', 'drinking_water', 'lodging', 'swimming', 'harbor', 'ranger_station'];
-    const minor = ['toilets', 'information', 'attraction', 'bicycle_rental', 'parking', 'bicycle'];
+    const minor = ['toilets', 'information', 'attraction', 'bicycle_rental', 'bicycle'];
     const poi = (id, minzoom, filter) => add({
       id, type: 'symbol', source: 'ofm', 'source-layer': 'poi', minzoom, filter,
       layout: {
@@ -572,6 +575,11 @@ export function buildStyle(s, ctx) {
     });
     poi('poi-outdoor', 13, ['any', ['in', ['get', 'class'], ['literal', outdoor]], ['in', ['get', 'subclass'], ['literal', ['viewpoint', 'firepit', 'bbq']]]]);
     poi('poi-minor', 15.5, ['all', ['in', ['get', 'class'], ['literal', minor]], ['!', ['in', ['get', 'subclass'], ['literal', ['viewpoint', 'firepit', 'bbq']]]]]);
+    // car parks (#1219): the named ones from 15.5 and the rest from 17, as OSM's standard map; the tiles can't tell a kerbside one
+    poi('poi-parking', 15.5, ['all', ['==', ['get', 'class'], 'parking'], ['has', 'name']]);
+    poi('poi-parking-all', 17, ['all', ['==', ['get', 'class'], 'parking'], ['!', ['has', 'name']]]);
+    // and a P on each of MML's car parks in Finland from 15, placed before them, so OSM's P on the same car park gives way
+    if (vectorFills) add({ id: 'mml-parking-p', type: 'symbol', source: 'mml', 'source-layer': 'liikenne', minzoom: 15, filter: ['all', ['==', ['get', 'kohdeluokka'], 32421], ['==', ['geometry-type'], 'Polygon']], layout: { 'icon-image': 'parking', 'icon-size': hc ? 1.05 : 0.8, 'icon-padding': 12 }, paint: { 'icon-opacity': s.base === 'night' ? 0.85 : 1 } });
   }
   if (s.overlays.lipasPoints || s.overlays.restricted) {
     add({
