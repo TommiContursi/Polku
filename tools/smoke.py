@@ -5607,7 +5607,7 @@ HEADS = """(async () => {
     [[/^Hard to follow/, 'look', 'map', 'OpenStreetMap', /^trail_visibility=bad · /], [/^Overgrown/, 'look', 'map', 'OpenStreetMap', /^obstacle=vegetation · /], [/^Wet or muddy/, 'look', 'map', 'OpenStreetMap', /^surface=mud or obstacle=mud · /], [/^Fallen trees/, 'look', 'map', 'OpenStreetMap', /^obstacle=fallen_tree · /], [/^Ford/, 'look', 'map', 'OpenStreetMap', /^ford=yes · /],
      [/^Ice road for 30 m: open water outside winter/, 'read', 'map', 'OpenStreetMap', /^ice_road=yes · /], [/^There only in winter/, 'read', 'map', 'OpenStreetMap', /^winter_road=yes or seasonal=winter · .*now it may be no way/]]);
   expect('trailWarnings in winter', A.trailWarnings({ along, pts, td, attr: attrs('mtb', []) }, { activity: 'mtb', winter: true }),
-    [[/^Over the ice for 30 m/, 'read', 'map', 'OpenStreetMap', /^ice_road=yes · Polku can’t see whether the ice holds/], [/^There only in winter/, 'read', 'map', 'OpenStreetMap', /^winter_road=yes or seasonal=winter · Over a bog or ice\. Polku can’t see/]]);
+    [[/^Over the ice for 30 m/, 'read', 'map', 'OpenStreetMap', /^ice_road=yes · Polku can’t see whether the ice holds/], [/^There only in winter/, 'read', 'map', 'OpenStreetMap', /^winter_road=yes or seasonal=winter · Over a bog or ice\\. Polku can’t see/]]);
   // Fintraffic: its caches seeded for the route's box, so nothing is fetched
   const S = polku.safety, road = { highway: 'primary' }, line = (c) => ({ type: 'LineString', coordinates: c });
   const ra = { pts, along, attr: pts.map(() => ({ sport: 'mtb', tags: road })), tAt: new Float32Array(n), activity: 'mtb', start: Date.now() / 1000 };
