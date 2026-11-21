@@ -7979,8 +7979,9 @@ def coarse(chrome):
 
 # #1176: Save offline keeps MML's tiles, MML answered by the page from its recorded tile (14/9260/4578, Seitseminen; an
 # empty tile elsewhere), never live: how many it asks for at once and in a second, with whose key, and what it keeps.
-# Saved first with MML's zoom 13 failing (Polku's key, property boundaries off), then whole (your own key, property
-# boundaries on). Offline maps says what each lacks, beside two areas saved before MML's tiles were kept.
+# Saved first with every MML tile failing (the pace held through failures too), then with MML's zoom 13 failing (Polku's
+# key, property boundaries off), then whole (your own key, property boundaries on). Offline maps says what each lacks,
+# beside two areas saved before MML's tiles were kept.
 MML_OFFLINE_SAVE = r"""
 (async () => {
   const f = [], off = await import(location.origin + '/js/offline.js'), { idb } = await import(location.origin + '/js/idb.js');
@@ -7998,7 +7999,18 @@ MML_OFFLINE_SAVE = r"""
   };
   const line = [[23.474, 61.92], [23.481, 61.921]], save = (name, mml) => off.saveArea({ name, line, bbox: [23.474, 61.92, 23.481, 61.921], route: null }, { buffer: 1000, terrain: false, mml }, () => {}, new AbortController().signal);
   const mmlKeys = (a) => a.keys.filter((k) => k.startsWith('https://avoin-karttakuva.maanmittauslaitos.fi/'));
+  // paced: two at a time, ten in any second at most
+  const paced = (what) => {
+    const peak = Math.max(...asked.map(([t]) => asked.filter(([s]) => s >= t && s < t + 1000).length));
+    if (most > 2 || peak > 10) f.push(`${what}, MML asked for ${most} tiles at once and ${peak} in a second`);
+    if (asked.length < 12) f.push(`(the test) ${what}, only ${asked.length} MML tiles asked for: too few to see the pace`);
+  };
   try {
+    failing = /./;
+    const down = await save('smoke-down', { key: '', property: false });
+    if (!(down.mml && down.mml.tiles && down.mml.failed === down.mml.tiles)) f.push(`with every MML tile failing, the area says ${JSON.stringify(down.mml)} of MML's terrain tiles failed`);
+    paced('with every tile failing');
+    asked.length = 0; most = 0;
     failing = /\/taustakartta\/.+\/13\/\d+\/\d+\.pbf/;
     const part = await save('smoke-part', { key: '', property: false });
     failing = null;
@@ -8014,19 +8026,17 @@ MML_OFFLINE_SAVE = r"""
     await off.renderOfflineSection(box, { open: () => {} });
     const said = Object.fromEntries([...box.querySelectorAll('.off-area-text')].map((el) => [el.querySelector('b').textContent, el.textContent]));
     if (!/National Land Survey’s terrain is missing in parts: save the area again/.test(said['smoke-part'])) f.push(`an area whose MML tiles failed in part says: ${said['smoke-part']}`);
+    if (!/National Land Survey’s terrain didn’t load: save the area again/.test(said['smoke-down'])) f.push(`an area whose MML tiles all failed says: ${said['smoke-down']}`);
     if (!/Saved without the National Land Survey’s terrain: save the area again/.test(said['smoke-old'])) f.push(`an area in Finland saved before MML's tiles were kept says: ${said['smoke-old']}`);
     if (/National Land Survey/.test(said['smoke-oslo'])) f.push(`an area in Oslo says: ${said['smoke-oslo']}`);
-    for (const id of ['smoke-old', 'smoke-oslo', part.id]) await off.removeArea(id);
-    asked.length = 0;
+    for (const id of ['smoke-old', 'smoke-oslo', part.id, down.id]) await off.removeArea(id);
+    asked.length = 0; most = 0;
     const whole = await save('smoke-mml', { key: 'own-test', property: true });
     if (!whole.mml || whole.mml.failed || !whole.mml.tiles) f.push(`saved whole, the area says ${JSON.stringify(whole.mml)} of MML's terrain tiles failed`);
     if (!mmlKeys(whole).some((k) => k.includes('/kiinteistojaotus/default/v3/WGS84_Pseudo-Mercator/14/'))) f.push('property boundaries not kept with their layer on');
     if (mmlKeys(whole).some((k) => k.includes('?'))) f.push(`MML's tiles kept under an address with its key: ${mmlKeys(whole).find((k) => k.includes('?'))}`);
     if (asked.some(([, u]) => new URL(u).searchParams.get('api-key') !== 'own-test')) f.push('your own key not used for MML\'s tiles');
-    // paced: two at a time, ten in any second at most
-    const peak = Math.max(...asked.map(([t]) => asked.filter(([s]) => s >= t && s < t + 1000).length));
-    if (most > 2 || peak > 10) f.push(`MML asked for ${most} tiles at once and ${peak} in a second`);
-    if (asked.length < 12) f.push(`(the test) only ${asked.length} MML tiles asked for: too few to see the pace`);
+    paced('saved whole');
     const c = await caches.open('polku-offline-tiles');
     if (!await c.match('https://avoin-karttakuva.maanmittauslaitos.fi/vectortiles/taustakartta/wmts/1.0.0/taustakartta/default/v21/WGS84_Pseudo-Mercator/14/4578/9260.pbf')) f.push('the recorded tile isn\'t kept');
   } finally { window.fetch = real; }
