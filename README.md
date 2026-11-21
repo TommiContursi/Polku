@@ -72,7 +72,7 @@ Water routes are calculated in the browser. Polku turns the map's water polygons
 
 ## Offline and sharing
 
-**Save offline** stores the map and terrain along a route, together with the route and its profile, so Polku can load without a connection. Without it, Polku keeps only a coarse map of Finland (lakes, sea and main roads, under 2 MB), which it also shows while the detailed map loads. **Preview offline** shows only what is saved, the coarse map of Finland too, so you can check coverage before leaving. Routing, search, weather and traffic still need a connection. On an iPhone, add Polku to the home screen to help keep offline data available.
+**Save offline** stores the map and terrain along a route, together with the route and its profile, so Polku can load without a connection. In Finland the saved map includes the National Land Survey's terrain (bogs, rock, cliffs, the water's marks), and its property boundaries when that layer is on. Without it, Polku keeps only a coarse map of Finland (lakes, sea and main roads, under 2 MB), which it also shows while the detailed map loads. **Preview offline** shows only what is saved, the coarse map of Finland too, so you can check coverage before leaving. Routing, search, weather and traffic still need a connection. On an iPhone, add Polku to the home screen to help keep offline data available.
 
 Routes can be imported from GPX or KML, exported as GPX, or shared with a link. A share link carries when you leave, once it's set; a date that has passed opens leaving now. An exported GPX has the planned times in its waypoints' descriptions and none on the track, so other apps don't read it as a recorded activity. For an imported track, use GPX to preserve its exact line: share links may route it again.
 
@@ -98,7 +98,7 @@ Polku brings together open data and free public services. Each source keeps its 
 | Weather and radar | [Open-Meteo](https://open-meteo.com); [FMI open data](https://en.ilmatieteenlaitos.fi/open-data); [RainViewer](https://www.rainviewer.com/api.html) |
 | Map rendering | [MapLibre GL JS](https://maplibre.org); [maplibre-contour](https://github.com/onthegomap/maplibre-contour) |
 
-Requests are paced, cached and counted, with those that failed; see **Settings → Data sources** (map tiles and terrain aren't counted there). Offline areas save only OpenFreeMap and Mapterhorn tiles, whose terms allow it.
+Requests are paced, cached and counted, with those that failed; see **Settings → Data sources** (map tiles and terrain aren't counted there). Offline areas save OpenFreeMap and Mapterhorn tiles, whose terms allow it, and in Finland the National Land Survey's map tiles, whose CC BY 4.0 licence allows copies; its service terms say nothing about storing them, so they're fetched at most ten a second.
 
 Road/path selections and their route memberships, trail details and barriers,
 mapped winter maintenance/access, OSM water hazards, overnight places,
