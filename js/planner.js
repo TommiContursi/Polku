@@ -73,7 +73,7 @@ const TIPS = {
 // (Warnings: what's a warning and what isn't checked; Good to know: Check's lighter ones and a changeover's gear)
 export const LIST_SHOWS = [['warnings', 'Warnings'], ['look', 'Good to know'], ['drawing', 'Drawing mode'], ['dark', 'Darkness'], ['weather', 'Weather'], ['speed', 'Speed']];
 // the places a tap or a hold shows instead of adding a point (25d part 5), and how near the line a spot is on it
-const PLACE_LAYERS = ['poi-outdoor', 'poi-minor', 'poi-guidepost', 'label-peak', 'lipas-point', 'td-points', 'td-gates', 'td-gates-all', 'poi-parking', 'poi-parking-all', 'mml-parking-p', 'poi-shops'];
+const PLACE_LAYERS = ['poi-outdoor', 'poi-minor', 'poi-guidepost', 'label-peak', 'lipas-point', 'td-points', 'td-gates', 'td-gates-all', 'poi-parking', 'poi-parking-all', 'mml-parking-p', 'mml-spring', 'mml-tarpit', 'poi-fire', 'poi-points', 'poi-shops'];
 const NEAR_LINE = 30;
 // a tap just beside the route is still the route's, not a point at the end (#725): the box around the spot, which with
 // half the line's casing (9.5–11 px wide at z14–16) reaches about 24 px from its middle by touch and 16 px by mouse
@@ -4187,13 +4187,16 @@ export class Planner {
   // A place's card (part 5) [p-place]: its own icon, its name and kind, where it comes from, its facts as plain lines
   openPlaceCard(f, ll, { from = 'map', pin = false } = {}) {
     const p = f.properties, id = f.layer.id, at = f.geometry && f.geometry.type === 'Point' ? f.geometry.coordinates.map((x) => +x.toFixed(6)) : ll;
-    const kind = id === 'label-peak' ? (p.class === 'saddle' ? 'pass' : 'peak') : p.subclass || p.class || '', words = (s) => { const t = String(s).replace(/_/g, ' '); return t.charAt(0).toUpperCase() + t.slice(1); };
+    const kind = id === 'label-peak' ? (p.class === 'saddle' ? 'pass' : 'peak') : p.subclass || p.class || '', own = Object.hasOwn(PLACE_KINDS, kind);
+    const words = (s) => { const t = String(s).replace(/_/g, ' '); return t.charAt(0).toUpperCase() + t.slice(1); }, name = own ? PLACE_KINDS[kind].name : words(kind || 'place');
+    // a shelter or a picnic site with a fire place keeps its icon, and its card says so (#1179: Polku's own OSM data has it)
+    const fire = ['shelter', 'picnic_site'].includes(kind) && this.map.getSource('osmPoints') && this.map.querySourceFeatures('osmPoints', { filter: ['==', ['get', 'subclass'], 'fireplace'] }).some((g) => dist(g.geometry.coordinates, at) <= 30);
     const o = /^td-/.test(id) ? obstacleText(p, groupOf(this.app.activity()) === 'bike') : null;
     const spot = id === 'lipas-point' ? { title: p.name, line: [p.typeName, p.city].filter(Boolean).join(', '), src: 'From LIPAS', image: p.icon ? `lipas-${p.icon}` : null, lipas: p }
       : o ? { title: o.title, line: o.note, src: 'From OpenStreetMap', image: `td-${p.kind}`, osm: { type: p.kind ? 'node' : 'way', id: p.osm || null } }
-        : /^mml-/.test(id) ? { ...mmlTerrain(f), src: 'From the National Land Survey' }
-        : { title: p.name || words(kind || 'place'), line: p.name && kind ? words(kind) : '', src: 'From OpenStreetMap', image: Object.hasOwn(PLACE_KINDS, kind) ? `place-${kind}` : null, osm: { type: 'place', id: null } };
-    this.openCard(spotCard(this, { ...spot, ll: at, pin, kind, place: true, tags: p }), at, from);
+        : /^mml-/.test(id) ? { ...mmlTerrain(f), src: 'From the National Land Survey', image: /^mml-(spring|tarpit)$/.test(id) ? `place-${id.slice(4)}` : null }
+        : { title: p.name || name, line: p.name && kind ? name : '', src: 'From OpenStreetMap', image: own ? `place-${kind}` : null, osm: { type: p.osmType || 'place', id: p.osm || null } };
+    this.openCard(spotCard(this, { ...spot, ll: at, pin, kind, place: true, tags: fire ? { ...p, fireplace: 'yes' } : p }), at, from);
   }
   // A LIPAS route's card (part 6): Follow it, add it to your route or start one from it, its facts and pages
   openLipasCard(props, ll, { click = null, near = null } = {}) {

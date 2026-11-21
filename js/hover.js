@@ -5,7 +5,7 @@
 // The cursor is checked once per frame; tooltips only when the pointer rests.
 // Map text appears first; OSM/terrain enrichment keeps its original delay.
 
-import { DIFF_COLORS, MTB_COLORS, MTB_SCALE_TEXT, mtbClass, UPHILL_TEXT, LIPAS_TYPES } from './config.js';
+import { DIFF_COLORS, MTB_COLORS, MTB_SCALE_TEXT, mtbClass, UPHILL_TEXT, LIPAS_TYPES, PLACE_KINDS } from './config.js';
 import { WINTER_TEXT } from './winter.js';
 import { tapLayers, pickFeature, pickAt, hitBox, featuresAt, winterAt, WAY_NAMES, MARK_TYPE, SECTOR_NAME, mmlTerrain } from './inspect.js';
 import { NAV_TEXT } from './nautical.js';
@@ -231,7 +231,7 @@ export function describe(f, feats, ctx) {
   }
   if (/^winter-/.test(id)) return { title: p.name || (p.cls === 'ski' ? 'Ski track' : 'Winter way'), bits: [e(WINTER_TEXT[p.cls] || ''), p.grooming ? e(`groomed: ${String(p.grooming).replace(/\+|;/g, ' and ')}`) : '', p.lit ? 'lit' : ''].filter(Boolean) };
   if (/^poi-|^label-peak/.test(id)) {
-    const type = (p.subclass || p.class || '').replace(/_/g, ' ');
+    const type = Object.hasOwn(PLACE_KINDS, p.subclass) ? PLACE_KINDS[p.subclass].name : (p.subclass || p.class || '').replace(/_/g, ' ');
     return { title: p.name || cap(type || 'Place'), bits: [p.name && type ? e(cap(type)) : '', p.ele ? `${e(p.ele)} m` : ''].filter(Boolean) };
   }
   if (/^td-/.test(id)) {

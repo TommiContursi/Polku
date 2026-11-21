@@ -148,7 +148,8 @@ export function buildStyle(s, ctx) {
     trailPoints: { type: 'geojson', data: ctx.data.trailPoints || EMPTY },
     lipasRoutes: { type: 'geojson', data: ctx.data.lipasRoutes || EMPTY, attribution: '© LIPAS', promoteId: 'lipasId' }, // the LIPAS id as the feature id: the route under the mouse is lit by its feature state
     winterWays: { type: 'geojson', data: ctx.data.winterWays || EMPTY }, // OSM's winter tags (js/winter.js)
-    reedbeds: { type: 'geojson', data: ctx.data.reedbeds || EMPTY }, // OSM's reedbeds (Reedbeds in js/osm-data.js)
+    reedbeds: { type: 'geojson', data: ctx.data.reedbeds || EMPTY }, // OSM's reedbeds (HostedLayer in js/osm-data.js)
+    osmPoints: { type: 'geojson', data: ctx.data.osmPoints || EMPTY }, // OSM's fire places, springs, caves… (HostedLayer too)
     litWays: { type: 'geojson', data: ctx.data.litWays || EMPTY }, // OSM's lit and unlit ways (js/lit.js)
     litCover: { type: 'geojson', data: ctx.data.litCover || EMPTY }, // the lit tiles that came in: In the dark's veil
     lipasPoints: { type: 'geojson', data: ctx.data.lipasPoints || EMPTY },
@@ -601,6 +602,17 @@ export function buildStyle(s, ctx) {
     poi('poi-parking', 15.5, ['all', ['==', ['get', 'class'], 'parking'], ['has', 'name']]);
     poi('poi-parking-all', 17, ['all', ['==', ['get', 'class'], 'parking'], ['!', ['has', 'name']]]);
     // and a P on each of MML's car parks in Finland from 15, placed before them, so OSM's P on the same car park gives way
+    // MML's springs and tar pits in Finland (#1173) from 15, as places with icons of their own; OSM's points come after them,
+    // so where both have one, OSM's is placed first and drawn
+    if (vectorFills) for (const [id, layer, cls, kind] of [['mml-spring', 'maasto_piste', 36100, 'spring'], ['mml-tarpit', 'poi', 45400, 'tarpit']]) {
+      add({ id, type: 'symbol', source: 'mml', 'source-layer': layer, minzoom: 15, filter: ['==', ['get', 'kohdeluokka'], cls], layout: { 'icon-image': `place-${kind}`, 'icon-size': 0.6 }, paint: { 'icon-opacity': s.base === 'night' ? 0.85 : 1 } });
+    }
+    // and OSM's from Polku's own OSM data (the tiles have none): fire places from 13 with the outdoor places, the rest from 15;
+    // a shelter or a picnic site with a fire place keeps its own icon (`fireplace`, not drawn: its card says so)
+    const sub = ['get', 'subclass'], pointLayout = { 'icon-image': ['concat', 'place-', sub], 'icon-size': 0.6, 'text-field': ['step', ['zoom'], '', 15, ['coalesce', ['get', 'name'], '']], 'text-font': FONT_I, 'text-size': 11, 'text-offset': [0, 1], 'text-anchor': 'top', 'text-optional': true, 'text-max-width': 8 };
+    const pointPaint = { 'text-color': P.text, 'text-halo-color': P.halo, 'text-halo-width': 1.2, 'icon-opacity': s.base === 'night' ? 0.85 : 1 };
+    add({ id: 'poi-fire', type: 'symbol', source: 'osmPoints', minzoom: 13, filter: ['==', sub, 'firepit'], layout: pointLayout, paint: pointPaint });
+    add({ id: 'poi-points', type: 'symbol', source: 'osmPoints', minzoom: 15, filter: ['in', sub, ['literal', ['spring', 'cave', 'bunker', 'tarpit']]], layout: pointLayout, paint: pointPaint });
     if (vectorFills) add({ id: 'mml-parking-p', type: 'symbol', source: 'mml', 'source-layer': 'liikenne', minzoom: 15, filter: ['all', ['==', ['get', 'kohdeluokka'], 32421], ['==', ['geometry-type'], 'Polygon']], layout: { 'icon-image': 'parking', 'icon-size': hc ? 1.05 : 0.8, 'icon-padding': 12 }, paint: { 'icon-opacity': s.base === 'night' ? 0.85 : 1 } });
   }
   // Shops and food (#1222), a layer of its own: from 17, the tiles' rank first where they crowd; none upstairs or indoors, where

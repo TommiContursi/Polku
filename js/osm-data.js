@@ -312,60 +312,82 @@ export async function geometryTiles(url, box, signal) {
 }
 
 
-// ---------------------------------------------------------------- reedbeds (#1144)
-// OpenFreeMap's wetlands are all one kind; the reedbeds among them come from the hosted `wetlands` product, the view's
-// z12 tiles from zoom 12, for style.js's `lc-reedbed` (only on the vector base maps, so nothing loads without it). A
-// release without the product, a place outside its coverage or a read that fails leaves them generic wetland.
-export const REED_Z = 12;
-const reedTiles = new Map(); // "x/y" -> { data } (null while on its way), or { failedAt }
-let reedsHeld = false;
-/** Tests: read no reedbeds (seed them instead). */
-export function holdReedbeds(on = true) { reedsHeld = on; }
-export function seedReedbeds(x, y, json) { reedTiles.set(`${x}/${y}`, { data: validateTile(json) }); }
+// ---------------------------------------------------------------- reedbeds (#1144) and points (#1179)
+// Two of the hosted products drawn on the map, each from the view's z12 tiles from zoom 12 for a layer of style.js's (only
+// on the vector base maps, so nothing loads without it): OpenFreeMap's wetlands are all one kind, and the reedbeds among
+// them come from `wetlands`, for `lc-reedbed`; fire places, springs, caves, bunkers and tar kilns come from `points`, for
+// `poi-points`, as the tiles have none. A release without the product, a place outside its coverage or a read that fails
+// leaves the reedbeds generic wetland and draws no points, as before (a read that failed is tried again 2 minutes later).
+export const HOSTED_Z = 12;
+const hostedTiles = { wetlands: new Map(), points: new Map() }; // dataset -> "x/y" -> { data } (null while on its way), or { failedAt }
+const held = {};
+/** Tests: read none of a dataset's tiles (seed them instead). */
+export function holdHosted(dataset, on = true) { held[dataset] = on; }
+export function seedHosted(dataset, x, y, json) { hostedTiles[dataset].set(`${x}/${y}`, { data: validateTile(json) }); }
 
-export class Reedbeds {
-  constructor(map, url, onData) {
+// a reedbed: its area
+const reedbed = (e) => e.area && { type: 'Feature', properties: { osm: e.id, osmType: e.type }, geometry: { type: 'MultiPolygon', coordinates: e.area } };
+// a point: its kind (PLACE_KINDS in js/config.js), or `fireplace` for a shelter or a picnic site with one, which isn't drawn
+// but its place's card says so (js/planner.js)
+const POINT_KIND = [['firepit', (t) => t.leisure === 'firepit' || t.amenity === 'bbq'], ['spring', (t) => t.natural === 'spring'], ['cave', (t) => t.natural === 'cave_entrance'],
+  ['bunker', (t) => t.military === 'bunker'], ['tarpit', (t) => t.historic === 'tar_kiln'], ['fireplace', (t) => t.fireplace === 'yes']];
+const point = (e) => {
+  const at = e.center ? [e.center.lon, e.center.lat] : [e.lon, e.lat], kind = (POINT_KIND.find(([, is]) => is(e.tags || {})) || [])[0];
+  return kind && Number.isFinite(at[0]) && { type: 'Feature', properties: { ...e.tags, subclass: kind, osm: e.id, osmType: e.type }, geometry: { type: 'Point', coordinates: at } };
+};
+const HOSTED = { wetlands: ['lc-reedbed', reedbed], points: ['poi-points', point] };
+
+export class HostedLayer {
+  constructor(map, url, dataset, onData, onStatus = null) {
     this.map = map;
     this.url = url;
+    this.dataset = dataset;
+    [this.layer, this.feature] = HOSTED[dataset];
+    this.tiles = hostedTiles[dataset];
     this.onData = onData;
+    this.onStatus = onStatus;
     this.timer = 0;
     this.want = [];
     this.shown = null;
     map.on('moveend', () => this.schedule());
-    map.on('styledata', () => this.schedule()); // (the base map changed: lc-reedbed came or went)
+    map.on('styledata', () => this.schedule()); // (the base map or a layer changed: its layer came or went)
   }
   // an update still to run, or a tile in view on its way: what comes after the map stops waits for it (#1091)
-  get busy() { return !!this.timer || this.want.some((k) => reedTiles.get(k)?.data === null); }
+  get busy() { return !!this.timer || this.want.some((k) => this.tiles.get(k)?.data === null); }
+  // a tile in view that didn't load (a release without the product, a place outside its coverage, a failed read): Layers says so
+  get failing() { return this.want.length <= 36 && this.want.some((k) => this.tiles.get(k)?.failedAt); }
   schedule(ms = 300) { clearTimeout(this.timer); this.timer = setTimeout(() => { this.timer = 0; this.update(); }, ms); }
   update() {
-    const map = this.map;
+    const map = this.map, tiles = this.tiles;
     this.want = [];
     // (zoomed out, no tiles are listed: millions of them, #667)
-    if (map.style && map.getLayer('lc-reedbed') && map.getZoom() >= REED_Z) {
+    if (map.style && map.getLayer(this.layer) && map.getZoom() >= HOSTED_Z) {
       const b = map.getBounds();
-      const [x0, y0] = lonLatToTile(b.getWest(), b.getNorth(), REED_Z).map(Math.floor), [x1, y1] = lonLatToTile(b.getEast(), b.getSouth(), REED_Z).map(Math.floor);
+      const [x0, y0] = lonLatToTile(b.getWest(), b.getNorth(), HOSTED_Z).map(Math.floor), [x1, y1] = lonLatToTile(b.getEast(), b.getSouth(), HOSTED_Z).map(Math.floor);
       for (let x = x0; x <= x1; x++) for (let y = y0; y <= y1; y++) this.want.push(`${x}/${y}`);
     }
     // more than 36 in view (3D tilted to the horizon): no new reads, the loaded ones still drawn; 2560 × 1440 at zoom 12 is 35
     for (const key of this.want.length <= 36 ? this.want : []) {
-      const have = reedTiles.get(key);
-      if (reedsHeld || have && (!have.failedAt || Date.now() - have.failedAt < 120e3)) continue;
+      const have = tiles.get(key);
+      if (held[this.dataset] || have && (!have.failedAt || Date.now() - have.failedAt < 120e3)) continue;
       const entry = { data: null };
-      reedTiles.set(key, entry);
-      hostedTile(this.url, 'wetlands', REED_Z, key.split('/').map(Number), (err) => { throw err; })
-        .then((json) => { entry.data = json; }, () => { if (reedTiles.get(key) === entry) reedTiles.set(key, { failedAt: Date.now() }); })
+      tiles.set(key, entry);
+      hostedTile(this.url, this.dataset, HOSTED_Z, key.split('/').map(Number), (err) => { throw err; })
+        .then((json) => { entry.data = json; }, () => { if (tiles.get(key) === entry) tiles.set(key, { failedAt: Date.now() }); })
         .finally(() => this.schedule(60));
     }
-    if (reedTiles.size > 64) for (const [k, t] of reedTiles) { if (reedTiles.size <= 64) break; if (!this.want.includes(k) && t.data !== null) reedTiles.delete(k); }
-    this.publish(this.want.filter((k) => reedTiles.get(k)?.data));
+    if (tiles.size > 64) for (const [k, t] of tiles) { if (tiles.size <= 64) break; if (!this.want.includes(k) && t.data !== null) tiles.delete(k); }
+    this.publish(this.want.filter((k) => tiles.get(k)?.data));
+    this.onStatus?.();
   }
   publish(keys) {
     const key = keys.join(';');
     if (key === this.shown) return;
     this.shown = key;
-    const features = new Map(); // a reedbed across tiles comes once
-    for (const k of keys) for (const e of reedTiles.get(k).data.elements) {
-      if (e.area) features.set(`${e.type}/${e.id}`, { type: 'Feature', properties: { osm: e.id, osmType: e.type }, geometry: { type: 'MultiPolygon', coordinates: e.area } });
+    const features = new Map(); // a feature across tiles comes once
+    for (const k of keys) for (const e of this.tiles.get(k).data.elements) {
+      const f = this.feature(e);
+      if (f) features.set(`${e.type}/${e.id}`, f);
     }
     this.onData({ type: 'FeatureCollection', features: [...features.values()] });
   }
