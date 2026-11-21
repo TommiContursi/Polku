@@ -4,6 +4,12 @@ What's new in [Polku](https://polku.si), from the latest updates back to the fir
 
 ## 2026-11-21
 
+### Names from the map's data are shown as text, and odd share links and files can't stop Polku ([#1247](https://github.com/TommiContursi/Polku/issues/1247), [#1246](https://github.com/TommiContursi/Polku/issues/1246))
+
+- A tap or a hold on the map shows the name of a LIPAS route, a winter way or a Fintraffic road camera or road-conditions point exactly as its source wrote it. Before, a name that contained HTML could run as a script in Polku.
+- A share link with a point beyond the poles or the date line opens no route, as any link Polku can't read, instead of stopping Polku as it starts.
+- A GPX or KML file leaves out points beyond the poles or the date line, as it leaves out points without coordinates, so **Analyse & edit** works on the rest.
+
 ### The sport pill's name on phones ([#1214](https://github.com/TommiContursi/Polku/issues/1214))
 
 - On a phone, where the sport pill shows only its icon, a screen reader names it by its sport again, as on a desktop.
