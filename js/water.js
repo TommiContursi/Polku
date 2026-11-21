@@ -535,23 +535,19 @@ async function attempt(from, to, padFactor, allowPortage, style = {}, inputs = n
     tags.push(onLand && seg > grid.res * 1.5 ? { portage: 'yes', surface: 'ground' } : { route: 'water', surface: 'water' });
     coords.push(ll);
   }
-  if (grid.lost && overLost(grid.lost, coords)) throw new Error(OFFLINE);
+  if (grid.lost) { // offline, a line that crosses a tile that didn't load (#1195): looked at every 20 m, its ends too
+    const n = 2 ** grid.lost.z, tile = ([lon, lat]) => `${Math.floor(mercX(lon) * n)}/${Math.floor(mercY(lat) * n)}`;
+    coords.forEach((b, k) => {
+      const a = coords[k - 1] || b, steps = Math.max(1, Math.ceil(dist(a, b) / 20));
+      for (let j = 0; j <= steps; j++) if (grid.lost.tiles.has(tile([a[0] + ((b[0] - a[0]) * j) / steps, a[1] + ((b[1] - a[1]) * j) / steps]))) throw new Error(OFFLINE);
+    });
+  }
   const { events, wave, depth } = eventsAlong(grid, coords, comfort, got);
   lap('events');
   const reach = reachAlong(grid, coords);
   lap('reach');
   delete T.t;
   return { coords, tags, portage, portageM, resolution: grid.res, cells: grid.W * grid.H, events, wave, depth, reach, wind: got && got.wind, missing: got ? got.missing : [], skipped: got ? got.skipped : [], times: T };
-}
-
-// Whether the line crosses a tile that didn't load offline (#1195): looked at every 20 m, its ends too.
-function overLost({ z, tiles }, coords) {
-  const n = 2 ** z, tile = ([lon, lat]) => `${Math.floor(mercX(lon) * n)}/${Math.floor(mercY(lat) * n)}`;
-  return coords.some((b, k) => {
-    const a = coords[k - 1] || b, steps = Math.max(1, Math.ceil(dist(a, b) / 20));
-    for (let j = 0; j <= steps; j++) if (tiles.has(tile([a[0] + ((b[0] - a[0]) * j) / steps, a[1] + ((b[1] - a[1]) * j) / steps]))) return true;
-    return false;
-  });
 }
 
 // Where the finished line meets what costs: shipping lanes and harbours it
