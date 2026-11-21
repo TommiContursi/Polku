@@ -1231,12 +1231,12 @@ def wetland_style(chrome):
 
 # #1178: OSM's cliffs drawn as MML's are, and its scree dotted like MML's boulder fields, from the tiles at Tykkikallio
 # (Jyväskylä), where MML has no cliff.
-# #1221: a town's gates from zoom 16, from the recorded trail details at Tykkikallio. At 15.5 no gate, the fallen tree still;
+# #1221: a town's gates from zoom 16, from the recorded trail details at Tykkikallio. At 15.5 no gate, a fallen tree still;
 # at 16.5 three lift gates a few metres apart give way to each other, and a tap on the one drawn opens its place's card; from
 # 17 all three, a tap too. At 16 they give way to names: below the labels, overlap off.
 def town_gates(chrome):
     pg = chrome.page(1440, 900, False)
-    pg.open_app({'activity': 'mtb', 'base': 'trail'}, None, '#12/62.2335/25.759')
+    pg.open_app({'activity': 'mtb', 'base': 'trail'}, None, '#12/62.2289/25.7652')
     pg.js(SEED_TRAILS)
     fails = pg.js("""(async () => {
       const errs=[], m=polku.map, wait=(ms)=>new Promise((r)=>setTimeout(r,ms));
@@ -1246,7 +1246,8 @@ def town_gates(chrome):
       const gates=()=>drawn().filter((f)=>/^gate/.test(f.properties.kind));
       const tap=async(f)=>{const point=m.project(f.geometry.coordinates);m.fire('click',{point,lngLat:m.unproject(point),originalEvent:new MouseEvent('click')});await wait(400);
         const c=polku.planner.cards.current, ok=c&&c.kind==='place'; polku.planner.cards.close(); return ok;};
-      m.jumpTo({center:[25.759,62.2335],zoom:15.5}); await settle();
+      // (a fallen tree, a gate and a locked gate within 250 m)
+      m.jumpTo({center:[25.7652,62.2289],zoom:15.5}); await settle();
       if(!drawn().some((f)=>f.properties.kind==='tree'))errs.push('15.5: no fallen tree');
       if(gates().length)errs.push(`15.5: ${gates().length} gates drawn`);
       m.jumpTo({center:[25.75467,62.238343],zoom:16.5}); await settle();
