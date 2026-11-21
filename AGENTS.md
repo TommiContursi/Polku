@@ -230,7 +230,8 @@ conversation again
   (`python3 serve.py 8771`) and point the tests at it
   (`POLKU_URL=http://localhost:8771/ python3 tools/smoke.py`). Never stop
   another agent's server.
-- **Smoke runs go one at a time,** alone on the machine, each commit in a
+- **One smoke run at a time on the machine,** across all sessions: start
+  one only when `pgrep -f tools/smoke.py` shows none. Each commit runs in a
   frozen worktree that stays put while a run uses it. Stop only the Chrome
   you started, by its process id. Before calling a failure the change's,
   run the same group on `main`.
