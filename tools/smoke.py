@@ -2774,6 +2774,12 @@ WATER_MML = """(async () => {
       for (let k = 0; k < 80 && (lost() || !row() || row().state !== 'ok' || p.legs[0].status !== 'ok'); k++) await wait(250);
       if (lost() || !row() || row().state !== 'ok' || row().by !== 'the National Land Survey and OpenStreetMap') errs.push(`MML answered late: ${lost() ? 'still in Not checked, ' : ''}${says()}`);
       else if (off() < 20) errs.push(`the leg passes ${Math.round(off())} m from a stone at the surface (keeps 25 m)`);
+      { // a leg too long for MML's tiles: the row says which source wasn't checked
+        const w = p.legs[0].result.water, keep = w.skipped;
+        w.skipped = ['the National Land Survey'];
+        if (!row() || row().state !== 'bad' || row().by !== 'the National Land Survey: not checked, a leg too long to ask for') errs.push(`a leg too long for MML's tiles: ${says()}`);
+        w.skipped = keep;
+      }
     }
     // straight over each stone: kept clear, and only with Rocks & shoals on (else the check proves nothing)
     for (const [what, [from, to], stone, keep] of [['at the surface', overRock, rock, 20], ['above the surface', overAbove, above, 11]]) {
@@ -2882,6 +2888,12 @@ WATER_RAPIDS = """(async () => {
   const from = [25.7519622, 62.2575603], to = [25.7573529, 62.2487162]; // down Tourujoki, through Kangas
   // Eerolanpuro, as OSM has it (way 32236945)
   const stream = [[25.7202401, 62.2468368], [25.7212426, 62.2469252], [25.721466, 62.2470774], [25.7216424, 62.2471702], [25.7218033, 62.2472764], [25.7220657, 62.2474629], [25.7221925, 62.2475523], [25.7222802, 62.247649], [25.7227633, 62.248052], [25.7227942, 62.2484233], [25.722784, 62.2486344], [25.7228068, 62.2487868], [25.7228374, 62.2488752], [25.723022, 62.2490427], [25.7231434, 62.2491561]];
+  { // an Overpass answer kept from before the rapids were asked for (none in it) isn't used: Eerolanpuro's tile
+    const [x, y] = G.lonLatToTile(25.722, 62.248, 11).map(Math.floor);
+    await new Promise((ok) => { const r = indexedDB.open('polku'); r.onerror = () => ok(); r.onsuccess = () => { const db = r.result; if (!db.objectStoreNames.contains('overpass')) { db.close(); ok(); return; } const t = db.transaction('overpass', 'readwrite'); t.objectStore('overpass').put({ at: Date.now(), json: { points: [], areas: [] } }, `waterhaz/11/${x}/${y}`); t.oncomplete = t.onerror = () => { db.close(); ok(); }; }; });
+    const kept = await D.waterInputs([25.718, 62.246, 25.726, 62.250], { hazards: true, rapids: true }, 0);
+    if (!kept.rapids.features.some((f) => f.properties.src === 'osm' && f.geometry.coordinates.length > 2)) errs.push(`Eerolanpuro's tile, an old answer kept: ${kept.rapids.features.length} rapids (missing ${kept.missing.join(', ') || 'nothing'})`);
+  }
   const p = polku.planner;
   const rapids = () => (p.analysis ? p.headsUp().read.filter((w) => /^Rapids for/.test(w.text)) : []);
   const row = () => (p.analysis ? p.lookedAt(p.analysis).find((r) => r.what === 'Rapids') : null);
@@ -2924,6 +2936,21 @@ WATER_RAPIDS = """(async () => {
       const near = G.nearestOnLine(stream[10], brook.coords), end = G.lineLength([...brook.coords.slice(0, near.i + 1), G.lerp(brook.coords[near.i], brook.coords[near.i + 1], near.t)]);
       if (br[0].at + br[0].len < end + 10) errs.push(`up Eerolanpuro, the rapid ends at ${Math.round(br[0].at + br[0].len)} m, before the second line's end at ${Math.round(end)} m`);
     }
+    { // a rapid's line 32 m beside the leg, as on a wide river: within its zone (the leg off Helsinki, seeded)
+      const fc = (features) => ({ type: 'FeatureCollection', features });
+      let rap = fc([]);
+      D.seedWater(() => ({ fairways: fc([]), hazards: fc([]), rapids: rap, mml: null, depths: null, wind: null, missing: [], skipped: [] }));
+      const a = [24.9585, 60.1540], b = [24.9800, 60.1480];
+      const plain = await W.routeWater(a, b, { at: 0, wind: 'ignore' });
+      const c = plain.coords, k = c.reduce((m, _, i) => (i && G.dist(c[i - 1], c[i]) > G.dist(c[m - 1] || c[0], c[m] || c[0]) ? i : m), 1);
+      const p0 = c[k - 1], p1 = c[k], len = G.dist(p0, p1), mx = 111320 * Math.cos((p0[1] * Math.PI) / 180), my = 110570;
+      const nx = -((p1[1] - p0[1]) * my) / len, ny = ((p1[0] - p0[0]) * mx) / len; // a metre to the left, as east and north
+      const off = (q) => [q[0] + (32 * nx) / mx, q[1] + (32 * ny) / my];
+      rap = fc([{ type: 'Feature', properties: { kind: 'rapids', src: 'osm' }, geometry: { type: 'LineString', coordinates: [off(G.lerp(p0, p1, 0.3)), off(G.lerp(p0, p1, 0.7))] } }]);
+      const beside = await W.routeWater(a, [b[0], b[1] + 1e-6], { at: 0, wind: 'ignore' }); // (another leg: the router keeps the first)
+      D.seedWater(null);
+      if (!beside.water.events.some((e) => e.kind === 'rapids')) errs.push(`a rapid's line 32 m beside the leg isn't a rapid on it: ${beside.water.events.map((e) => e.kind).join(', ') || 'no events'} (its segment ${Math.round(len)} m)`);
+    }
     // OSM's rapids are rapids, not a rock's zone
     const osm = await D.waterInputs([18.04, 59.31, 18.06, 59.33], { hazards: true, rapids: true }, 0);
     const rf = (osm.rapids && osm.rapids.features) || [];
@@ -2947,6 +2974,102 @@ def water_rapids(chrome):
     fails += [f'console: {e[:160]}' for e in pg.errors()]
     pg.close()
     print(f"{'ok  ' if not fails else 'FAIL'} rapids on the water: a warning, and Avoid it carries round" + ''.join(f'\n     - {f}' for f in fails), flush=True)
+    return not fails
+
+
+# A failed source's retry (#905, #153), from mocked services: the hosted OSM data fails, Overpass fails until `fail` is
+# off, MML answers with its empty tile, the wind is ignored. The water router's two-minute retries are caught, not
+# timed, so the check says when they come. Offline, a retry doesn't route the legs again; back online they are, with
+# OSM's rocks. Then a retry that comes while its leg is being routed (the hidden map's idle held) isn't lost: the leg is
+# routed again with the rocks, where it used to keep the failure for good.
+WATER_RETRY = """(async () => {
+  const wait = (ms) => new Promise((r) => setTimeout(r, ms)), errs = [];
+  /*forget*/
+  await forget();
+  const { OVERPASS, OSM_DATA_MANIFEST, MML_TERRAIN_TILES } = await import(location.origin + '/js/config.js');
+  const outside = await (await fetch(location.origin + '/tools/fixtures/mml-taustakartta-14-9318-4808.pbf')).arrayBuffer();
+  const MML = MML_TERRAIN_TILES.split('{z}')[0], realFetch = window.fetch, realTimeout = window.setTimeout, Map0 = maplibregl.Map;
+  let fail = true, again = [], hold = null, routes = 0;
+  window.fetch = (url, init = {}) => {
+    const u = String(url);
+    if (u.startsWith(new URL(OSM_DATA_MANIFEST).origin)) return Promise.reject(new TypeError('Failed to fetch'));
+    if (OVERPASS.some((m) => u.startsWith(m))) return Promise.resolve(fail ? new Response('', { status: 500 }) : new Response('{"elements":[]}'));
+    if (u.startsWith('https://avoinapi.vaylapilvi.fi/')) return Promise.resolve(new Response('{"type":"FeatureCollection","features":[]}'));
+    if (u.startsWith(MML)) return Promise.resolve(new Response(outside));
+    if (u.includes('/data/depths/')) return Promise.resolve(new Response('{"tiles":[]}'));
+    return realFetch(url, init);
+  };
+  // the water router's two-minute retries, kept for the check to run
+  window.setTimeout = (fn, ms, ...a) => (ms === 120e3 && /waterdata\\.js/.test(new Error().stack) ? (again.push(fn), 0) : realTimeout(fn, ms, ...a));
+  // the hidden map's idle, held while the check wants a leg mid-routing
+  maplibregl.Map = class extends Map0 {
+    constructor(o) {
+      super(o);
+      if (o.container.getAttribute('aria-hidden') !== 'true') return;
+      const once = this.once.bind(this);
+      this.once = (t, fn) => (t === 'idle' && hold ? once(t, (...x) => hold.then(() => fn(...x))) : once(t, fn));
+    }
+  };
+  const p = polku.planner, ra = p.routeAll.bind(p);
+  p.routeAll = (...x) => { routes++; return ra(...x); };
+  const without = () => p.legs.length === 1 && p.legs[0].status === 'ok' && p.legs[0].result && p.legs[0].result.water && p.legs[0].result.water.missing.includes('OpenStreetMap');
+  const withRocks = () => p.legs.length === 1 && p.legs[0].status === 'ok' && p.legs[0].result && p.legs[0].result.water && !p.legs[0].result.water.missing.length;
+  const leg = async (a, b) => { p.clear(); p.setMode('water'); p.addPoint(a); p.addPoint(b); for (let k = 0; k < 120 && !without(); k++) await wait(250); };
+  try {
+    polku.set({ activity: 'paddle' });
+    await wait(800);
+    p.setActive(true);
+    // offline: a retry routes nothing again; back online the legs are routed, and get the rocks
+    await leg([24.9585, 60.1540], [24.9800, 60.1480]);
+    if (!without() || !again.length) return [`(the test) the leg off Helsinki: ${p.legs[0] ? p.legs[0].status : 'none'}, ${again.length} retries caught`];
+    const n0 = routes;
+    Object.defineProperty(navigator, 'onLine', { get: () => false, configurable: true });
+    for (const fn of again.splice(0)) fn();
+    await wait(1500);
+    if (routes !== n0) errs.push(`offline, a retry routed the legs again (${routes - n0} times)`);
+    fail = false;
+    delete navigator.onLine;
+    dispatchEvent(new Event('online'));
+    for (let k = 0; k < 60 && !withRocks(); k++) await wait(250);
+    if (!withRocks()) errs.push(`back online, the leg isn't routed again with OSM's rocks: ${p.legs[0].status}, missing ${(p.legs[0].result && p.legs[0].result.water && p.legs[0].result.water.missing.join(', ')) || '?'}`);
+    // a retry while the leg is being routed (#905): off Kotka, tiles of their own
+    fail = true;
+    await leg([26.885, 60.385], [26.905, 60.395]);
+    if (!without() || !again.length) return [...errs, `(the test) the leg off Kotka: ${p.legs[0] ? p.legs[0].status : 'none'}, ${again.length} retries caught`];
+    fail = false;
+    let release;
+    hold = new Promise((r) => { release = r; });
+    p.retryWater({ ask: false }); // routed again, the failure still kept
+    for (let k = 0; k < 40 && !(p.legs[0] && p.legs[0].status === 'loading'); k++) await wait(50);
+    await wait(300); // its sources read, its water still being drawn
+    for (const fn of again.splice(0)) fn();
+    hold = null;
+    release();
+    for (let k = 0; k < 60 && !withRocks(); k++) await wait(250);
+    if (!withRocks()) errs.push(`a retry that came while the leg was being routed was lost (#905): ${p.legs[0].status}, missing ${(p.legs[0].result && p.legs[0].result.water && p.legs[0].result.water.missing.join(', ')) || '?'}`);
+    return errs;
+  } finally {
+    window.fetch = realFetch;
+    window.setTimeout = realTimeout;
+    maplibregl.Map = Map0;
+    delete navigator.onLine;
+    p.routeAll = ra;
+    p.clear();
+    polku.set({ activity: 'mtb' });
+    await wait(300);
+    await forget();
+  }
+})()"""
+
+
+def water_retry(chrome):
+    pg = chrome.page(1440, 900, False)
+    pg.open_app({'activity': 'mtb'}, {'polku:plannerDock': '"left"', 'polku:styles': json.dumps({'paddle': {'p': 'balanced', 'v': {'w': 'ignore'}}})}, '#13/60.152/24.97')
+    pg.js("import(location.origin + '/js/trails.js').then((T) => { T.holdFetches(); return true; })")
+    fails = pg.js(WATER_RETRY.replace('/*forget*/', WATER_FORGET), timeout=150000)
+    fails += [f'console: {e[:160]}' for e in pg.errors()]
+    pg.close()
+    print(f"{'ok  ' if not fails else 'FAIL'} a source's retry: none offline, one when back, and none lost while its leg is routed (#905)" + ''.join(f'\n     - {f}' for f in fails), flush=True)
     return not fails
 
 # what a water check forgets before and after (WATER_LATE, WATER_BACK)
@@ -25678,7 +25801,7 @@ GROUPS = [
     ('header', [header_fit, head_names], 'the planner header fitting its sheet; the route\'s name following the road names that come late with the map\'s tiles (the review of #1050)'),
     ('lipas', [lipas], 'LIPAS search and riding a LIPAS route (recorded answers), a place, coordinates or a trail from search gets its pin and card (#871, #875)'),
     ('marked', [marked], 'marked routes picked on the map (#308): a hand and the whole route lit under a mouse before a click, a tap 10 px beside the line lit while its card is open and one 30 px away not (recorded LIPAS, cut in two parts)'),
-    ('water', [water, water_depths, water_mml, water_rapids, water_late, water_back, water_long, water_hidden, water_offline, paddle_map, best_time_water], 'the paddling router\'s costs (recorded fairways, a fixed wind), lake depths from a recorded tile (#1184), MML\'s stones and rapids from recorded tiles (#153), OSM\'s rocks coming late, failing and coming back, Undo, a leg too long to ask for them (mocked), the hidden map\'s last tile failing (#129, #80, #490, #400), a new leg offline with the real service worker (#1195), and Paddle\'s map: a leg over water stands out from the sea, no hint about trails (#611, #613)'),
+    ('water', [water, water_depths, water_mml, water_rapids, water_late, water_back, water_retry, water_long, water_hidden, water_offline, paddle_map, best_time_water], 'the paddling router\'s costs (recorded fairways, a fixed wind), lake depths from a recorded tile (#1184), MML\'s stones and rapids from recorded tiles (#153), OSM\'s rocks coming late, failing and coming back, Undo, a retry offline and one during routing, a leg too long to ask for them (mocked), the hidden map\'s last tile failing (#129, #80, #490, #400), a new leg offline with the real service worker (#1195), and Paddle\'s map: a leg over water stands out from the sea, no hint about trails (#611, #613)'),
     ('multi', [multi], 'multisport: a sport per leg, changeovers, share links, Reorder (straight legs)'),
     ('editing', [editing], 'midpoint handle and line drags: one via point, Undo/Redo, mouse and touch in four sports'),
     ('routemenu', [route_menu, quick_taps], 'clicks and taps on the route (straight legs), LIPAS over trails, and quick taps on a busy page (#293)'),

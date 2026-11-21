@@ -6,7 +6,7 @@ What's new in [Polku](https://polku.si), from the latest updates back to the fir
 
 ### Rapids on river routes ([#153](https://github.com/TommiContursi/Polku/issues/153))
 
-- A paddling or swimming route on a river stays on it through rapids, and Check's **Warnings** say where, with their length. How hard they are isn't known, so look at them from the shore first. **Avoid it** on the warning carries the route round them on land.
+- A paddling or swimming route on a river stays on it through rapids, and Check's **Warnings** say where, with their length. How hard they are isn't known, so look at them from the shore first. **Avoid it** on the warning carries the route round them on land; on a wide river it may only move the route across the river, and the warning stays.
 - **What Polku looked at** has a row for rapids. They come from the National Land Survey's map in Finland and from OpenStreetMap everywhere. **Not every rapid is on a map, and a restored stream can be rapids no kayak can take: water routes are for planning, not navigation.**
 
 ### Stones and shoals on paddling routes ([#153](https://github.com/TommiContursi/Polku/issues/153))

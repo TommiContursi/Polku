@@ -265,7 +265,9 @@ export class Planner {
     map.on('zoom', () => this.fitGhosts());
     map.on('zoomend', () => this.drawHeads()); // (Check's markers kept clear of the points and the legs' handles)
     // a source the water router waited for in vain has answered: route those legs again
-    onWaterData(() => this.retryWater({ ask: false }));
+    // (offline, a source's retry would only fail again: it's asked once the connection is back, #153)
+    onWaterData(() => { if (navigator.onLine) this.retryWater({ ask: false }); });
+    addEventListener('online', () => this.retryWater());
     // back online: the terrain that didn't load, now
     addEventListener('online', () => { if (this.analysis && this.analysis.terrain && this.analysis.terrain.retry) this.retryTerrain(this.analysis, 0, true); });
     // names of roads come with the tiles: when new ones arrive, the list may know more
@@ -7065,7 +7067,7 @@ export class Planner {
       const lost = ['OpenStreetMap', 'the National Land Survey'].find((m) => missing(m) || skipped(m));
       for (const [what, k] of [['Rocks and shoals', 'hazards'], ['Rapids', 'rapids']]) {
         if (!asked(k)) row(what, 'not used for this route', 'na');
-        else if (lost) row(what, missing(lost) ? `${lost} didn’t answer` : 'not checked: a leg too long to ask for', 'bad');
+        else if (lost) row(what, missing(lost) ? `${lost} didn’t answer` : `${lost}: not checked, a leg too long to ask for`, 'bad');
         // (25 m for the shores' edge cells, at most half the water, as the lake depths)
         else if (wetM > 0 && gotM >= wetM - Math.min(25, wetM / 2)) row(what, 'the National Land Survey and OpenStreetMap', 'ok');
         else if (gotM < 25) row(what, 'OpenStreetMap', 'ok'); // outside Finland
@@ -7418,11 +7420,11 @@ export class Planner {
         : w.avoid ? [{ ...w.avoid, label: w.text }]
           : w.avoidAlong ? []
           : w.noAvoid || /^(Straight line|Carry)/.test(w.text) || w.ranges === null ? null : [{ ll: a.pts[Math.round((i0 + i1) / 2)], r: Math.max(25, Math.min(150, (w.len || 50) / 2 + 15)), label: w.text }];
-      // a rapid: places to avoid 30 m round every 40 m all along it, so the route carries round (#153)
+      // a rapid: places to avoid 40 m round every 40 m all along it, as wide as its zone, so the route carries round (#153)
       if (w.avoidAlong) {
         for (let d = w.at, k = Math.max(0, i0 - 1); ; d = Math.min(w.at + w.len, d + 40)) {
           while (k < a.along.length - 2 && a.along[k + 1] < d) k++;
-          avoid.push({ ll: lerp(a.pts[k], a.pts[k + 1], Math.min(1, Math.max(0, (d - a.along[k]) / (a.along[k + 1] - a.along[k] || 1)))), r: 30, label: w.text });
+          avoid.push({ ll: lerp(a.pts[k], a.pts[k + 1], Math.min(1, Math.max(0, (d - a.along[k]) / (a.along[k + 1] - a.along[k] || 1)))), r: 40, label: w.text });
           if (d >= w.at + w.len) break;
         }
       }

@@ -48,7 +48,7 @@ function waterStyle() {
 // the edges of reefs, shoals and stone fields
 const CLEAR = { danger: 45, cardinal: 55, shift: 35, point: 25, above: 15, edge: 15 };
 const SHALLOW_M = 20; // round a sounding under 0.5 m (#1184)
-const RAPIDS_M = 25; // either side of a rapid's line: MML's and OSM's lines and the river's lie apart (#153)
+const RAPIDS_M = 40; // either side of a rapid's line: MML's and OSM's lines and the river's lie apart, on a wide river tens of metres (#153)
 const EMPTY_FC = { type: 'FeatureCollection', features: [] };
 const OFFLINE = 'Routing over water needs a connection.';
 

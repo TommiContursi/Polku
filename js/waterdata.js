@@ -84,7 +84,8 @@ way["waterway"="rapids"](${bb});
     return { points, areas };
   };
   const p = hostedTile(OSM_DATA_MANIFEST, 'hazards', HZ, [x, y],
-    () => cachedOverpass(`waterhaz/${HZ}/${id}`, q, slim, { race: true, oneRound: true, timeoutMs: 15000 }), { slim });
+    // (`2/`: answers kept from before the rapids were asked for have none, #153)
+    () => cachedOverpass(`waterhaz/2/${HZ}/${id}`, q, slim, { race: true, oneRound: true, timeoutMs: 15000 }), { slim });
   p.catch(() => { failedHaz.add(id); setTimeout(() => { if (hazTiles.get(id) === p) { hazTiles.delete(id); lateArrived(); } failedHaz.delete(id); }, AGAIN_MS); }); // ask again in a couple of minutes
   hazTiles.set(id, p);
   return p;
