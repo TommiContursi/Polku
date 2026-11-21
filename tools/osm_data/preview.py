@@ -105,12 +105,18 @@ class Preview(SimpleHTTPRequestHandler):
             self.remaining -= len(chunk)
 
 
+class Server(ThreadingHTTPServer):
+    # As serve.py's (#409): macOS resets connections over Python's default queue of 5, so a page's burst of module
+    # requests lost one and the app never started, and measure_browser.py failed at opening it
+    request_queue_size = 128
+
+
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--release', type=Path, required=True)
     parser.add_argument('--port', type=int, default=8796)
     args = parser.parse_args()
     handler = partial(Preview, release=args.release.resolve(strict=True))
-    with ThreadingHTTPServer(('127.0.0.1', args.port), handler) as server:
+    with Server(('127.0.0.1', args.port), handler) as server:
         print(f'Polku preview: http://127.0.0.1:{server.server_port}/', flush=True)
         server.serve_forever()
