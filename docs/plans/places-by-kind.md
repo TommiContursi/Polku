@@ -32,7 +32,7 @@ choice goes into #121's Decided list.
    your choice differs from the sport's. The quick drawer gets a tile per
    group, which works as the Depths tile does: off turns the group's kinds
    off, on brings back the ones you had. *Cost:* medium; no new control.
-   The full panel is long (24 switches), as All layers is meant to hold
+   The full panel is long (31 switches), as All layers is meant to hold
    everything. *Instead* (B): a switch per group, with its kinds opening
    in place under it. Seven rows, but a group's switch that is on while
    only some of its kinds are is a new kind of control, proposed here
@@ -79,6 +79,11 @@ Help**, where people look for them when something is wrong.
 - **The map's tiles checked** on 2026-11-21: OpenFreeMap's `poi` layer at
   Helsinki's centre and Nuuksio (zoom 14), to know what the map can fall
   back on beyond Polku's own data (the table's last column).
+- **The mock-up checked** at 390 × 844, at 200 % (195 px) and 1440 × 900,
+  light and dark, with long Finnish words: at 200 % a long kind's name
+  takes up to three lines beside its mark, breaking at its soft hyphens
+  as the app's labels do (so the build's labels carry them), and nothing
+  overflows.
 - **Waiting for #1179's points** (part 3 of the MML package under #1171,
   being built): the table's first part moves them in after it merges.
 
