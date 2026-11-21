@@ -4,7 +4,7 @@
 // Infrastructure Agency (Väylävirasto) open WFS, plus faults in aids to
 // navigation from Digitraffic Marine. Sea areas and lakes alike.
 
-import { lonLatToTile, tileBounds } from './geo.js';
+import { lonLatToTile, tileBounds, finlandInView } from './geo.js';
 import { request } from './net.js';
 
 const WFS = 'https://avoinapi.vaylapilvi.fi/vaylatiedot/ows?service=WFS&version=2.0.0&request=GetFeature&outputFormat=application/json&srsName=EPSG:4326';
@@ -132,9 +132,8 @@ export class NauticalLayer {
   update() {
     this.view = new Set(); // the tiles in view
     if (!this.on || this.map.getZoom() < 10.5) return;
-    const c = this.map.getCenter();
-    if (!(c.lng > 19 && c.lng < 32 && c.lat > 59.3 && c.lat < 70.3)) return;
     const b = this.map.getBounds();
+    if (!finlandInView([b.getWest(), b.getSouth(), b.getEast(), b.getNorth()])) return;
     const [x0, y0] = lonLatToTile(b.getWest(), b.getNorth(), Z).map(Math.floor);
     const [x1, y1] = lonLatToTile(b.getEast(), b.getSouth(), Z).map(Math.floor);
     if ((x1 - x0 + 1) * (y1 - y0 + 1) > 6) return;

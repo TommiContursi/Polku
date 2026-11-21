@@ -442,9 +442,9 @@ export function buildStyle(s, ctx) {
     const color = dark ? '#fdba74' : '#c2410c', op = s.overlayOpacity && s.overlayOpacity.propertyLines != null ? s.overlayOpacity.propertyLines : 0.9;
     sources['ov-propertyLines'] = { type: 'vector', tiles: [`${MML_PROPERTY_TILES}?api-key=${encodeURIComponent(mmlKey)}`], promoteId: { PalstanSijaintitiedot: 'id' }, minzoom: 14, maxzoom: 14, bounds: FINLAND_BOUNDS, attribution: '© Maanmittauslaitos, kiinteistörekisteri, CC BY 4.0' };
     // a plot under the pointer, or picked with its card open, tinted (#1148): by feature state, so its pieces in every tile;
-    // otherwise clear, there for a tap to find
+    // otherwise clear, there for a tap to find; with Property details off, not there at all (#1199)
     const plot = (k) => ['boolean', ['feature-state', k], false];
-    add({ id: 'property-plot', type: 'fill', source: 'ov-propertyLines', 'source-layer': 'PalstanSijaintitiedot', minzoom: 14, paint: { 'fill-color': color, 'fill-opacity': ['case', plot('lit'), 0.24, plot('hover'), 0.12, 0] } });
+    if (s.plotSelect) add({ id: 'property-plot', type: 'fill', source: 'ov-propertyLines', 'source-layer': 'PalstanSijaintitiedot', minzoom: 14, paint: { 'fill-color': color, 'fill-opacity': ['case', plot('lit'), 0.24, plot('hover'), 0.12, 0] } });
     add({ id: 'property-line', type: 'line', source: 'ov-propertyLines', 'source-layer': 'KiinteistorajanSijaintitiedot', minzoom: 14, paint: { 'line-color': color, 'line-width': zi(14, 0.8, 17, 1.6, 19, 2.5), 'line-opacity': op } });
     add({ id: 'property-id', type: 'symbol', source: 'ov-propertyLines', 'source-layer': 'KiinteistotunnuksenSijaintitiedot', minzoom: 16,
       layout: { 'text-field': ['get', 'kiinteistotunnuksenEsitysmuoto'], 'text-font': FONT, 'text-size': 11, 'text-optional': true },

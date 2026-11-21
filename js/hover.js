@@ -7,7 +7,7 @@
 
 import { DIFF_COLORS, MTB_COLORS, MTB_SCALE_TEXT, mtbClass, UPHILL_TEXT, LIPAS_TYPES } from './config.js';
 import { WINTER_TEXT } from './winter.js';
-import { inspectLayers, pickFeature, hitBox, winterAt, WAY_NAMES, MARK_TYPE, SECTOR_NAME } from './inspect.js';
+import { inspectLayers, pickFeature, hitBox, featuresAt, winterAt, WAY_NAMES, MARK_TYPE, SECTOR_NAME, mmlTerrain } from './inspect.js';
 import { NAV_TEXT } from './nautical.js';
 import { aadtColor, fmtAadt } from './safety.js';
 import { gradeHere } from './uphill.js';
@@ -41,7 +41,6 @@ export function initHover(map, app) {
   let route = false; // showing the planner's route readout
   let current = null; // what the tooltip shows
 
-  const plots = () => !app.plotHover || app.plotHover(); // Property boundaries' Plot under the pointer (#1148)
   let glowing = false; // a leg of your route glows brighter because the pointer rests on it
   let drawn = false; // the way under the pointer drawn on the map (#574)
   const hide = () => {
@@ -70,10 +69,10 @@ export function initHover(map, app) {
     if (enrich) detailTimer = 0; else timer = 0;
     if (!at || !app.enabled() || map.isMoving() || map.getContainer().querySelector('.polku-popup')) return;
     const planning = app.isPlanning();
-    const layers = inspectLayers(map).filter((id) => id !== 'water' && !id.endsWith('-halo') && !id.startsWith('road-tunnel') && (id !== 'property-plot' || plots()));
+    const layers = inspectLayers(map).filter((id) => id !== 'water' && !id.endsWith('-halo') && !id.startsWith('road-tunnel'));
     if (planning) layers.push(...['route-casing', 'nogo-fill', ...ALT_LAYERS].filter((id) => map.getLayer(id)));
     const [x, y] = at;
-    const feats = map.queryRenderedFeatures([[x - RADIUS, y - RADIUS], [x + RADIUS, y + RADIUS]], { layers });
+    const feats = featuresAt(map, { x, y }, [[x - RADIUS, y - RADIUS], [x + RADIUS, y + RADIUS]], layers);
     let d = null;
     const onRoute = !planning && map.getLayer('route-casing') && map.queryRenderedFeatures([[x - RADIUS, y - RADIUS], [x + RADIUS, y + RADIUS]], { layers: ['route-casing'] }).find((f) => f.properties.kind !== 'gap');
     if (onRoute) {
@@ -129,8 +128,8 @@ export function initHover(map, app) {
     if (!at || app.isDrawing()) { pointer = false; light(null); return; }
     // what a click picks first is what's lit: your route's line, an alternative route (#1029) and a place's icon win over
     // a LIPAS route (inspect.js)
-    const layers = [...inspectLayers(map).filter((id) => id !== 'property-plot' || plots()), ...['route-casing', 'heads-icon', 'heads-on-icon', ...ALT_LAYERS].filter((id) => map.getLayer(id))];
-    const feats = map.queryRenderedFeatures(hitBox({ x: at[0], y: at[1] }, false), { layers });
+    const layers = [...inspectLayers(map), ...['route-casing', 'heads-icon', 'heads-on-icon', ...ALT_LAYERS].filter((id) => map.getLayer(id))];
+    const feats = featuresAt(map, { x: at[0], y: at[1] }, hitBox({ x: at[0], y: at[1] }, false), layers);
     const hit = feats.some((f) => f.layer.id !== 'route-casing' || f.properties.kind !== 'gap');
     pointer = hit; canvas.style.cursor = hit ? 'pointer' : '';
     const top = pickFeature(feats), ours = feats.some((f) => (f.layer.id === 'route-casing' && f.properties.kind === 'leg') || (ALT_LAYERS.includes(f.layer.id) && !f.properties.route));
@@ -221,6 +220,7 @@ export function describe(f, feats, ctx) {
   }
   if (id === 'military-fill') return { title: 'Military area', bits: ['May be closed or have live firing'] };
   if (id === 'property-plot') return { title: `Property ${p.kiinteistotunnuksenEsitysmuoto}`, bits: ['National Land Survey'] };
+  if (id.startsWith('mml-')) { const t = mmlTerrain(f); return { title: t.title, bits: [t.line, t.survey && `Survey class: ${t.survey.toLowerCase()}`].filter(Boolean) }; }
   if (id === 'lipas-point') return { title: p.name || p.typeName || 'Place', bits: [e(p.typeName || ''), e(p.city || '')].filter(Boolean) };
   if (id === 'lipas-route') {
     const t = LIPAS_TYPES[p.type] || {};

@@ -12,7 +12,40 @@ What's new in [Polku](https://polku.si), from the latest updates back to the fir
 - Offline and in **Preview offline**, the message that the National Land Survey's terrain didn't load no longer comes up. The map always reaches past a saved area, and the offline message already says that only saved areas have the detailed map.
 - Outside Finland nothing changes: the map is OpenStreetMap's there, online and offline.
 
+### One switch for property details ([#1199](https://github.com/TommiContursi/Polku/issues/1199))
+
+- A switch of its own, **Property details**, under **Property boundaries** in **Layers → More → Terrain**, turns off both the plot tinted and named under the mouse pointer and the plot's card on a click or a tap. It's there on phones too. Turning it off closes a plot's card if one is open. With it off, a click or a tap on a plot opens what's under it, such as a park or the water, or nothing, and a long press opens the spot's card, as without the layer. The boundaries and property IDs stay on the map.
+
+### Names from the map's data are shown as text, and odd share links and files can't stop Polku ([#1247](https://github.com/TommiContursi/Polku/issues/1247), [#1246](https://github.com/TommiContursi/Polku/issues/1246))
+
+- A tap or a hold on the map shows the name of a LIPAS route, a winter way or a Fintraffic road camera or road-conditions point exactly as its source wrote it. Before, a name that contained HTML could run as a script in Polku.
+- A share link with a point beyond the poles or the date line opens no route, as any link Polku can't read, instead of stopping Polku as it starts.
+- A GPX or KML file leaves out points beyond the poles or the date line, as it leaves out points without coordinates, so **Analyse & edit** works on the rest.
+
+### The sport pill's name on phones ([#1214](https://github.com/TommiContursi/Polku/issues/1214))
+
+- On a phone, where the sport pill shows only its icon, a screen reader names it by its sport again, as on a desktop.
+
+### A tap on the National Land Survey's terrain says what it is ([#1175](https://github.com/TommiContursi/Polku/issues/1175))
+
+- In Finland, a tap or a click on the National Land Survey's bogs, paludified land, overgrowing water, rock, boulder fields, stones, cliffs, reeds, power lines and pylons opens a card that names what it is, and so does a tap on its stones, shoals, stone fields and rapids in the water. On a desktop, resting the pointer on one says the same.
+- A bog's card has its survey class, easier or hard to cross, from zoom 13. Further out, the National Land Survey's map data has the class only roughly, and the card says to zoom in. **The survey class is not a promise about the ground today:** bogs are classed from aerial photos and surveyed again every 5–10 years.
+- A bog, paludified land, overgrowing water or rock is picked only right under your finger, not beside it, and only where the map shows it, not under a lake, a town or a house. It's picked before a park it lies in. The water, and a property's plot with **Property boundaries** on, still come first, but overgrowing water and shoals, drawn over a lake, come before the lake, and so do reeds and stones in it. Holding the map opens the spot's card, as before.
+- A tap on the National Land Survey's water where OpenStreetMap has none, such as a marsh it cuts out of a lake or a small pond in a bog, opens the water's card, with its depth and **Paddle from here**. Its name is what OpenStreetMap has around it, such as a national park.
+
 ## 2026-11-20
+
+### Layers say where they have data ([#1200](https://github.com/TommiContursi/Polku/issues/1200))
+
+- About half of the layers come from Finnish sources: the National Land Survey's maps and property boundaries, LIPAS's routes and places, Väylävirasto's and Traficom's nautical marks, depths and shipping lanes, and Fintraffic's and Digiroad's road layers. Where none of Finland is in view, their tiles and their switches in Layers now say **Finland only**, instead of looking like layers with nothing to show.
+- **Ships** say **Northern Baltic only** beyond the reach of Finland's AIS stations, which also see the Gulf of Finland, the Åland Sea and the Gulf of Bothnia. **Sea ice** says **Baltic Sea only** beyond the Baltic.
+- There, a sport's layers from those sources aren't counted as on in **On now** or in the count on **More**. Their switches stay on, so the layers show again when the map is back in their area. A view that reaches into Finland counts as in it.
+- **Marked routes** on the first screen asks you to zoom in on Finland where none of it is in view, instead of saying there are no marked routes in view.
+
+### A new leg on the water offline ([#1195](https://github.com/TommiContursi/Polku/issues/1195))
+
+- Without a connection, a new leg over water where the map's detail isn't on your device is drawn as a straight line at once, and Polku says routing over water needs a connection. Before, it could be routed on Finland's coarse map, whose lakes have no islands, and look like a finished route. Where the detail is on your device, as along a route saved with **Save offline**, the leg can still be routed. Once you're back online, **Retry** in Check routes it.
+- While a leg on the water is still being routed, **What Polku looked at** no longer counts it as water Syke didn't survey ([#1196](https://github.com/TommiContursi/Polku/issues/1196)).
 
 ### Heath, clear-cuts and open ground ([#1169](https://github.com/TommiContursi/Polku/issues/1169))
 
@@ -90,7 +123,7 @@ What's new in [Polku](https://polku.si), from the latest updates back to the fir
 ### Property boundaries ([#1148](https://github.com/TommiContursi/Polku/issues/1148))
 
 - **Property boundaries**, a new switch under **Layers → More → Terrain** (or a tile of your own), draws the National Land Survey's property boundaries in Finland in orange from zoom 14, and each property's ID from zoom 16, so you can see whose land you're on. **Opacity** under its switch makes them fainter. It's off at first in every sport. The boundaries come from the National Land Survey with Polku's API key, or with your own if you have added one in Settings. They aren't saved in offline areas, and the tile says **No data now** when they don't load.
-- With **Property boundaries** on, the plot under the mouse pointer is tinted and named (**Plot under the pointer**, under its switch, turns that off), and a click or tap on a plot opens its card with the property's ID and tints the plot until the card closes. Roads, paths and the water keep their own cards where they are.
+- With **Property boundaries** on, the plot under the mouse pointer is tinted and named, and a click or tap on a plot opens its card with the property's ID and tints the plot until the card closes. Roads, paths and the water keep their own cards where they are.
 
 ### Reedbeds on the map ([#1144](https://github.com/TommiContursi/Polku/issues/1144))
 

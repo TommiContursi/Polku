@@ -10,7 +10,7 @@ import { detailsAlong, forgetFailures as forgetTrailFailures, obstacleText } fro
 import { iconUrl, warnMarkId } from './icons.js';
 import { speedsFor, speedSummary, renderSpeedEditor, pace, pace100 } from './speeds.js';
 import { ProfileChart, COLOR_MODES, COLOR_GROUPS, PICK_MODES, colorAt, routeReadout, breakdownKey, breakdownRows, sampleRows, skyIcon, noTerrain, downClass } from './chart.js';
-import { dist, encodePolyline, decodePolyline, fmtDist, fmtDuration, compass, bbox, nearestOnLine, simplify, lineLength, pointSegment, bearing } from './geo.js';
+import { dist, encodePolyline, decodePolyline, onEarth, fmtDist, fmtDuration, compass, bbox, nearestOnLine, simplify, lineLength, pointSegment, bearing, inFinland, finlandInView } from './geo.js';
 import { lipasPlace, stitch, clipAlong } from './lipas.js';
 import { onWaterData, prefetchWater, forgetWaterFailures } from './waterdata.js';
 import { sunTimes, darkness, nightAt, sunPosition } from './sun.js';
@@ -34,7 +34,6 @@ import { FIX_THE_MAP } from './valhalla.js';
 import { initNames } from './names.js';
 import { STYLES, routerOf, valuesOf, styleName, defaultStyle, encodeStyle, decodeStyle, hasWet, isCustom, keepOff, shortCuts } from './styles.js';
 import { swipeSheet, SWIPE, dvh } from './sheet.js';
-import { inFinland } from './safety.js';
 
 const EMPTY = { type: 'FeatureCollection', features: [] };
 const MODE_LABEL = { auto: 'Follow paths', line: 'Freehand', water: 'Over water' };
@@ -4114,17 +4113,19 @@ export class Planner {
     const ll = Array.isArray(lngLat) ? lngLat : [+lngLat.lng.toFixed(6), +lngLat.lat.toFixed(6)], p = pt || this.map.project(ll);
     place = place || this.placeAt(p, touch);
     if (place) { this.openPlaceCard(place, ll, { from, pin }); return; }
-    const feats = this.map.queryRenderedFeatures(hitBox(p, touch), { layers: inspectLayers(this.map) });
+    // (MML's terrain is named by a tap: a hold's card stays the spot's, whose words OpenStreetMap's answer replaces, #1175)
+    const feats = this.map.queryRenderedFeatures(hitBox(p, touch), { layers: inspectLayers(this.map).filter((id) => !id.startsWith('mml-')) });
     const route = feats.find((x) => x.layer.id === 'lipas-route');
     const f = pickFeature(feats), way = feats.find((x) => /^(path|track|cycleway|road)-/.test(x.layer.id)), bike = groupOf(this.app.activity()) === 'bike';
     const d = f && describe(f, feats, { ll, bike, mtb: this.app.activity() === 'mtb' });
-    const text = (html) => { const e = document.createElement('span'); e.innerHTML = html; return e.textContent; };
+    // the hover's bits are HTML, its title text (hover.js): a bit's words, read in a document of its own, which loads and runs nothing (#1247)
+    const text = (html) => new DOMParser().parseFromString(html, 'text/html').body.textContent;
     // (the water or a park the map draws there: what OpenStreetMap says it is, where no way is in reach; the line waits for the ways)
     const area = areaUnder(this.map, p);
     // (the tile joins ways of one kind into one feature: the line of them nearest the tap, drawn while the ways come)
     const lines = feats.filter((x) => /^(path|track|cycleway|road)-/.test(x.layer.id)).flatMap((x) => (x.geometry.type === 'LineString' ? [x.geometry.coordinates] : x.geometry.type === 'MultiLineString' ? x.geometry.coordinates : []));
     const near = lines.map((c) => [nearestOnLine(ll, c).d, c]).sort((a, b) => a[0] - b[0])[0];
-    const card = spotCard(this, { ll, pin, geom: near && { type: 'LineString', coordinates: near[1] }, title: d ? text(d.title) : area === 'water' ? 'Water' : name || 'This spot', line: d ? d.bits.filter((b) => !b.startsWith('<i class="dot"')).map(text).join(', ') : '',
+    const card = spotCard(this, { ll, pin, geom: near && { type: 'LineString', coordinates: near[1] }, title: d ? d.title : area === 'water' ? 'Water' : name || 'This spot', line: d ? d.bits.filter((b) => !b.startsWith('<i class="dot"')).map(text).join(', ') : '',
       tags: way ? tileTags(way.properties) : {}, way: !!way, osm: way && way.properties.osm ? { type: 'way', id: way.properties.osm } : way ? { type: 'way', id: null } : null,
       partOf: route && route.properties.name ? { props: route.properties, ll } : null, touch, area });
     this.openCard(card, ll, from);
@@ -4150,10 +4151,11 @@ export class Planner {
     this.drawThing(f);
   }
   drawThing(f) {
-    // (a property's plot is tinted by its id instead: an outline of its piece in one tile would cut it at the tile's edge)
-    const plot = f && f.layer.id === 'property-plot';
+    // (a property's plot is tinted by its id instead: an outline of its piece in one tile would cut it at the tile's edge;
+    // MML's terrain has no ids, so its lines and areas have only the card's pin, #1175)
+    const plot = f && f.layer.id === 'property-plot', piece = f && /^mml-/.test(f.layer.id) && f.geometry.type !== 'Point';
     if (this.app.lightPlot) this.app.lightPlot('lit', plot ? f.id : null);
-    const g = !plot && f && f.geometry, fc = (geometry, properties = {}) => ({ type: 'FeatureCollection', features: [{ type: 'Feature', properties, geometry }] });
+    const g = !plot && !piece && f && f.geometry, fc = (geometry, properties = {}) => ({ type: 'FeatureCollection', features: [{ type: 'Feature', properties, geometry }] });
     const line = g && /LineString/.test(g.type), area = g && /Polygon/.test(g.type);
     this.app.setData('pick', line ? fc(g, { color: '#f59e0b' }) : EMPTY);
     this.app.setData('pickSide', EMPTY);
@@ -5238,8 +5240,7 @@ export class Planner {
     const M = this.marked, sp = this.app.activity(), types = markedFor(sp);
     const gen = (M.gen = (M.gen || 0) + 1);
     if (!types.length) { M.list = []; M.state = 'none'; this.showMarked(); this.renderStart(); return; }
-    const c = this.map.getCenter();
-    const fin = c.lng > 19 && c.lng < 32 && c.lat > 59.4 && c.lat < 70.2;
+    const b = this.map.getBounds(), fin = finlandInView([b.getWest(), b.getSouth(), b.getEast(), b.getNorth()]);
     if (this.map.getZoom() < 8 || !fin || !this.app.lipasRoutesIn) { M.list = []; M.state = 'far'; this.showMarked(); this.renderStart(); return; }
     M.state = 'loading';
     this.renderStart();
@@ -7061,8 +7062,9 @@ export class Planner {
     row('Daylight', sun.set ? `sunset ${clock(sun.set * 1000)}` : sun.day === 'polar-day' ? 'the sun doesn’t set' : 'the sun doesn’t rise', 'ok');
     if (water) {
       // Syke's lake depths (#1184): how much of the route's water it surveyed; none of the sea
-      // legs on the water the router didn't draw (freehand, imported) count as water not surveyed; a swim's don't count
-      const free = this.legs.reduce((t, l, i) => t + (onWater(l, i) && this.legSport(i) !== 'swim' && !(l.mode === 'water' && l.result && l.result.water) ? this.lengthTo(i + 1) - this.lengthTo(i) : 0), 0);
+      // legs on the water the router didn't draw (freehand, imported, or a straight stand-in) count as water not surveyed;
+      // a swim's don't count, nor a leg still routing (#1196)
+      const free = this.legs.reduce((t, l, i) => t + (onWater(l, i) && this.legSport(i) !== 'swim' && l.result && !(l.mode === 'water' && l.result.water) ? this.lengthTo(i + 1) - this.lengthTo(i) : 0), 0);
       const dep = wr.filter((w) => w.depth), wet = dep.reduce((t, w) => t + w.depth.water, free), got = dep.reduce((t, w) => t + w.depth.surveyed, 0);
       if (!asked('depths')) row('Lake depths', 'not used for this route', 'na');
       else if (missing('Syke') || skipped('Syke')) row('Lake depths', missing('Syke') ? 'didn’t load' : 'not checked: a leg too long to ask for', 'bad');
@@ -8434,7 +8436,7 @@ export function parseShared(params) {
   if (!r) return null;
   try {
     const points = decodePolyline(r);
-    if (points.length < 1) return null;
+    if (points.length < 1 || !points.every(onEarth)) return null; // (a point off the earth: no route, not a Polku that stops)
     const lipas = (params.get('lr') || '').split(',').map((x) => {
       const m = x.match(/^(\d+):(\d+)\.(\d+)\.([\w-]+)\.(\d+)\.(\d+)$/);
       return m && { i: +m[1], t: +m[2], id: +m[3], seq: m[4], a: +m[5], b: +m[6] };

@@ -543,9 +543,10 @@ export async function lipasViewport() {
   L.showRoutes = true; L.routeTypes = [4401];
   L.fetchTile = async (type, x, y) => [{ type: 'Feature', id: `${type}/${x}/${y}`, properties: { type }, geometry: { type: 'LineString', coordinates: [] } }];
   for (let i = 0; i < 100; i++) { lon = 20 + i % 10; lat = 60 + Math.floor(i / 10); L.update(); await c.settle(); }
+  lon = 25; lat = 62; L.update(); await c.settle(); // (ending in Finland: the walk's last view, 29° E 69° N, is Russia's, #1200)
   await c.advance(100);
   assert(L.tiles.size <= 64, `LIPAS retained ${L.tiles.size} tiles after panning`);
-  assert(last.length <= 9, `LIPAS redraw included ${last.length} accumulated tiles`);
+  assert(last.length && last.length <= 9, `LIPAS redraw included ${last.length} accumulated tiles`);
   const before = calls; L.update(); L.publish(); L.publish(); await c.advance(100);
   assert(calls === before, `an unchanged LIPAS view redrew ${calls - before} times`);
   return { retained: L.tiles.size, published: last.length, redundantRedraws: calls - before };
