@@ -1248,6 +1248,8 @@ def town_gates(chrome):
         const c=polku.planner.cards.current, ok=c&&c.kind==='place'; polku.planner.cards.close(); return ok;};
       // (a fallen tree, a gate and a locked gate within 250 m)
       m.jumpTo({center:[25.7652,62.2289],zoom:15.5}); await settle();
+      // the seeded tile drawn, 10 s at most more: in a long group run it can come after the map is idle (#1205)
+      for(let t=0;t<40&&!drawn().some((f)=>f.properties.kind==='tree');t++)await wait(250);
       if(!drawn().some((f)=>f.properties.kind==='tree'))errs.push('15.5: no fallen tree');
       if(gates().length)errs.push(`15.5: ${gates().length} gates drawn`);
       m.jumpTo({center:[25.75467,62.238343],zoom:16.5}); await settle();
@@ -1312,6 +1314,42 @@ def town_bridges(chrome):
     fails += [f'console: {e[:160]}' for e in pg.errors()]
     pg.close()
     print(f"{'ok  ' if not fails else 'FAIL'} bridges' edges and decks, footways and paths in tunnels at half (#1218)" + ''.join(f'\n     - {f}' for f in fails), flush=True)
+    return not fails
+
+
+# #1217: one-way arrows from zoom 16, on the Trail and Night maps in Helsinki's centre: the water's flow arrow in the arrows'
+# grey (blue on cycle paths), turned round on oneway -1, none on two-way streets, parking aisles or driveways; under the
+# labels, so names win; drawn on the centre's one-way streets and cycle paths at 16.5, none at 15.5.
+def town_oneway(chrome):
+    pg = chrome.page(1440, 900, False)
+    pg.open_app({'activity': 'mtb', 'base': 'trail'}, None, '#16.5/60.1665/24.9445')
+    fails = pg.js("""(async () => {
+      const errs=[], m=polku.map, wait=(ms)=>new Promise((r)=>setTimeout(r,ms));
+      const settle=async()=>{await wait(800);await Promise.race([new Promise(r=>{m.once('idle',r);m.triggerRepaint();}),wait(10000)]);await wait(300);};
+      const takes=(id,props)=>m.style.getLayer(id)._featureFilter.filter({zoom:17},{type:2,properties:props});
+      const turn=(props)=>m.style.getLayer('road-oneway').layout.get('icon-rotate').evaluate({type:2,properties:props},{});
+      for(const [base,grey,blue,halo] of [['trail','6b6458','1f2fa0','ffffff'],['night','aaa498','a9c4ea','0f1215']]) {
+        polku.set({base}); await settle();
+        const order=m.getLayersOrder();
+        if(!m.getLayer('road-oneway')||!m.getLayer('cycleway-oneway')){errs.push(`${base}: no one-way arrows`);continue;}
+        if(m.getLayoutProperty('road-oneway','icon-image')!==`flow-${grey}-${halo}`||m.getLayoutProperty('cycleway-oneway','icon-image')!==`flow-${blue}-${halo}`)
+          errs.push(`${base}: arrows ${m.getLayoutProperty('road-oneway','icon-image')} and ${m.getLayoutProperty('cycleway-oneway','icon-image')}`);
+        if(m.getLayer('road-oneway').minzoom!==16)errs.push(`${base}: arrows from ${m.getLayer('road-oneway').minzoom}`);
+        if(order.indexOf('road-oneway')>order.findIndex((id)=>id.startsWith('label-')))errs.push(`${base}: arrows over the labels`);
+        if(!takes('road-oneway',{class:'minor',oneway:1})||!takes('road-oneway',{class:'minor',oneway:-1}))errs.push(`${base}: no arrow on a one-way street`);
+        for(const p of [{class:'minor'},{class:'minor',oneway:0},{class:'service',service:'parking_aisle',oneway:1},{class:'service',service:'driveway',oneway:1},{class:'path',subclass:'cycleway',oneway:1}])
+          if(takes('road-oneway',p))errs.push(`${base}: a street's arrow on ${JSON.stringify(p)}`);
+        if(!takes('cycleway-oneway',{class:'path',subclass:'cycleway',oneway:1})||takes('cycleway-oneway',{class:'path',subclass:'cycleway'}))errs.push(`${base}: cycle paths' arrows`);
+        if(turn({oneway:1})!==0||turn({oneway:-1})!==180)errs.push(`${base}: arrows turned ${turn({oneway:1})} and ${turn({oneway:-1})}`);
+        if(!m.queryRenderedFeatures({layers:['road-oneway']}).length||!m.queryRenderedFeatures({layers:['cycleway-oneway']}).length)errs.push(`${base}: no arrows drawn at 16.5`);
+      }
+      polku.set({base:'trail'}); m.jumpTo({center:m.getCenter(),zoom:15.5}); await settle();
+      if(m.queryRenderedFeatures({layers:['road-oneway','cycleway-oneway']}).length)errs.push('arrows drawn at 15.5');
+      return errs;
+    })()""")
+    fails += [f'console: {e[:160]}' for e in pg.errors()]
+    pg.close()
+    print(f"{'ok  ' if not fails else 'FAIL'} one-way arrows on streets and cycle paths from zoom 16 (#1217)" + ''.join(f'\n     - {f}' for f in fails), flush=True)
     return not fails
 
 
@@ -26355,7 +26393,7 @@ GROUPS = [
     ('changelog', [changelog], 'release notes, retry, safe rendering, keyboard, route preservation and real worker offline'),
     ('pacing', [pacing, paced_legs, net_fails], 'calls made together go out paced and counted (mocked services, a fake clock); legs refused for a slot follow at it (#78); the calls that failed, in Data sources (#687)'),
     ('loading', [loading, routing_edits], 'cancel obsolete routing, edits/Undo/Clear, shared subscribers, refusal/recovery, deadlines, terrain slots and LIPAS viewport/cache (mocked)'),
-    ('layers', [layers, layer_coverage, cycleway_style, cycling_restrictions, waterway_style, property_lines, property_plots, wetland_style, reedbed_style, mml_bogs, mml_rock, mml_water, mml_open, osm_cliffs, saddles, mml_cards, town_gates, town_bridges], 'the Layers panel in every sport'),
+    ('layers', [layers, layer_coverage, cycleway_style, cycling_restrictions, waterway_style, property_lines, property_plots, wetland_style, reedbed_style, mml_bogs, mml_rock, mml_water, mml_open, osm_cliffs, saddles, mml_cards, town_gates, town_bridges, town_oneway], 'the Layers panel in every sport'),
     ('raster', [raster_maps, aerial_fallback, aerial_labels], 'terrain and aerial detail, bounded high-density WMS symbols, depth boundaries and missing aerial detail (#649, #650, #653); the map\'s words on the aerial photos at 4.5:1 on their halo (#554)'),
     ('coarse', [coarse], 'a coarse map underneath (#1091): the base map\'s tile four zoom levels up stands in for one that hasn\'t come, at 1440 and 390'),
     ('offline', [mml_offline], 'Save offline keeps the National Land Survey\'s tiles (#1176): its terrain at zooms 11–14 and property boundaries while on, under addresses without the key, two at a time and ten a second at most; what Offline maps says an area lacks; offline, with the real worker, the bogs drawn from the saved tile and no message'),

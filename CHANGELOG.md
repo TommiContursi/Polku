@@ -4,6 +4,11 @@ What's new in [Polku](https://polku.si), from the latest updates back to the fir
 
 ## 2026-11-21
 
+### Arrows on one-way streets ([#1217](https://github.com/TommiContursi/Polku/issues/1217))
+
+- From zoom 16, a small grey arrow along a one-way street shows which way traffic goes, in Finland and beyond. One-way cycle paths get the same arrow in blue. Where an arrow and a name would overlap, the name wins.
+- The arrow is for traffic: the map can't tell whether bikes may ride both ways, and many one-way streets in towns let them. Tap the street: its card says whether bikes may ride both ways.
+
 ### Bridges stand out ([#1218](https://github.com/TommiContursi/Polku/issues/1218))
 
 - A road on a bridge now has a dark edge from zoom 14 (a light one on the Night map), so a bridge reads as one over a road, a railway or a valley, not only over water. From zoom 15, paths, footways, cycle paths and tracks on a bridge get the same edge, and bridge decks mapped as areas are drawn with it.

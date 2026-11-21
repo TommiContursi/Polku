@@ -43,7 +43,7 @@ const PALETTES = {
   trail: {
     bg: '#f5f3ee', wood: '#dbeacd', woodOpacity: 0.9, grass: '#e8f1d9', farmland: '#f7f0cf',
     wetland: '#dce5e3', wetlandDash: '#8fb0d3', bogWood: '#deebd0', reed: '#5f8a5a', heath: '#ebe6c4', openForest: '#c6dcb2', treeMark: '#6b8a5c', sand: '#f3e7bb', rock: '#e2dfd8', cliff: '#5e574e', ice: '#f4fbff',
-    residential: '#ece8e2', industrial: '#e8e2e8', cemetery: '#dde7d3', sport: '#dcefd3', bridge: '#2c2721',
+    residential: '#ece8e2', industrial: '#e8e2e8', cemetery: '#dde7d3', sport: '#dcefd3', bridge: '#2c2721', oneway: '#6b6458', onewayBike: '#1f2fa0',
     park: '#3f8f3f', water: '#a8d1ef', waterLine: '#6fa9d6', waterText: '#24618f', shoal: '#ffffff',
     building: '#d9d1c8', buildingLine: '#c4b9ad',
     motorway: '#f2a35e', trunk: '#f6c46b', primary: '#fbd77b', secondary: '#fde7a2', tertiary: '#fff3c9',
@@ -54,7 +54,7 @@ const PALETTES = {
   plain: {
     bg: '#f7f7f5', wood: '#eef3ea', woodOpacity: 0.7, grass: '#f1f4ed', farmland: '#f7f6ef',
     wetland: '#eef4f2', wetlandDash: '#b4c9de', bogWood: '#f1f4ed', reed: '#9bb796', heath: '#f2efdf', openForest: '#dde8d4', treeMark: '#9bb796', sand: '#f4f1e6', rock: '#efeeec', cliff: '#948d83', ice: '#fafdff',
-    residential: '#f0efed', industrial: '#efedf0', cemetery: '#eaefe6', sport: '#eaf1e6', bridge: '#5a554e',
+    residential: '#f0efed', industrial: '#efedf0', cemetery: '#eaefe6', sport: '#eaf1e6', bridge: '#5a554e', oneway: '#8a847a', onewayBike: '#4a6890',
     park: '#7aa27a', water: '#c3dcef', waterLine: '#9bbfdc', waterText: '#4a7ca3', shoal: '#ffffff',
     building: '#e6e3df', buildingLine: '#d6d1cb',
     motorway: '#e9c8a5', trunk: '#eed6ad', primary: '#f3e2b8', secondary: '#f6eccb', tertiary: '#faf5e4',
@@ -65,7 +65,7 @@ const PALETTES = {
   night: {
     bg: '#161a1f', wood: '#1b2620', woodOpacity: 1, grass: '#1d241f', farmland: '#23231d',
     wetland: '#18232a', wetlandDash: '#2f5679', bogWood: '#1b2620', reed: '#4f7a55', heath: '#26261c', openForest: '#26362a', treeMark: '#567a5c', sand: '#2a271f', rock: '#22221f', cliff: '#a39a8c', ice: '#20262b',
-    residential: '#1e2126', industrial: '#211f25', cemetery: '#1c231d', sport: '#1b241d', bridge: '#c9c2b5',
+    residential: '#1e2126', industrial: '#211f25', cemetery: '#1c231d', sport: '#1b241d', bridge: '#c9c2b5', oneway: '#aaa498', onewayBike: '#a9c4ea',
     park: '#4e8f5b', water: '#10304a', waterLine: '#1f5a85', waterText: '#7fb6e3', shoal: '#2f6f9e',
     building: '#272b31', buildingLine: '#30353c',
     motorway: '#8a5a2f', trunk: '#80633a', primary: '#6f6040', secondary: '#5b5443', tertiary: '#4a4740',
@@ -1155,6 +1155,23 @@ function addRoads(s, P, hc, layers, ctx) {
       },
     });
     noBikeBars(`cycleway-${brunnel}-nobike`, 'ofm', ['all', isPathClass, cyclingPath, bf, noBikeMark]);
+  }
+
+  // One-way streets (#1217): the water's flow arrow along the street from zoom 16, the way traffic goes (the tiles' oneway: 1
+  // along the line, -1 against it), giving way to names; on one-way cycle paths in their blue. For traffic: the tiles have no
+  // oneway:bicycle, which a way's card says. None on parking aisles or driveways, which would fill a car park with arrows.
+  if (!aerial && !mmlBase) {
+    const arrow = (id, filter, colour) => add({
+      id, type: 'symbol', source: 'ofm', 'source-layer': 'transportation', minzoom: 16,
+      filter: ['all', ['in', ['get', 'oneway'], ['literal', [1, -1]]], ['!', ['in', ['coalesce', ['get', 'service'], ''], ['literal', ['parking_aisle', 'driveway']]]], filter],
+      layout: {
+        'symbol-placement': 'line', 'symbol-spacing': 200, 'icon-image': `flow-${colour.slice(1)}-${P.halo.slice(1)}`, 'icon-rotate': ['match', ['get', 'oneway'], -1, 180, 0],
+        'icon-rotation-alignment': 'map', 'icon-size': zi(16, 0.85, 18, 1.15), 'icon-padding': 0,
+      },
+      paint: { 'icon-opacity': roadsDim },
+    });
+    arrow('road-oneway', ['in', ['get', 'class'], ['literal', ['motorway', 'trunk', 'primary', 'secondary', 'tertiary', 'minor', 'service']]], P.oneway);
+    arrow('cycleway-oneway', ['all', isPathClass, cyclingPath], P.onewayBike);
   }
 
   // Ways marked private or closed for your sport (#104): purple dots beside the line. The tiles fold access=private into access=no; the
