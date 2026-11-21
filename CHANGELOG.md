@@ -4,6 +4,11 @@ What's new in [Polku](https://polku.si), from the latest updates back to the fir
 
 ## 2026-11-21
 
+### Paths that only the National Land Survey has ([#1171](https://github.com/TommiContursi/Polku/issues/1171))
+
+- In Finland, from zoom 14, the map now draws the paths, forest tracks and private or forest roads on the National Land Survey's map that OpenStreetMap doesn't have, as thin dashed lines without a coloured band: paths with short dashes, forest tracks and roads with longer ones. Where OpenStreetMap has a way within 15 m, only OpenStreetMap's is drawn.
+- **Routes don't follow these paths, as Polku routes only along OpenStreetMap's ways.** A tap on one says so: draw that stretch with **Freehand**, or add the path to OpenStreetMap with **Add it to OpenStreetMap**. The survey is 5–10 years old in places, so a path may have grown over.
+
 ### Fire places, springs, caves and tar pits on the map ([#1179](https://github.com/TommiContursi/Polku/issues/1179), [#1173](https://github.com/TommiContursi/Polku/issues/1173))
 
 - With **Outdoor places** on, the map now shows OpenStreetMap's fire places from zoom 13, and its springs, cave entrances, bunkers and tar kilns from zoom 15, each with an icon of its own. A spring's card says whether its water is drinkable, where OpenStreetMap says so.
