@@ -277,13 +277,23 @@ export class TrailDetails {
       for (const p of f.points) points.set(p.id, p);
     }
     this.app.onData({ type: 'FeatureCollection', features: [...ways.values()] }, { type: 'FeatureCollection', features: [...points.values()] });
-    this.app.onCoverage(list.length ? {
-      type: 'MultiPolygon',
-      coordinates: list.map(([x, y]) => {
-        const [w, s, e, n] = tileBounds(x, y, TILE_Z);
-        return [[[w, s], [e, s], [e, n], [w, n], [w, s]]];
-      }),
-    } : null);
+    // One rectangle when the tiles fill one, as they do once the view has loaded: `within` takes a line inside one polygon only,
+    // so the map's own ways crossing between two tiles would stay drawn under the trail data's.
+    // shortcut: a gap in the tiles falls back to a square each, until they've all loaded.
+    const area = (tiles) => {
+      if (!tiles.length) return null;
+      const xs = tiles.map((t) => t[0]), ys = tiles.map((t) => t[1]);
+      const x0 = Math.min(...xs), x1 = Math.max(...xs), y0 = Math.min(...ys), y1 = Math.max(...ys);
+      // (padded by the map's tile buffer, about 1.6 % of a tile, which a way at the edge reaches past it by)
+      const [tw, ts, te, tn] = tileBounds(x0, y0, TILE_Z), dx = (te - tw) * 0.03, dy = (tn - ts) * 0.03;
+      const ring = ([w, s, e, n]) => [[[w - dx, s - dy], [e + dx, s - dy], [e + dx, n + dy], [w - dx, n + dy], [w - dx, s - dy]]];
+      if (tiles.length === (x1 - x0 + 1) * (y1 - y0 + 1)) {
+        const [w, , , n] = tileBounds(x0, y0, TILE_Z), [, s, e] = tileBounds(x1, y1, TILE_Z);
+        return { type: 'MultiPolygon', coordinates: [ring([w, s, e, n])] };
+      }
+      return { type: 'MultiPolygon', coordinates: tiles.map(([x, y]) => ring(tileBounds(x, y, TILE_Z))) };
+    };
+    this.app.onCoverage(area(list));
   }
 }
 
