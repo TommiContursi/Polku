@@ -234,6 +234,9 @@ streets, not a layer of gate marks.
   its Heads-up item.
 - **Beyond Finland:** the same (Tallinn's centre had 63 gates on a phone at
   zoom 15).
+- **The marks themselves** are [#1232](https://github.com/TommiContursi/Polku/issues/1232): a mark for each kind of
+  gate and barrier (a lift gate's boom of its own), coloured by who may
+  pass, decided on 2026-11-21. Which switch draws them is still open there.
 
 ### House numbers
 
@@ -314,7 +317,9 @@ after another in one session:
    the land fills; car parks' P marks also in the places.
 3. **The places:** shops and food ([#1222](https://github.com/TommiContursi/Polku/issues/1222)), then house numbers
    ([#1223](https://github.com/TommiContursi/Polku/issues/1223)).
-4. **Later:** car parks beyond Finland ([#1216](https://github.com/TommiContursi/Polku/issues/1216)), with Polku's own OSM
+4. **The gates' marks** ([#1232](https://github.com/TommiContursi/Polku/issues/1232)), after fewer marks, from a
+   clickable mock-up.
+5. **Later:** car parks beyond Finland ([#1216](https://github.com/TommiContursi/Polku/issues/1216)), with Polku's own OSM
    data's next build.
 
 Every part reaches the places that name its layers: `PLACE_LAYERS` in
