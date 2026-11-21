@@ -2068,8 +2068,8 @@ def osm_points(chrome):
         {type:'way',id:4,tags:{military:'bunker',building:'bunker'},nodes:[10,11],geometry:[{lon:at(3)[0],lat:at(3)[1]},{lon:at(3)[0]+1e-4,lat:at(3)[1]}],center:{lon:at(3)[0],lat:at(3)[1]}},
         node(5,4,{historic:'tar_kiln'}),node(6,5,{amenity:'shelter',fireplace:'yes'})]});
       const kinds=(id)=>new Set(m.queryRenderedFeatures({layers:[id]}).map((f)=>f.properties.subclass));
-      // (OSM's labels hidden meanwhile: a lake's name is placed first and may hide an icon at 14, as it should)
-      const osmLabels=m.getLayersOrder().filter((id)=>/^label-/.test(id)); for(const id of osmLabels)m.setLayoutProperty(id,'visibility','none');
+      // (the names hidden meanwhile, OSM's and MML's: a name is placed first and may hide an icon at 14, as it should)
+      const osmLabels=m.getLayersOrder().filter((id)=>/^(label-|mml-name$)/.test(id)); for(const id of osmLabels)m.setLayoutProperty(id,'visibility','none');
       m.jumpTo({center:at(2.5),zoom:14}); await settle();
       for(let k=0;k<20&&!kinds('poi-fire').size;k++)await wait(250);
       if(!kinds('poi-fire').has('firepit'))errs.push('no fire place at 14');
