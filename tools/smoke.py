@@ -2406,7 +2406,8 @@ def water(chrome):
 # no other source. A leg past a shoal keeps 20 m off its soundings under 0.5 m, and says all its water was surveyed;
 # a swimmer's doesn't use them; a leg into the shoal crosses it, and Check says so under Good to know; What Polku
 # looked at says how much of the water Syke surveyed, none where it has no tile, and Not checked when they didn't load;
-# a route saved before the depths is routed again, and a freehand leg's water isn't surveyed; then the files themselves
+# a route saved before the depths is routed again, and a freehand leg's water isn't surveyed, nor a water leg that
+# couldn't be routed, while one still routing doesn't count (#1196); then the files themselves
 # fail (pausing nothing else of Polku's), hang until their deadline, Retry asks again, and a late answer routes the leg again.
 WATER_DEPTHS = """(async () => {
   const wait = (ms) => new Promise((r) => setTimeout(r, ms)), errs = [];
@@ -2462,6 +2463,30 @@ WATER_DEPTHS = """(async () => {
     await wait(500);
     if (!row() || row().state === 'ok') errs.push(`a freehand leg on the water counts as surveyed: ${row() ? `${row().state} · ${row().by}` : 'no row'}`);
     p.undo(); // back to the one leg
+    for (let k = 0; k < 40 && !(p.legs.length === 1 && p.analysis && p.analysis.waterWarn); k++) await wait(250);
+  }
+  { // a leg on the water still routing isn't counted as water not surveyed (#1196): held until its sources answer.
+    // One that couldn't be routed (a straight stand-in) is.
+    const seed = (box, want) => ({ fairways: fc, hazards: fc, depths: want.depths ? depths : null, wind: null, missing: want.depths ? missing : [], skipped: [] });
+    let free;
+    D.seedWater((box, want) => new Promise((ok) => { free = () => ok(seed(box, want)); }));
+    p.setMode('water');
+    p.addPoint([shoal[0] + 0.004, shoal[1]]);
+    for (let k = 0; k < 20 && !(p.legs.length === 2 && free); k++) await wait(100);
+    await wait(300);
+    if (p.legs.length !== 2 || p.legs[1].status !== 'loading') errs.push(`(the test) the second leg isn't routing: ${p.legs.map((l) => l.status).join(', ')}`);
+    else if (!row() || row().state !== 'ok') errs.push(`a leg still routing counts as water not surveyed: ${row() ? `${row().state} · ${row().by}` : 'no row'}`);
+    D.seedWater(seed);
+    if (free) free();
+    for (let k = 0; k < 40 && !(p.legs.length === 2 && p.legs[1].status === 'ok' && p.analysis && p.analysis.waterWarn); k++) await wait(250);
+    D.seedWater(() => Promise.reject(new Error('the test: no answer')));
+    p.addPoint(to);
+    for (let k = 0; k < 40 && !(p.legs.length === 3 && p.legs[2].status === 'error' && p.analysis && p.analysis.waterWarn); k++) await wait(250);
+    if (p.legs.length !== 3 || p.legs[2].status !== 'error') errs.push(`(the test) the third leg didn't fail: ${p.legs.map((l) => l.status).join(', ')}`);
+    else if (!row() || row().state === 'ok') errs.push(`a leg on the water that couldn't be routed counts as surveyed: ${row() ? `${row().state} · ${row().by}` : 'no row'}`);
+    D.seedWater(seed);
+    p.undo();
+    p.undo();
     for (let k = 0; k < 40 && !(p.legs.length === 1 && p.analysis && p.analysis.waterWarn); k++) await wait(250);
   }
   { // a route saved before the router used lake depths: its leg on the water is routed again when it loads
@@ -2832,14 +2857,24 @@ def water_long(chrome):
 
 # The water router's hidden map, its last tile failing (#400): a dropped connection, after the others are in. MapLibre
 # asks for no frame after a failed tile, so its `load` never came and no water leg was routed. The first leg is routed
-# now, and the next. (Only the route's water: no fairways, rocks or wind asked for.)
+# now, and the next. Then a leg out at sea whose coarser stand-in tile fails at once while its own come 6 s later:
+# MapLibre called the map idle after the failure, and the water was read from Finland's overview with none of the leg's
+# tiles in (#1195). It's routed once they're in. (Only the route's water: no fairways, rocks or wind asked for.)
 WATER_HIDDEN = """(async () => {
   const wait = (ms) => new Promise((r) => setTimeout(r, ms)), errs = [];
-  let tiles = 0, failed = false;
-  // the hidden map's requests through a protocol of the test's: its first tile fails 6 s on, the rest as they are
+  let tiles = 0, failed = false, late = null;
+  const sea = [[24.55, 59.95], [24.59, 59.945]]; // off Espoo, in a zoom 9 tile of its own: its stand-ins aren't held yet
+  // the hidden map's requests through a protocol of the test's: its first tile fails 6 s on, the rest as they are; once
+  // `late` is set, a tile below the leg's zoom 13 (a stand-in) fails at once, and the leg's own come 6 s late
   maplibregl.addProtocol('polkutest', async (params) => {
     const url = params.url.replace(/^polkutest:/, 'https:'), tile = /\\/\\d+\\/\\d+\\/\\d+/.test(url);
     if (tile && !tiles++) { await wait(6000); failed = true; throw new TypeError('Failed to fetch'); }
+    const zxy = tile && url.match(/\\/(\\d+)\\/(\\d+)\\/(\\d+)\\.pbf/).slice(1).map(Number);
+    if (late && zxy) {
+      if (zxy[0] < 13) { late.failed = true; throw new TypeError('Failed to fetch'); }
+      await wait(6000);
+      late.came = Date.now();
+    }
     const r = await fetch(url);
     return { data: tile ? await r.arrayBuffer() : await r.json() };
   });
@@ -2865,6 +2900,14 @@ WATER_HIDDEN = """(async () => {
     p.addPoint([24.9700, 60.1400]);
     for (let k = 0; k < 120 && !routed(2); k++) await wait(250);
     if (!routed(2)) errs.push(`the next leg: ${p.legs[1] ? p.legs[1].status : 'none'} after 30 s`);
+    late = { failed: false, came: 0 };
+    p.clear();
+    p.addPoint(sea[0]);
+    p.addPoint(sea[1]);
+    for (let k = 0; k < 300 && !(p.legs[0] && p.legs[0].status !== 'loading'); k++) await wait(100);
+    const done = Date.now(), l = p.legs[0], w = l && l.result && l.result.water;
+    if (!late.failed) errs.push('(the test) no stand-in tile failed for the leg out at sea');
+    else if (!w || l.status !== 'ok' || (l.result.portage || []).length || !late.came || late.came > done) errs.push(`a stand-in failing at once, the leg's own tiles 6 s late: the leg ${l ? l.status : 'none'}${w ? ` with ${l.result.portage.length} carries` : ''}, ${late.came && late.came <= done ? 'after' : 'before'} its tiles came (#1195)`);
     return errs;
   } finally {
     maplibregl.Map = Map0;
@@ -2879,10 +2922,106 @@ def water_hidden(chrome):
     styles = {'paddle': {'p': 'balanced', 'v': {'w': 'ignore', 'f': 'ignore', 'k': 'ignore'}}}
     pg.open_app({'activity': 'mtb'}, {'polku:plannerDock': '"left"', 'polku:styles': json.dumps(styles)}, '#13/60.152/24.97')
     pg.js("import(location.origin + '/js/trails.js').then((T) => { T.holdFetches(); return true; })")
-    fails = pg.js(WATER_HIDDEN, timeout=85000)
+    fails = pg.js(WATER_HIDDEN, timeout=130000)
     fails += [f'console: {e[:160]}' for e in pg.errors()]
     pg.close()
-    print(f"{'ok  ' if not fails else 'FAIL'} water routing when the hidden map's last tile fails (#400)" + ''.join(f'\n     - {f}' for f in fails), flush=True)
+    print(f"{'ok  ' if not fails else 'FAIL'} water routing when the hidden map's last tile fails (#400), or a stand-in fails while the leg's own tiles come late (#1195)" + ''.join(f'\n     - {f}' for f in fails), flush=True)
+    return not fails
+
+
+# A new leg on the water offline (#1195), with the real service worker and the network off, as the changelog check: where
+# its line crosses tiles that aren't kept (Oulujärvi, never seen), it ends at once as a straight line and says routing
+# over water needs a connection, rather than being routed on Finland's coarse overview or called land. With the page open
+# (the hidden map made online) and reloaded offline (made offline). Back online, Retry routes it. A short leg inside a
+# route saved with Save offline is still routed, though its window reaches a tile the route didn't keep (#1206's review).
+# The sources are seeded (no answers), so only the map's tiles are offline. ([at, from, to, the status to wait for])
+WATER_OFFLINE_LEG = """(async ([at, a, b, until]) => {
+  const wait = (ms) => new Promise((r) => setTimeout(r, ms)), fc = { type: 'FeatureCollection', features: [] };
+  const D = await import(location.origin + '/js/waterdata.js');
+  D.seedWater(() => ({ fairways: fc, hazards: fc, depths: null, wind: null, missing: [], skipped: [] }));
+  const p = polku.planner, said = [], box = document.querySelector('#toast');
+  const notes = new MutationObserver(() => { if (!box.hidden && said.at(-1) !== box.textContent) said.push(box.textContent); });
+  notes.observe(box, { childList: true, subtree: true, characterData: true, attributes: true });
+  polku.map.jumpTo({ center: at, zoom: 13 });
+  p.setActive(true);
+  p.clear();
+  p.setMode('water');
+  p.addPoint(a);
+  p.addPoint(b);
+  const t0 = Date.now(), l = () => p.legs[0] || {};
+  for (let k = 0; k < 120 && (l().status === 'loading' || (until && l().status !== until)); k++) await wait(250);
+  await wait(300);
+  notes.disconnect();
+  return { status: l().status, water: !!(l().result && l().result.water), ms: Date.now() - t0, said };
+})(%s)"""
+WATER_OFFLINE_RETRY = """(async () => {
+  const p = polku.planner, wait = (ms) => new Promise((r) => setTimeout(r, ms)), l = () => p.legs[0] || {};
+  p.retryFailed();
+  for (let k = 0; k < 160 && !(l().status === 'ok' && l().result && l().result.water); k++) await wait(250);
+  return `${l().status}${l().result && l().result.water ? ' with a route' : ''}`;
+})()"""
+
+
+def water_offline(chrome):
+    fails = []
+    pg = chrome.page(390, 844, True)
+    pg.open_app({'activity': 'paddle'}, None, '#14/64.2396/28.614')
+    chrome.send('Network.setBypassServiceWorker', {'bypass': False}, pg.s)
+    pg.js("(async () => { for (const r of await navigator.serviceWorker.getRegistrations()) await r.unregister(); await caches.delete('polku-shell-v1'); await navigator.serviceWorker.register('./sw.js'); await navigator.serviceWorker.ready; return true })()")
+    pg.reload()
+    # every worker of Polku's: one unregistered by an earlier check may still be listed beside the one that controls the page
+    workers = [t for t in chrome.send('Target.getTargets')['targetInfos'] if t['type'] == 'service_worker' and t['url'] == BASE + 'sw.js']
+    if not pg.js('!!navigator.serviceWorker.controller') or not workers:
+        raise RuntimeError('a water leg offline: the page has no service worker')
+    ws = [chrome.send('Target.attachToTarget', {'targetId': t['targetId'], 'flatten': True})['sessionId'] for t in workers]
+    for s in ws:
+        chrome.send('Network.enable', {}, s)
+
+    def offline(on):  # the network off, and no copy from the browser's cache either: only what the worker keeps
+        for s in (pg.s, *ws):
+            chrome.send('Network.emulateNetworkConditions', {'offline': on, 'latency': 0, 'downloadThroughput': -1, 'uploadThroughput': -1}, s)
+            chrome.send('Network.setCacheDisabled', {'cacheDisabled': on}, s)
+
+    far = [[27.225, 64.305], [27.20, 64.30], [27.25, 64.31]]  # Oulujärvi
+
+    def leg(name):
+        got = pg.js(WATER_OFFLINE_LEG % json.dumps([*far, None]), timeout=40000)
+        if got['status'] != 'error' or not any('Routing over water needs a connection' in t for t in got['said']):
+            fails.append(f"{name}: the leg is {got['status']}{' with a route' if got['water'] else ''} after {got['ms'] / 1000:.0f} s, said {' / '.join(got['said']) or 'nothing'}")
+
+    area = None
+    try:
+        first = pg.js(WATER_OFFLINE_LEG % json.dumps([[28.614, 64.2396], [28.6095, 64.23944], [28.6185, 64.23944], 'ok']), timeout=40000)
+        if first['status'] != 'ok':
+            fails.append(f"(the test) the leg online at Matikanjärvi: {first['status']}")
+        area = pg.js("""(async () => {
+          const O = await import(location.origin + '/js/offline.js');
+          const a = await O.saveArea({ name: 'smoke', line: [[27.05, 64.33], [27.20, 64.30]], bbox: null, route: null }, { buffer: 1000, terrain: false }, () => {}, new AbortController().signal);
+          return { id: a.id, failed: a.failed };
+        })()""", timeout=120000)
+        if area['failed']:
+            fails.append(f"(the test) {area['failed']} tiles of the saved route weren't saved")
+        offline(True)
+        near = pg.js(WATER_OFFLINE_LEG % json.dumps([[27.125, 64.312], [27.125, 64.315], [27.125, 64.30781], 'ok']), timeout=40000)
+        if near['status'] != 'ok' or not near['water']:
+            fails.append(f"a short new leg inside the saved route: {near['status']}, said {' / '.join(near['said']) or 'nothing'}")
+        leg('the page open, offline')
+        pg.reload()
+        leg('reloaded offline')
+        offline(False)
+        back = pg.js(WATER_OFFLINE_RETRY, timeout=50000)
+        if back != 'ok with a route':
+            fails.append(f'back online, Retry: the leg is {back}')
+    finally:
+        offline(False)
+        if area:
+            pg.js(f"import(location.origin + '/js/offline.js').then((O) => O.removeArea({json.dumps(area['id'])})).then(() => true)")
+        pg.js("(async () => { for (const r of await navigator.serviceWorker.getRegistrations()) await r.unregister(); return true })()")
+        for s in ws:
+            chrome.send('Target.detachFromTarget', {'sessionId': s})
+    fails += [f'console: {e[:160]}' for e in pg.errors()]
+    pg.close()
+    print(f"{'ok  ' if not fails else 'FAIL'} a new leg on the water offline says routing needs a connection, but inside a saved route; back online, Retry routes it (#1195)" + ''.join(f'\n     - {f}' for f in fails), flush=True)
     return not fails
 
 
@@ -25152,7 +25291,7 @@ GROUPS = [
     ('header', [header_fit, head_names], 'the planner header fitting its sheet; the route\'s name following the road names that come late with the map\'s tiles (the review of #1050)'),
     ('lipas', [lipas], 'LIPAS search and riding a LIPAS route (recorded answers), a place, coordinates or a trail from search gets its pin and card (#871, #875)'),
     ('marked', [marked], 'marked routes picked on the map (#308): a hand and the whole route lit under a mouse before a click, a tap 10 px beside the line lit while its card is open and one 30 px away not (recorded LIPAS, cut in two parts)'),
-    ('water', [water, water_depths, water_late, water_back, water_long, water_hidden, paddle_map, best_time_water], 'the paddling router\'s costs (recorded fairways, a fixed wind), lake depths from a recorded tile (#1184), OSM\'s rocks coming late, failing and coming back, Undo, a leg too long to ask for them (mocked), the hidden map\'s last tile failing (#129, #80, #490, #400), and Paddle\'s map: a leg over water stands out from the sea, no hint about trails (#611, #613)'),
+    ('water', [water, water_depths, water_late, water_back, water_long, water_hidden, water_offline, paddle_map, best_time_water], 'the paddling router\'s costs (recorded fairways, a fixed wind), lake depths from a recorded tile (#1184), OSM\'s rocks coming late, failing and coming back, Undo, a leg too long to ask for them (mocked), the hidden map\'s last tile failing (#129, #80, #490, #400), a new leg offline with the real service worker (#1195), and Paddle\'s map: a leg over water stands out from the sea, no hint about trails (#611, #613)'),
     ('multi', [multi], 'multisport: a sport per leg, changeovers, share links, Reorder (straight legs)'),
     ('editing', [editing], 'midpoint handle and line drags: one via point, Undo/Redo, mouse and touch in four sports'),
     ('routemenu', [route_menu, quick_taps], 'clicks and taps on the route (straight legs), LIPAS over trails, and quick taps on a busy page (#293)'),

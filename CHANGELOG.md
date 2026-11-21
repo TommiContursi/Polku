@@ -4,6 +4,11 @@ What's new in [Polku](https://polku.si), from the latest updates back to the fir
 
 ## 2026-11-20
 
+### A new leg on the water offline ([#1195](https://github.com/TommiContursi/Polku/issues/1195))
+
+- Without a connection, a new leg over water where the map's detail isn't on your device is drawn as a straight line at once, and Polku says routing over water needs a connection. Before, it could be routed on Finland's coarse map, whose lakes have no islands, and look like a finished route. Where the detail is on your device, as along a route saved with **Save offline**, the leg can still be routed. Once you're back online, **Retry** in Check routes it.
+- While a leg on the water is still being routed, **What Polku looked at** no longer counts it as water Syke didn't survey ([#1196](https://github.com/TommiContursi/Polku/issues/1196)).
+
 ### Heath, clear-cuts and open ground ([#1169](https://github.com/TommiContursi/Polku/issues/1169))
 
 - The Trail, Plain and Night maps now show open ground that used to be drawn as forest. Heath is a pale olive tint, so the fells at Pallas read as open ground above the tree line.
