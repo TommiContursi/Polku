@@ -4,6 +4,11 @@ What's new in [Polku](https://polku.si), from the latest updates back to the fir
 
 ## 2026-11-21
 
+### Bridges stand out ([#1218](https://github.com/TommiContursi/Polku/issues/1218))
+
+- A road on a bridge now has a dark edge from zoom 14 (a light one on the Night map), so a bridge reads as one over a road, a railway or a valley, not only over water. From zoom 15, paths, footways, cycle paths and tracks on a bridge get the same edge, and bridge decks mapped as areas are drawn with it.
+- Footways, steps and paths in a tunnel or an underpass are drawn at half strength, as cycle paths and roads in tunnels already were.
+
 ### Fewer gates on a town's map ([#1221](https://github.com/TommiContursi/Polku/issues/1221))
 
 - With **Trail details** on, gates now show from zoom 16 instead of 15. In a town most of them are courtyard gates on the pavements, which covered the streets: on a phone in Helsinki's centre they were 130 of the 165 marks at zoom 15.

@@ -1269,6 +1269,52 @@ def town_gates(chrome):
     return not fails
 
 
+# #1218: bridges and tunnels, from the style on the Trail and Night maps at Hämeensilta (Tampere). A road's casing turns the
+# bridge's edge at zoom 14; paths, footways, cycle paths and tracks on a bridge get it from 15 just outside their band (its gap
+# the band's width), under it; decks mapped as areas in the ground's colour; footways, steps and paths in a tunnel at half
+# strength. None on the aerial photos.
+def town_bridges(chrome):
+    pg = chrome.page(1440, 900, False)
+    pg.open_app({'activity': 'mtb', 'base': 'trail'}, None, '#16.5/61.4978/23.7614')
+    fails = pg.js("""(async () => {
+      const errs=[], m=polku.map, wait=(ms)=>new Promise((r)=>setTimeout(r,ms));
+      const settle=async()=>{await wait(500);await Promise.race([new Promise(r=>{m.once('idle',r);m.triggerRepaint();}),wait(10000)]);};
+      const value=(id,prop,z)=>{const v=m.style.getLayer(id)._transitionablePaint._values[prop].value; return v.expression?v.expression.evaluate({zoom:z}):v.value;};
+      const hex=(c)=>'#'+[c.r,c.g,c.b].map((v)=>Math.round(v*255).toString(16).padStart(2,'0')).join('');
+      const same=(a,b)=>JSON.stringify(a)===JSON.stringify(b);
+      for(const [base,edge] of [['trail','#2c2721'],['night','#c9c2b5']]) {
+        polku.set({base}); await settle();
+        const order=m.getLayersOrder(), at=(id)=>order.indexOf(id);
+        const cas=value('road-bridge-minor-casing','line-color',13.5), cas14=value('road-bridge-minor-casing','line-color',14.5);
+        if(hex(cas)===edge||hex(cas14)!==edge)errs.push(`${base}: a bridge's casing is ${hex(cas)} at 13.5 and ${hex(cas14)} at 14.5`);
+        if(hex(value('road-ground-minor-casing','line-color',14.5))===edge)errs.push(`${base}: a road on the ground has the bridge's edge`);
+        const bands=[['path-bridge-foot-edge',base==='trail'?'path-bridge-foot-casing':'path-bridge-foot'],['path-bridge-edge','path-bridge-halo'],
+          ['path-osm-bridge-edge','path-osm-bridge-halo'],['cycleway-bridge-edge',base==='trail'?'cycleway-bridge-casing':'cycleway-bridge'],['track-bridge-edge','track-bridge-halo']];
+        for(const [e,b] of bands) {
+          if(at(e)<0){errs.push(`${base}: no ${e}`);continue;}
+          if(at(e)>at(b))errs.push(`${base}: ${e} over ${b}`);
+          if(!same(m.getPaintProperty(e,'line-gap-width'),m.getPaintProperty(b,'line-width')))errs.push(`${base}: ${e}'s gap isn't ${b}'s width`);
+          if(m.getPaintProperty(e,'line-color')!==edge||m.getLayer(e).minzoom!==15)errs.push(`${base}: ${e} is ${m.getPaintProperty(e,'line-color')} from ${m.getLayer(e).minzoom}`);
+        }
+        for(const id of order.filter((id)=>/-edge$/.test(id)&&!/-bridge-/.test(id)))errs.push(`${base}: ${id} off a bridge`);
+        const deck=m.getLayer('bridge-deck'), poly=(cls)=>deck&&m.style.getLayer('bridge-deck')._featureFilter.filter({zoom:16},{type:3,properties:{class:cls}});
+        if(!deck||!poly('bridge')||poly('path')||m.getPaintProperty('bridge-deck','fill-outline-color')!==edge)errs.push(`${base}: no bridge deck with the edge`);
+        else if(at('bridge-deck')>at('road-bridge-service-casing'))errs.push(`${base}: the deck over the bridge's roads`);
+        for(const id of ['path-%-foot','path-%-steps','path-%']) {
+          const t=value(id.replace('%','tunnel'),'line-opacity',16), g=value(id.replace('%','ground'),'line-opacity',16);
+          if(!(Math.abs(t-g/2)<1e-6))errs.push(`${base}: ${id.replace('%','tunnel')} at ${t}, on the ground ${g}`);
+        }
+      }
+      polku.set({base:'aerial'}); await settle();
+      if(m.getLayersOrder().some((id)=>/-edge$|^bridge-deck$/.test(id)))errs.push("bridges' edges on the aerial photos");
+      return errs;
+    })()""")
+    fails += [f'console: {e[:160]}' for e in pg.errors()]
+    pg.close()
+    print(f"{'ok  ' if not fails else 'FAIL'} bridges' edges and decks, footways and paths in tunnels at half (#1218)" + ''.join(f'\n     - {f}' for f in fails), flush=True)
+    return not fails
+
+
 def osm_cliffs(chrome):
     pg = chrome.page(1440, 900, False)
     pg.open_app({'activity': 'mtb', 'base': 'trail'}, hash_='#16/62.2289/25.7652')
@@ -26304,7 +26350,7 @@ GROUPS = [
     ('changelog', [changelog], 'release notes, retry, safe rendering, keyboard, route preservation and real worker offline'),
     ('pacing', [pacing, paced_legs, net_fails], 'calls made together go out paced and counted (mocked services, a fake clock); legs refused for a slot follow at it (#78); the calls that failed, in Data sources (#687)'),
     ('loading', [loading, routing_edits], 'cancel obsolete routing, edits/Undo/Clear, shared subscribers, refusal/recovery, deadlines, terrain slots and LIPAS viewport/cache (mocked)'),
-    ('layers', [layers, layer_coverage, cycleway_style, cycling_restrictions, waterway_style, property_lines, property_plots, wetland_style, reedbed_style, mml_bogs, mml_rock, mml_water, mml_open, osm_cliffs, saddles, mml_cards, town_gates], 'the Layers panel in every sport'),
+    ('layers', [layers, layer_coverage, cycleway_style, cycling_restrictions, waterway_style, property_lines, property_plots, wetland_style, reedbed_style, mml_bogs, mml_rock, mml_water, mml_open, osm_cliffs, saddles, mml_cards, town_gates, town_bridges], 'the Layers panel in every sport'),
     ('raster', [raster_maps, aerial_fallback, aerial_labels], 'terrain and aerial detail, bounded high-density WMS symbols, depth boundaries and missing aerial detail (#649, #650, #653); the map\'s words on the aerial photos at 4.5:1 on their halo (#554)'),
     ('coarse', [coarse], 'a coarse map underneath (#1091): the base map\'s tile four zoom levels up stands in for one that hasn\'t come, at 1440 and 390'),
     ('offline', [mml_offline], 'Save offline keeps the National Land Survey\'s tiles (#1176): its terrain at zooms 11–14 and property boundaries while on, under addresses without the key, two at a time and ten a second at most; what Offline maps says an area lacks; offline, with the real worker, the bogs drawn from the saved tile and no message'),
