@@ -8108,6 +8108,14 @@ def mml_offline(chrome):
         try:
             network(True)
             fails += [f'offline: {e}' for e in pg.js(MML_OFFLINE_MAP, timeout=60000)]
+            # a saved property tile, asked for with another key
+            fails += pg.js("""(async () => {
+              const { listAreas } = await import(location.origin + '/js/offline.js'), a = (await listAreas()).find((x) => x.name === 'smoke-mml');
+              const k = a && a.keys.find((u) => u.includes('/kiinteistojaotus/'));
+              if (!k) return ['offline: no property tile kept to ask for'];
+              const r = await fetch(k + '?api-key=another').catch(() => null);
+              return r && r.ok ? [] : [`offline: a saved property tile not answered: ${k}`];
+            })()""")
         finally:
             network(False)
         pg.reload()
