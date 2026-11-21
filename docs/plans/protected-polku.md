@@ -323,8 +323,8 @@ checks the result after it.
    - Verify polku.si for GitHub Pages, one TXT record at OVH ([GitHub's guide](https://docs.github.com/en/pages/configuring-a-custom-domain-for-your-github-pages-site/verifying-your-custom-domain-for-github-pages)),
      so nobody else can serve it from GitHub once Pages is off. Done when GitHub shows polku.si
      as verified.
-   - Choose the address people report problems to (proposal: `feedback@polku.si`, an alias at
-     OVH to your mailbox), and approve the licence sentence when part 1a shows it.
+   - Approve the licence sentence part 1a adds. Where people report problems is chosen later
+     (decided 2026-11-21).
 1. **Merge this plan** (#1236).
 2. **Cloudflare, once part 1b has merged:** an account on the free plan with two-step sign-in;
    the Worker connected to the repository through Cloudflare's GitHub app, with **Only select
@@ -370,7 +370,7 @@ checks the result after it.
 
 | Part | Who | What | Waits for | Done when |
 | --- | --- | --- | --- | --- |
-| 1a | session | The app ready for Cloudflare: copyright lines, `sw.js` reading `X-Polku-Deploy` with its `Last-Modified` fallback (and `startfail` with it), the start-failure banner's handler, What's new's links as plain text, the credits' `Polku © Tommi Contursi` as plain text, where to report problems in Settings → About Polku (step 0's address), the licence sentence | this plan merged | merged, the groups it touches passing (`startfail` and `changelog` among them) |
+| 1a | session | The app ready for Cloudflare: `sw.js` reading `X-Polku-Deploy` with its `Last-Modified` fallback (and `startfail` with it), the start-failure banner's handler, What's new's links into the repository as plain text (its failure message too), the credits' `Polku © Tommi Contursi` as plain text, the licence sentence. Built in #1243; the copyright line moved to 1b's build, and where to report problems waits (both decided 2026-11-21) | this plan merged | merged, the groups it touches passing (`startfail` and `changelog` among them) |
 | 1b | session | The built site: `tools/site.sh`, esbuild with its lockfile, `wrangler.jsonc`, `_headers` with the policy report-only, `robots.txt`, `tdmrep.json`, `serve.py`'s built mode, AGENTS.md ("Testing", the built site) and DEVELOPING | 1a | merged, the groups it touches passing against `site/` with the policy enforced |
 | 2 | session, Tomba | The `workers.dev` address checked: the headers, `tdmrep.json`, the walk-through (Share and the compass on Tomba's phone); the Cloudflare GitHub app sees only Polku | Tomba's step 2 | nothing in the walk-through fails or reports a violation |
 | 3 | Tomba | The DNS to Cloudflare (step 3) | part 2 | step 3's checks pass |
