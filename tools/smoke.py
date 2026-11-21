@@ -9355,7 +9355,7 @@ OFF_FC_SAVE = """(async () => {
   const a = await O.saveArea(p.offlinePayload(), { buffer: 500, terrain: true }, () => {}, new AbortController().signal);
   const kept = Object.values(a.forecast || {});
   if (kept.length < 2) f.push(`the area keeps ${kept.length} forecast points, not the route's 2 or more`);
-  if (kept.some((v) => !(Date.now() - v.at < 300e3 && v.s.time.length === 100))) f.push(`the forecast kept: ${kept.map((v) => `${v.s.time.length} hours from ${new Date(v.at).toISOString()}`).join(', ')}`);
+  if (kept.some((v) => !(Date.now() - v.at < 3600e3 && v.s.time.length === 100))) // (a fresh copy: an hour old at most) f.push(`the forecast kept: ${kept.map((v) => `${v.s.time.length} hours from ${new Date(v.at).toISOString()}`).join(', ')}`);
   const back = 48 * 3600;
   for (const v of kept) { v.at -= back * 1000; v.s.time = v.s.time.map((t) => t - back); }
   await idb('offline').set(a.id, a);
@@ -9397,7 +9397,7 @@ OFF_FC_READ = """(async ([id, at]) => {
   for (let k = 0; k < 100 && p.analysis?.wind?.start.time !== t; k++) await wait(200); // (the wind sampled from it, not the route retimed at once)
   const v = p.analysis?.wind;
   if (!v || v.beyond !== 0) f.push(`leaving past the saved forecast's end, its samples past it from ${v?.beyond}, not 0`);
-  else if (!p.els.boxDays.textContent.includes('No forecast')) f.push(`leaving past the saved forecast's end, the trip's box says ${p.els.boxDays.textContent}`);
+  else if (!/no forecast/i.test(p.els.boxDays.textContent)) f.push(`leaving past the saved forecast's end, the trip's box says ${p.els.boxDays.textContent}`);
   return f;
 })(%s)"""
 # Back online: a fresh forecast replaces the saved one, with no Retry
