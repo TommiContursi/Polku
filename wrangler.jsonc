@@ -1,5 +1,5 @@
 // Polku's Worker on Cloudflare (#115): static assets only, from site/, which tools/site.sh builds.
-// Cloudflare's build runs npm ci && tools/site.sh, then npx wrangler deploy.
+// Cloudflare's build runs npm ci && tools/site.sh, then npm run deploy (wrangler at the version package.json's script names).
 {
   "name": "polku",
   "compatibility_date": "2026-11-21",

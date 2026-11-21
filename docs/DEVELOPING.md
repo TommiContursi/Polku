@@ -79,7 +79,7 @@ The `otherways` quick-point check schedules its edit in the same turn as the fir
 
 ### The built site
 
-polku.si publishes a built copy of the app (#115, [the plan](plans/protected-polku.md)), made by `tools/site.sh` into `site/`; the app itself runs from the checkout, with no build step. Cloudflare's build runs `npm ci && tools/site.sh`, then `npx wrangler deploy` (`wrangler.jsonc`). Locally:
+polku.si publishes a built copy of the app (#115, [the plan](plans/protected-polku.md)), made by `tools/site.sh` into `site/`; the app itself runs from the checkout, with no build step. Cloudflare's build runs `npm ci && tools/site.sh`, then `npm run deploy` (`wrangler.jsonc`), which runs wrangler at the exact version `package.json`'s script names, without installing it locally. Locally:
 
 ```bash
 npm ci                          # once per worktree: esbuild, pinned in package-lock.json
