@@ -24,6 +24,12 @@ What's new in [Polku](https://polku.si), from the latest updates back to the fir
 - Parks, gardens, village greens and recreation grounds are a clearer green than lawns, and a wooded park keeps its trees.
 - City parks' names show from zoom 15, in green italics as the national parks' and nature reserves' names.
 
+### Choose what a tap opens on the map ([#1244](https://github.com/TommiContursi/Polku/issues/1244))
+
+- **Settings → Map and planner → A tap on the map** chooses what a tap or a click opens: **Everything**, as before; **No areas**, where a lake, a park, a bog, rock, open ground or a forest opens nothing and ways, places and the map's marks still do; or **Nothing**, where only your route opens. On a desktop, the pointer turns into a hand and names a thing only where a click would open it.
+- **A tap on a way** chooses what a tap on a street, a trail or a cycleway picks: **The whole way**, as before; **The piece**, from junction to junction, with that piece's length and profile; or **Off**, where a tap on a way opens nothing.
+- Holding the map, or a right-click, still opens the spot's card whatever you choose, with the way's piece when you've chosen **The piece**. Search and links to a spot open their cards as before.
+
 ### Arrows on one-way streets ([#1217](https://github.com/TommiContursi/Polku/issues/1217))
 
 - From zoom 16, a small grey arrow along a one-way street shows which way traffic goes, in Finland and beyond. One-way cycle paths get the same arrow in blue. Where an arrow and a name would overlap, the name wins.
@@ -39,6 +45,11 @@ What's new in [Polku](https://polku.si), from the latest updates back to the fir
 - With **Trail details** on, gates now show from zoom 16 instead of 15. In a town most of them are courtyard gates on the pavements, which covered the streets: on a phone in Helsinki's centre they were 130 of the 165 marks at zoom 15.
 - At zoom 16, gates that would overlap each other or a name give way, and from zoom 17 every gate is drawn. Fallen trees, stiles, cycle barriers and fords still show from zoom 15.
 - A route through a closed gate still gets its **Heads-up** item, whatever the zoom.
+
+### Reeds in the water look the same everywhere ([#1248](https://github.com/TommiContursi/Polku/issues/1248))
+
+- On the Trail, Plain and Night maps, reeds in the water are reed tufts on the water's blue, whether they come from OpenStreetMap's reedbeds or, in Finland, from the National Land Survey's overgrowing water. Before, the same reedy shore could be tufts on a pale ground, which read as land, or blue dashes on the water. Blue dashes now mean bogs and wetlands only.
+- Reedbeds that OpenStreetMap maps inside a lake now show. Before, the lake covered them.
 
 ### A tap on a river's flow arrow, a jetty or open ground says what it is ([#1234](https://github.com/TommiContursi/Polku/issues/1234))
 
