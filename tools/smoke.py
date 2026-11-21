@@ -1587,8 +1587,8 @@ def saddles(chrome):
     return not fails
 
 
-# #1144: reedbeds from Polku's own OSM data, as reed tufts on the vector bases only: on the water's colour, over the water
-# (#1248; mml_bogs checks paddling's).
+# #1144: reedbeds from Polku's own OSM data, as reed tufts on the vector bases only: on the water's colour with 20 % of the
+# reeds' green (#1296; mml_bogs checks paddling's), over the water and its shore line (#1248, #1283).
 def reedbed_style(chrome):
     pg = chrome.page(1440, 900, False)
     pg.open_app({'activity': 'mtb', 'base': 'trail'}, hash_='#15.5/62.2335/25.7905')
@@ -1611,12 +1611,13 @@ def reedbed_style(chrome):
         for(let t=0;t<40&&!here();t++)await new Promise(r=>setTimeout(r,250));
         const layers=m.getStyle().layers, i=layers.findIndex(l=>l.id==='lc-reedbed'), l=layers[i];
         if(!l){errs.push(`${base}: no reedbed layer`);continue;}
-        // over the water, so a reedbed in a lake shows, and under the shore's line
+        // over the water, so a reedbed in a lake shows, and over the shore's line, which OSM's lake often runs inside one
         const pos=(id)=>layers.findIndex(l=>l.id===id);
-        if(!(pos('water')<i&&i<pos('water-shore')))errs.push(`${base}: reedbeds not drawn over the water and under its shore`);
+        if(!(pos('water')<pos('water-shore')&&pos('water-shore')<i))errs.push(`${base}: reedbeds not drawn over the water and its shore`);
         const fill=m.getPaintProperty('water','fill-color'), id=l.paint['fill-pattern'], [,f,reed]=/^reedbed-([0-9a-f]{6})-([0-9a-f]{6})$/.exec(id||'')||[];
         if(!f){errs.push(`${base}: reedbed pattern is ${id}`);continue;}
-        if('#'+f!==fill)errs.push(`${base}: the pattern's ground #${f} isn't the water's colour ${fill}`);
+        const green='#'+[1,3,5].map(k=>Math.round(parseInt(fill.slice(k,k+2),16)*0.8+parseInt(reed.slice(k-1,k+1),16)*0.2).toString(16).padStart(2,'0')).join('');
+        if('#'+f!==green)errs.push(`${base}: the pattern's ground #${f} isn't the water's colour ${fill} with 20 % of the reeds' #${reed}, ${green}`);
         if(!m.hasImage(id))errs.push(`${base}: ${id} wasn't drawn on the map`);
         const img=makeIcon(id), px=(x,y)=>hex(img.data,(y*img.width+x)*4);
         // 2 px per CSS pixel: a tuft's middle stroke at x 3, y 1-5.5; open ground in the corner and beside it
@@ -1697,17 +1698,18 @@ def mml_bogs(chrome):
         }
         for(const k of [39110,39120,34100,36200,38300])if(bog()._featureFilter.filter({zoom:14},as(k)))errs.push(`${base}: class ${k} drawn as a bog`);
         // MML's lake over OSM's wetlands, so a marsh OSM cut out of a lake isn't a pale patch in it (Rautpohja); its
-        // overgrowing water over OSM's lake, which would hide it, and its reedbeds, the same reed tufts on the water's own
-        // blue (paddling's too, #1248)
+        // overgrowing water over OSM's lake and its shore line, and its reedbeds, the same reed tufts on the water's colour
+        // with 20 % of the reeds' green (paddling's too, #1248, #1283, #1296)
         if(at('mml-lake')<0||at('mml-overgrowing')<0){errs.push(`${base}: no layer for MML's lakes or overgrowing water`);continue;}
         if(!(at('lc-wetland-pattern')<at('mml-lake')&&at('mml-lake')<at('mml-bog')))errs.push(`${base}: MML's lakes not drawn over OSM's wetlands and under the bogs`);
         if(!drawn('mml-lake').has(36200))errs.push(`${base}: no lake drawn from the recorded tile`);
         if(m.getPaintProperty('mml-lake','fill-color')!=='#'+water)errs.push(`${base}: MML's lakes in ${m.getPaintProperty('mml-lake','fill-color')}, OSM's in #${water}`);
-        if(!(at('water')<at('lc-reedbed')&&at('lc-reedbed')<at('mml-overgrowing')&&at('mml-overgrowing')<at('water-shore')))errs.push(`${base}: overgrowing water not drawn over OSM's lakes and reedbeds`);
+        if(!(at('water')<at('water-shore')&&at('water-shore')<at('lc-reedbed')&&at('lc-reedbed')<at('mml-overgrowing')))errs.push(`${base}: overgrowing water not drawn over OSM's lakes, their shore and the reedbeds`);
         const ow=m.getPaintProperty('mml-overgrowing','fill-pattern'), reeds=m.getPaintProperty('lc-reedbed','fill-pattern');
-        if(ow!==reeds||!ow.startsWith(`reedbed-${water}-`))errs.push(`${base}: overgrowing water drawn as ${ow}, OSM's reedbeds as ${reeds}, on water #${water}`);
+        const onWater=(id,w)=>{const [,g,r]=/^reedbed-(\w{6})-(\w{6})$/.exec(id)||[]; return !!g&&'#'+g===blend('#'+w,'#'+r,0.2);};
+        if(ow!==reeds||!onWater(ow,water))errs.push(`${base}: overgrowing water drawn as ${ow}, OSM's reedbeds as ${reeds}, on water #${water}`);
         if(base==='trail'){polku.set({activity:'paddle'}); await settle(); const w=m.getPaintProperty('water','fill-color').slice(1), o=m.getPaintProperty('mml-overgrowing','fill-pattern');
-          if(o!==m.getPaintProperty('lc-reedbed','fill-pattern')||!o.startsWith(`reedbed-${w}-`)||m.getPaintProperty('mml-lake','fill-color')!=='#'+w)errs.push(`paddling: overgrowing water ${o} and MML's lakes ${m.getPaintProperty('mml-lake','fill-color')} on water #${w}`);
+          if(o!==m.getPaintProperty('lc-reedbed','fill-pattern')||!onWater(o,w)||m.getPaintProperty('mml-lake','fill-color')!=='#'+w)errs.push(`paddling: overgrowing water ${o} and MML's lakes ${m.getPaintProperty('mml-lake','fill-color')} on water #${w}`);
           polku.set({activity:'mtb'}); await settle();}
         for(const id of new Set(Object.values(want))) {
           const d=makeIcon(id).data;
@@ -1981,6 +1983,9 @@ def mml_water(chrome):
         if(!rp)errs.push(`${at}: no rapids image`); else if(!row(0)||!row(rp.height-1))errs.push(`${at}: the rapids' marks reach the river's edges, as bars across would`);
         const sh=m.getPaintProperty('mml-shoal','fill-pattern'), shoal=makeIcon(sh[sh.indexOf(38600)+2]), field=makeIcon(sh[sh.indexOf(38600)+1]);
         for(const [what,d] of [['shoal',shoal],['stone field',field]]){if(!d)errs.push(`${at}: no ${what} image`); else if(!d.data.some((v,k)=>k%4===3&&v===0))errs.push(`${at}: the ${what}'s ground covers the water and its depths`);}
+        // the stones and the stone fields' triangles on an edge of the water's colour, so they show among reeds (#1284)
+        const water=m.getPaintProperty('water','fill-color'), wrgb=[1,3,5].map(k=>parseInt(water.slice(k,k+2),16));
+        for(const id of [img(38511),img(38512),img(38513),sh[sh.indexOf(38600)+1]]){const d=makeIcon(id); if(d&&!d.data.some((v,k)=>k%4===0&&v===wrgb[0]&&d.data[k+1]===wrgb[1]&&d.data[k+2]===wrgb[2]&&d.data[k+3]===255))errs.push(`${at}: ${id} has no edge in the water's colour ${water}`);}
         if(shoal&&field&&field.data.every((v,k)=>v===shoal.data[k]))errs.push(`${at}: stone fields look like shoals`);
         for(const id of [img(38511),img(38512),img(38513),sh[sh.indexOf(38600)+1],sh[sh.indexOf(38600)+2],m.getLayoutProperty('mml-flow','icon-image')])if(!m.hasImage(id))errs.push(`${at}: ${id} isn't on the map`);
       }

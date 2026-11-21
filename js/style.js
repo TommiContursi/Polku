@@ -318,13 +318,16 @@ export function buildStyle(s, ctx) {
       },
     });
     add({ id: 'water', type: 'fill', source: 'ofm', 'source-layer': 'water', filter: ['!=', ['get', 'class'], 'swimming_pool'], paint: { 'fill-color': waterColor, 'fill-antialias': true } });
-    // reeds in the water, one look from both sources (#1248): tufts on the water's own blue (paddling's too), over the
-    // lake, which would hide them, so a reedbed never reads as land. OSM's reedbeds from Polku's own OSM data
-    // (js/osm-data.js), then MML's overgrowing water in Finland (#1147), whose tap card wins where both are.
-    const reeds = `reedbed-${waterColor.slice(1)}-${P.reed.slice(1)}`;
+    // the shore under the reeds: OSM's lake often ends inside a reedbed, where a line reads as a shore that isn't (#1283)
+    add({ id: 'water-shore', type: 'line', source: 'ofm', 'source-layer': 'water', minzoom: 11, filter: ['!=', ['get', 'class'], 'swimming_pool'], paint: { 'line-color': P.waterLine, 'line-width': zi(11, 0.3, 15, act === 'paddle' ? 1.4 : 0.8), 'line-opacity': 0.8 } });
+    // reeds in the water, one look from both sources (#1248): tufts on the water's colour (paddling's too) with 20 % of the
+    // reeds' green mixed in, so they stand out from open water and never read as land (#1296); over the lake, which would
+    // hide them. OSM's reedbeds from Polku's own OSM data (js/osm-data.js), then MML's overgrowing water in Finland (#1147),
+    // whose tap card wins where both are.
+    const ground = [1, 3, 5].map((i) => Math.round(parseInt(waterColor.slice(i, i + 2), 16) * 0.8 + parseInt(P.reed.slice(i, i + 2), 16) * 0.2).toString(16).padStart(2, '0')).join('');
+    const reeds = `reedbed-${ground}-${P.reed.slice(1)}`;
     add({ id: 'lc-reedbed', type: 'fill', source: 'reedbeds', minzoom: 12, paint: { 'fill-pattern': reeds } });
     if (sources.mml) add({ id: 'mml-overgrowing', type: 'fill', source: 'mml', 'source-layer': 'maasto_alue', minzoom: 11, filter: ['==', ['get', 'kohdeluokka'], 38300], paint: { 'fill-pattern': reeds } });
-    add({ id: 'water-shore', type: 'line', source: 'ofm', 'source-layer': 'water', minzoom: 11, filter: ['!=', ['get', 'class'], 'swimming_pool'], paint: { 'line-color': P.waterLine, 'line-width': zi(11, 0.3, 15, act === 'paddle' ? 1.4 : 0.8), 'line-opacity': 0.8 } });
   }
 
   // Depth & water overlays sit directly on the water.
@@ -362,8 +365,9 @@ export function buildStyle(s, ctx) {
     const depthOp = (id) => (s.overlayOpacity && s.overlayOpacity[id] != null ? s.overlayOpacity[id] : RASTER_OVERLAYS[id].opacity);
     if (s.overlays.depthContours) add({ id: 'mml-depth', type: 'line', source: 'mml', 'source-layer': 'korkeus', minzoom: 13, filter: ['==', cls, 54100], paint: { 'line-color': depthLine, 'line-width': zi(13, 1, 16, 1.5, 18, 2), 'line-opacity': depthOp('depthContours') } });
     // MML's water (#1170), over Traficom's depths too. Shoals and stone fields from zoom 13, as light lines on a clear
-    // ground, so the water's colour and the depths show; stone fields with MML's triangles.
-    add({ id: 'mml-shoal', type: 'fill', source: 'mml', 'source-layer': 'maasto_alue', minzoom: 13, filter: ['in', cls, ['literal', [38600, 38700]]], paint: { 'fill-pattern': ['match', cls, 38600, `stonefield-${hex(P.shoal)}-${hex(P.cliff)}`, `shoal-${hex(P.shoal)}`] } });
+    // ground, so the water's colour and the depths show; stone fields with MML's triangles, each edged in the water's
+    // colour, so it shows among reeds (#1284).
+    add({ id: 'mml-shoal', type: 'fill', source: 'mml', 'source-layer': 'maasto_alue', minzoom: 13, filter: ['in', cls, ['literal', [38600, 38700]]], paint: { 'fill-pattern': ['match', cls, 38600, `stonefield-${hex(P.shoal)}-${hex(P.cliff)}-${hex(waterColor)}`, `shoal-${hex(P.shoal)}`] } });
     // rapids along the river from zoom 11, as white bars across it (zoom 12's tiles also have some as points, which 13 and
     // 14's lack: not drawn)
     add({ id: 'mml-rapids', type: 'line', source: 'mml', 'source-layer': 'vesisto_viiva', minzoom: 11, filter: ['all', ['==', cls, 38200], ['==', ['geometry-type'], 'LineString']], paint: { 'line-pattern': `rapids-${hex(P.shoal)}-${hex(P.waterText)}`, 'line-width': zi(11, 3, 14, 6, 16, 9, 18, 13) } });
@@ -389,11 +393,12 @@ export function buildStyle(s, ctx) {
     // MML's points, side by side (each symbol layer splits 3D's draped layers): from zoom 14, as only zoom 14's tiles have
     // them, flat on the ground and never hiding a label or a place. Rocks too small for an area, stones and sparse
     // boulders; reeds, one tuft each (MML's reed points lie in the water, so a tuft under it wouldn't show); pylons from 15.
-    // Stones in the water (#1170) too, under the surface, at it and above it, as MML's and Traficom's maps draw them.
+    // Stones in the water (#1170) too, under the surface, at it and above it, as MML's and Traficom's maps draw them, on an
+    // edge of the water's colour, so a stone sits on clear water among reeds (#1284).
     const flat = { 'icon-allow-overlap': true, 'icon-ignore-placement': true, 'icon-pitch-alignment': 'map', 'icon-rotation-alignment': 'map' };
     add({
       id: 'mml-rock-point', type: 'symbol', source: 'mml', 'source-layer': 'maasto_piste', minzoom: 14, filter: ['in', cls, ['literal', [34100, 34200, 34600, 38511, 38512, 38513]]],
-      layout: { 'icon-image': ['match', cls, 34100, `rock-spot-${hex(P.rock)}-${hex(P.cliff)}`, 34200, `rock-rocks-${hex(P.cliff)}`, 38511, `rock-under-${hex(P.cliff)}`, 38512, `rock-awash-${hex(P.cliff)}`, 38513, `rock-above-${hex(P.cliff)}`, `rock-stone-${hex(P.cliff)}`], 'icon-size': zi(14, 0.75, 17, 1.2), ...flat },
+      layout: { 'icon-image': ['match', cls, 34100, `rock-spot-${hex(P.rock)}-${hex(P.cliff)}`, 34200, `rock-rocks-${hex(P.cliff)}`, 38511, `rock-under-${hex(P.cliff)}-${hex(waterColor)}`, 38512, `rock-awash-${hex(P.cliff)}-${hex(waterColor)}`, 38513, `rock-above-${hex(P.cliff)}-${hex(waterColor)}`, `rock-stone-${hex(P.cliff)}`], 'icon-size': zi(14, 0.75, 17, 1.2), ...flat },
     });
     // which way a river flows, from zoom 14: MML's `suunta` is in 1/10,000 radian, counter-clockwise from east (it
     // pointed downhill at 8 of 8 arrows where the elevations differ, 2026-11-20); icon-rotate is clockwise degrees
