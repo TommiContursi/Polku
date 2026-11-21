@@ -22,7 +22,7 @@ import { LipasLayer, lipasPlace, rideOf } from './lipas.js';
 import { prefetchWater } from './waterdata.js';
 import { initInspector } from './inspect.js';
 import { initHover, hoverCapable } from './hover.js';
-import { registerServiceWorker, initOfflineStatus, openSaveOffline, renderOfflineSection, saveOverview } from './offline.js';
+import { registerServiceWorker, initOfflineStatus, openSaveOffline, renderOfflineSection, saveOverview, savedOnly } from './offline.js';
 import { initSearch, recentSearches, clearRecentSearches } from './search.js';
 import { parseTrackFile } from './gpx.js';
 import { lineLength, bbox, fmtDist, compass as side } from './geo.js';
@@ -1757,10 +1757,11 @@ map.on('data', (e) => {
 });
 // MML's terrain (#1147) has no tile of its own: where its tiles don't load, OSM's wetlands, rock and cliffs show in their
 // place, and power lines, the water's marks and the lakes' depths (#1170) are missing, and a message says so once, until
-// one of its tiles comes again
+// one of its tiles comes again. Not while the map has only what's saved (#1176): the view reaches past a saved area's
+// corridor, and the offline message says what's missing there; Offline maps says what a saved area lacks.
 let mmlDown = false;
 map.on('error', (e) => {
-  if (e.sourceId !== 'mml' || mmlDown || (e.error && e.error.name === 'AbortError')) return;
+  if (e.sourceId !== 'mml' || mmlDown || savedOnly() || (e.error && e.error.name === 'AbortError')) return;
   mmlDown = true;
   toast('The National Land Survey’s terrain didn’t load: the map shows OpenStreetMap’s wetlands, rock and cliffs, without power lines, stones and rapids in the water, or lake depths.', { ms: 6000 });
 });

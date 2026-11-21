@@ -218,10 +218,14 @@ export async function setPreview(on) {
   location.reload();
 }
 
+let previewing = false;
+/** Whether the map has only what's saved: the device offline, or Preview offline on. */
+export const savedOnly = () => previewing || !navigator.onLine;
+
 /** Banner while previewing, and a toast when Polku opens offline or the connection drops or returns. */
 export async function initOfflineStatus() {
   if (!offlineSupported()) return;
-  if (await previewActive()) {
+  if ((previewing = await previewActive())) {
     document.body.append(h('div', { class: 'offline-banner', role: 'status' },
       h('span', { html: `${icon('offline', 16)} Offline preview: saved areas, and a coarse map of Finland` }),
       h('button', { type: 'button', class: 'btn', onclick: () => setPreview(false) }, 'Exit')));

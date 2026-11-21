@@ -8034,7 +8034,8 @@ MML_OFFLINE_SAVE = r"""
 })()
 """
 
-# Offline, with this commit's worker: MML's bogs from the saved tile, asked for with Polku's key (saved with your own)
+# Offline and in Preview offline, with this commit's worker: MML's bogs from the saved tile, asked for with Polku's key
+# (saved with your own), and no message that MML's terrain didn't load, though the view reaches past the corridor
 MML_OFFLINE_MAP = r"""
 (async () => {
   const f = [], m = polku.map, wait = (ms) => new Promise((r) => setTimeout(r, ms)), failed = [];
@@ -8043,9 +8044,9 @@ MML_OFFLINE_MAP = r"""
   const bogs = () => m.queryRenderedFeatures({ layers: ['mml-bog'] }).length;
   for (let k = 0; k < 60 && !(bogs() && m.areTilesLoaded()); k++) await wait(250);
   await wait(1500);
-  if (!bogs()) f.push('offline, no bogs drawn from the saved tile');
+  if (!bogs()) f.push('no bogs drawn from the saved tile');
   const said = (window.__toasts || []).filter((t) => t.includes('National Land Survey'));
-  if (said.length) f.push(`offline in the saved area: ${said[0]} (MML's tiles that failed: ${failed.join(' ')})`);
+  if (said.length) f.push(`in the saved area: ${said[0]} (MML's tiles that failed: ${failed.join(' ')})`);
   return f;
 })()
 """
@@ -8067,7 +8068,8 @@ def mml_offline(chrome):
         pg.reload()
         if not pg.js('!!navigator.serviceWorker.controller'):
             raise RuntimeError('the page is not controlled by the worker')
-        pg.js("new MutationObserver((ms) => { for (const m of ms) if (m.target.id === 'toast') (window.__toasts ||= []).push(m.target.textContent); }).observe(document, { childList: true, subtree: true }); true")
+        toasts = "new MutationObserver((ms) => { for (const m of ms) if (m.target.id === 'toast') (window.__toasts ||= []).push(m.target.textContent); }).observe(document, { childList: true, subtree: true }); true"
+        pg.js(toasts)
         # the page and every worker of this origin offline: CDP's offline for the page alone leaves the worker's fetches online
         workers = [t['targetId'] for t in chrome.send('Target.getTargets')['targetInfos'] if t['type'] == 'service_worker' and t['url'].startswith(BASE)]
         sessions = [pg.s] + [chrome.send('Target.attachToTarget', {'targetId': t, 'flatten': True})['sessionId'] for t in workers]
@@ -8075,12 +8077,20 @@ def mml_offline(chrome):
             for s_ in sessions:
                 chrome.send('Network.enable', {}, s_)
                 chrome.send('Network.emulateNetworkConditions', {'offline': True, 'latency': 0, 'downloadThroughput': 0, 'uploadThroughput': 0}, s_)
-            fails += pg.js(MML_OFFLINE_MAP, timeout=60000)
+            fails += [f'offline: {e}' for e in pg.js(MML_OFFLINE_MAP, timeout=60000)]
         finally:
             for s_ in sessions:
                 chrome.send('Network.emulateNetworkConditions', {'offline': False, 'latency': 0, 'downloadThroughput': -1, 'uploadThroughput': -1}, s_)
             for s_ in sessions[1:]:
                 chrome.send('Target.detachFromTarget', {'sessionId': s_})
+        preview = "new Promise((ok) => { navigator.serviceWorker.addEventListener('message', (e) => e.data.type === 'offline-preview' && ok(true)); navigator.serviceWorker.controller.postMessage({ type: 'offline-preview', on: %s }); setTimeout(() => ok(false), 3000); })"
+        try:
+            pg.js(preview % 'true')
+            pg.reload()
+            pg.js(toasts)
+            fails += [f'Preview offline: {e}' for e in pg.js(MML_OFFLINE_MAP, timeout=60000)]
+        finally:
+            pg.js(preview % 'false')
         pg.js("(async () => { const off = await import(location.origin + '/js/offline.js'); for (const a of await off.listAreas()) if (a.name === 'smoke-mml') await off.removeArea(a.id); return true })()")
         fails += [f'console: {e[:160]}' for e in pg.errors()]
     finally:
