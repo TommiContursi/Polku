@@ -24,8 +24,8 @@ const metresPerPixel = (ll, zoom) => (40075016.686 * Math.cos((ll[1] * Math.PI) 
  * no way is in reach, the area the spot is in (`spot.area`: the map draws water or a park there); on water, its depth
  * (`depth`: words, or null where Traficom didn't answer), whatever the ways do.
  */
-export const newPick = (spot, { sport, sec, zoom, touch = false } = {}) => ({
-  spot, ll: spot.ll, sport, sec, zoom, touch, at: Date.now(), ways: undefined, a: undefined, wx: undefined, places: undefined, ele: undefined, area: undefined, depth: undefined, dead: false,
+export const newPick = (spot, { sport, sec, zoom, touch = false, piece = false } = {}) => ({
+  spot, ll: spot.ll, sport, sec, zoom, touch, piece, at: Date.now(), ways: undefined, a: undefined, wx: undefined, places: undefined, ele: undefined, area: undefined, depth: undefined, dead: false,
 });
 
 /** Asks for the pick's ways and what follows; `changed()` after each answer. A closed pick (`dead`) stops. */
@@ -40,7 +40,8 @@ export async function resolvePick(pick, changed) {
   if (pick.spot.area === 'water') depthAt(pick.ll).then((d) => step(() => { pick.depth = d; }), () => step(() => { pick.depth = null; }));
   try { await loadWays(wayTile(pick.ll), { force: true }); } catch { step(() => { pick.ways = 'failed'; }); return; }
   if (!current()) return;
-  const seed = nearestWay(pick.ll, (pick.touch ? 18 : 9) * metresPerPixel(pick.ll, pick.zoom));
+  // (none where Settings keeps a tap off the ways, #1244: `spot.ways` false)
+  const seed = pick.spot.ways !== false && nearestWay(pick.ll, (pick.touch ? 18 : 9) * metresPerPixel(pick.ll, pick.zoom));
   if (!seed) {
     step(() => { pick.ways = 'none'; });
     elevation(pick.ll).then((e) => step(() => { pick.ele = Number.isFinite(e) ? e : null; }), () => step(() => { pick.ele = null; }));
@@ -59,7 +60,7 @@ export async function resolvePick(pick, changed) {
     pick.title = wayTitle(j.chain);
     pick.line = wayLine(j.chain);
   };
-  const j = await joinWay(seed, pick.ll, (part) => step(() => put({ ...part, side: [] }, true)));
+  const j = await joinWay(seed, pick.ll, (part) => step(() => put({ ...part, side: [] }, true)), pick.piece);
   if (!current()) return;
   step(() => put(j, false));
   try {
@@ -84,13 +85,14 @@ export async function loadWeather(pick, changed) {
 
 /**
  * The way under a desktop's pointer, said as its pick would say it (#574: hover and card say the same): { title, line,
- * coords }, or null where there's none, or while its tile loads (once, as a tap's would; `loaded()` after it has).
+ * coords }, or null where there's none, or while its tile loads (once, as a tap's would; `loaded()` after it has). `piece`:
+ * from junction to junction (Settings, #1244).
  */
-export function wayUnder(ll, zoom, loaded) {
+export function wayUnder(ll, zoom, loaded, piece = false) {
   if (!waysLoaded(ll)) { loadWays(wayTile(ll)).then(loaded, () => {}); return null; }
   const w = nearestWay(ll, 9 * metresPerPixel(ll, zoom));
   if (!w) return null;
-  const { chain } = walk(w);
+  const { chain } = walk(w, piece);
   return { title: wayTitle(chain), line: wayLine(chain), coords: lineOf(chain).coords };
 }
 
