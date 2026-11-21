@@ -1453,6 +1453,13 @@ def town_shops(chrome):
       for(const cls of ['shop','grocery','cafe','restaurant','fast_food','bar','bakery','pharmacy'])if(!takes({class:cls,name:'X',level:0}))errs.push(`no ${cls}`);
       for(const p of [{class:'cafe'},{class:'cafe',name:'X',indoor:1},{class:'cafe',name:'X',level:1},{class:'toilets',name:'X'},{class:'parking',name:'X'}])if(takes(p))errs.push(`a shop drawn for ${JSON.stringify(p)}`);
       if(m.getLayer('poi-shops').minzoom!==17||m.getPaintProperty('poi-shops','text-color')!=='#7a2e8a')errs.push(`shops from ${m.getLayer('poi-shops').minzoom} in ${m.getPaintProperty('poi-shops','text-color')}`);
+      // the names at 4.5:1 or more against their halo on every base (the aerial photos' halo is dark)
+      const lum=(h)=>{const c=[1,3,5].map((i)=>parseInt(h.slice(i,i+2),16)/255).map((v)=>v<=0.03928?v/12.92:((v+0.055)/1.055)**2.4);return 0.2126*c[0]+0.7152*c[1]+0.0722*c[2];};
+      const ratio=(a,b)=>{const [x,y]=[lum(a),lum(b)].sort((p,q)=>q-p);return (x+0.05)/(y+0.05);};
+      for(const base of ['trail','plain','night','aerial','ortofi']){polku.set({base}); await settle();
+        const r=ratio(m.getPaintProperty('poi-shops','text-color'),m.getPaintProperty('poi-shops','text-halo-color'));
+        if(!(r>=4.5))errs.push(`${base}: shops' names at ${r.toFixed(2)}:1 on their halo`);}
+      polku.set({base:'trail'}); await settle();
       const shops=m.queryRenderedFeatures({layers:['poi-shops']});
       if(shops.length<10)errs.push(`${shops.length} shops drawn in Helsinki's centre`);
       const f=shops.find((x)=>x.geometry.type==='Point');

@@ -594,7 +594,8 @@ export function buildStyle(s, ctx) {
         'symbol-sort-key': ['get', 'rank'], 'icon-image': ['coalesce', ['image', ['get', 'class']], ['image', 'shop']], 'icon-size': hc ? 1 : 0.75,
         'text-field': ['get', 'name'], 'text-font': FONT, 'text-size': 10.5, 'text-offset': [0, 0.9], 'text-anchor': 'top', 'text-optional': true, 'text-max-width': 7,
       },
-      paint: { 'text-color': s.base === 'night' ? '#d6b8e6' : '#7a2e8a', 'text-halo-color': P.halo, 'text-halo-width': 1.2, 'icon-opacity': s.base === 'night' ? 0.85 : 1 },
+      // (a light purple on the dark halo of the Night map and the aerial photos, 9.8:1 or more; the dark one on a white halo, 8.1:1)
+      paint: { 'text-color': s.base === 'night' || isAerial(s.base) ? '#d6b8e6' : '#7a2e8a', 'text-halo-color': P.halo, 'text-halo-width': 1.2, 'icon-opacity': s.base === 'night' ? 0.85 : 1 },
     });
   }
   if (s.overlays.lipasPoints || s.overlays.restricted) {
