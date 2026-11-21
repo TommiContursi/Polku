@@ -26759,13 +26759,37 @@ def tdm_scope(chrome):
     return not fails
 
 
+def copyright_line(chrome):
+    """The copyright line at the top of Polku's own files is ASCII, since they go out with no charset and a browser
+    showing one guessed it (the © came out as Â©), and says all of it, with the deploy's id but in sw.js (#115)."""
+    import urllib.request
+    fails, built = [], None
+    for f, start in [('js/main.js', '/*! '), ('css/app.css', '/*! '), ('sw.js', '/*! '), ('', '<!doctype html>\n<!-- ')]:
+        with urllib.request.urlopen(BASE + f, timeout=10) as r:
+            built, body = r.headers.get('X-Polku-Deploy'), r.read()
+        if not built:
+            break
+        head = body[:body.find(b'*/' if start == '/*! ' else b'-->') + 3]
+        want = ['Copyright (c) 2026 Tommi Contursi. All rights reserved.', 'No automated scraping, text and data mining, or AI training.',
+                "No copying or reuse of Polku's proprietary implementation in other products or services.",
+                'Text and data mining rights reserved under EU Directive 2019/790, Art. 4(3).', 'License: https://polku.si/LICENSE']
+        want += [] if f == 'sw.js' else [f'Build: {built}']
+        if not head.decode('utf-8', 'replace').lower().startswith(start.lower()) or not head.isascii():
+            fails.append(f'/{f}: the line is missing or not ASCII: {head[:60]!r}')
+        else:
+            fails += [f'/{f}: no "{w}"' for w in want if w not in head.decode()]
+    print(f"{'ok  ' if not fails else 'FAIL'} the copyright line, ASCII, whole and with the deploy's id"
+          + ('' if built else ' (the checkout: nothing to check)') + ''.join(f'\n     - {f}' for f in fails), flush=True)
+    return not fails
+
+
 GROUPS = [
     ('hover', [hover_feedback], 'clickable map cursors and faster local tooltips without earlier OSM enrichment'),
     ('osmdata', [osm_data], 'static OSM: complete ways across tile boundaries, Range decoding, release cache and offline reuse'),
     ('radar', [radar], 'fixed FMI rain-rate units, palette order, dry/no-data and reflectivity fallback (recorded/mocked)'),
     ('weather', [weather_requests, timeline_reading, timeline_phone, timeline_mouse, timeline_open, weather_menu, towns_weather, weather_layers, clouds, thunder, no_radar, radar_past, weather_card, best_time, best_time_snow, strip_arrows, timeline_trip, timeline_zoom, trip_fold], 'forecast requests: cold zoom-out waits, cached and pending cells do not consume the budget (#298); the timeline\'s reading whole in its box on phones and a desktop, in a gale too (#243, #457); a note above it on a desktop (#343); the wind still with reduced motion (#925); the weather layers as buttons and ⋯ on a desktop, a phone and a narrow window with a mouse, nothing moving, the knob under the needle and the skeleton while the forecast comes (#869); the legend over the map, the rain\'s steps and Effects (#182); the towns\' weather at every zoom, a press pinning the reading there and naming the place (#916, #1028); the weather\'s layers in Layers and Settings, and the legend\'s fold; the clouds\' veil, the thunder, the hatch where no radar reaches and the radar\'s last 90 minutes (#182); the trip\'s box and the weather card: missing, late and partial forecasts in words, feels like known and not, the dark (#869); the timeline zoomed to your trip: the switch still, where you\'ll be, the weather card\'s hours and lanes to Your trip and back, ‹ › through the card\'s notes, missing and late forecasts, a day at a time, past 48 hours, a phone\'s room: the planner folded and the reading on one line (#869), a second lane folding it again (#1015), the weather card back where it was scrolled (#869), the turn of the hour (#1004); the timeline at 200 % on a phone between the top bar and the screen\'s foot (#590); Your trip\'s fold: 48 hours after a lane, Back and ✕ (#1015), left by an hour outside it and by Weather here (#1018), the planner yours after On the profile (#1017)'),
     ('changelog', [changelog], 'release notes, retry, safe rendering, keyboard, route preservation and real worker offline'),
-    ('site', [license_text, tdm_scope], 'the built site: LICENSE sent as text, since every file\'s copyright line links to it; text and data mining reserved but for the OFL fonts and the ODbL outlines, and crawlers off share links (#115); against the checkout it checks nothing'),
+    ('site', [license_text, tdm_scope, copyright_line], 'the built site: LICENSE sent as text, since every file\'s copyright line links to it; text and data mining reserved but for the OFL fonts and the ODbL outlines, and crawlers off share links; the copyright line ASCII and whole (#115); against the checkout it checks nothing'),
     ('pacing', [pacing, paced_legs, net_fails], 'calls made together go out paced and counted (mocked services, a fake clock); legs refused for a slot follow at it (#78); the calls that failed, in Data sources (#687)'),
     ('loading', [loading, routing_edits], 'cancel obsolete routing, edits/Undo/Clear, shared subscribers, refusal/recovery, deadlines, terrain slots and LIPAS viewport/cache (mocked)'),
     ('layers', [layers, layer_coverage, cycleway_style, cycling_restrictions, waterway_style, property_lines, property_plots, wetland_style, reedbed_style, mml_bogs, mml_rock, mml_water, mml_open, osm_cliffs, saddles, mml_cards, town_gates, town_bridges, town_oneway, town_parks, town_parking, town_shops, town_housenumbers], 'the Layers panel in every sport'),
