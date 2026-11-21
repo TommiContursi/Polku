@@ -4,6 +4,10 @@ What's new in [Polku](https://polku.si), from the latest updates back to the fir
 
 ## 2026-11-21
 
+### House numbers ([#1223](https://github.com/TommiContursi/Polku/issues/1223))
+
+- From zoom 17, house numbers show on the buildings, small and in a quiet grey, so you can find an address in a town. Every other name and place wins where they would overlap.
+
 ### Shops and food on the map ([#1222](https://github.com/TommiContursi/Polku/issues/1222))
 
 - A new layer under **Layers › Places**, **Shops and food**, shows shops, supermarkets, cafés, restaurants, bars, bakeries and pharmacies from zoom 17, each with its icon and name in purple. Where they crowd, the better-known ones come first, and shops upstairs or inside a shopping centre are left out. A tap on one opens its card.
