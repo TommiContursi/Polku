@@ -7078,8 +7078,9 @@ export class Planner {
     row('Daylight', sun.set ? `sunset ${clock(sun.set * 1000)}` : sun.day === 'polar-day' ? 'the sun doesn’t set' : 'the sun doesn’t rise', 'ok');
     if (water) {
       // Syke's lake depths (#1184): how much of the route's water it surveyed; none of the sea
-      // legs on the water the router didn't draw (freehand, imported) count as water not surveyed; a swim's don't count
-      const free = this.legs.reduce((t, l, i) => t + (onWater(l, i) && this.legSport(i) !== 'swim' && !(l.mode === 'water' && l.result && l.result.water) ? this.lengthTo(i + 1) - this.lengthTo(i) : 0), 0);
+      // legs on the water the router didn't draw (freehand, imported, or a straight stand-in) count as water not surveyed;
+      // a swim's don't count, nor a leg still routing (#1196)
+      const free = this.legs.reduce((t, l, i) => t + (onWater(l, i) && this.legSport(i) !== 'swim' && l.result && !(l.mode === 'water' && l.result.water) ? this.lengthTo(i + 1) - this.lengthTo(i) : 0), 0);
       const dep = wr.filter((w) => w.depth), wet = dep.reduce((t, w) => t + w.depth.water, free), got = dep.reduce((t, w) => t + w.depth.surveyed, 0);
       if (!asked('depths')) row('Lake depths', 'not used for this route', 'na');
       else if (missing('Syke') || skipped('Syke')) row('Lake depths', missing('Syke') ? 'didn’t load' : 'not checked: a leg too long to ask for', 'bad');
