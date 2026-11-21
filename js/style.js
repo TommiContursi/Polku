@@ -558,6 +558,9 @@ export function buildStyle(s, ctx) {
     });
   }
 
+  // House numbers (#1223) from 17, small and quiet, under the places and the labels, so they give way to every other name
+  if (!topoBase) add({ id: 'label-housenumber', type: 'symbol', source: 'ofm', 'source-layer': 'housenumber', minzoom: 17, layout: { 'text-field': ['get', 'housenumber'], 'text-font': FONT, 'text-size': 10, 'text-padding': 2 }, paint: { 'text-color': aerialBase ? P.text : s.base === 'night' ? '#9aa1a9' : '#7d7468', 'text-halo-color': P.halo, 'text-halo-width': 1 } });
+
   // ---- Places / POIs ------------------------------------------------------
   if (s.overlays.pois) {
     // Things you plan an outing around show early; everyday services only up close.

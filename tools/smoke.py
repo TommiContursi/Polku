@@ -1476,6 +1476,34 @@ def town_shops(chrome):
     return not fails
 
 
+# #1223: house numbers from zoom 17 in Helsinki's centre, small and quiet on the Trail and Night maps, under every place and
+# label layer, so they give way to every other name; none at 16.6.
+def town_housenumbers(chrome):
+    pg = chrome.page(1440, 900, False)
+    pg.open_app({'activity': 'road', 'base': 'trail'}, None, '#17.5/60.1668/24.944')
+    fails = pg.js("""(async () => {
+      const errs=[], m=polku.map, wait=(ms)=>new Promise((r)=>setTimeout(r,ms));
+      const settle=async()=>{await wait(800);await Promise.race([new Promise(r=>{m.once('idle',r);m.triggerRepaint();}),wait(10000)]);await wait(300);};
+      for(const [base,colour] of [['trail','#7d7468'],['night','#9aa1a9']]) {
+        polku.set({base}); await settle();
+        if(!m.getLayer('label-housenumber')){errs.push(`${base}: no house numbers`);continue;}
+        if(m.getPaintProperty('label-housenumber','text-color')!==colour||m.getLayoutProperty('label-housenumber','text-size')!==10||m.getLayer('label-housenumber').minzoom!==17)
+          errs.push(`${base}: house numbers ${m.getPaintProperty('label-housenumber','text-color')} at ${m.getLayoutProperty('label-housenumber','text-size')} px from ${m.getLayer('label-housenumber').minzoom}`);
+        const order=m.getLayersOrder(), at=order.indexOf('label-housenumber');
+        const over=order.filter((id)=>/^(poi-|label-)/.test(id)&&id!=='label-housenumber'&&order.indexOf(id)<at);
+        if(over.length)errs.push(`${base}: house numbers over ${over.join(', ')}`);
+        if(m.queryRenderedFeatures({layers:['label-housenumber']}).length<5)errs.push(`${base}: few house numbers drawn at 17.5`);
+      }
+      polku.set({base:'trail'}); m.jumpTo({center:m.getCenter(),zoom:16.6}); await settle();
+      if(m.queryRenderedFeatures({layers:['label-housenumber']}).length)errs.push('house numbers at 16.6');
+      return errs;
+    })()""")
+    fails += [f'console: {e[:160]}' for e in pg.errors()]
+    pg.close()
+    print(f"{'ok  ' if not fails else 'FAIL'} house numbers from zoom 17, giving way to every other name (#1223)" + ''.join(f'\n     - {f}' for f in fails), flush=True)
+    return not fails
+
+
 def osm_cliffs(chrome):
     pg = chrome.page(1440, 900, False)
     pg.open_app({'activity': 'mtb', 'base': 'trail'}, hash_='#16/62.2289/25.7652')
@@ -26511,7 +26539,7 @@ GROUPS = [
     ('changelog', [changelog], 'release notes, retry, safe rendering, keyboard, route preservation and real worker offline'),
     ('pacing', [pacing, paced_legs, net_fails], 'calls made together go out paced and counted (mocked services, a fake clock); legs refused for a slot follow at it (#78); the calls that failed, in Data sources (#687)'),
     ('loading', [loading, routing_edits], 'cancel obsolete routing, edits/Undo/Clear, shared subscribers, refusal/recovery, deadlines, terrain slots and LIPAS viewport/cache (mocked)'),
-    ('layers', [layers, layer_coverage, cycleway_style, cycling_restrictions, waterway_style, property_lines, property_plots, wetland_style, reedbed_style, mml_bogs, mml_rock, mml_water, mml_open, osm_cliffs, saddles, mml_cards, town_gates, town_bridges, town_oneway, town_parks, town_parking, town_shops], 'the Layers panel in every sport'),
+    ('layers', [layers, layer_coverage, cycleway_style, cycling_restrictions, waterway_style, property_lines, property_plots, wetland_style, reedbed_style, mml_bogs, mml_rock, mml_water, mml_open, osm_cliffs, saddles, mml_cards, town_gates, town_bridges, town_oneway, town_parks, town_parking, town_shops, town_housenumbers], 'the Layers panel in every sport'),
     ('raster', [raster_maps, aerial_fallback, aerial_labels], 'terrain and aerial detail, bounded high-density WMS symbols, depth boundaries and missing aerial detail (#649, #650, #653); the map\'s words on the aerial photos at 4.5:1 on their halo (#554)'),
     ('coarse', [coarse], 'a coarse map underneath (#1091): the base map\'s tile four zoom levels up stands in for one that hasn\'t come, at 1440 and 390'),
     ('offline', [mml_offline], 'Save offline keeps the National Land Survey\'s tiles (#1176): its terrain at zooms 11–14 and property boundaries while on, under addresses without the key, two at a time and ten a second at most; what Offline maps says an area lacks; offline, with the real worker, the bogs drawn from the saved tile and no message'),
