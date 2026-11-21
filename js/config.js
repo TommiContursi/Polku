@@ -266,6 +266,12 @@ export const LIPAS_TYPES = {
   4840: { name: 'Field archery range', color: '#b91c1c', icon: 'target', layer: 'lipas_4840_jousiammuntamaastorata', danger: true },
 };
 
+// Kinds of place the map draws with an icon of their own (#1179, #1173), as LIPAS's places are: a white pictogram (GLYPHS in
+// js/icons.js) on a disc in the kind's colour, `place-<kind>` on the map. One list, for the catalogue of place kinds (#121).
+export const PLACE_KINDS = {
+  guidepost: { name: 'Guidepost', color: '#734a08', icon: 'guidepost' }, // OSM's standard map's brown for tourism
+};
+
 // ---------------------------------------------------------------------------
 // Overlay catalogue (raster). Built-in vector overlays live in style.js.
 

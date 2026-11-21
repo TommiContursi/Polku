@@ -80,6 +80,8 @@ PALETTES.ortofi = PALETTES.aerial;
 PALETTES.mml = { ...PALETTES.trail, hillshade: false };
 PALETTES.maasto = PALETTES.mml;
 export const isAerial = (base) => base === 'aerial' || base === 'ortofi';
+// Winter ways' lines (js/winter.js), MML's winter roads in the look of OSM's ways there only in winter (#1171)
+const WINTER_WIDTH = zi(11, 1.6, 14, 3.4, 18, 6), WINTER_CASING = zi(11, 3, 14, 6, 18, 10), WINTER_SEASONAL = '#0891b2', WINTER_SEASONAL_DASH = [0.6, 1.4];
 export const isTopo = (base) => base === 'mml' || base === 'maasto';
 // the route's opacities, faded while a stretch of it is lit (main.js sets them again when routeLit changes); at once, as
 // the lit stretch comes and goes with the pointer
@@ -470,6 +472,15 @@ export function buildStyle(s, ctx) {
     } });
   }
 
+  // MML's winter roads in Finland (#1171), tracks for snowmobiles and off-road vehicles: in Winter ways, in the look of OSM's ways
+  // there only in winter, and only while it's winter (not with the Winter trail colours in summer: over a bog or a lake a winter
+  // road isn't a way then). Under LIPAS's snowmobile routes, which run along some of them.
+  if (s.winterOn && s.overlays.winterWays && sources.mml) {
+    const road = { source: 'mml', 'source-layer': 'liikenne', minzoom: 13, filter: ['==', ['get', 'kohdeluokka'], 12312], layout: { 'line-join': 'round', 'line-cap': 'round' } };
+    add({ id: 'mml-winter-road-casing', type: 'line', ...road, paint: { 'line-color': '#ffffff', 'line-opacity': 0.8, 'line-width': WINTER_CASING } });
+    add({ id: 'mml-winter-road', type: 'line', ...road, paint: { 'line-color': WINTER_SEASONAL, 'line-width': WINTER_WIDTH, 'line-dasharray': ['literal', WINTER_SEASONAL_DASH] } });
+  }
+
   // ---- Official routes (LIPAS) -----------------------------------------
   if (s.overlays.lipasRoutes || (s.winterOn && s.overlays.lipasWinter)) {
     const typeColor = ['match', ['get', 'type'], ...Object.entries(LIPAS_TYPES).filter(([k]) => isLipasRoute(k)).flatMap(([k, v]) => [+k, v.color]), '#555'];
@@ -488,15 +499,15 @@ export function buildStyle(s, ctx) {
   // ---- Winter ways (OSM: js/winter.js) ------------------------------------
   // How soon a way opens after snow, ploughing, no access in winter, ski tracks: Trailmap's winter classes
   if ((s.winterOn && s.overlays.winterWays) || s.trailColors === 'winter') { // winter, or the Winter trail colours any time
-    const W = zi(11, 1.6, 14, 3.4, 18, 6);
+    const W = WINTER_WIDTH;
     const cls = (c) => ['==', ['get', 'cls'], c];
-    add({ id: 'winter-casing', type: 'line', source: 'winterWays', minzoom: 11, filter: ['!', cls('ski')], layout: { 'line-join': 'round', 'line-cap': 'round' }, paint: { 'line-color': '#ffffff', 'line-opacity': 0.8, 'line-width': zi(11, 3, 14, 6, 18, 10) } });
+    add({ id: 'winter-casing', type: 'line', source: 'winterWays', minzoom: 11, filter: ['!', cls('ski')], layout: { 'line-join': 'round', 'line-cap': 'round' }, paint: { 'line-color': '#ffffff', 'line-opacity': 0.8, 'line-width': WINTER_CASING } });
     add({
       id: 'winter-way', type: 'line', source: 'winterWays', minzoom: 11, filter: ['!', ['in', ['get', 'cls'], ['literal', ['ski', 'closed']]]], layout: { 'line-join': 'round', 'line-cap': 'round' },
       paint: {
-        'line-color': ['match', ['get', 'cls'], 'ploughed', '#0d9488', 'groomed', '#0d9488', 'open1', '#65a30d', 'open2', '#a3b10e', 'open3', '#d39b46', 'unploughed', '#94a3b8', 'seasonal', '#0891b2', '#64748b'],
+        'line-color': ['match', ['get', 'cls'], 'ploughed', '#0d9488', 'groomed', '#0d9488', 'open1', '#65a30d', 'open2', '#a3b10e', 'open3', '#d39b46', 'unploughed', '#94a3b8', 'seasonal', WINTER_SEASONAL, '#64748b'],
         'line-width': W,
-        'line-dasharray': ['match', ['get', 'cls'], 'unploughed', ['literal', [1.5, 1.2]], 'seasonal', ['literal', [0.6, 1.4]], ['literal', [1, 0]]],
+        'line-dasharray': ['match', ['get', 'cls'], 'unploughed', ['literal', [1.5, 1.2]], 'seasonal', ['literal', WINTER_SEASONAL_DASH], ['literal', [1, 0]]],
       },
     });
     // no access in winter: red and white, like a closed ski base
@@ -571,15 +582,17 @@ export function buildStyle(s, ctx) {
     const poi = (id, minzoom, filter) => add({
       id, type: 'symbol', source: 'ofm', 'source-layer': 'poi', minzoom, filter,
       layout: {
-        'icon-image': ['match', ['get', 'subclass'], 'viewpoint', 'attraction', ['firepit', 'bbq'], 'lipas-fire', ['coalesce', ['image', ['get', 'class']], ['image', 'circle_11']]],
-        'icon-size': ['match', ['get', 'subclass'], ['firepit', 'bbq'], 0.6, hc ? 1.05 : 0.8],
+        'icon-image': ['match', ['get', 'subclass'], 'viewpoint', 'attraction', ['firepit', 'bbq'], 'lipas-fire', 'guidepost', 'place-guidepost', ['coalesce', ['image', ['get', 'class']], ['image', 'circle_11']]],
+        'icon-size': ['match', ['get', 'subclass'], ['firepit', 'bbq', 'guidepost'], 0.6, hc ? 1.05 : 0.8],
         'text-field': ['step', ['zoom'], '', 15, ['get', 'name']],
         'text-font': FONT_I, 'text-size': 11, 'text-offset': [0, 1], 'text-anchor': 'top', 'text-optional': true, 'text-max-width': 8,
       },
       paint: { 'text-color': P.text, 'text-halo-color': P.halo, 'text-halo-width': 1.2, 'icon-opacity': s.base === 'night' ? 0.85 : 1 },
     });
     poi('poi-outdoor', 13, ['any', ['in', ['get', 'class'], ['literal', outdoor]], ['in', ['get', 'subclass'], ['literal', ['viewpoint', 'firepit', 'bbq']]]]);
-    poi('poi-minor', 15.5, ['all', ['in', ['get', 'class'], ['literal', minor]], ['!', ['in', ['get', 'subclass'], ['literal', ['viewpoint', 'firepit', 'bbq']]]]]);
+    poi('poi-minor', 15.5, ['all', ['in', ['get', 'class'], ['literal', minor]], ['!', ['in', ['get', 'subclass'], ['literal', ['viewpoint', 'firepit', 'bbq', 'guidepost']]]]]);
+    // guideposts (#1179) from 15 with an icon of their own: what you look for at a junction, not an information board
+    poi('poi-guidepost', 15, ['==', ['get', 'subclass'], 'guidepost']);
     // car parks (#1219): the named ones from 15.5 and the rest from 17, as OSM's standard map; the tiles can't tell a kerbside one
     poi('poi-parking', 15.5, ['all', ['==', ['get', 'class'], 'parking'], ['has', 'name']]);
     poi('poi-parking-all', 17, ['all', ['==', ['get', 'class'], 'parking'], ['!', ['has', 'name']]]);

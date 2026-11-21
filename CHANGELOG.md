@@ -4,6 +4,12 @@ What's new in [Polku](https://polku.si), from the latest updates back to the fir
 
 ## 2026-11-21
 
+### Winter roads and guideposts on the map ([#1171](https://github.com/TommiContursi/Polku/issues/1171), [#1179](https://github.com/TommiContursi/Polku/issues/1179))
+
+- In Finland, **Winter ways** now also shows the winter roads on the National Land Survey's map, tracks for snowmobiles and off-road vehicles, from zoom 13 and only while it's winter. They're drawn like OpenStreetMap's ways that are there only in winter, and a marked snowmobile route along one is drawn over it.
+- A tap on a winter road says what it is for. **Many winter roads cross a lake's ice: Polku can't see whether the ice holds, so check it yourself.**
+- Guideposts show from zoom 15 with an icon of their own, a post with two signs, instead of the information board's.
+
 ### House numbers ([#1223](https://github.com/TommiContursi/Polku/issues/1223))
 
 - From zoom 17, house numbers show on the buildings, small and in a quiet grey, so you can find an address in a town. Every other name and place wins where they would overlap.

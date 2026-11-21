@@ -1,7 +1,7 @@
 // Route planner: waypoints, per-leg routing modes, undo/redo, the bottom sheet
 // with stats, elevation profile, climbs, warnings and (for paddling) wind.
 
-import { ACTIVITIES, CRAFT, DIFF_COLORS, UPHILL_TEXT, MTB_GRADES, MTB_SCALE_TEXT, OFFROAD_BIKE, gradeColor, groupOf, isWater, ROUTE_COLORS, GLIDE } from './config.js';
+import { ACTIVITIES, CRAFT, DIFF_COLORS, UPHILL_TEXT, MTB_GRADES, MTB_SCALE_TEXT, OFFROAD_BIKE, gradeColor, groupOf, isWater, ROUTE_COLORS, GLIDE, PLACE_KINDS } from './config.js';
 import { routeLeg, routeRun, routeLoop, routerHeadroom, routerRoomThisMinute } from './router.js';
 import { roundTripSports, radiusFor, reach, waterOf, plan, planWater, nearestWater, waterLoop, resize, twiceShare, score as loopScore, distanceForTime } from './roundtrip.js';
 import { analyse, estimateTime, surfaceClass, trailWarnings, sportSplit, accessOf, accessRow, OSM } from './analysis.js';
@@ -73,7 +73,7 @@ const TIPS = {
 // (Warnings: what's a warning and what isn't checked; Good to know: Check's lighter ones and a changeover's gear)
 export const LIST_SHOWS = [['warnings', 'Warnings'], ['look', 'Good to know'], ['drawing', 'Drawing mode'], ['dark', 'Darkness'], ['weather', 'Weather'], ['speed', 'Speed']];
 // the places a tap or a hold shows instead of adding a point (25d part 5), and how near the line a spot is on it
-const PLACE_LAYERS = ['poi-outdoor', 'poi-minor', 'label-peak', 'lipas-point', 'td-points', 'td-gates', 'td-gates-all', 'poi-parking', 'poi-parking-all', 'mml-parking-p', 'poi-shops'];
+const PLACE_LAYERS = ['poi-outdoor', 'poi-minor', 'poi-guidepost', 'label-peak', 'lipas-point', 'td-points', 'td-gates', 'td-gates-all', 'poi-parking', 'poi-parking-all', 'mml-parking-p', 'poi-shops'];
 const NEAR_LINE = 30;
 // a tap just beside the route is still the route's, not a point at the end (#725): the box around the spot, which with
 // half the line's casing (9.5–11 px wide at z14–16) reaches about 24 px from its middle by touch and 16 px by mouse
@@ -4192,7 +4192,7 @@ export class Planner {
     const spot = id === 'lipas-point' ? { title: p.name, line: [p.typeName, p.city].filter(Boolean).join(', '), src: 'From LIPAS', image: p.icon ? `lipas-${p.icon}` : null, lipas: p }
       : o ? { title: o.title, line: o.note, src: 'From OpenStreetMap', image: `td-${p.kind}`, osm: { type: p.kind ? 'node' : 'way', id: p.osm || null } }
         : /^mml-/.test(id) ? { ...mmlTerrain(f), src: 'From the National Land Survey' }
-        : { title: p.name || words(kind || 'place'), line: p.name && kind ? words(kind) : '', src: 'From OpenStreetMap', osm: { type: 'place', id: null } };
+        : { title: p.name || words(kind || 'place'), line: p.name && kind ? words(kind) : '', src: 'From OpenStreetMap', image: Object.hasOwn(PLACE_KINDS, kind) ? `place-${kind}` : null, osm: { type: 'place', id: null } };
     this.openCard(spotCard(this, { ...spot, ll: at, pin, kind, place: true, tags: p }), at, from);
   }
   // A LIPAS route's card (part 6): Follow it, add it to your route or start one from it, its facts and pages

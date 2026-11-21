@@ -32,13 +32,13 @@ export const isHttp = (u) => /^https?:\/\//i.test(u) ? u : /^www\./i.test(u) ? `
 // Layers a click can inspect, and the order it picks from when several are
 // under the pointer. The hover tooltip uses the same order, so it previews
 // exactly what a click opens.
-const INSPECTABLE = /^(cameras$|td-points$|td-gates$|td-gates-all$|td-way-tree$|td-way-ford$|winter-way$|winter-ski$|winter-closed$|nm-marks|nm-navline$|nm-sector|nm-restrict-fill|nm-fairway|sf-ships|sf-points|sf-lines|sf-aadt|military-fill|lipas-point|poi-outdoor|poi-minor|poi-parking|poi-shops|label-peak|lipas-route$|uphill-line|path-|track-|cycleway-|road-|water$|property-plot$|pier$|pier-area$|mml-(bog|paludified|overgrowing|shoal|rock|boulders|cliff|power|rock-point|reed|pylon|rapids|flow|jetty|open|landuse|open-forest|forest|parking|parking-p)$)/;
+const INSPECTABLE = /^(cameras$|td-points$|td-gates$|td-gates-all$|td-way-tree$|td-way-ford$|winter-way$|winter-ski$|winter-closed$|nm-marks|nm-navline$|nm-sector|nm-restrict-fill|nm-fairway|sf-ships|sf-points|sf-lines|sf-aadt|military-fill|lipas-point|poi-outdoor|poi-minor|poi-guidepost|poi-parking|poi-shops|label-peak|lipas-route$|uphill-line|path-|track-|cycleway-|road-|water$|property-plot$|pier$|pier-area$|mml-(bog|paludified|overgrowing|shoal|rock|boulders|cliff|power|rock-point|reed|pylon|rapids|flow|jetty|open|landuse|open-forest|forest|parking|parking-p|winter-road)$)/;
 // An official (LIPAS) route drawn over a trail is what a click there means: its card
 // links to the trail under it, and the trail's card back to the route.
 // MML's terrain (#1175): its marks and lines (and OSM's piers, #1234), after the ways, and its overgrowing water and shoals, before the
 // water they're drawn over; its areas under the water last, after a property's plot (whose tint shows what a click picks), and before a
 // park (inspector below); the forest's marks after them, as a bog under one is what the ground is.
-const PRIORITY = [/^cameras$/, /^sf-ships/, /^nm-marks/, /^sf-points/, /^td-/, /^lipas-point/, /^poi-|^label-peak|^mml-parking-p$/, /^sf-lines/, /^lipas-route/, /^uphill-line/, /^(path|track|cycleway)-/, /^winter-/,
+const PRIORITY = [/^cameras$/, /^sf-ships/, /^nm-marks/, /^sf-points/, /^td-/, /^lipas-point/, /^poi-|^label-peak|^mml-parking-p$/, /^sf-lines/, /^lipas-route/, /^uphill-line/, /^(path|track|cycleway)-/, /^(winter-|mml-winter-road$)/,
   /^sf-aadt/, /^road-/, /^(mml-(cliff|power|rock-point|reed|pylon|rapids|flow|jetty)|pier|pier-area)$/, /^nm-sector/, /^nm-navline/, /^nm-restrict/, /^military/, /^nm-fairway/, /^mml-(overgrowing|shoal)$/, /^water$/, /^property-plot$/, /^mml-(?!forest$)/, /^mml-forest$/];
 
 // a finger covers more than a mouse pointer: a wider box to find what's under it
@@ -59,7 +59,7 @@ export const inspectLayers = (map) => map.getLayersOrder().filter((id) => INSPEC
 // terrain area, nor the forest's marks) or 'none'; `way` 'whole', 'piece' or 'off' (no way, nor the winter, uphill and
 // trail-detail lines drawn on one). A hold, search and a share link pick from everything ('all', 'whole').
 const AREAS = /^(water|property-plot|mml-(bog|paludified|overgrowing|shoal|rock|boulders|open|landuse|open-forest|forest|parking))$/;
-const WAYS = /^((path|track|cycleway|road)-|winter-|uphill-line|td-way-)/;
+const WAYS = /^((path|track|cycleway|road)-|winter-|mml-winter-road$|uphill-line|td-way-)/;
 export const tapLayers = (map, opens, way) => (opens === 'none' ? [] : inspectLayers(map).filter((id) => !(opens === 'lines' && AREAS.test(id)) && !(way === 'off' && WAYS.test(id))));
 
 // The layers a click picks before a LIPAS route where both are under it (a place's icon, a camera…)
@@ -292,7 +292,7 @@ export function thingOf(f, map) {
   if (/^mml-/.test(id)) {
     const t = mmlTerrain(f);
     return { title: t.title, sub: t.line, src: 'From the National Land Survey', group: 'The bog', rows: t.survey ? [['Survey class', t.survey]] : [],
-      info: t.survey && 'The survey’s class, not a promise about the ground today: bogs are classed from aerial photos and surveyed again every 5–10 years.' };
+      info: t.info || (t.survey && 'The survey’s class, not a promise about the ground today: bogs are classed from aerial photos and surveyed again every 5–10 years.') };
   }
   if (/^sf-/.test(id)) {
     if (p.kind === 'incident' || p.kind === 'roadwork') {
@@ -352,7 +352,7 @@ export const MARK_TYPE = {
 };
 export const SECTOR_NAME = { p: 'red', vi: 'green', v: 'white', k: 'yellow' };
 
-// MML's terrain by its class (kohdeluokka, #1147): [name, what it is], for a tap's card and a hover (#1175). A layer that
+// MML's terrain by its class (kohdeluokka, #1147): [name, what it is, a note for the card], for a tap's card and a hover (#1175). A layer that
 // joins INSPECTABLE has a row here for each class it draws.
 export const MML_TERRAIN = {
   35401: ['Open bog'], 35411: ['Open bog'], 35421: ['Open bog'], 35402: ['Wooded bog'], 35412: ['Wooded bog'], 35422: ['Wooded bog'],
@@ -367,14 +367,16 @@ export const MML_TERRAIN = {
   32710: ['Coniferous forest'], 32713: ['Deciduous forest'], 32714: ['Mixed forest'], 32715: ['Heath'],
   // car parks (#1219): MML's motor traffic areas
   32421: ['Car park', 'Or a rest or loading area'],
+  // winter roads (#1171), with what the card says of the ice
+  12312: ['Winter road', 'For snowmobiles and off-road vehicles, there only in winter', 'Where it crosses ice, it’s open only when its keeper says so. Polku can’t see whether the ice holds: check the ice yourself.'],
 };
-// { title, line, survey }: survey is a bog's crossing class, 3541x easier and 3542x hard, as MML's survey has it. Only zoom
+// { title, line, survey, info }: survey is a bog's crossing class, 3541x easier and 3542x hard, as MML's survey has it. Only zoom
 // 13's and 14's tiles have it right: zoom 12's are generalised (a bog hard to cross at 13 can be easier at 12) and 11's have
 // none (2026-11-20), so it's read by the feature's own tile (MapLibre's `_z`: in 3D the far tiles are lower).
 export function mmlTerrain(f) {
-  const k = f.properties.kohdeluokka, [title, line = ''] = MML_TERRAIN[k];
+  const k = f.properties.kohdeluokka, [title, line = '', info = ''] = MML_TERRAIN[k];
   // (a flow arrow: suunta is 1/10,000 radian counter-clockwise from east, #1170)
   if (k === 36392 || k === 36393) return { title, line: `Flows to the ${compass(90 - f.properties.suunta / 10000 * 180 / Math.PI)}`, survey: '' };
   const survey = k > 35400 && k < 35430 ? (!(f._z >= 13) || k < 35410 ? 'Zoom in to see it' : k > 35420 ? 'Hard to cross' : 'Easier to cross') : '';
-  return { title, line, survey };
+  return { title, line, survey, info };
 }

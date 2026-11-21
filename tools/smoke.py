@@ -1938,6 +1938,100 @@ def mml_cards(chrome):
     return not fails
 
 
+
+# #1171: MML's winter roads from a recorded tile (Kitkajoki, tools/fixtures/mml-taustakartta-14-9531-4125.pbf), never live MML:
+# drawn in Winter ways from zoom 13 in the look of OSM's ways there only in winter, only while it's winter (not with the Winter
+# trail colours in summer), under LIPAS's routes; a click on one opens its card with the ice's caveat, and the pointer says the same.
+def mml_winter_roads(chrome):
+    pg = chrome.page(1440, 900, False)
+    pg.open_app({'activity': 'mtb', 'base': 'trail'}, {'polku:winter': '"on"'}, '#10/66.05/29.2')
+    fails = pg.js("""(async () => {
+      const errs=[], m=polku.map, FX=['14/9531/4125'], wait=(ms)=>new Promise((r)=>setTimeout(r,ms));
+      const settle=async()=>{await wait(300);await Promise.race([new Promise(r=>{m.once('idle',r);m.triggerRepaint();}),wait(10000)]);await wait(300);};
+      if(m.style.tileManagers.mml.getIds().length)return ['MML was asked for tiles at zoom 10'];""" + MML_FIXTURES + """
+      const I=await import('/js/inspect.js'), H=await import('/js/hover.js');
+      const drawn=async()=>{for(let k=0;k<20;k++){const n=m.getLayer('mml-winter-road')?m.queryRenderedFeatures({layers:['mml-winter-road']}).length:0; if(n)return n; await wait(250);} return 0;};
+      if(!polku.state.winterOn)return ['winter not on'];
+      m.jumpTo({center:tileMid(14,9531,4125),zoom:14.6}); await settle();
+      if(!await drawn())errs.push('no winter road drawn from the recorded tile');
+      const takes=(props)=>m.style.getLayer('mml-winter-road')._featureFilter.filter({zoom:14},{type:2,properties:props});
+      if(!takes({kohdeluokka:12312})||takes({kohdeluokka:12313})||takes({kohdeluokka:12316}))errs.push("the winter roads' filter takes more than class 12312");
+      // the look of OSM's ways there only in winter: its colour, width and dots, on the same white edge
+      const paint=(id,k)=>JSON.stringify(m.getPaintProperty(id,k));
+      if(paint('mml-winter-road','line-color')!==JSON.stringify('#0891b2'))errs.push(`winter roads in ${paint('mml-winter-road','line-color')}`);
+      const seasonal=JSON.stringify(m.getPaintProperty('winter-way','line-dasharray')).includes(JSON.stringify([0.6,1.4]));
+      if(!seasonal||!paint('mml-winter-road','line-dasharray').includes(JSON.stringify([0.6,1.4])))errs.push(`winter roads dashed ${paint('mml-winter-road','line-dasharray')}, not as OSM's winter-only ways`);
+      if(paint('mml-winter-road','line-width')!==paint('winter-way','line-width')||paint('mml-winter-road-casing','line-width')!==paint('winter-casing','line-width'))errs.push("winter roads not as wide as OSM's winter ways");
+      if(m.getLayer('mml-winter-road').minzoom!==13)errs.push(`winter roads from zoom ${m.getLayer('mml-winter-road').minzoom}`);
+      const order=m.getLayersOrder(), at=(id)=>order.indexOf(id);
+      if(!(at('mml-winter-road-casing')<at('mml-winter-road')&&at('mml-winter-road')<at('lipas-route-casing')))errs.push(`winter roads not under LIPAS's routes (${at('mml-winter-road')}, ${at('lipas-route-casing')})`);
+      // a click on it: the card, and the pointer's words
+      let pt=null;
+      for(let y=80;y<innerHeight-40&&!pt;y+=4)for(let x=24;x<innerWidth-100&&!pt;x+=4){const f=I.pickAt(m,[x,y],I.featuresAt(m,{x,y},I.hitBox({x,y},false),I.inspectLayers(m))); if(f&&f.layer.id==='mml-winter-road')pt={x,y,f};}
+      if(!pt)errs.push('no spot where a click picks the winter road');
+      else {
+        const d=H.describe(pt.f,[pt.f],{}); if(!d||d.title!=='Winter road'||!/snowmobiles/.test(d.bits.join(' ')))errs.push(`the pointer on a winter road says ${JSON.stringify(d)}`);
+        m.fire('click',{point:pt,lngLat:m.unproject([pt.x,pt.y]),originalEvent:new MouseEvent('click')});
+        let c=null; for(let k=0;k<20&&!(c=polku.planner.cards.current);k++)await wait(100);
+        const el=[...document.querySelectorAll('.pl-way.card')].find((e)=>e.getClientRects().length), text=el?el.textContent:'';
+        if(!c||c.title!=='Winter road')errs.push(`a click on a winter road opened ${c?c.title:'nothing'}`);
+        for(const w of ['For snowmobiles and off-road vehicles','check the ice yourself','From the National Land Survey'])if(!text.includes(w))errs.push(`the winter road's card doesn't say ${w}`);
+        polku.planner.cards.close(); await wait(300);
+        // Settings' "a tap picks no way" (#1244) leaves it out with the ways
+        if(I.tapLayers(m,'all','off').includes('mml-winter-road'))errs.push('a tap that picks no way still picks a winter road');
+      }
+      // not in summer, not with only the Winter trail colours on, not on the Maastokartta (its own map draws them)
+      polku.set({winterOn:false}); await settle();
+      if(m.getLayer('mml-winter-road'))errs.push('winter roads drawn when it is not winter');
+      polku.set({trailColors:'winter'}); await settle();
+      if(!m.getLayer('winter-way'))errs.push('(the test) the Winter trail colours drew no winter ways');
+      if(m.getLayer('mml-winter-road'))errs.push('winter roads drawn in summer with the Winter trail colours');
+      polku.set({winterOn:true, trailColors:'down', overlays:{...polku.state.overlays, winterWays:false}}); await settle();
+      if(m.getLayer('mml-winter-road'))errs.push('winter roads drawn with Winter ways off');
+      return errs;
+    })()""", timeout=120000)
+    fails += [f'console: {e[:160]}' for e in pg.errors()]
+    pg.close()
+    print(f"{'ok  ' if not fails else 'FAIL'} MML's winter roads in Winter ways, only in winter (#1171)" + ''.join(f'\n     - {f}' for f in fails), flush=True)
+    return not fails
+
+
+# #1179: guideposts from zoom 15 with an icon of their own (a post with two signs on a brown disc), not the information
+# board's, at Nuuksio from OpenFreeMap's live tiles; their place's card shows the same icon.
+def guideposts(chrome):
+    pg = chrome.page(1440, 900, False)
+    pg.open_app({'activity': 'hike', 'base': 'trail'}, None, '#14/60.300/24.540')
+    fails = pg.js("""(async () => {
+      const errs=[], m=polku.map, wait=(ms)=>new Promise((r)=>setTimeout(r,ms));
+      const settle=async()=>{await wait(300);await Promise.race([new Promise(r=>{m.once('idle',r);m.triggerRepaint();}),wait(15000)]);await wait(300);};
+      const {makeIcon}=await import('/js/icons.js'), I=await import('/js/inspect.js');
+      const takes=(id,props)=>m.style.getLayer(id)._featureFilter.filter({zoom:16},{type:1,properties:props});
+      const gp={class:'information',subclass:'guidepost'};
+      if(!takes('poi-guidepost',gp)||takes('poi-minor',gp)||takes('poi-guidepost',{class:'information',subclass:'board'}))errs.push("guideposts' filters");
+      if(!takes('poi-minor',{class:'information',subclass:'board'}))errs.push('information boards left poi-minor');
+      if(m.getLayer('poi-guidepost').minzoom!==15)errs.push(`guideposts from zoom ${m.getLayer('poi-guidepost').minzoom}`);
+      if(!I.inspectLayers(m).includes('poi-guidepost'))errs.push("a click can't pick a guidepost");
+      const img=makeIcon('place-guidepost'); if(!img||!img.data.some((v,i)=>i%4===3&&v>0))errs.push("the guidepost's icon isn't drawn");
+      await settle();
+      const g=m.querySourceFeatures('ofm',{sourceLayer:'poi'}).find((f)=>f.properties.subclass==='guidepost');
+      if(!g)return [...errs,"(the test) no guidepost in Nuuksio's tiles"];
+      m.jumpTo({center:g.geometry.coordinates,zoom:14.8}); await settle();
+      if(m.queryRenderedFeatures({layers:['poi-guidepost']}).length)errs.push('guideposts drawn under zoom 15');
+      m.jumpTo({center:g.geometry.coordinates,zoom:16}); await settle();
+      const p=m.project(g.geometry.coordinates), f=m.queryRenderedFeatures([[p.x-8,p.y-8],[p.x+8,p.y+8]],{layers:['poi-guidepost','poi-minor']})[0];
+      if(!f||f.layer.id!=='poi-guidepost')errs.push(`the guidepost at 16 is ${f?f.layer.id:'not drawn'}`);
+      if(!m.hasImage('place-guidepost'))errs.push("the guidepost's icon isn't on the map");
+      if(f){ polku.planner.openSpotCard(m.unproject([p.x,p.y]),{pt:p}); let c=null; for(let k=0;k<20&&!(c=polku.planner.cards.current);k++)await wait(100);
+        if(!c||c.kind!=='place'||!(c.title||'').length)errs.push(`a tap on a guidepost opened ${c?c.kind+' '+c.title:'nothing'}`);
+        const icon=document.querySelector('.pl-way.card img'); if(!icon||!icon.src.startsWith('data:image'))errs.push("the guidepost's card shows no icon");
+        polku.planner.cards.close(); }
+      return errs;
+    })()""", timeout=120000)
+    fails += [f'console: {e[:160]}' for e in pg.errors()]
+    pg.close()
+    print(f"{'ok  ' if not fails else 'FAIL'} guideposts with an icon of their own from zoom 15 (#1179)" + ''.join(f'\n     - {f}' for f in fails), flush=True)
+    return not fails
+
 # #1170: MML's water from five recorded tiles, never live MML: Kotka (tools/fixtures/mml-taustakartta-14-9416-4714.pbf:
 # stones at and above the surface, a shoal, stone fields, jetties), the Porvoo archipelago (…-14-9363-4735.pbf: stones under
 # the surface), Kitkajoki (…-14-9531-4125.pbf: rapids, a wide river's
@@ -26726,7 +26820,7 @@ GROUPS = [
     ('site', [license_text], 'the built site: LICENSE sent as text, since every file\'s copyright line links to it (#115); against the checkout it checks nothing'),
     ('pacing', [pacing, paced_legs, net_fails], 'calls made together go out paced and counted (mocked services, a fake clock); legs refused for a slot follow at it (#78); the calls that failed, in Data sources (#687)'),
     ('loading', [loading, routing_edits], 'cancel obsolete routing, edits/Undo/Clear, shared subscribers, refusal/recovery, deadlines, terrain slots and LIPAS viewport/cache (mocked)'),
-    ('layers', [layers, layer_coverage, cycleway_style, cycling_restrictions, waterway_style, property_lines, property_plots, wetland_style, reedbed_style, mml_bogs, mml_rock, mml_water, mml_open, osm_cliffs, saddles, mml_cards, town_gates, town_bridges, town_oneway, town_parks, town_parking, town_shops, town_housenumbers], 'the Layers panel in every sport'),
+    ('layers', [layers, layer_coverage, cycleway_style, cycling_restrictions, waterway_style, property_lines, property_plots, wetland_style, reedbed_style, mml_bogs, mml_rock, mml_water, mml_open, osm_cliffs, saddles, mml_cards, mml_winter_roads, guideposts, town_gates, town_bridges, town_oneway, town_parks, town_parking, town_shops, town_housenumbers], 'the Layers panel in every sport'),
     ('raster', [raster_maps, aerial_fallback, aerial_labels], 'terrain and aerial detail, bounded high-density WMS symbols, depth boundaries and missing aerial detail (#649, #650, #653); the map\'s words on the aerial photos at 4.5:1 on their halo (#554)'),
     ('coarse', [coarse], 'a coarse map underneath (#1091): the base map\'s tile four zoom levels up stands in for one that hasn\'t come, at 1440 and 390'),
     ('offline', [mml_offline], 'Save offline keeps the National Land Survey\'s tiles (#1176): its terrain at zooms 11–14 and property boundaries while on, under addresses without the key, two at a time and ten a second at most; what Offline maps says an area lacks; offline, with the real worker, the bogs drawn from the saved tile and no message'),
