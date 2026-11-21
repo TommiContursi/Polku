@@ -4120,8 +4120,8 @@ export class Planner {
     const ll = Array.isArray(lngLat) ? lngLat : [+lngLat.lng.toFixed(6), +lngLat.lat.toFixed(6)], p = pt || this.map.project(ll);
     place = place || this.placeAt(p, touch);
     if (place) { this.openPlaceCard(place, ll, { from, pin }); return; }
-    // (MML's terrain is named by a tap: a hold's card stays the spot's, whose words OpenStreetMap's answer replaces, #1175)
-    const feats = this.map.queryRenderedFeatures(hitBox(p, touch), { layers: inspectLayers(this.map).filter((id) => !id.startsWith('mml-')) });
+    // (MML's terrain and a pier are named by a tap: a hold's card stays the spot's, whose words OpenStreetMap's answer replaces, #1175)
+    const feats = this.map.queryRenderedFeatures(hitBox(p, touch), { layers: inspectLayers(this.map).filter((id) => !/^(mml-|pier)/.test(id)) });
     const route = feats.find((x) => x.layer.id === 'lipas-route');
     const f = pickFeature(feats), way = feats.find((x) => /^(path|track|cycleway|road)-/.test(x.layer.id)), bike = groupOf(this.app.activity()) === 'bike';
     const d = f && describe(f, feats, { ll, bike, mtb: this.app.activity() === 'mtb' });

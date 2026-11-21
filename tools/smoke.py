@@ -1511,8 +1511,8 @@ def mml_rock(chrome):
 
 
 # #1175: a tap or a click on MML's terrain opens its card (the map's other things'), from the recorded tiles, never live MML:
-# a bog hard to cross with the survey's caveat (Seitseminen), reeds in the water (Porvoo) and a stone above the surface (Kotka, #1170),
-# by touch at 390 × 844 and by mouse
+# a bog hard to cross with the survey's caveat (Seitseminen), reeds in the water (Porvoo), a stone above the surface (Kotka, #1170),
+# a river's flow arrow (Porvoo) and a field (Hailuoto, #1169, #1234), by touch at 390 × 844 and by mouse
 # at 1440 × 900, where the pointer's tooltip says the same first. A bog's crossing class only from zoom 13's tiles, and a name
 # for every class the inspected layers draw.
 def mml_cards(chrome):
@@ -1521,14 +1521,14 @@ def mml_cards(chrome):
     # a spot where a click or a tap picks the layer's class (inspect.js's own choice) with nothing else there but the water, clear
     # of the top bar and the map's buttons; a point's own spot first (sourceLayer: centred on it, as a narrow phone may not show it)
     spot = """(async (layer, classes, touch, sourceLayer) => {
-      const m=polku.map, {inspectLayers,pickFeature,hitBox,featuresAt}=await import('/js/inspect.js'), R=m.getCanvas().getBoundingClientRect();
+      const m=polku.map, {inspectLayers,pickAt,hitBox,featuresAt}=await import('/js/inspect.js'), R=m.getCanvas().getBoundingClientRect();
       const settle=async()=>{await new Promise(r=>setTimeout(r,300));await Promise.race([new Promise(r=>{m.once('idle',r);m.triggerRepaint();}),new Promise(r=>setTimeout(r,10000))]);};
       const pt=sourceLayer&&m.querySourceFeatures('mml',{sourceLayer}).find((f)=>classes.includes(f.properties.kohdeluokka));
       if(pt){m.jumpTo({center:pt.geometry.coordinates}); await settle();}
       const at=pt&&m.project(pt.geometry.coordinates);
       for(let y=at?at.y:140;y<(at?at.y+1:innerHeight-180);y+=9)for(let x=at?at.x:24;x<(at?at.x+1:innerWidth-100);x+=9){
-        const fs=featuresAt(m,{x,y},hitBox({x,y},touch),inspectLayers(m)), f=pickFeature(fs);
-        if(f&&f.layer.id===layer&&classes.includes(f.properties.kohdeluokka)&&fs.every((g)=>g.layer.id===layer||/^(water|mml-shoal)$/.test(g.layer.id)))return [R.left+x,R.top+y];
+        const fs=featuresAt(m,{x,y},hitBox({x,y},touch),inspectLayers(m)), f=pickAt(m,[x,y],fs);
+        if(f&&f.layer.id===layer&&classes.includes(f.properties.kohdeluokka)&&fs.every((g)=>/^(water|mml-)/.test(g.layer.id)))return [R.left+x,R.top+y];
       }
       return null;
     })"""
@@ -1539,11 +1539,14 @@ def mml_cards(chrome):
         pg = chrome.page(w, h_, phone)
         # (zoom 10: under the source's zoom 11, so MML is asked for nothing before the test answers it)
         pg.open_app({'activity': 'mtb', 'base': 'trail'}, hash_='#10/61.92/23.478')
-        pg.js("""(async () => { const m=polku.map, FX=['14/9260/4578','14/9352/4721','14/9416/4714'];""" + MML_FIXTURES + """ return true; })()""")
+        pg.js("""(async () => { const m=polku.map, FX=['14/9260/4578','14/9352/4721','14/9416/4714','14/9286/3913','14/9318/4263'];""" + MML_FIXTURES + """ return true; })()""")
         for what, center, layer, classes, title, words, src in (
                 ('a bog hard to cross', mid(9260, 4578), 'mml-bog', [35421], 'Open bog', ['Survey class', 'Hard to cross', 'not a promise about the ground today', 'From the National Land Survey'], None),
                 ('reeds', mid(9352, 4721), 'mml-reed', [38100], 'Reeds', ['From the National Land Survey'], 'maasto_piste'),
-                ('a stone above the surface', mid(9416, 4714), 'mml-rock-point', [38513], 'Stone above the surface', ['From the National Land Survey'], 'maasto_piste')):
+                ('a stone above the surface', mid(9416, 4714), 'mml-rock-point', [38513], 'Stone above the surface', ['From the National Land Survey'], 'maasto_piste'),
+                ("a river's flow arrow", mid(9352, 4721), 'mml-flow', [36392], 'Flow direction', ['Flows to the ', 'From the National Land Survey'], 'symboli'),
+                # (a field near the tile's middle, so a phone's view has it too)
+                ('a field', [24.75611, 65.0026], 'mml-landuse', [32611], 'Field', ['From the National Land Survey'], None)):
             pg.js(f"(async () => {{ const m=polku.map; m.jumpTo({{center:{json.dumps(center)},zoom:14.6}}); await new Promise(r=>setTimeout(r,300)); "
                   "await Promise.race([new Promise(r=>{m.once('idle',r);m.triggerRepaint();}),new Promise(r=>setTimeout(r,10000))]); return true; })()")
             at = pg.js(f"({spot})('{layer}', {json.dumps(classes)}, {json.dumps(phone)}, {json.dumps(src)})")
@@ -1610,7 +1613,8 @@ def mml_cards(chrome):
               }
               const bogAt=(p)=>I.featuresAt(m,p,I.hitBox(p,true),I.inspectLayers(m)).some((f)=>f.layer.id==='mml-bog');
               if(!under||!park)errs.push(`(the test) no bog ${under?'in a park':'under the water'} in the recorded tile`);
-              else { if(bogAt(under))errs.push('a bog under the water drawn over it is found'); if(!bogAt(park))errs.push('a bog in a park is not found'); }
+              else { if(bogAt(under))errs.push('a bog under the water drawn over it is found'); if(!bogAt(park))errs.push('a bog in a park is not found');
+                const p=I.pickAt(m,[park.x,park.y],I.featuresAt(m,park,I.hitBox(park,true),I.inspectLayers(m))); if(!p||p.layer.id!=='mml-bog')errs.push(`a tap on a bog in a park names ${p&&p.layer.id}`); }
               // a hold on a bog opens the spot's card, as before (OpenStreetMap's answer would replace a bog's words there)
               if(park){ const ll=m.unproject([park.x,park.y]); polku.planner.openSpotCard(ll,{pt:m.project(ll)}); const held=polku.planner.cards.current;
                 if(!held||/bog/i.test(held.title))errs.push(`a hold on a bog opens ${held?held.title:'no card'}`); polku.planner.cards.close(); }
@@ -1619,6 +1623,16 @@ def mml_cards(chrome):
               const dry={getLayer:(id)=>id!=='water'&&m.getLayer(id), queryRenderedFeatures:(pt,o)=>m.queryRenderedFeatures(pt,o)};
               if(!q)errs.push('(the test) no MML lake drawn from the recorded tile');
               else if(I.areaUnder(dry,q)!=='water')errs.push(`MML's lake without OSM's over it is ${I.areaUnder(dry,q)}, not the water`);
+              // open ground gives way to a park it lies in (#1234): the heath on Pallas' fells names nothing, as a click there opens the national park
+              m.jumpTo({center:[24.0491,68.061],zoom:14.6}); await new Promise(r=>setTimeout(r,300)); await Promise.race([new Promise(r=>{m.once('idle',r);m.triggerRepaint();}),new Promise(r=>setTimeout(r,10000))]);
+              let heath=null;
+              for(let y=150;y<innerHeight-150&&!heath;y+=8)for(let x=30;x<innerWidth-100&&!heath;x+=8){const fs=I.featuresAt(m,{x,y},I.hitBox({x,y},true),I.inspectLayers(m)), f=I.pickFeature(fs);
+                if(f&&f.layer.id==='mml-open'&&I.areaUnder(m,[x,y])==='park')heath={x,y,fs};}
+              if(!heath)errs.push("(the test) no heath in Pallas' national park in the recorded tile");
+              else if(I.pickAt(m,[heath.x,heath.y],heath.fs))errs.push(`heath in a national park names ${I.pickAt(m,[heath.x,heath.y],heath.fs).layer.id}, not the park`);
+              // a flow arrow says which way the river flows: suunta is 1/10,000 radian counter-clockwise from east (Porvoo's -21374 is south-west)
+              for(const [suunta,want] of [[-21374,'SW'],[0,'E'],[15708,'N'],[31416,'W']]){const t=I.mmlTerrain({properties:{kohdeluokka:36392,suunta}});
+                if(t.line!==`Flows to the ${want}`)errs.push(`a flow arrow with suunta ${suunta} says ${t.line}`);}
               // every class the inspected MML layers draw has its words
               for(const id of I.inspectLayers(m).filter((id)=>id.startsWith('mml-'))) {
                 const f=JSON.stringify(m.getFilter(id)), ks=(f.match(/\\b\\d{5}\\b/g)||[]).map(Number);
@@ -2466,7 +2480,8 @@ MARKED_JS = """(() => {
         const q10 = at(10 * s), q30 = at(30 * s), q50 = at(50 * s);
         const top = I.pickFeature(map.queryRenderedFeatures(I.hitBox(touch ? q10 : P, touch), { layers: I.inspectLayers(map) }));
         if (!top || top.layer.id !== 'lipas-route' || keyOf(top.properties) !== key) continue;
-        if (!(touch ? ok(q10) && ok(q30) && !near(q30, 17) : ok(q50) && !near(q50, 20))) continue;
+        // (a mouse's spot off the route has nothing a click opens, not even open ground, #1234: its cursor is the plain one)
+        if (!(touch ? ok(q10) && ok(q30) && !near(q30, 17) : ok(q50) && !near(q50, 20) && !I.pickFeature(I.featuresAt(map, q50, I.hitBox(q50, false), I.inspectLayers(map))))) continue;
         // a mouse: also two vertices 50 px apart (and their midpoint on the line) for a route of yours drawn over it
         let plan = null;
         if (!touch) {

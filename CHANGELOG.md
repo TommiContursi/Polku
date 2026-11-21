@@ -4,6 +4,13 @@ What's new in [Polku](https://polku.si), from the latest updates back to the fir
 
 ## 2026-11-21
 
+### A tap on a river's flow arrow, a jetty or open ground says what it is ([#1234](https://github.com/TommiContursi/Polku/issues/1234))
+
+- In Finland, a tap or a click on the National Land Survey's flow arrows beside rivers, jetties, heath, open forest land (mostly clear-cuts), meadows, open shores, fields, sand and the forest's marks now opens a card that names it, and on a desktop resting the pointer on one says the same. A flow arrow's card says which way the river flows, such as "Flows to the SW".
+- A tap on OpenStreetMap's piers says what they are everywhere.
+- Open ground counts only where the map shows it, as the bogs do, and a bog under one of the forest's marks is still the bog.
+- In a park, such as a national park, open ground and the forest's marks give way to the park, so a tap on Pallas' fells opens the national park's card. A bog or rock in a park is still the bog or the rock.
+
 ### Rapids on river routes ([#153](https://github.com/TommiContursi/Polku/issues/153))
 
 - A paddling or swimming route on a river stays on it through rapids, and Check's **Warnings** say where, with their length. How hard they are isn't known, so look at them from the shore first. **Avoid it** on the warning carries the route round them on land; on a wide river it may only move the route across the river, and the warning stays.

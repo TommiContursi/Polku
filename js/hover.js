@@ -7,7 +7,7 @@
 
 import { DIFF_COLORS, MTB_COLORS, MTB_SCALE_TEXT, mtbClass, UPHILL_TEXT, LIPAS_TYPES } from './config.js';
 import { WINTER_TEXT } from './winter.js';
-import { inspectLayers, pickFeature, hitBox, featuresAt, winterAt, WAY_NAMES, MARK_TYPE, SECTOR_NAME, mmlTerrain } from './inspect.js';
+import { inspectLayers, pickFeature, pickAt, hitBox, featuresAt, winterAt, WAY_NAMES, MARK_TYPE, SECTOR_NAME, mmlTerrain } from './inspect.js';
 import { NAV_TEXT } from './nautical.js';
 import { aadtColor, fmtAadt } from './safety.js';
 import { gradeHere } from './uphill.js';
@@ -87,7 +87,7 @@ export function initHover(map, app) {
       const ng = feats.find((f) => f.layer.id === 'nogo-fill');
       if (ng) d = { title: ng.properties.label || 'Avoided place', bits: ['Routes go around it · click to change'] };
     }
-    if (!d) { const f = pickFeature(feats); d = f && describe(f, feats, { ll: map.unproject(at).toArray(), mtb: app.difficulty ? app.difficulty() : app.activity() === 'mtb', bike: app.bike ? app.bike() : false, planning, terrain: enrich }); }
+    if (!d) { const f = pickAt(map, at, feats); d = f && describe(f, feats, { ll: map.unproject(at).toArray(), mtb: app.difficulty ? app.difficulty() : app.activity() === 'mtb', bike: app.bike ? app.bike() : false, planning, terrain: enrich }); }
     if (!d) { hide(); return; }
     // a way: as its pick says it, from OpenStreetMap's own ways once its tile is in, with what only the map draws after
     // it (the uphill grade, access, a bridge, the trail details, winter), and the way drawn under the pointer (#574)
@@ -220,6 +220,7 @@ export function describe(f, feats, ctx) {
   }
   if (id === 'military-fill') return { title: 'Military area', bits: ['May be closed or have live firing'] };
   if (id === 'property-plot') return { title: `Property ${p.kiinteistotunnuksenEsitysmuoto}`, bits: ['National Land Survey'] };
+  if (id.startsWith('pier')) return { title: 'Pier', bits: [] };
   if (id.startsWith('mml-')) { const t = mmlTerrain(f); return { title: t.title, bits: [t.line, t.survey && `Survey class: ${t.survey.toLowerCase()}`].filter(Boolean) }; }
   if (id === 'lipas-point') return { title: p.name || p.typeName || 'Place', bits: [e(p.typeName || ''), e(p.city || '')].filter(Boolean) };
   if (id === 'lipas-route') {
