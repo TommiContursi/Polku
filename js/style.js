@@ -1258,7 +1258,7 @@ function addRoads(s, P, hc, layers, ctx) {
     });
     add({ id: 'td-points', type: 'symbol', source: 'trailPoints', minzoom: 15, filter: ['in', ['get', 'kind'], ['literal', ['tree', 'ford']]], layout: { 'icon-image': ['get', 'icon'], ...tdIcon } });
   }
-  // Gates and barriers with Access restrictions (#1232): a mark for each kind, coloured by who may pass (js/trails.js markOf()).
+  // Gates and barriers with Access restrictions (#1232): a mark for each kind, coloured by who may pass (each point's icon, featuresOf() in js/trails.js).
   // Stiles and cycle barriers from 15; gates from 16 (#1221): a town's courtyard gates covered a phone's streets at 15 (130 of
   // 165 marks in Helsinki's centre); at 16 they give way to each other and to names, and from 17 every one is drawn
   if (accessOn) {
