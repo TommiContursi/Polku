@@ -9394,7 +9394,7 @@ OFF_FC_READ = """(async ([id, at]) => {
   p.cards.close();
   const t = Math.round(Date.now() / 3600e3 + 72) * 3600;
   p.when.set(t);
-  for (let k = 0; k < 100 && !(p.analysis?.wind && p.analysis.start === t); k++) await wait(200);
+  for (let k = 0; k < 100 && p.analysis?.wind?.start.time !== t; k++) await wait(200); // (the wind sampled from it, not the route retimed at once)
   const v = p.analysis?.wind;
   if (!v || v.beyond !== 0) f.push(`leaving past the saved forecast's end, its samples past it from ${v?.beyond}, not 0`);
   else if (!p.els.boxDays.textContent.includes('No forecast')) f.push(`leaving past the saved forecast's end, the trip's box says ${p.els.boxDays.textContent}`);
