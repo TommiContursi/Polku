@@ -20,8 +20,6 @@ const SHELL = 'polku-shell-v1';
 const FLAG = '/__polku/offline-preview';
 const OFM_TILE = /^https:\/\/tiles\.openfreemap\.org\/planet\/[^/]+\/(\d+)\/(\d+)\/(\d+)\.pbf$/;
 const ofmKey = (url) => url.replace(OFM_TILE, 'https://tiles.openfreemap.org/planet/offline/$1/$2/$3.pbf'); // same as sw.js
-// MML's tiles are kept under their address without the API key (as sw.js), so your own key added or removed later finds them
-const keyless = (url) => url.split('?')[0];
 const isMml = (kind) => kind === 'mml' || kind === 'property';
 const inFinland = ([w, s, e, n]) => e > FINLAND_BOUNDS[0] && w < FINLAND_BOUNDS[2] && n > FINLAND_BOUNDS[1] && s < FINLAND_BOUNDS[3];
 // typical tile bytes per zoom, for the estimate (low zooms are big, a z14 trail tile is small; MML's z13 is its biggest, #1176)
@@ -73,7 +71,8 @@ export async function planArea(line, { buffer = 1000, terrain = true, mml = null
       for (const [tpl, kind, minzoom] of sources) {
         if (z < minzoom || (isMml(kind) && !fi)) continue;
         const url = tpl.replace('{z}', z).replace('{x}', x).replace('{y}', y);
-        tiles.set(kind === 'ofm' ? ofmKey(url) : isMml(kind) ? keyless(url) : url, { url, kind, z });
+        // MML's kept under their address without the API key (as sw.js), so your own key added or removed later finds them
+        tiles.set(kind === 'ofm' ? ofmKey(url) : isMml(kind) ? url.split('?')[0] : url, { url, kind, z });
       }
     }
   }
@@ -326,10 +325,6 @@ export function openSaveOffline(payload, { onSaved, mml } = {}) {
   });
 }
 
-// What a saved area lacks of MML's terrain (#1176): one saved before it was kept, in Finland, or one whose tiles failed
-const lacks = (a) => (!a.mml ? (inFinland(a.bbox) ? 'Saved without the National Land Survey’s terrain' : '')
-  : !a.mml.failed ? '' : a.mml.failed < a.mml.tiles ? 'The National Land Survey’s terrain is missing in parts' : 'The National Land Survey’s terrain didn’t load');
-
 /** The Offline maps section in Layers. */
 export async function renderOfflineSection(box, { open }) {
   if (!offlineSupported()) { box.append(h('p', { class: 'note' }, 'This browser can’t save maps for offline use.')); return; }
@@ -337,9 +332,12 @@ export async function renderOfflineSection(box, { open }) {
   box.innerHTML = '';
   if (!list.length) box.append(h('p', { class: 'note', html: `Plan a route, then press ${icon('offline', 14)} <b>Save offline</b> in the route panel. The trail map, terrain and the route then work without signal.` }));
   for (const a of list) {
+    // what it lacks of MML's terrain (#1176): saved before it was kept, in Finland, or with some of its tiles failing
+    const lacks = !a.mml ? (inFinland(a.bbox) ? 'Saved without the National Land Survey’s terrain' : '')
+      : !a.mml.failed ? '' : a.mml.failed < a.mml.tiles ? 'The National Land Survey’s terrain is missing in parts' : 'The National Land Survey’s terrain didn’t load';
     box.append(h('div', { class: 'off-area' },
       h('div', { class: 'off-area-text' }, h('b', {}, a.name), h('small', {}, `${new Date(a.created).toLocaleDateString()} · ${mb(a.bytes)}${a.failed ? ` · ${a.failed} tiles missing` : ''}`),
-        lacks(a) ? h('small', {}, `${lacks(a)}: save the area again to add it.`) : null),
+        lacks ? h('small', {}, `${lacks}: save the area again to add it.`) : null),
       h('button', { type: 'button', class: 'btn', onclick: () => open(a) }, 'Open'),
       h('button', { type: 'button', class: 'tool danger', 'aria-label': `Delete ${a.name}`, title: 'Delete', html: icon('trash', 17), onclick: async (e) => {
         e.currentTarget.disabled = true;
