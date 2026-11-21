@@ -4,6 +4,9 @@
 //   from small-boat routes and harbour basins (nautical.js waterwaysIn);
 // - marked dangers: Väylävirasto's isolated-danger and cardinal marks, and the
 //   rocks, reefs, shoals and wrecks mapped in OpenStreetMap (ODbL, Overpass);
+// - stones in the water at and above the surface, stone fields and shoals on the National Land Survey's
+//   background map (CC BY 4.0), in Finland (#153);
+// - rapids, from the same two (MML's in Finland, OSM's everywhere), for Check's warnings: a route goes through them;
 // - lake depths: Syke's soundings under 0.5 m, and where Syke surveyed (CC BY 4.0), from Polku's own
 //   files made by tools/syke_depths.py (#1184): about 1,900 lakes, none of the sea;
 // - the wind at the leg, from the forecast Polku already uses (Open-Meteo).
@@ -18,7 +21,8 @@ import { waterwaysIn } from './nautical.js';
 import { request } from './net.js';
 import { cachedOverpass } from './osm.js';
 import { hostedTile, forgetHostedFailures } from './osm-data.js';
-import { OSM_DATA_MANIFEST } from './config.js';
+import { OSM_DATA_MANIFEST, MML_TERRAIN_TILES, FINLAND_BOUNDS, mmlApiKey } from './config.js';
+import { decodeTile } from './vectortile.js';
 import { pointForecasts, sampleAt } from './weather.js';
 import { lonLatToTile, tileBounds } from './geo.js';
 
@@ -41,13 +45,15 @@ const late = new Set();
 let lateCount = 0; // late answers so far: water.js routes a leg again if one came while it was being routed
 export function onWaterData(fn) { late.add(fn); return () => late.delete(fn); }
 export const lateAnswers = () => lateCount;
-// (also when a source that failed may be asked again: the planner routes the legs that went without it, which asks)
+// (also when a source that failed may be asked again: the planner routes the legs that went without it, which asks, and
+// a leg being routed then, which the planner can't route again yet, is routed once more in water.js: else it kept the
+// failure for good, #905)
 const tell = () => { for (const fn of late) fn(); };
 const lateArrived = () => { lateCount++; tell(); };
 const AGAIN_MS = 120e3; // a source that failed is asked again after this (#129)
 
 // Rocks, reefs, shoals and wrecks in OSM (points; reefs and shoals also as
-// areas), one Overpass query per z11 tile (about 10 × 10 km), kept a week.
+// areas), and rapids, one Overpass query per z11 tile (about 10 × 10 km), kept a week.
 const HZ = 11;
 const hazTiles = new Map(); // "x/y" -> Promise<{ points, areas }>
 const failedHaz = new Set(); // the ones that didn't answer, asked again in a couple of minutes (or on Retry)
@@ -61,20 +67,26 @@ node["seamark:type"~"^(rock|obstruction|wreck)$"](${bb});
 node["natural"~"^(rock|reef|shoal)$"](${bb});
 way["natural"~"^(reef|shoal)$"](${bb});
 way["seamark:type"~"^(rock|obstruction)$"](${bb});
+node["waterway"="rapids"](${bb});
+way["waterway"="rapids"](${bb});
 );out geom;`;
   const slim = (json) => {
     const points = [], areas = [];
     for (const el of json.elements || []) {
       const t = el.tags || {};
-      const kind = t['seamark:type'] || t.natural || 'rock';
+      // a charted rock always above the water is kept as clear as MML's stones above the surface (#153); one that may
+      // be awash or under it, or doesn't say, as a stone at the surface
+      const dry = /^(always_)?dry$/.test(t['seamark:rock:water_level'] || t['seamark:obstruction:water_level'] || '');
+      const kind = t.waterway === 'rapids' ? 'rapids' : dry ? 'above' : t['seamark:type'] || t.natural || 'rock';
       if (el.type === 'node') points.push([+el.lon.toFixed(6), +el.lat.toFixed(6), kind]);
       else if (el.geometry && el.geometry.length > 1) areas.push({ kind, coords: el.geometry.map((g) => [+g.lon.toFixed(6), +g.lat.toFixed(6)]) });
     }
     return { points, areas };
   };
   const p = hostedTile(OSM_DATA_MANIFEST, 'hazards', HZ, [x, y],
-    () => cachedOverpass(`waterhaz/${HZ}/${id}`, q, slim, { race: true, oneRound: true, timeoutMs: 15000 }), { slim });
-  p.catch(() => { failedHaz.add(id); setTimeout(() => { if (hazTiles.get(id) === p) { hazTiles.delete(id); tell(); } failedHaz.delete(id); }, AGAIN_MS); }); // ask again in a couple of minutes
+    // (`2/`: answers kept from before the rapids were asked for have none, #153)
+    () => cachedOverpass(`waterhaz/2/${HZ}/${id}`, q, slim, { race: true, oneRound: true, timeoutMs: 15000 }), { slim });
+  p.catch(() => { failedHaz.add(id); setTimeout(() => { if (hazTiles.get(id) === p) { hazTiles.delete(id); lateArrived(); } failedHaz.delete(id); }, AGAIN_MS); }); // ask again in a couple of minutes
   hazTiles.set(id, p);
   return p;
 }
@@ -91,7 +103,7 @@ function depthFile(name) {
     if (!r.ok) throw new Error(`${name}.json: ${r.status}`);
     return r.json();
   });
-  p.catch(() => { failedDepth.add(name); setTimeout(() => { if (depthFiles.get(name) === p) { depthFiles.delete(name); tell(); } failedDepth.delete(name); }, AGAIN_MS); });
+  p.catch(() => { failedDepth.add(name); setTimeout(() => { if (depthFiles.get(name) === p) { depthFiles.delete(name); lateArrived(); } failedDepth.delete(name); }, AGAIN_MS); });
   depthFiles.set(name, p);
   return p;
 }
@@ -117,6 +129,64 @@ async function lakeDepths(box) {
   }
 }
 
+// Stones in the water, stone fields and shoals on MML's background map (#153): its zoom-14 tiles, the only ones with
+// the stones, at the map's own address and key, so the browser's cache has those the map has shown. A tile with its
+// layers and no features is outside MML's map, as every tile outside Finland is; one with no layers didn't load.
+const MZ = 14;
+const MML_KINDS = { 38512: 'rock', 38513: 'above', 38600: 'stonefield', 38700: 'shoal' }; // a stone at the surface, above it
+const MML_RAPIDS = 38200;
+let mmlOwn = '';
+/** The person's own MML key (Settings), or none for Polku's. */
+export const useMmlKey = (key) => { mmlOwn = key || ''; };
+const mmlTiles = new Map(); // "z/x/y" -> Promise<{ z, x, y, covered, points, areas, rapids }>
+const failedMml = new Set();
+function mmlTile(x, y, z = MZ) {
+  const id = `${z}/${x}/${y}`;
+  if (mmlTiles.has(id)) return mmlTiles.get(id);
+  const url = `${MML_TERRAIN_TILES.replace('{z}', z).replace('{y}', y).replace('{x}', x)}?api-key=${encodeURIComponent(mmlApiKey(mmlOwn))}`;
+  const ll = (fx, fy) => { const [lon, , , lat] = tileBounds(x + fx, y + fy, z); return [+lon.toFixed(6), +lat.toFixed(6)]; };
+  const line = (r) => { const c = []; for (let i = 0; i < r.length; i += 2) c.push(ll(r[i], r[i + 1])); return c; };
+  const ring = (r) => { const c = line(r); c.push(c[0]); return c; };
+  // as the depth files: one that fails pauses nothing else, and one that hangs fails in time
+  const p = request('mml', url, { backoff: false, timeoutMs: 10000 }).then(async (r) => {
+    if (!r.ok) throw new Error(`MML ${id}: ${r.status}`);
+    const t = decodeTile(new Uint8Array(await r.arrayBuffer()), ['maasto_piste', 'maasto_alue', 'vesisto_viiva']), points = [], areas = [];
+    if (!t.seen) throw new Error(`MML ${id}: an empty answer`);
+    for (const f of t.layers.maasto_piste || []) { const kind = MML_KINDS[f.props.kohdeluokka]; if (kind) for (const r of f.rings) points.push([...ll(r[0], r[1]), kind]); }
+    for (const f of t.layers.maasto_alue || []) { const kind = MML_KINDS[f.props.kohdeluokka]; if (kind) areas.push({ kind, rings: f.rings.map(ring) }); }
+    const rapids = (t.layers.vesisto_viiva || []).filter((f) => f.props.kohdeluokka === MML_RAPIDS).flatMap((f) => f.rings.map(line));
+    return { z, x, y, covered: t.n > 0, points, areas, rapids };
+  });
+  p.catch(() => { failedMml.add(id); setTimeout(() => { if (mmlTiles.get(id) === p) { mmlTiles.delete(id); lateArrived(); } failedMml.delete(id); }, AGAIN_MS); });
+  mmlTiles.set(id, p);
+  return p;
+}
+// the tiles over the box and Finland's (none outside it); null: too many to ask for
+function mmlTilesIn([w, s, e, n], max, z = MZ) {
+  const [W, S, E, N] = FINLAND_BOUNDS;
+  if (e < W || w > E || n < S || s > N) return [];
+  const [x0, y0] = lonLatToTile(Math.max(w, W), Math.min(n, N), z).map(Math.floor);
+  const [x1, y1] = lonLatToTile(Math.min(e, E), Math.max(s, S), z).map(Math.floor);
+  if ((x1 - x0 + 1) * (y1 - y0 + 1) > max) return null;
+  const list = [];
+  for (let x = x0; x <= x1; x++) for (let y = y0; y <= y1; y++) list.push(mmlTile(x, y, z));
+  return list;
+}
+async function mmlStones(box) {
+  // legs up to about 5 km; a longer one is too long only where MML has a map: zoom 11's tiles all empty, as off
+  // Tallinn, is outside it ([], as for a shorter leg there)
+  const tiles = mmlTilesIn(box, 64) || mmlTilesIn(box, 16, 11);
+  if (!tiles) return null;
+  const all = Promise.all(tiles);
+  try {
+    const got = await waitFor('mml', all);
+    return !got.length || got[0].z === MZ ? got : got.some((t) => t.covered) ? null : [];
+  } catch (err) {
+    all.then(lateArrived, () => {});
+    throw err;
+  }
+}
+
 /** Retry: ask again now for what didn't answer, and wait for it as long as the first time. */
 export function forgetWaterFailures() {
   forgetHostedFailures(OSM_DATA_MANIFEST);
@@ -124,6 +194,8 @@ export function forgetWaterFailures() {
   failedHaz.clear();
   for (const name of failedDepth) depthFiles.delete(name);
   failedDepth.clear();
+  for (const id of failedMml) mmlTiles.delete(id);
+  failedMml.clear();
   for (const k of Object.keys(slowUntil)) delete slowUntil[k];
 }
 function hazTilesIn([w, s, e, n], max) {
@@ -149,7 +221,8 @@ async function osmHazards(box) {
 
 /**
  * Fetch what the router will want for the map's view ahead of time (paddling,
- * zoomed in): OSM's hazards, Väylävirasto's fairways and marks, and the lake depths.
+ * zoomed in): OSM's hazards, Väylävirasto's fairways and marks, and the lake depths. (MML's stones aren't: their
+ * zoom-14 tiles are the map's own at zoom 14.)
  */
 export function prefetchWater(view) {
   hazTilesIn(view, 6);
@@ -168,9 +241,11 @@ async function windAt(mid, at) {
 }
 
 /**
- * What to draw into the router's grid for a leg's box. `want`: { fairways, hazards,
+ * What to draw into the router's grid for a leg's box. `want`: { fairways, hazards, rapids,
  * depths, wind } (booleans) and `at` (epoch seconds, for the wind). Returns GeoJSON for
- * the grid plus the lake depths' tiles (`depths`, null when not asked or not answered),
+ * the grid (`rapids` too: OSM's and MML's, to say where the route goes through them) plus
+ * the lake depths' tiles (`depths`, null when not asked or not answered),
+ * MML's tiles (`mml`: [{ x, y, covered }], null likewise; none outside Finland),
  * the wind, `missing`: sources that didn't answer, and `skipped`: sources not asked,
  * the box being too big for them (#490).
  */
@@ -185,25 +260,37 @@ export async function waterInputs(box, want, at) {
   const mid = [(w + e) / 2, (s + n) / 2];
   const missing = [], skipped = [];
   const skip = (src) => (got) => { if (!got) skipped.push(src); return got; };
-  const [ways, osm, depths, wind] = await Promise.all([
-    want.fairways || want.hazards ? (() => { const p = waterwaysIn(box); return waitFor('vayla', p).then(skip('Väylävirasto'), () => { missing.push('Väylävirasto'); p.then(lateArrived, () => setTimeout(tell, AGAIN_MS)); return null; }); })() : null,
-    want.hazards ? osmHazards(box).then(skip('OpenStreetMap'), () => { missing.push('OpenStreetMap'); return null; }) : null,
+  const [ways, osm, mml, depths, wind] = await Promise.all([
+    want.fairways || want.hazards ? (() => { const p = waterwaysIn(box); return waitFor('vayla', p).then(skip('Väylävirasto'), () => { missing.push('Väylävirasto'); p.then(lateArrived, () => setTimeout(lateArrived, AGAIN_MS)); return null; }); })() : null,
+    want.hazards || want.rapids ? osmHazards(box).then(skip('OpenStreetMap'), () => { missing.push('OpenStreetMap'); return null; }) : null,
+    want.hazards || want.rapids ? mmlStones(box).then(skip('the National Land Survey'), () => { missing.push('the National Land Survey'); return null; }) : null,
     want.depths ? lakeDepths(box).then(skip('Syke'), () => { missing.push('Syke'); return null; }) : null,
     want.wind ? waitFor('wind', windAt(mid, at)).catch(() => { missing.push('the wind forecast'); return null; }) : null,
   ]);
   const fc = (features) => ({ type: 'FeatureCollection', features });
   const fairways = want.fairways && ways ? fc(ways.fairways) : fc([]);
-  const hazards = [];
+  const hazards = [], rapids = [];
+  const pt = (lon, lat, kind, src) => ({ type: 'Feature', properties: { kind, src }, geometry: { type: 'Point', coordinates: [lon, lat] } });
+  if (want.rapids) {
+    for (const [lon, lat, kind] of (osm && osm.points) || []) if (kind === 'rapids') rapids.push(pt(lon, lat, kind, 'osm'));
+    for (const a of (osm && osm.areas) || []) if (a.kind === 'rapids') rapids.push({ type: 'Feature', properties: { kind: 'rapids', src: 'osm' }, geometry: { type: 'LineString', coordinates: a.coords } });
+    for (const t of mml || []) for (const c of t.rapids) rapids.push({ type: 'Feature', properties: { kind: 'rapids', src: 'mml' }, geometry: { type: 'LineString', coordinates: c } });
+  }
   if (want.hazards) {
     for (const f of (ways && ways.marks) || []) hazards.push({ type: 'Feature', properties: { kind: f.properties.kind, src: 'mark' }, geometry: f.geometry });
-    for (const [lon, lat, kind] of (osm && osm.points) || []) hazards.push({ type: 'Feature', properties: { kind, src: 'osm' }, geometry: { type: 'Point', coordinates: [lon, lat] } });
+    for (const [lon, lat, kind] of (osm && osm.points) || []) if (kind !== 'rapids') hazards.push(pt(lon, lat, kind, 'osm'));
     for (const a of (osm && osm.areas) || []) {
+      if (a.kind === 'rapids') continue;
       const c = a.coords;
       const closed = c.length > 3 && c[0][0] === c[c.length - 1][0] && c[0][1] === c[c.length - 1][1];
       hazards.push({ type: 'Feature', properties: { kind: a.kind, src: 'osm' }, geometry: closed ? { type: 'Polygon', coordinates: [c] } : { type: 'LineString', coordinates: c } });
     }
+    for (const t of mml || []) {
+      for (const [lon, lat, kind] of t.points) hazards.push(pt(lon, lat, kind, 'mml'));
+      for (const a of t.areas) hazards.push({ type: 'Feature', properties: { kind: a.kind, src: 'mml' }, geometry: { type: 'Polygon', coordinates: a.rings } });
+    }
   }
-  return { fairways, hazards: fc(hazards), depths, wind, missing, skipped };
+  return { fairways, hazards: fc(hazards), rapids: fc(rapids), mml, depths, wind, missing, skipped };
 }
 
 // Waves a craft is comfortable in (significant height, m), from the wind over open water

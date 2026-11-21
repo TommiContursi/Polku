@@ -164,8 +164,9 @@ conversation again
   filed as an issue (#1208 is one: the forest's kind). Where data stops at
   a border, the map says so (#1200).
 - **Traficom's depth data is shown, never routed on.** Its licence excludes
-  route planning, so the water router and its warnings use Väylävirasto, OSM
-  and SYKE only. Water routes are for planning, not navigation.
+  route planning, so the water router and its warnings use Väylävirasto, OSM,
+  SYKE and the National Land Survey only. Water routes are for planning, not
+  navigation.
 - **Location: private by default, local first, not local only.** A position
   leaves the device only for something the person asked for, once, as
   precisely as it needs, to the service that answers, and the control says

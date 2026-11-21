@@ -19,7 +19,7 @@ import { item } from './card.js';
 import { UphillLayer } from './uphill.js';
 import { TrailDetails, MIN_ZOOM as DETAILS_ZOOM } from './trails.js';
 import { LipasLayer, lipasPlace, rideOf } from './lipas.js';
-import { prefetchWater } from './waterdata.js';
+import { prefetchWater, useMmlKey } from './waterdata.js';
 import { initInspector } from './inspect.js';
 import { initHover, hoverCapable } from './hover.js';
 import { registerServiceWorker, initOfflineStatus, openSaveOffline, renderOfflineSection, saveOverview, savedOnly } from './offline.js';
@@ -460,6 +460,7 @@ function setFewerEffects(on) {
 
 function applyStyle() {
   applyTheme(); // (the base map may have changed: Match the map)
+  useMmlKey(state.mmlKey); // (the water router reads MML's tiles with the map's key)
   const style = buildStyle(state, ctx);
   // the shadows' new hour given to their sources, not swapped in by the diff, which would drop the ones on screen
   for (const id of SHADOWS) {

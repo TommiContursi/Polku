@@ -36,6 +36,7 @@ export const SOURCES = {
   digiroad: { label: 'Digiroad', what: 'traffic volumes' },
   lipas: { label: 'LIPAS', what: 'routes & places, and search' },
   vayla: { label: 'Väylävirasto', what: 'nautical chart' },
+  mml: { label: 'National Land Survey', what: 'stones and shoals for water routes' },
   traficom: { label: 'Traficom', what: 'water depth' },
   rainviewer: { label: 'RainViewer', what: 'rain radar' },
   fmi: { label: 'FMI', what: 'rain radar, lightning and measured snow (Finland)', limits: [[300e3, 600, '5 minutes'], [864e5, 20000, 'day']] },
