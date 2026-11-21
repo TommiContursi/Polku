@@ -490,8 +490,9 @@ const uphill = new UphillLayer(map, (fc) => setData('uphill', fc), () => { const
 let busyToldAt = 0;
 const details = new TrailDetails(map, {
   onData: (ways, points) => { setData('trailWays', ways); setData('trailPoints', points); },
-  onCoverage: (area) => {
+  onCoverage: (area, cycleways) => {
     ctx.trailCoverage = area;
+    ctx.cyclewayCoverage = cycleways;
     if (!holdTogether('trailCoverage')) restyleTrails(); // (with the trails it hides the map's own under)
   },
   onView: () => syncZoomHint(),
