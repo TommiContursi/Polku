@@ -10,6 +10,8 @@
 //   letters, which a tile waits for before it's drawn): cache first.
 // - Map and terrain tiles saved with "Save offline" (js/offline.js): network
 //   first, the saved copy after 4 s or offline. Unsaved tiles pass straight through.
+//   The National Land Survey's (MML) are saved under their address without the API
+//   key, so your own key added or removed later still finds them (#1176).
 //   A saved OpenFreeMap tile at zoom 6 or lower (Finland's overview, a saved area's)
 //   is the saved copy at once, refreshed behind it: it stands in while the detail loads.
 // - "Preview offline" (set from the page) answers only from what's saved, so you
@@ -20,6 +22,7 @@ const TILES = 'polku-offline-tiles';
 const FLAG = '/__polku/offline-preview';
 const OFM_TILE = /^https:\/\/tiles\.openfreemap\.org\/planet\/[^/]+\/(\d+)\/(\d+)\/(\d+)\.pbf$/;
 const DEM_TILE = /^https:\/\/tiles\.mapterhorn\.com\/\d+\/\d+\/\d+\.webp$/;
+const MML_TILE = /^https:\/\/avoin-karttakuva\.maanmittauslaitos\.fi\/(?:vectortiles|kiinteisto-avoin)\/[^?]+\.pbf\?/; // its vector tiles
 
 // OpenFreeMap's tile URLs carry a weekly version; saved tiles are stored under a
 // version-free key so they still match after the TileJSON moves on.
@@ -79,6 +82,7 @@ self.addEventListener('fetch', (e) => {
   } else if (url.hostname === 'unpkg.com') e.respondWith(cacheFirst(req));
   else if (OFM_TILE.test(req.url)) e.respondWith(tile(req, ofmKey(req.url), +req.url.match(OFM_TILE)[1] <= 6));
   else if (DEM_TILE.test(req.url)) e.respondWith(tile(req, req.url));
+  else if (MML_TILE.test(req.url)) e.respondWith(tile(req, req.url.split('?')[0])); // same as js/offline.js
   else if (url.hostname === 'tiles.openfreemap.org' && url.pathname.startsWith('/fonts/')) e.respondWith(cacheFirst(req));
   else if (url.hostname === 'tiles.openfreemap.org') e.respondWith(networkFirst(req, req, 4000));
   else if (previewNow !== false) e.respondWith(previewOn().then((on) => (on ? Response.error() : fetch(req))));
