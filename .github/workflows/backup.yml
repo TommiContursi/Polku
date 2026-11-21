@@ -40,7 +40,7 @@ jobs:
           bb="https://x-token-auth:${BITBUCKET_TOKEN}@bitbucket.org/${BITBUCKET_REPOSITORY}.git"
           git init -q code && cd code
           git remote add origin "https://github.com/${GITHUB_REPOSITORY}.git"
-          git config http.extraheader "Authorization: Basic $(printf 'x-access-token:%s' "$GH_TOKEN" | base64 -w0)"
+          git config http.https://github.com/.extraheader "Authorization: Basic $(printf 'x-access-token:%s' "$GH_TOKEN" | base64 -w0)"
           # pr-screenshots is about 800 MB of images: never fetched, so never pushed
           specs=()
           while read -r b; do specs+=("+refs/heads/$b:refs/heads/$b"); done \
