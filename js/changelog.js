@@ -4,13 +4,13 @@ import { h } from './ui.js';
 import { request } from './net.js';
 import { openModal } from './modal.js';
 
-const SOURCE = 'https://github.com/TommiContursi/Polku/blob/main/CHANGELOG.md';
-const REPO = 'https://github.com/TommiContursi/Polku/blob/main/';
+// Links into Polku's repository, relative ones too, are plain text: the repository is private (#115)
+const REPO = 'https://github.com/TommiContursi/Polku/';
 
 function linkURL(value) {
   try {
-    const url = new URL(value, REPO);
-    return ['https:', 'http:'].includes(url.protocol) ? url.href : null;
+    const url = new URL(value, REPO + 'blob/main/');
+    return ['https:', 'http:'].includes(url.protocol) && !(url.href + '/').startsWith(REPO) ? url.href : null;
   } catch { return null; }
 }
 
@@ -76,7 +76,7 @@ export function openChangelog(opener = document.activeElement) {
     status = h('p', { class: 'note', role: 'status', 'aria-live': 'polite' });
     content = h('article', { class: 'changelog-notes', 'aria-label': 'Release notes', tabindex: '0' });
     retry = h('button', { type: 'button', class: 'btn', hidden: true, onclick: load }, 'Retry');
-    body.append(status, retry, h('p', { class: 'changelog-source' }, h('a', { href: SOURCE, target: '_blank', rel: 'noopener noreferrer' }, 'Full changelog on GitHub ↗')), content);
+    body.append(status, retry, content);
   });
   window.addEventListener('online', connection);
   window.addEventListener('offline', connection);
@@ -101,7 +101,7 @@ export function openChangelog(opener = document.activeElement) {
       retry.hidden = true;
     } catch (e) {
       if (controller.signal.aborted) return;
-      status.textContent = navigator.onLine ? 'Release notes could not be loaded. Try again, or open the full changelog on GitHub.' : 'You’re offline and no saved release notes are available. Reconnect, then try again.';
+      status.textContent = navigator.onLine ? 'Release notes could not be loaded. Try again.' : 'You’re offline and no saved release notes are available. Reconnect, then try again.';
       retry.hidden = false;
     } finally {
       if (!controller.signal.aborted) { retry.disabled = false; content.removeAttribute('aria-busy'); }

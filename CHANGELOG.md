@@ -1,8 +1,13 @@
 # Changelog
 
-What's new in [Polku](https://polku.si), from the latest updates back to the first release. These notes describe features available in the app, not work still in progress. For upcoming changes, see the [issues](https://github.com/TommiContursi/Polku/issues) and [roadmap](docs/ROADMAP.md).
+What's new in [Polku](https://polku.si), from the latest updates back to the first release. These notes describe features available in the app, not work still in progress.
 
 ## 2026-11-21
+
+### Links to Polku's code are gone ([#115](https://github.com/TommiContursi/Polku/issues/115))
+
+- Polku's code is moving to a private repository, so What's new shows its issue numbers as plain text instead of links to GitHub, and **Full changelog on GitHub** is gone. Links to other sites still open.
+- The map's credits say **Polku © Tommi Contursi**, without links to GitHub.
 
 ### The National Land Survey's map in offline areas ([#1176](https://github.com/TommiContursi/Polku/issues/1176))
 
