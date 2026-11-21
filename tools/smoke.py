@@ -2184,7 +2184,8 @@ def cycling_restrictions(chrome):
 
 
 # Every track from zoom 13 (#1128), on a phone: at 13.45 the trail data draws the tracks inside its tiles (a recorded tile at
-# Vuorilampi, Jyväskylä, with S0− tracks) and the map's own are hidden there; from 14 the map's own draw them. The hint
+# Vuorilampi, Jyväskylä, with S0− tracks) and the map's own are hidden there; past 14 too, so they don't blink out while
+# OpenFreeMap's zoom 14 tiles load (#1192). The hint
 # shows until the trail data covers the view (its neighbours seeded empty), and below 14 the hosted data alone is asked.
 TRACKS_FROM_13 = """(async () => {
   const m = polku.map, wait = (ms) => new Promise((r) => setTimeout(r, ms)), errs = [];
@@ -2208,9 +2209,10 @@ TRACKS_FROM_13 = """(async () => {
   if (!hint.hidden) errs.push('the hint still shows with the trail data over the whole view');
   m.jumpTo({ center: [25.8120, 62.26218], zoom: 14.03 });
   await wait(1500); await idle();
-  if (m.queryRenderedFeatures({ layers: ['track-osm-ground'] }).length) errs.push('the trail data still draws tracks at 14.03');
+  const at14 = new Set(m.queryRenderedFeatures({ layers: ['track-osm-ground'] }).map((f) => f.properties.osm)).size;
+  if (at14 < 10) errs.push(`${at14} tracks drawn from the trail data at 14.03`);
   const own = m.queryRenderedFeatures({ layers: ['track-ground'] }).filter(inside).length;
-  if (own < 10) errs.push(`${own} of the map's own tracks at 14.03`);
+  if (own) errs.push(`${own} of the map's own tracks drawn under the trail data's at 14.03`);
   // below 14 a tile the hosted data hasn't (one in the Atlantic) isn't asked of Overpass
   const N = await import('/js/net.js'), asked = () => N.usage().find((u) => u.id === 'overpass').session, before = asked();
   T.holdFetches(false);

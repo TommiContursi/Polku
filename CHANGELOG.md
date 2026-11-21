@@ -4,6 +4,10 @@ What's new in [Polku](https://polku.si), from the latest updates back to the fir
 
 ## 2026-11-21
 
+### Forest tracks stay on the map as you zoom in ([#1192](https://github.com/TommiContursi/Polku/issues/1192))
+
+- With **Trail details** on, forest tracks no longer blink out for a moment when you zoom in past 14: they're drawn from the trail details at every zoom.
+
 ### House numbers ([#1223](https://github.com/TommiContursi/Polku/issues/1223))
 
 - From zoom 17, house numbers show on the buildings, small and in a quiet grey, so you can find an address in a town. Every other name and place wins where they would overlap.
