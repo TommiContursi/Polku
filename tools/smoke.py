@@ -968,7 +968,7 @@ def property_plots(chrome):
         polku.planner.cards.close(); await frame();
       }
       // Property details, under the switch in Layers (#1199): off, the pointer, a click and a hold pick no plot, and what's under it
-      // opens as without the layer; the plot whose card is open as it goes off is no longer tinted, and is again as it comes back on
+      // opens as without the layer; the plot whose card is open as it goes off is no longer tinted, and its card closes
       const idle=()=>Promise.race([new Promise(r=>{m.once('idle',r);m.triggerRepaint();}),wait(5000)]);
       const tinted=()=>m.getLayer('property-plot')&&m.queryRenderedFeatures([spot.x,spot.y],{layers:['property-plot']}).some(f=>f.id===spot.f.id)&&(st(spot.f.id).lit||st(spot.f.id).hover);
       const move=(dx)=>cv.dispatchEvent(new PointerEvent('pointermove',{bubbles:true,pointerType:'mouse',clientX:R.left+spot.x+dx,clientY:R.top+spot.y,buttons:0}));
@@ -984,9 +984,7 @@ def property_plots(chrome):
         sub.click(); await idle();
         if(polku.state.plotSelect!==false)errs.push('Property details stays on after its switch');
         if(tinted())errs.push('the picked plot stays tinted after Property details goes off');
-        sub.click(); await idle();
-        if(!tinted())errs.push("the plot whose card is open isn't tinted again as Property details comes back on");
-        sub.click(); await idle();
+        if(polku.planner.cards.current)errs.push(`the plot's card stays open after Property details goes off: ${polku.planner.cards.current.title}`);
         polku.planner.cards.close(); await frame();
         move(1); await frame(); await frame();
         if(tinted())errs.push('the plot under the pointer is tinted with Property details off');

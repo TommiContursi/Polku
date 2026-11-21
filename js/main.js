@@ -1457,9 +1457,14 @@ const overlayToggle = (id) => {
     if (v && id === 'sfShips' && map.getZoom() < 8) toast('Zoom in to level 8+ to see ships');
     if (v && id === 'lit' && map.getZoom() < LIT_MIN_ZOOM) toast(`Zoom in to level ${LIT_MIN_ZOOM}+ to see the lit ways`);
   }), sf ? sf.note : o ? o.note || o.attribution.replace('© ', '') : OVERLAY_NOTE[id] || '');
-  // (off, style.js draws no plots, so neither the pointer, a click, a tap nor a hold finds one, #1199)
+  // (off, style.js draws no plots, so neither the pointer, a click, a tap nor a hold finds one, and a plot's open card closes:
+  // it couldn't be opened again, #1199)
   if (id === 'propertyLines' && state.overlays.propertyLines) return h('div', { class: 'tg-group' }, tg,
-    toggle('Property details', state.plotSelect, (v) => { state.plotSelect = v; if (!v) lightPlot('hover', null); applyStyle(); }), opacityRow(id));
+    toggle('Property details', state.plotSelect, (v) => {
+      state.plotSelect = v;
+      if (!v) { lightPlot('hover', null); if (plotLit.lit != null && planner.cards.current?.kind === 'thing') planner.cards.close(); }
+      applyStyle();
+    }), opacityRow(id));
   if (id !== 'lit' || !state.overlays.lit) return withOpacity(id, tg);
   return h('div', { class: 'tg-group' }, tg, seg(LIT_LOOKS, state.litLook, (v) => { state.litLook = v; applyStyle(); renderLayersPanel(); }), opacityRow(id));
 };
