@@ -9425,6 +9425,8 @@ def offline_forecast(chrome):
         pg.open_app({'activity': 'mtb'}, {'polku:winter': '"off"'}, '#13/61.514/23.822')
         chrome.send('Network.setBypassServiceWorker', {'bypass': False}, pg.s)
         pg.js("(async () => { for (const r of await navigator.serviceWorker.getRegistrations()) await r.unregister(); await caches.delete('polku-shell-v1'); await navigator.serviceWorker.register('./sw.js'); await navigator.serviceWorker.ready; return true })()")
+        # no forecast an earlier check left in the profile: WX_FIXED's 100 hours, asked for now
+        pg.js("import(location.origin + '/js/idb.js').then(({ idb }) => idb('weather').prune(() => false)).then(() => true)")
         pg.reload()
         workers = [t for t in chrome.send('Target.getTargets')['targetInfos'] if t['type'] == 'service_worker' and t['url'] == BASE + 'sw.js']
         if not pg.js('!!navigator.serviceWorker.controller') or not workers:
