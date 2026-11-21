@@ -1,3 +1,4 @@
+/*! © 2026 Tommi Contursi. All rights reserved. See https://polku.si/LICENSE */
 // Map gestures beyond MapLibre's defaults.
 //
 // 1. Zoom over the floating UI. The buttons and bars sit on top of the map, so

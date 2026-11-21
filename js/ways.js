@@ -1,3 +1,4 @@
+/*! © 2026 Tommi Contursi. All rights reserved. See https://polku.si/LICENSE */
 // Every way, for a tap (#574): what one thing is, from OpenStreetMap's own ways. The map's tiles don't carry every tag,
 // and the trail details (js/trails.js) only load trails, so a tap asks Overpass for all the ways of a z14 tile (about
 // 1.2 km here) once, cached a week as the trail details' z13 tiles are (js/osm.js), and joins the pieces that continue

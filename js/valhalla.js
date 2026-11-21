@@ -1,3 +1,4 @@
+/*! © 2026 Tommi Contursi. All rights reserved. See https://polku.si/LICENSE */
 // Valhalla on the FOSSGIS servers (the routing openstreetmap.org itself uses):
 // Polku's stand-in when brouter.de asks for a pause. Free and keyless; the
 // terms are at most one request a second, no heavy use, and attribution with

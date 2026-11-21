@@ -1,3 +1,4 @@
+/*! © 2026 Tommi Contursi. All rights reserved. See https://polku.si/LICENSE */
 // GPX / KML import and GPX export.
 
 export function parseTrackFile(text, filename = '') {

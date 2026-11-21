@@ -1,3 +1,4 @@
+/*! © 2026 Tommi Contursi. All rights reserved. See https://polku.si/LICENSE */
 // Polku — app bootstrap: map, state, panels and wiring between modules.
 
 import {
@@ -218,11 +219,11 @@ syncView3d();
 map.on('pitchend', syncView3d);
 // bottom left, beside the scale bar: the bottom-right corner belongs to the map controls
 map.addControl(new maplibregl.AttributionControl({ compact: true }), 'bottom-left');
-// Polku (its source) and its maker first, then the data credits MapLibre collects from the
+// Polku and its maker first, then the data credits MapLibre collects from the
 // sources. MapLibre sorts its own list by length and rewrites it, so this sits just before it.
 {
   const attrib = $('.maplibregl-ctrl-attrib');
-  attrib.insertBefore(h('span', { class: 'attrib-own', html: '<a href="https://github.com/TommiContursi/Polku" target="_blank" rel="noopener">Polku</a> © <a href="https://github.com/TommiContursi" target="_blank" rel="noopener">TommiContursi</a> | ' }), attrib.querySelector('.maplibregl-ctrl-attrib-inner'));
+  attrib.insertBefore(h('span', { class: 'attrib-own' }, 'Polku © Tommi Contursi | '), attrib.querySelector('.maplibregl-ctrl-attrib-inner'));
   // Where the credits don't fit on one line beside the map's buttons (a phone, a smaller window, #1002) they stay
   // folded behind their ⓘ until you open them: MapLibre opens them by itself when their text first comes in (often
   // after the map has loaded), and a window narrowed until they wrap folds them too

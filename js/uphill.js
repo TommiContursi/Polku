@@ -1,3 +1,4 @@
+/*! © 2026 Tommi Contursi. All rights reserved. See https://polku.si/LICENSE */
 // Uphill difficulty for every trail in view.
 //
 // OSM rarely carries mtb:scale:uphill, so we compute it: each path/track in the

@@ -1,3 +1,4 @@
+/*! © 2026 Tommi Contursi. All rights reserved. See https://polku.si/LICENSE */
 // Names of roads and paths near a point, from the vector tiles already loaded
 // (OpenMapTiles' transportation_name layer): no extra requests. BRouter's
 // answers carry no names; legs Valhalla routed bring their own (tags.name),

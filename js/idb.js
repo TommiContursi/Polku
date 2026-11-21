@@ -1,3 +1,4 @@
+/*! © 2026 Tommi Contursi. All rights reserved. See https://polku.si/LICENSE */
 // Tiny IndexedDB key–value stores: cached Overpass answers, weather forecast
 // cells and saved offline areas.
 // Every call can reject (private windows, blocked storage); callers treat the

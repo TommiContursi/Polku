@@ -1,3 +1,4 @@
+/*! © 2026 Tommi Contursi. All rights reserved. See https://polku.si/LICENSE */
 // Where you are: the location dot, its accuracy circle and a cone for the way you
 // face, and Follow me.
 //

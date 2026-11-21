@@ -1,3 +1,4 @@
+/*! © 2026 Tommi Contursi. All rights reserved. See https://polku.si/LICENSE */
 // One reusable modal dialog (native <dialog>: focus trap, Esc to close).
 
 import { h, icon } from './ui.js';

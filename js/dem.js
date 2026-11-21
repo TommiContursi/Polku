@@ -1,3 +1,4 @@
+/*! © 2026 Tommi Contursi. All rights reserved. See https://polku.si/LICENSE */
 // Elevation sampling straight from the Mapterhorn terrarium tiles, so the route
 // profile and the uphill overlay use the same lidar-grade DEM as the hillshade.
 

@@ -1,16 +1,17 @@
+/*! © 2026 Tommi Contursi. All rights reserved. See https://polku.si/LICENSE */
 // The deployed release notes, fetched only when Settings → What's new opens.
 // A small Markdown subset, built with DOM nodes: no HTML from the document runs.
 import { h } from './ui.js';
 import { request } from './net.js';
 import { openModal } from './modal.js';
 
-const SOURCE = 'https://github.com/TommiContursi/Polku/blob/main/CHANGELOG.md';
-const REPO = 'https://github.com/TommiContursi/Polku/blob/main/';
+// Links into Polku's repository, relative ones too, are plain text: the repository is private (#115)
+const REPO = 'https://github.com/TommiContursi/Polku/';
 
 function linkURL(value) {
   try {
-    const url = new URL(value, REPO);
-    return ['https:', 'http:'].includes(url.protocol) ? url.href : null;
+    const url = new URL(value, REPO + 'blob/main/');
+    return ['https:', 'http:'].includes(url.protocol) && !(url.href + '/').startsWith(REPO) ? url.href : null;
   } catch { return null; }
 }
 
@@ -76,7 +77,7 @@ export function openChangelog(opener = document.activeElement) {
     status = h('p', { class: 'note', role: 'status', 'aria-live': 'polite' });
     content = h('article', { class: 'changelog-notes', 'aria-label': 'Release notes', tabindex: '0' });
     retry = h('button', { type: 'button', class: 'btn', hidden: true, onclick: load }, 'Retry');
-    body.append(status, retry, h('p', { class: 'changelog-source' }, h('a', { href: SOURCE, target: '_blank', rel: 'noopener noreferrer' }, 'Full changelog on GitHub ↗')), content);
+    body.append(status, retry, content);
   });
   window.addEventListener('online', connection);
   window.addEventListener('offline', connection);

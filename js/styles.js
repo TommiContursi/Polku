@@ -1,3 +1,4 @@
+/*! © 2026 Tommi Contursi. All rights reserved. See https://polku.si/LICENSE */
 // Route styles: presets and fine-tuning per sport, turned into what each
 // router understands. BRouter takes `profile:name=value` parameters that
 // override a stock profile's variables (any global one: BRouter injects them

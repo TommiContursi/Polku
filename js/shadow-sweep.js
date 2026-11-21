@@ -1,3 +1,4 @@
+/*! © 2026 Tommi Contursi. All rights reserved. See https://polku.si/LICENSE */
 // The shadows' sweep (#910, #919), run in a worker so a screen of tiles doesn't stall the map: js/shadows.js
 // sends a tile's grid of heights, this sends back its picture.
 

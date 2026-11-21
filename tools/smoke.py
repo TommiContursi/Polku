@@ -10335,6 +10335,8 @@ def changelog(chrome):
           const notes = document.querySelector('.changelog-notes'), status = document.querySelector('.modal-changelog [role=status]');
           if (!count() || !notes?.querySelector('h3') || !notes.querySelector('h4') || !notes.querySelector('li strong')) errs.push('real changelog did not render dates/headings/lists/bold');
           if (!/Release notes through \\d{4}-\\d{2}-\\d{2}/.test(status?.textContent || '')) errs.push('no source date');
+          // the repository is private (#115): its links (one in nearly every heading) are plain text
+          if (document.querySelector('.modal-changelog a[href*="github.com/TommiContursi"]') || !notes.textContent.includes('#1214')) errs.push('links into the repository, or their text gone');
           if ((net.usage().find(s => s.id === 'polku').session) !== before+1) errs.push('changelog did not use request()');
           const b = document.querySelector('.modal-changelog .modal-body'); b.scrollTop = 2000;
           if (b.scrollTop < 100 || b.scrollWidth > b.clientWidth+1) errs.push('notes do not scroll or overflow sideways');
@@ -10356,16 +10358,16 @@ def changelog(chrome):
             errs = pg.js("""(async () => {
               const errs=[], wait=ms=>new Promise(r=>setTimeout(r,ms));
               const real=window.fetch; let calls=0, release;
-              const fixture='# Changelog\\n\\n## 2026-10-17\\n\\n### A safe update\\n- **Bold** and `code` with [source](docs/USING.md), [unsafe](javascript:alert%281%29) and <img src=x onerror=alert(1)>.';
+              const fixture='# Changelog\\n\\n## 2026-10-17\\n\\n### A safe update\\n- **Bold** and `code` with [source](docs/USING.md), [#1](https://github.com/TommiContursi/Polku/issues/1), [OpenStreetMap](https://www.openstreetmap.org/), [unsafe](javascript:alert%281%29) and <img src=x onerror=alert(1)>.';
               window.fetch=(url,opts)=>String(url).endsWith('/CHANGELOG.md') ? (++calls===1 ? Promise.resolve(new Response('unavailable',{status:503})) : calls===2 ? Promise.resolve(new Response(fixture)) : new Promise(r=>{release=r;})) : real(url,opts);
               notesOpener.click(); await wait(100);
               const d=document.querySelector('.modal-changelog'), b=d.querySelector('.modal-body'), status=d.querySelector('[role=status]');
               const retry=[...b.querySelectorAll('button')].find(x=>x.textContent==='Retry');
-              if (!/could not be loaded/.test(status.textContent) || retry.hidden || !b.querySelector('a[href*="github.com"]')) errs.push('failure has no honest message/retry/full source');
+              if (!/could not be loaded/.test(status.textContent) || retry.hidden || b.querySelector('a[href*="github.com"]')) errs.push('failure has no honest message/retry, or links to GitHub');
               retry.click(); await wait(100);
               const n=b.querySelector('.changelog-notes');
               if (!n.querySelector('code') || n.querySelector('img,script') || n.querySelector('a[href^="javascript:"]') || !n.textContent.includes('<img')) errs.push('unsafe Markdown rendered as executable content or no inline code');
-              if (n.querySelector('a')?.href !== 'https://github.com/TommiContursi/Polku/blob/main/docs/USING.md') errs.push('relative document link has wrong source');
+              if ([...n.querySelectorAll('a')].map(a => a.href).join() !== 'https://www.openstreetmap.org/' || !/with source, #1, OpenStreetMap,/.test(n.textContent)) errs.push('links into the repository (relative ones too) not plain text, or an outside link lost');
               d.querySelector('[aria-label=Close]').click(); await wait(100);
               if (document.activeElement!==notesOpener) errs.push('close button did not restore focus');
               notesOpener.click(); await wait(100);
@@ -11774,10 +11776,12 @@ def start_fails(chrome):
     pg.close()
 
     # The worker's saved copies (#481), a returning visitor on a slow network. Just after an update: the saved
-    # js/safety.js is from an older deploy (its Last-Modified isn't the page's) and the server's answer comes after
-    # 6 s, past the worker's 3 s: the page waits for it and opens once, all new, with no try more (main mixed the two,
-    # failed and tried again). With no update: the saved copies are the page's deploy's and every js/ file hangs for
-    # good, the page itself too ('saved'): it opens from them, and says it may be an older Polku.
+    # js/safety.js is from an older deploy (its X-Polku-Deploy isn't the page's, though its Last-Modified is) and the
+    # server's answer comes after 6 s, past the worker's 3 s: the page waits for it and opens once, all new, with no try
+    # more (main mixed the two, failed and tried again). With no update: the saved copies are the page's deploy's and
+    # every js/ file hangs for good, the page itself too ('saved'): it opens from them, and says it may be an older
+    # Polku. The deploy is X-Polku-Deploy where it's sent (Cloudflare), else Last-Modified (GitHub Pages, #115): 'hang'
+    # gives the js/ copies the page's X-Polku-Deploy beside their own Last-Modified, 'saved' only the page's Last-Modified.
     for case in ('update', 'hang', 'saved'):
         name = '390x844, ' + {'update': 'an older deploy’s js/safety.js saved, the new one 6 s late', 'hang': 'every js/ file hanging, the saved copies the page’s deploy’s',
                               'saved': 'the page and every js/ file hanging, the saved copies the page’s deploy’s'}[case]
@@ -11793,15 +11797,17 @@ def start_fails(chrome):
             raise RuntimeError(f'{name}: the page has no service worker')
         ws = chrome.send('Target.attachToTarget', {'targetId': worker['targetId'], 'flatten': True})['sessionId']
         if case == 'update':
-            pg.js("""caches.open('polku-shell-v1').then((c) => c.put(new URL('js/safety.js', location.href).href,
-              new Response('export class SafetyLayers {}', { headers: { 'Content-Type': 'text/javascript', 'Last-Modified': 'Thu, 01 Jan 2026 00:00:00 GMT' } }))).then(() => true)""")
+            pg.js("""caches.open('polku-shell-v1').then(async (c) => c.put(new URL('js/safety.js', location.href).href,
+              new Response('export class SafetyLayers {}', { headers: { 'Content-Type': 'text/javascript', 'X-Polku-Deploy': 'older',
+                'Last-Modified': (await c.match(new URL('./', location.href).href)).headers.get('last-modified') } }))).then(() => true)""")
             chrome.send('Fetch.enable', {'patterns': [{'urlPattern': '*js/safety.js'}]}, ws)
         else:
-            # (serve.py gives each file its own time; GitHub Pages gives every file the deploy's: the page's, here)
-            pg.js("""(async () => { const c = await caches.open('polku-shell-v1'), js = new URL('js/', location.href).href;
-              const d = (await c.match(new URL('./', location.href).href)).headers.get('last-modified');
-              for (const r of await c.keys()) if (r.url.startsWith(js)) { const a = await c.match(r), h = new Headers(a.headers); h.set('Last-Modified', d); await c.put(r, new Response(await a.blob(), { headers: h })); }
-              return true; })()""")
+            # (serve.py gives each file its own time and no X-Polku-Deploy; GitHub Pages gives every file the deploy's time,
+            # Cloudflare its commit: the page's, here)
+            pg.js(f"""(async () => {{ const c = await caches.open('polku-shell-v1'), js = new URL('js/', location.href).href, p = (await c.match(new URL('./', location.href).href)).headers;
+              const [k, d] = {'true' if case == 'hang' else 'false'} ? ['X-Polku-Deploy', p.get('x-polku-deploy') || p.get('last-modified')] : ['Last-Modified', p.get('last-modified')];
+              for (const r of await c.keys()) if (r.url.startsWith(js)) {{ const a = await c.match(r), h = new Headers(a.headers); h.set(k, d); await c.put(r, new Response(await a.blob(), {{ headers: h }})); }}
+              return true; }})()""")
             chrome.send('Fetch.enable', {'patterns': [{'urlPattern': BASE + 'js/*'}] + ([{'urlPattern': BASE}] if case == 'saved' else [])}, ws)
         chrome.events = [e for e in chrome.events if e.get('sessionId') != pg.s]
         chrome.send('Page.reload', {}, pg.s)

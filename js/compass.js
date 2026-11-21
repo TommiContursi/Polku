@@ -1,3 +1,4 @@
+/*! © 2026 Tommi Contursi. All rights reserved. See https://polku.si/LICENSE */
 // Compass button: the needle always points north (and leans with the tilt).
 // Click: north up. Drag the needle sideways to rotate. On a phone, tapping it
 // while north is up turns the map to face the way you face (heading up: the

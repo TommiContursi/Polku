@@ -1,3 +1,4 @@
+/*! © 2026 Tommi Contursi. All rights reserved. See https://polku.si/LICENSE */
 // On-screen tilt & rotate controls. MapLibre supports right-drag / Ctrl+drag /
 // two-finger drag, but those are hard to discover (and awkward on a trackpad),
 // so 3D mode gets an orbit pad: drag sideways to rotate, up/down to tilt.

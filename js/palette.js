@@ -1,3 +1,4 @@
+/*! © 2026 Tommi Contursi. All rights reserved. See https://polku.si/LICENSE */
 // The colours the JavaScript draws with that mean something (the route, the warning colours, the colour
 // scales) are values on :root in css/app.css (#382), so each has one home and dark mode can give it a version
 // of its own. fromCss() puts each '--name' in a table in its value's place, in the same table, and does it

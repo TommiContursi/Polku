@@ -162,6 +162,6 @@ If one of Polku's files doesn't arrive as it opens, on a bad connection or just 
 
 ## What’s new
 
-Open **Settings → About Polku → What’s new** to read dated release notes over the map. The route stays as it was. Scroll the notes, use their links to read more, and close with **Close** or **Escape** to return to Settings.
+Open **Settings → About Polku → What’s new** to read dated release notes over the map. The route stays as it was. Scroll the notes, use their links to outside pages to read more, and close with **Close** or **Escape** to return to Settings.
 
-The notes load only when you open the window. Their latest date is shown; a saved copy may appear if you are offline or the connection is slow. If none can load, reconnect and select **Retry**, or use **Full changelog on GitHub**.
+The notes load only when you open the window. Their latest date is shown; a saved copy may appear if you are offline or the connection is slow. If none can load, reconnect and select **Retry**.

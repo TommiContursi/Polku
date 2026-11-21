@@ -1,4 +1,5 @@
 <!doctype html>
+<!-- © 2026 Tommi Contursi. All rights reserved. See https://polku.si/LICENSE -->
 <html lang="en">
 <head>
   <meta charset="utf-8">
@@ -117,7 +118,7 @@
   <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
   <div class="drop-hint" aria-hidden="true"><span>Drop a GPX or KML file</span></div>
   <input id="file-input" type="file" accept=".gpx,.kml,application/gpx+xml,application/vnd.google-earth.kml+xml" hidden>
-  <div id="start-failed" class="offline-banner saved-copy" role="alert" hidden><span>Polku didn’t finish loading: a file didn’t arrive</span><button type="button" class="btn" onclick="polkuRestart()">Reload</button></div>
+  <div id="start-failed" class="offline-banner saved-copy" role="alert" hidden><span>Polku didn’t finish loading: a file didn’t arrive</span><button type="button" class="btn">Reload</button></div>
   <script>
     // A file of Polku's that didn't arrive stops main.js before it starts: one try more by itself, then say so (#1088).
     // The service worker keeps unpkg's files as they first came: one that isn't the version Polku was tested with
@@ -130,6 +131,7 @@
         if ('sha384-' + btoa(String.fromCharCode(...sum)) !== el.integrity) await c.delete(url);
       }
     }).catch(() => {}).then(() => location.reload());
+    document.querySelector('#start-failed button').addEventListener('click', polkuRestart);
     addEventListener('error', (e) => {
       if (window.polku || !(e instanceof ErrorEvent || e.target instanceof HTMLScriptElement)) return;
       let again = false;
