@@ -4,6 +4,10 @@ What's new in [Polku](https://polku.si), from the latest updates back to the fir
 
 ## 2026-11-21
 
+### House numbers easier to read ([#1315](https://github.com/TommiContursi/Polku/issues/1315))
+
+- House numbers are a darker grey on the Trail and Plain maps and slightly larger on every map, so they read clearly on the buildings: at least 4.5:1 against the buildings and the ground, the contrast small text needs. They stay smaller and lighter than street names.
+
 ### House numbers ([#1223](https://github.com/TommiContursi/Polku/issues/1223))
 
 - From zoom 17, house numbers show on the buildings, small and in a quiet grey, so you can find an address in a town. Every other name and place wins where they would overlap.
