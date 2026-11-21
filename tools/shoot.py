@@ -979,6 +979,11 @@ for size, viewport in [('desk', DESK), ('phone', PHONE)]:
     SCENES[f'{size}-acts-ring'] = dict(viewport, timeline=False, js=KEY_RING, keys=DOWN, settle=0.4)
 SCENES['phone-point-card-200-long'] = dict(PHONE, w=195, h=422, timeline=False, route='route-kauppi-mtb.json', state='peek', js=POINT_CARD('Pohjois-Pohjanmaan virkistysalueyhdistyksen Ylikiiminginjoen laavu'))
 
+# #1315: house numbers at zoom 17 in Tampere's centre, by Ratina, on the Trail and Night maps
+for size, viewport in [('desk', DESK), ('phone', PHONE)]:
+    SCENES[f'{size}-housenumbers'] = dict(viewport, timeline=False, hash='#17/61.4960/23.7600')
+    SCENES[f'{size}-housenumbers-night'] = dict(viewport, timeline=False, dark=True, base='night', hash='#17/61.4960/23.7600')
+
 
 def main():
     if '--list' in sys.argv:  # (and each with "@dark")

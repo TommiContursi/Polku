@@ -1491,19 +1491,26 @@ def town_shops(chrome):
     return not fails
 
 
-# #1223: house numbers from zoom 17 in Helsinki's centre, small and quiet on the Trail and Night maps, under every place and
-# label layer, so they give way to every other name; none at 16.6.
+# #1223: house numbers from zoom 17 in Helsinki's centre, small and quiet, under every place and label layer, so they give
+# way to every other name; none at 16.6. #1315: at 4.5:1 or more on every base they're drawn on, against the buildings,
+# the ground and their halo on the map's own fills, and against their halo on the aerial photos.
 def town_housenumbers(chrome):
     pg = chrome.page(1440, 900, False)
     pg.open_app({'activity': 'road', 'base': 'trail'}, None, '#17.5/60.1668/24.944')
     fails = pg.js("""(async () => {
       const errs=[], m=polku.map, wait=(ms)=>new Promise((r)=>setTimeout(r,ms));
       const settle=async()=>{await wait(800);await Promise.race([new Promise(r=>{m.once('idle',r);m.triggerRepaint();}),wait(10000)]);await wait(300);};
-      for(const [base,colour] of [['trail','#7d7468'],['night','#9aa1a9']]) {
+      const lum=(h)=>{const c=[1,3,5].map((i)=>parseInt(h.slice(i,i+2),16)/255).map((v)=>v<=0.03928?v/12.92:((v+0.055)/1.055)**2.4);return 0.2126*c[0]+0.7152*c[1]+0.0722*c[2];};
+      const ratio=(a,b)=>{const [x,y]=[lum(a),lum(b)].sort((p,q)=>q-p);return (x+0.05)/(y+0.05);};
+      for(const base of ['trail','plain','night','aerial','ortofi']) {
         polku.set({base}); await settle();
         if(!m.getLayer('label-housenumber')){errs.push(`${base}: no house numbers`);continue;}
-        if(m.getPaintProperty('label-housenumber','text-color')!==colour||m.getLayoutProperty('label-housenumber','text-size')!==10||m.getLayer('label-housenumber').minzoom!==17)
-          errs.push(`${base}: house numbers ${m.getPaintProperty('label-housenumber','text-color')} at ${m.getLayoutProperty('label-housenumber','text-size')} px from ${m.getLayer('label-housenumber').minzoom}`);
+        const colour=m.getPaintProperty('label-housenumber','text-color');
+        if(m.getLayoutProperty('label-housenumber','text-size')!==11||m.getLayer('label-housenumber').minzoom!==17)
+          errs.push(`${base}: house numbers at ${m.getLayoutProperty('label-housenumber','text-size')} px from ${m.getLayer('label-housenumber').minzoom}`);
+        const under={halo:m.getPaintProperty('label-housenumber','text-halo-color')};
+        if(m.getLayer('building'))Object.assign(under,{building:m.getPaintProperty('building','fill-color'),ground:m.getPaintProperty('background','background-color')});
+        for(const [what,c] of Object.entries(under)){const r=ratio(colour,c); if(!(r>=4.5))errs.push(`${base}: house numbers ${colour} at ${r.toFixed(2)}:1 on the ${what} ${c}`);}
         const order=m.getLayersOrder(), at=order.indexOf('label-housenumber');
         const over=order.filter((id)=>/^(poi-|label-)/.test(id)&&id!=='label-housenumber'&&order.indexOf(id)<at);
         if(over.length)errs.push(`${base}: house numbers over ${over.join(', ')}`);
@@ -1515,7 +1522,7 @@ def town_housenumbers(chrome):
     })()""")
     fails += [f'console: {e[:160]}' for e in pg.errors()]
     pg.close()
-    print(f"{'ok  ' if not fails else 'FAIL'} house numbers from zoom 17, giving way to every other name (#1223)" + ''.join(f'\n     - {f}' for f in fails), flush=True)
+    print(f"{'ok  ' if not fails else 'FAIL'} house numbers from zoom 17 at 4.5:1 or more, giving way to every other name (#1223, #1315)" + ''.join(f'\n     - {f}' for f in fails), flush=True)
     return not fails
 
 
