@@ -9,7 +9,7 @@ import tempfile
 from threading import Thread
 import unittest
 
-from tools.osm_data.preview import Preview
+from tools.osm_data.preview import Preview, Server
 
 
 class PreviewTests(unittest.TestCase):
@@ -116,6 +116,9 @@ class PreviewTests(unittest.TestCase):
         self.assertEqual(status, 200)
         self.assertIn(f"OSM_DATA_MANIFEST = '{self.base}/__osm/current.json'", body.decode())
         self.assertEqual(config.read_text(), source)
+
+    def test_the_server_holds_a_page_of_module_requests(self):
+        self.assertGreaterEqual(Server.request_queue_size, 128)
 
 
 if __name__ == '__main__':
