@@ -25,7 +25,7 @@ import { initHover, hoverCapable } from './hover.js';
 import { registerServiceWorker, initOfflineStatus, openSaveOffline, renderOfflineSection, saveOverview } from './offline.js';
 import { initSearch, recentSearches, clearRecentSearches } from './search.js';
 import { parseTrackFile } from './gpx.js';
-import { lineLength, bbox, fmtDist, compass as side, finlandInView, shipsInView, boxesMeet } from './geo.js';
+import { lineLength, bbox, fmtDist, compass as side, finlandInView, polygonInView, shipsInView, boxesMeet } from './geo.js';
 import { $, $$, h, icon, toast, store, popMenu, settleControls, infoDot, tooltip } from './ui.js';
 import { initGestures, bindCrosshair } from './gestures.js';
 import { initView3d } from './view3d.js';
@@ -1227,10 +1227,19 @@ const overlayLabel = (id) => OVERLAY_LABEL[id] || (RASTER_OVERLAYS[id] && RASTER
 // Where a layer's source has data (#1200). With none of its area in view, its tile and its switch say so in words, and it
 // isn't counted as on, though its switch stays as it was. FMI's ice charts are the Baltic Sea's (their own bounds).
 const FINLAND_ONLY = { only: 'Finland only', inView: finlandInView };
+// Traficom charts the Gulf of Finland past Finland's territorial sea, towards its middle: the depths from 22.9° E to
+// 26.4° E, and the shipping lanes from 24.1° E on, out to those off Gogland, besides a lane on the Kvarken's Swedish side
+// (where its layers draw outside Finland's outline, as surveyed on 2026-11-21: #1204's review)
+const traficom = (coordinates) => ({ only: 'Finland only', inView: (b) => finlandInView(b) || polygonInView({ type: 'MultiPolygon', coordinates }, b) });
+const DEPTHS_AREA = traficom([[[[22.9, 59.57], [23.25, 59.6], [23.5, 59.64], [24.25, 59.65], [24.5, 59.7], [24.75, 59.77], [25.25, 59.86],
+  [26, 59.84], [26.25, 59.94], [26.4, 60], [26.4, 60.15], [22.9, 60.15], [22.9, 59.57]]]]);
 const AREA = {
-  ...Object.fromEntries(['maastoOverlay', 'mmlMaastoOverlay', 'propertyLines', 'lipasRoutes', 'lipasPoints', 'lipasWinter', 'nautical', 'depths',
-    'depthAreas', 'depthContours', 'soundings', 'fairways', 'sfTraffic', 'sfIncidents', 'sfRoadworks', 'sfRoadcond', 'sfCameras',
-    'drPaved', 'drPrivate', 'drSpeed'].map((id) => [id, FINLAND_ONLY])),
+  ...Object.fromEntries(['maastoOverlay', 'mmlMaastoOverlay', 'propertyLines', 'lipasRoutes', 'lipasPoints', 'lipasWinter', 'nautical',
+    'sfTraffic', 'sfIncidents', 'sfRoadworks', 'sfRoadcond', 'sfCameras', 'drPaved', 'drPrivate', 'drSpeed'].map((id) => [id, FINLAND_ONLY])),
+  ...Object.fromEntries(['depths', 'depthAreas', 'depthContours', 'soundings'].map((id) => [id, DEPTHS_AREA])),
+  fairways: traficom([[[[24.1, 59.66], [24.5, 59.67], [25, 59.76], [25.5, 59.8], [26, 59.83], [26.5, 59.9], [27, 59.96], [27.5, 60.04],
+    [28, 60.11], [28.2, 60.15], [28.2, 60.45], [27.6, 60.45], [27, 60.15], [24.1, 60.15], [24.1, 59.66]]],
+  [[[20.55, 63.45], [21, 63.45], [21, 63.62], [20.55, 63.62], [20.55, 63.45]]]]),
   sfShips: { only: 'Northern Baltic only', inView: shipsInView },
   seaIce: { only: 'Baltic Sea only', inView: (b) => boxesMeet(b, [9, 53.2, 31, 66.2]) },
 };

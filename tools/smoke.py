@@ -885,8 +885,10 @@ FINNISH_HELD = """(() => {
 
 # #1200: a layer from a Finnish source says "Finland only" on its tile and its switch where none of Finland is in view (Luleå's
 # archipelago, inside the box the code once tested), and Paddle's defaults don't count it as on there; Marked routes asks you to zoom
-# in on Finland there, and nothing is asked of LIPAS or Väylävirasto. With Tornio in view, or in Finland, nothing changes. Ships and
-# Sea ice reach farther: they say so only beyond the northern Baltic and the Baltic, and beyond it no ships are asked for.
+# in on Finland there, and nothing is asked of LIPAS or Väylävirasto. With Tornio in view, or in Finland, nothing changes. Traficom's
+# depths and lanes reach into the Gulf of Finland past the outline (off Kalbådagrund). Ships and Sea ice reach farther: they say so
+# only beyond the northern Baltic and the Baltic, beyond it no ships are asked for, and near Tallinn a move asks for them at once.
+# In Gravel, nothing is asked of Fintraffic's roads or Digiroad in Luleå, nor does Check list them for a route there; in Tornio it does.
 def layer_coverage(chrome):
     pg = chrome.page(1440, 900, False)
     try:
@@ -936,6 +938,13 @@ def layer_coverage(chrome):
           if(note('Official routes (LIPAS)'))errs.push(`Helsinki: the Official routes switch says “${note('Official routes (LIPAS)')}”`);
           await polku.planner.listMarked();
           if(polku.planner.marked.state==='far')errs.push('Helsinki: Marked routes asks you to zoom in on Finland');
+          // off Kalbådagrund, in the Gulf of Finland past Finland's territorial sea, where Traficom's depths and lanes draw
+          const {finlandInView}=await import('/js/geo.js');
+          await go([25.75,59.875],13);
+          const vb=m.getBounds();
+          if(finlandInView([vb.getWest(),vb.getSouth(),vb.getEast(),vb.getNorth()]))errs.push('(the test) the view off Kalbådagrund reaches Finland\'s outline');
+          if(!await until(()=>row('Shipping lanes')&&!note('Shipping lanes').startsWith('Finland only')))errs.push(`off Kalbådagrund: the Shipping lanes switch says “${note('Shipping lanes')}”, where Traficom draws them`);
+          if(note('Depth areas').startsWith('Finland only'))errs.push(`off Kalbådagrund: the Depth areas switch says “${note('Depth areas')}”, where Traficom draws them`);
           // Haparanda, Sweden, with Tornio across the river in view: a view partly in Finland counts as in it
           const {inFinland}=await import('/js/geo.js');
           if(!inFinland||inFinland([24.12,65.83])||!inFinland([24.2,65.85]))errs.push('(the test) Haparanda is in Finland, or Tornio isn\\'t');
@@ -951,6 +960,11 @@ def layer_coverage(chrome):
           if(!await until(()=>note('Ships (live AIS)')==='Northern Baltic only'))errs.push(`Lofoten: the Ships switch says “${note('Ships (live AIS)')}”`);
           await pause(21000); // (past a tick of the ships' 20 s timer)
           for(const [host,path] of [['lipas.fi',''],['avoinapi.vaylapilvi.fi',''],['meri.digitraffic.fi','/ais/v1/locations']])if(asked(host,path).length)errs.push(`Lofoten: asked ${host}${path}`);
+          // near Tallinn, outside Finland where Digitraffic sees ships: a move asks for them at once, without the timer
+          clearInterval(polku.safety.shipTimer);
+          window.__asked.length=0;
+          await go([24.75,59.5],10);
+          if(!await until(()=>asked('meri.digitraffic.fi','/ais/v1/locations').length,3000))errs.push('near Tallinn: no ships asked for on a move');
           if(!note('Sea ice').startsWith('Baltic Sea only'))errs.push(`Lofoten: the Sea ice switch says “${note('Sea ice')}”`);
           // back in the drawer, which keeps its tiles' words as the map moves
           document.querySelector('#layers-panel .panel-back').click();
@@ -961,6 +975,19 @@ def layer_coverage(chrome):
           if(!await until(()=>small('nautical')!=='Finland only'))errs.push('Helsinki with the drawer open: Nautical marks still says Finland only');
           if(small('depths')!=='Not for navigation')errs.push(`Helsinki: the Depths tile says “${small('depths')}”`);
           if(more()!=='More: all layers, 4 more on')errs.push(`Helsinki: ${more()}, not 4 more on`);
+          // Gravel: nothing asked of Fintraffic's road layers or Digiroad in Luleå, and Check's road hazards not for a route there
+          polku.set({activity:'gravel'});
+          window.__asked.length=0;
+          await go([22.15,65.58],11);
+          await pause(1500);
+          const roads=()=>[...asked('tie.digitraffic.fi','/api/traffic-message/'),...asked('avoinapi.vaylapilvi.fi','/digiroad/')];
+          if(roads().length)errs.push(`Luleå in Gravel: asked Fintraffic and Digiroad ${roads().length} times`);
+          const p=polku.planner, route=async(a,b)=>{p.setActive(true);p.clear();p.setMode('line');p.addPoint(a);p.addPoint(b);
+            await until(()=>p.analysis&&p.analysis.pts&&Math.abs(p.analysis.pts[0][0]-a[0])<0.005,20000);return p.lookedAt().map(r=>r.what);};
+          if((await route([22.1,65.57],[22.2,65.59])).some(w=>/^(Road works|Busy roads)/.test(w)))errs.push('a route in Luleå: What Polku looked at lists Fintraffic and Digiroad');
+          await go([24.12,65.83],12);
+          if(!await until(()=>roads().length))errs.push('Haparanda with Tornio in view, in Gravel: nothing asked of Fintraffic or Digiroad');
+          if(!(await route([24.16,65.84],[24.21,65.85])).includes('Road works and incidents'))errs.push('a route in Tornio: What Polku looked at leaves out Fintraffic');
           return errs;
         })()""", timeout=120000)
         fails += [f'console: {e[:160]}' for e in pg.errors()]

@@ -82,8 +82,8 @@ export function inPolygon(p, g) {
 }
 
 // Finland with its waters (#1200): Geofabrik's outline (data/finland-coverage.geojson) to two decimals, here so the
-// check answers at once, offline too. The sources that stop at the border (MML, LIPAS, Väylävirasto, Traficom,
-// Fintraffic's roads, Digiroad) have data inside it, and none outside.
+// check answers at once, offline too. The sources that stop at the border (MML, LIPAS, Väylävirasto, Fintraffic's
+// roads, Digiroad) have data inside it, and none outside; Traficom's charts reach farther out to sea (js/main.js).
 const FINLAND = { type: 'Polygon', coordinates: [[
   [27.97, 70.1], [28, 70.02], [28.16, 69.93], [28.35, 69.88], [28.35, 69.85], [29.14, 69.7], [29.35, 69.48],
   [29.25, 69.4], [28.86, 69.22], [28.82, 69.11], [28.87, 69.08], [28.96, 69.06], [28.43, 68.91], [28.82, 68.87],
@@ -112,10 +112,11 @@ const FINLAND = { type: 'Polygon', coordinates: [[
   [27.97, 70.1]
 ]] };
 export const inFinland = (p) => inPolygon(p, FINLAND);
-// Any of the box [w, s, e, n] in Finland: a corner of the box in it, or a corner of Finland in the box.
-// shortcut: a strip of Finland narrower than the box, crossing it with no corner in it, counts as outside; test the edges if one turns up.
-export const finlandInView = ([w, s, e, n]) => [[w, s], [w, n], [e, s], [e, n]].some(inFinland)
-  || FINLAND.coordinates[0].some(([x, y]) => x >= w && x <= e && y >= s && y <= n);
+// Any of the box [w, s, e, n] in a Polygon or MultiPolygon: a corner of the box in it, or a corner of it in the box.
+// shortcut: a strip narrower than the box, crossing it with no corner in it, counts as outside; test the edges if one turns up.
+export const polygonInView = (g, [w, s, e, n]) => [[w, s], [w, n], [e, s], [e, n]].some((p) => inPolygon(p, g))
+  || (g.type === 'Polygon' ? [g.coordinates] : g.coordinates).flat(2).some(([x, y]) => x >= w && x <= e && y >= s && y <= n);
+export const finlandInView = (b) => polygonInView(FINLAND, b);
 // Whether two boxes [w, s, e, n] overlap.
 export const boxesMeet = (a, b) => a[0] <= b[2] && b[0] <= a[2] && a[1] <= b[3] && b[1] <= a[3];
 // Any of the box where Digitraffic's AIS sees ships: Finland and the northern Baltic round it (as checked on 2026-11-20, #1200).
