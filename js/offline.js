@@ -109,28 +109,30 @@ export async function saveArea({ name, line, bbox, route }, { buffer, terrain, m
   const list = [...plan.tiles];
   const fresh = [];
   let done = 0, bytes = 0, failed = 0, mmlFailed = 0;
-  // `gap`: at least this many ms between one worker's requests
+  // `gap`: at least this many ms between one worker's requests, failed ones too
   const worker = async (queue, gap = 0) => {
     for (let item; !signal.aborted && (item = queue.pop());) {
-      const [key, t] = item, asked = Date.now();
+      const [key, t] = item;
       const fail = () => { failed++; if (t.kind === 'mml') mmlFailed++; };
+      let asked = 0;
       try {
         const hit = await cache.match(key);
         if (hit) bytes += +(hit.headers.get('x-size') || 0);
         else {
+          asked = Date.now();
           const res = await fetch(t.url, { signal });
           if (res.ok) {
             const n = await keep(cache, key, res); // (not `bytes += await …`: six workers would overwrite each other's sums)
             bytes += n;
             fresh.push(key);
           } else if (res.status !== 404 || isMml(t.kind)) fail(); // 404: no terrain there (sea); MML answers every tile in its bounds
-          if (gap) await new Promise((r) => setTimeout(r, gap - (Date.now() - asked)));
         }
       } catch {
         if (signal.aborted) break;
         fail();
       }
       onProgress(++done, list.length, bytes);
+      if (gap && asked) await new Promise((r) => setTimeout(r, gap - (Date.now() - asked)));
     }
   };
   // MML's tiles two at a time, ten a second at most, beside the rest: its open service is shared by everyone without a
@@ -220,10 +222,6 @@ export async function setPreview(on) {
 let previewing = false;
 /** Whether the map has only what's saved: the device offline, or Preview offline on. */
 export const savedOnly = () => previewing || !navigator.onLine;
-/** Whether MML's terrain tile z/x/y is kept in a saved area (#1176). */
-export async function mmlSaved(z, x, y) {
-  try { return !!(await (await caches.open(TILES)).match(MML_TERRAIN_TILES.replace('{z}', z).replace('{x}', x).replace('{y}', y))); } catch { return false; }
-}
 
 /** Banner while previewing, and a toast when Polku opens offline or the connection drops or returns. */
 export async function initOfflineStatus() {

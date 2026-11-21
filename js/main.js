@@ -22,7 +22,7 @@ import { LipasLayer, lipasPlace, rideOf } from './lipas.js';
 import { prefetchWater } from './waterdata.js';
 import { initInspector } from './inspect.js';
 import { initHover, hoverCapable } from './hover.js';
-import { registerServiceWorker, initOfflineStatus, openSaveOffline, renderOfflineSection, saveOverview, savedOnly, mmlSaved } from './offline.js';
+import { registerServiceWorker, initOfflineStatus, openSaveOffline, renderOfflineSection, saveOverview, savedOnly } from './offline.js';
 import { initSearch, recentSearches, clearRecentSearches } from './search.js';
 import { parseTrackFile } from './gpx.js';
 import { lineLength, bbox, fmtDist, compass as side } from './geo.js';
@@ -1765,11 +1765,12 @@ map.on('error', (e) => {
   mmlDown = true;
   toast('The National Land Survey’s terrain didn’t load: the map shows OpenStreetMap’s wetlands, rock and cliffs, without power lines, stones and rapids in the water, or lake depths.', { ms: 6000 });
 });
-// (a saved copy isn't MML coming back, #1176: the worker answers one when the network fails while the device says it's online)
+// (a tile a saved area keeps isn't MML coming back, #1176: the worker answers its saved copy when the network fails while
+// the device says it's online; saved under the tile's address without the key, js/offline.js)
 map.on('data', async (e) => {
   if (e.sourceId !== 'mml' || e.dataType !== 'source' || !e.tile || !mmlDown) return;
-  const { z, x, y } = e.tile.tileID.canonical;
-  if (!await mmlSaved(z, x, y)) mmlDown = false;
+  const { z, x, y } = e.tile.tileID.canonical, url = map.getSource('mml').tiles[0].split('?')[0];
+  if (!(window.caches && await caches.match(url.replace('{z}', z).replace('{x}', x).replace('{y}', y)))) mmlDown = false;
 });
 onStatus(() => refreshQuickSoon());
 // LIPAS back after a pause: Marked routes lists the view again (A)
