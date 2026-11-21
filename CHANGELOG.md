@@ -4,6 +4,13 @@ What's new in [Polku](https://polku.si), from the latest updates back to the fir
 
 ## 2026-11-21
 
+### Fences, gates, ski lifts and masts ([#1172](https://github.com/TommiContursi/Polku/issues/1172))
+
+- Ski lifts and cableways are drawn as a dark line from zoom 13, with a small chair along them from zoom 14, everywhere OpenStreetMap has them and in Finland from the National Land Survey too. A tap on one says what kind of lift it is.
+- In Finland, masts and chimneys show from zoom 14 as the Maastokartta draws them, a mast as a dot with an arrow up and a chimney as a ring, with their height in metres near them at zooms 14 and 15. Dams and breakwaters are dark lines from zoom 14, as jetties are.
+- In Finland, the National Land Survey's fences and hedges are added to OpenStreetMap's with **Trail details**, in the same grey dashes and green lines, and its gates to OpenStreetMap's with **Access restrictions**, as the dark gate, since it doesn't say who may pass.
+- Beyond Finland, masts, chimneys, dams and breakwaters aren't drawn yet.
+
 ### Gates and barriers by kind, coloured by who may pass ([#1232](https://github.com/TommiContursi/Polku/issues/1232))
 
 - Gates and barriers now have a mark for each kind: a gate, a lift gate's boom, a chain or rope, blocks, a stile or kissing gate, a turnstile and a cycle barrier.
