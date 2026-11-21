@@ -2,7 +2,7 @@
 // uphill-difficulty grade, surface / way-type breakdown, warnings and timing.
 
 import { snowFactor } from './winter.js';
-import { densify, dist } from './geo.js';
+import { densify, dist, fmtDist } from './geo.js';
 import { elevations, smooth } from './dem.js';
 import { CRAFT, groupOf, isWater, MTB_MEANS } from './config.js';
 import { obstacleKind, widthClass, visClass, obstacleText } from './trails.js';
@@ -361,7 +361,7 @@ export function trailWarnings(a, opt = {}) {
   const sp = (i) => (a.attr && a.attr[i] && a.attr[i].sport) || opt.activity;
   if (along.every((_, i) => isWater(sp(i)))) return [];
   const out = [];
-  const m = (s, e) => `${Math.round(along[e] - along[s])} m`;
+  const m = (s, e) => fmtDist(along[e] - along[s]);
   const run = (test, minLen, text, note, icon = null, tier = 'look') => {
     let s = -1;
     for (let i = 0; i <= along.length; i++) {

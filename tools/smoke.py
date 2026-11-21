@@ -714,13 +714,13 @@ ICE_ROAD = """(async () => {
   if (!a || !a.trailMore) return ['the trail details along the route never came in'];
   const ice = (list) => list.filter((w) => /ice/i.test(w.text));
   const now = ice(p.headsUp().read);
-  if (now.length !== 1 || !/^Ice road for 72\\d\\d m: open water outside winter$/.test(now[0].text)) errs.push(`with winter Off, Read before you go says: ${p.headsUp().read.map((w) => w.text).join(' / ') || 'nothing'}`);
+  if (now.length !== 1 || !/^Ice road for 7\\.2\\d km: open water outside winter$/.test(now[0].text)) errs.push(`with winter Off, Read before you go says: ${p.headsUp().read.map((w) => w.text).join(' / ') || 'nothing'}`);
   else {
     const act = p.itemActions({ g: 'read', w: now[0] }).main;
     if (!act || act.label !== 'Avoid it') errs.push(`the ice road's action: ${act ? act.label : 'none'}`);
   }
   const cold = ice(A.trailWarnings(a, { activity: 'mtb', winter: true }));
-  if (cold.length !== 1 || !/^Over the ice for 72\\d\\d m$/.test(cold[0].text) || !/can’t see whether the ice holds/.test(cold[0].note)) errs.push(`in winter: ${cold.map((w) => `${w.text} · ${w.note}`).join(' / ') || 'no ice road'}`);
+  if (cold.length !== 1 || !/^Over the ice for 7\\.2\\d km$/.test(cold[0].text) || !/can’t see whether the ice holds/.test(cold[0].note)) errs.push(`in winter: ${cold.map((w) => `${w.text} · ${w.note}`).join(' / ') || 'no ice road'}`);
   p.clear();
   return errs;
 })()"""
