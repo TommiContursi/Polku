@@ -33,10 +33,13 @@ class Built(NoCache):
         return next((v for p, n, v in RULES if n == 'Content-Type' and p.match(url)), None) or super().guess_type(path)
 
     def end_headers(self):
-        path = urlsplit(self.path).path
+        path, sent = urlsplit(self.path).path, []
         for pattern, name, value in RULES:
             if pattern.match(path) and name != 'Content-Type':
-                self.send_header(name, value + ('; report-uri /__csp' if name == 'Content-Security-Policy' else ''))
+                # "! Name" removes what earlier rules added, as on Cloudflare
+                sent = [h for h in sent if h[0] != name] if value is None else sent + [(name, value)]
+        for name, value in sent:
+            self.send_header(name, value + ('; report-uri /__csp' if name == 'Content-Security-Policy' else ''))
         super().end_headers()
 
     def do_POST(self):
@@ -57,6 +60,9 @@ def rules(file):
             continue
         if not line[0].isspace():
             pattern = re.compile('^' + re.escape(line.strip()).replace(r'\*', '.*') + '$')
+            continue
+        if line.strip().startswith('!'):
+            out.append((pattern, line.strip()[1:].strip(), None))
             continue
         name, value = (s.strip() for s in line.split(':', 1))
         out.append((pattern, 'Content-Security-Policy' if name == 'Content-Security-Policy-Report-Only' else name, value))
