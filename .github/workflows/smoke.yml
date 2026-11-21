@@ -19,7 +19,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: smoke-${{ github.ref }}-${{ inputs.site }}
+  group: smoke-${{ github.ref }}-${{ inputs.site }}-${{ inputs.groups }}
   cancel-in-progress: true
 
 jobs:
