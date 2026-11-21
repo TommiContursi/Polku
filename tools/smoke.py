@@ -1848,15 +1848,86 @@ def mml_rock(chrome):
     return not fails
 
 
+# #1172: MML's fences, gates, ski lifts, masts, chimneys and dams from three recorded tiles, never live MML: Porvoo
+# (tools/fixtures/mml-taustakartta-14-9358-4721.pbf: masts with their heights, fences, gates), Pallas (…-14-9286-3913.pbf: ski
+# lifts) and Lapua (…-14-9364-4545.pbf: a dam). Each at its zooms on every vector base: the fences in OSM's look under OSM's,
+# a gate as the plain gate's unmapped mark giving way to OSM's gate on the same spot, the lifts' chairs, the masts standing
+# up with their heights at 14–15 only; in 3D too. OSM's lifts are drawn in the same look; a tap names each.
+def mml_structures(chrome):
+    pg = chrome.page(1440, 900, False)
+    pg.open_app({'activity': 'mtb', 'base': 'trail'}, hash_='#10/60.4/25.5')
+    fails = pg.js("""(async () => {
+      const errs=[], m=polku.map, {makeIcon}=await import('/js/icons.js'), {mmlTerrain,liftOf}=await import('/js/inspect.js'), FX=['14/9358/4721','14/9286/3913','14/9364/4545'];
+      const settle=async()=>{await new Promise(r=>setTimeout(r,300));await Promise.race([new Promise(r=>{m.once('idle',r);m.triggerRepaint();}),new Promise(r=>setTimeout(r,10000))]);};
+      if(m.style.tileManagers.mml.getIds().length)return ['MML was asked for tiles at zoom 10'];""" + MML_FIXTURES + """
+      const drawn=(layer)=>new Set(m.getLayer(layer)?m.queryRenderedFeatures({layers:[layer]}).map(f=>f.properties.kohdeluokka):[]);
+      let base; const want=(layer,classes,z)=>{const got=drawn(layer); for(const k of classes)if(!got.has(k))errs.push(`${base}: ${layer} drew nothing of class ${k} at zoom ${z}`);};
+      const at=(id)=>m.getStyle().layers.findIndex((l)=>l.id===id);
+      const porvoo=tileMid(14,9358,4721);
+      for(base of ['trail','plain','night']) {
+        polku.set({base}); m.jumpTo({center:porvoo,zoom:14.6}); await settle();
+        want('mml-mast',[44800],14.6); want('mml-mast-height',[44803],14.6);
+        // (one height for each mast: MML has a second, further off, in group 62)
+        const hs=m.queryRenderedFeatures({layers:['mml-mast-height']}); if(hs.some(f=>f.properties.kohderyhma!==57))errs.push(`${base}: a mast's height drawn twice (group 62 too)`);
+        m.jumpTo({zoom:15.2}); await settle(); want('mml-fence',[44211],15.2);
+        if(drawn('mml-gate').size)errs.push(`${base}: MML's gates drawn under zoom 16`);
+        m.jumpTo({zoom:16.2}); await settle();
+        if(drawn('mml-mast-height').size)errs.push(`${base}: a mast's height drawn at zoom 16, far from its mast`);
+        if(m.getLayoutProperty('mml-gate','icon-image')!=='td-gate-unknown')errs.push(`${base}: MML's gate drawn as ${m.getLayoutProperty('mml-gate','icon-image')}, not the plain gate's unmapped mark`);
+        if(!(at('mml-gate')>=0&&at('mml-gate')<at('td-gates')&&m.getLayoutProperty('mml-gate','icon-allow-overlap')===false))errs.push(`${base}: MML's gates don't give way to OSM's (under them, overlap off)`);
+        if(!(at('mml-fence')>=0&&at('mml-fence')<at('td-fence')))errs.push(`${base}: MML's fences not under OSM's`);
+        // (a fence's colour last in each match, a hedge's after its key)
+        const fence=(id)=>{const c=m.getPaintProperty(id,'line-color'); return JSON.stringify([c[3],c.at(-1),m.getPaintProperty(id,'line-dasharray').slice(-2),m.getPaintProperty(id,'line-width')]);};
+        if(fence('mml-fence')!==fence('td-fence'))errs.push(`${base}: MML's fences and hedges ${fence('mml-fence')}, OSM's ${fence('td-fence')}`);
+        m.jumpTo({center:tileMid(14,9286,3913),zoom:14.6}); await settle();
+        want('mml-lift',[44500],14.6); want('mml-lift-chair',[44500],14.6);
+        for(const k of ['line-color','line-width'])if(JSON.stringify(m.getPaintProperty('lift',k))!==JSON.stringify(m.getPaintProperty('mml-lift',k)))errs.push(`${base}: OSM's lifts' ${k} isn't MML's`);
+        m.jumpTo({center:tileMid(14,9364,4545),zoom:14.6}); await settle(); want('mml-jetty',[30300],14.6);
+        for(const id of [m.getLayoutProperty('mml-lift-chair','icon-image'),...m.getLayoutProperty('mml-mast','icon-image').slice(3)]){const img=makeIcon(id); if(!img||!img.data.some((v,i)=>i%4===3&&v>0))errs.push(`${base}: ${id} isn't drawn`);}
+      }
+      // a gate both have: OSM's mark only (an OSM gate put on an MML gate's spot)
+      polku.set({base:'trail'}); m.jumpTo({center:porvoo,zoom:14.6}); await settle();
+      const g=m.querySourceFeatures('mml',{sourceLayer:'rakennelma',filter:['==',['get','kohdeluokka'],45200]})[0];
+      if(!g)errs.push("no gate in Porvoo's recorded tile");
+      else {
+        const ll=g.geometry.coordinates; m.jumpTo({center:ll,zoom:17.2}); await settle();
+        if(!m.queryRenderedFeatures({layers:['mml-gate']}).length)errs.push("MML's gate isn't drawn at zoom 17.2");
+        m.getSource('trailPoints').setData({type:'FeatureCollection',features:[{type:'Feature',geometry:{type:'Point',coordinates:ll},properties:{kind:'gate',icon:'td-gate-open',osm:1}}]}); await settle();
+        const p=m.project(ll), box=[[p.x-6,p.y-6],[p.x+6,p.y+6]];
+        if(!m.queryRenderedFeatures(box,{layers:['td-gates-all']}).length)errs.push("OSM's gate on the spot isn't drawn");
+        if(m.queryRenderedFeatures(box,{layers:['mml-gate']}).length)errs.push("MML's gate is drawn over OSM's on the same spot");
+      }
+      // in 3D: the masts stand up, the lifts keep their chairs
+      polku.set({terrain3d:true}); m.jumpTo({center:porvoo,zoom:14.6,pitch:55}); await settle(); await settle();
+      if(!drawn('mml-mast').size)errs.push('no masts drawn in 3D');
+      if(m.getLayoutProperty('mml-mast','icon-pitch-alignment')==='map')errs.push('masts lie flat in 3D');
+      m.jumpTo({center:tileMid(14,9286,3913)}); await settle(); await settle();
+      if(!drawn('mml-lift-chair').size)errs.push("no lifts' chairs drawn in 3D");
+      polku.set({terrain3d:false}); m.jumpTo({pitch:0});
+      // a tap's words
+      for(const k of [44500,44800,45300,45200,30300,44100]){const t=mmlTerrain({properties:{kohdeluokka:k}}); if(!t.title)errs.push(`no card's title for class ${k}`);}
+      if(JSON.stringify(liftOf({subclass:'chair_lift',name:'Express'}))!==JSON.stringify({title:'Express',sub:'Chair lift'})||liftOf({subclass:'t-bar'}).title!=='Drag lift')errs.push("an OSM lift's card doesn't say its name and kind");
+      for(const [cls,layers] of [[22200,['mml-jetty','mml-lift','mml-fence','mml-gate']],[45700,['mml-jetty','mml-lift','mml-fence']],[44591,['mml-lift','mml-lift-chair']]])
+        for(const l of layers)if(m.style.getLayer(l)._featureFilter.filter({zoom:15},{type:2,properties:{kohdeluokka:cls}}))errs.push(`${l} draws class ${cls}, left out (#1172)`);
+      for(const base of ['maasto','aerial']){polku.set({base}); await settle(); for(const l of ['mml-lift','mml-mast','mml-fence','mml-gate'])if(m.getLayer(l))errs.push(`${l} on the ${base} base`);}
+      return errs;
+    })()""", timeout=240000)
+    fails += [f'console: {e[:160]}' for e in pg.errors()]
+    pg.close()
+    print(f"{'ok  ' if not fails else 'FAIL'} MML's fences, gates, lifts, masts and dams (#1172)" + ''.join(f'\n     - {f}' for f in fails), flush=True)
+    return not fails
+
+
 # #1175: a tap or a click on MML's terrain opens its card (the map's other things'), from the recorded tiles, never live MML:
 # a bog hard to cross with the survey's caveat (Seitseminen), reeds in the water (Porvoo), a stone above the surface (Kotka, #1170),
-# a river's flow arrow (Porvoo) and a field (Hailuoto, #1169, #1234), by touch at 390 × 844 and by mouse
+# a river's flow arrow (Porvoo), a mast (Porvoo, #1172) and a field (Hailuoto, #1169, #1234), by touch at 390 × 844 and by mouse
 # at 1440 × 900, where the pointer's tooltip says the same first. A bog's crossing class only from zoom 13's tiles, and a name
 # for every class the inspected layers draw.
 def mml_cards(chrome):
     fails = []
     mid = lambda x, y: [(x + 0.5) / 2 ** 14 * 360 - 180, math.degrees(math.atan(math.sinh(math.pi * (1 - 2 * (y + 0.5) / 2 ** 14))))]
-    # a spot where a click or a tap picks the layer's class (inspect.js's own choice) with nothing else there but the water, clear
+    # a spot where a click or a tap picks the layer's class (inspect.js's own choice) with nothing else there but the water (a mast
+    # may stand by a road: its mark is picked over the ways, #1172), clear
     # of the top bar and the map's buttons; a point's own spot first (sourceLayer: centred on it, as a narrow phone may not show it)
     spot = """(async (layer, classes, touch, sourceLayer) => {
       const m=polku.map, {inspectLayers,pickAt,hitBox,featuresAt}=await import('/js/inspect.js'), R=m.getCanvas().getBoundingClientRect();
@@ -1866,7 +1937,7 @@ def mml_cards(chrome):
       const at=pt&&m.project(pt.geometry.coordinates);
       for(let y=at?at.y:140;y<(at?at.y+1:innerHeight-180);y+=9)for(let x=at?at.x:24;x<(at?at.x+1:innerWidth-100);x+=9){
         const fs=featuresAt(m,{x,y},hitBox({x,y},touch),inspectLayers(m)), f=pickAt(m,[x,y],fs);
-        if(f&&f.layer.id===layer&&classes.includes(f.properties.kohdeluokka)&&fs.every((g)=>/^(water|mml-)/.test(g.layer.id)))return [R.left+x,R.top+y];
+        if(f&&f.layer.id===layer&&classes.includes(f.properties.kohdeluokka)&&(layer==='mml-mast'||fs.every((g)=>/^(water|mml-)/.test(g.layer.id))))return [R.left+x,R.top+y];
       }
       return null;
     })"""
@@ -1877,12 +1948,13 @@ def mml_cards(chrome):
         pg = chrome.page(w, h_, phone)
         # (zoom 10: under the source's zoom 11, so MML is asked for nothing before the test answers it)
         pg.open_app({'activity': 'mtb', 'base': 'trail'}, hash_='#10/61.92/23.478')
-        pg.js("""(async () => { const m=polku.map, FX=['14/9260/4578','14/9352/4721','14/9416/4714','14/9286/3913','14/9318/4263'];""" + MML_FIXTURES + """ return true; })()""")
+        pg.js("""(async () => { const m=polku.map, FX=['14/9260/4578','14/9352/4721','14/9416/4714','14/9286/3913','14/9318/4263','14/9358/4721'];""" + MML_FIXTURES + """ return true; })()""")
         for what, center, layer, classes, title, words, src in (
                 ('a bog hard to cross', mid(9260, 4578), 'mml-bog', [35421], 'Open bog', ['Survey class', 'Hard to cross', 'not a promise about the ground today', 'From the National Land Survey'], None),
                 ('reeds', mid(9352, 4721), 'mml-reed', [38100], 'Reeds', ['From the National Land Survey'], 'maasto_piste'),
                 ('a stone above the surface', mid(9416, 4714), 'mml-rock-point', [38513], 'Stone above the surface', ['From the National Land Survey'], 'maasto_piste'),
                 ("a river's flow arrow", mid(9352, 4721), 'mml-flow', [36392], 'Flow direction', ['Flows to the ', 'From the National Land Survey'], 'symboli'),
+                ('a mast (#1172)', mid(9358, 4721), 'mml-mast', [44800], 'Mast', ['From the National Land Survey'], 'poi'),
                 # (a field near the tile's middle, so a phone's view has it too)
                 ('a field', [24.75611, 65.0026], 'mml-landuse', [32611], 'Field', ['From the National Land Survey'], None)):
             pg.js(f"(async () => {{ const m=polku.map; m.jumpTo({{center:{json.dumps(center)},zoom:14.6}}); await new Promise(r=>setTimeout(r,300)); "
@@ -26814,7 +26886,7 @@ GROUPS = [
     ('site', [license_text, tdm_scope], 'the built site: LICENSE sent as text, since every file\'s copyright line links to it; text and data mining reserved but for the OFL fonts and the ODbL outlines, and crawlers off share links (#115); against the checkout it checks nothing'),
     ('pacing', [pacing, paced_legs, net_fails], 'calls made together go out paced and counted (mocked services, a fake clock); legs refused for a slot follow at it (#78); the calls that failed, in Data sources (#687)'),
     ('loading', [loading, routing_edits], 'cancel obsolete routing, edits/Undo/Clear, shared subscribers, refusal/recovery, deadlines, terrain slots and LIPAS viewport/cache (mocked)'),
-    ('layers', [layers, layer_coverage, cycleway_style, cycling_restrictions, waterway_style, property_lines, property_plots, wetland_style, reedbed_style, mml_bogs, mml_rock, mml_water, mml_open, osm_cliffs, saddles, mml_cards, town_gates, town_bridges, town_oneway, town_parks, town_parking, town_shops, town_housenumbers, town_gate_marks], 'the Layers panel in every sport'),
+    ('layers', [layers, layer_coverage, cycleway_style, cycling_restrictions, waterway_style, property_lines, property_plots, wetland_style, reedbed_style, mml_bogs, mml_rock, mml_water, mml_open, osm_cliffs, saddles, mml_structures, mml_cards, town_gates, town_bridges, town_oneway, town_parks, town_parking, town_shops, town_housenumbers, town_gate_marks], 'the Layers panel in every sport'),
     ('raster', [raster_maps, aerial_fallback, aerial_labels], 'terrain and aerial detail, bounded high-density WMS symbols, depth boundaries and missing aerial detail (#649, #650, #653); the map\'s words on the aerial photos at 4.5:1 on their halo (#554)'),
     ('coarse', [coarse], 'a coarse map underneath (#1091): the base map\'s tile four zoom levels up stands in for one that hasn\'t come, at 1440 and 390'),
     ('offline', [mml_offline], 'Save offline keeps the National Land Survey\'s tiles (#1176): its terrain at zooms 11–14 and property boundaries while on, under addresses without the key, two at a time and ten a second at most; what Offline maps says an area lacks; offline, with the real worker, the bogs drawn from the saved tile and no message'),

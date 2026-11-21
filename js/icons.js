@@ -228,6 +228,50 @@ function pylon(id) {
   return ctx.getImageData(0, 0, c.width, c.height);
 }
 
+// a ski lift or cableway (#1172): a chair hanging from its cable, upright along the line, on a halo. `lift-<colour>-<halo>`
+function lift(id) {
+  const [c, ctx] = canvas(18, 18);
+  ctx.lineCap = 'round';
+  ctx.lineJoin = 'round';
+  for (const [colour, w] of [[`#${id.slice(-6)}`, 3.8], [`#${id.slice(5, 11)}`, 1.6]]) {
+    ctx.strokeStyle = colour;
+    ctx.lineWidth = w;
+    ctx.beginPath();
+    ctx.moveTo(2, 5.5); ctx.lineTo(16, 2); // the cable
+    ctx.moveTo(9, 3.8); ctx.lineTo(9, 9); ctx.lineTo(13, 9); // the hanger and its arm to the chair
+    ctx.moveTo(13, 9); ctx.lineTo(13, 15.5); ctx.lineTo(6.5, 15.5); ctx.lineTo(6.5, 12.5); // the chair's back and seat
+    ctx.stroke();
+  }
+  return ctx.getImageData(0, 0, c.width, c.height);
+}
+
+// a mast and a chimney (#1172), as the Maastokartta draws them: a mast a dot with an arrow up from it, a chimney a ring,
+// on a halo. `mast-<colour>-<halo>`, `chimney-<colour>-<halo>`
+function tower(id) {
+  const [c, ctx] = canvas(14, 20);
+  const mast = id.startsWith('mast');
+  ctx.lineCap = 'round';
+  ctx.lineJoin = 'round';
+  const [, ink, halo] = id.split('-');
+  for (const [colour, w] of [[`#${halo}`, 3.4], [`#${ink}`, 1.4]]) {
+    ctx.strokeStyle = colour;
+    ctx.fillStyle = colour;
+    ctx.lineWidth = w;
+    ctx.beginPath();
+    if (mast) {
+      ctx.moveTo(7, 15); ctx.lineTo(7, 2.5); ctx.moveTo(4, 5.5); ctx.lineTo(7, 2.5); ctx.lineTo(10, 5.5);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.arc(7, 15.5, w === 1.4 ? 2.2 : 3.6, 0, Math.PI * 2);
+      ctx.fill();
+    } else {
+      ctx.arc(7, 12, 3.4, 0, Math.PI * 2);
+      ctx.stroke();
+    }
+  }
+  return ctx.getImageData(0, 0, c.width, c.height);
+}
+
 // a mountain pass (#1178): OSM's standard map's saddle, a block with a notch in its top. `saddle-<colour>`
 function saddle(id) {
   const [c, ctx] = canvas(8, 8);
@@ -661,6 +705,8 @@ export function makeIcon(id) {
   if (/^flow-[0-9a-f]{6}-[0-9a-f]{6}$/.test(id)) return flow(id);
   if (/^rapids-[0-9a-f]{6}-[0-9a-f]{6}$/.test(id)) return rapids(id);
   if (/^pylon-[0-9a-f]{6}$/.test(id)) return pylon(id);
+  if (/^lift-[0-9a-f]{6}-[0-9a-f]{6}$/.test(id)) return lift(id);
+  if (/^(mast|chimney)-[0-9a-f]{6}-[0-9a-f]{6}$/.test(id)) return tower(id);
   if (/^open-forest-[0-9a-f]{6}-[0-9a-f]{6}$/.test(id)) return openForest(id);
   if (/^tree-(conifer|broadleaf|mixed|heath)-[0-9a-f]{6}$/.test(id)) return tree(id);
   if (/^saddle-[0-9a-f]{6}$/.test(id)) return saddle(id);

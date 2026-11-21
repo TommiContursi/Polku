@@ -7,7 +7,7 @@
 
 import { DIFF_COLORS, MTB_COLORS, MTB_SCALE_TEXT, mtbClass, UPHILL_TEXT, LIPAS_TYPES } from './config.js';
 import { WINTER_TEXT } from './winter.js';
-import { tapLayers, pickFeature, pickAt, hitBox, featuresAt, winterAt, WAY_NAMES, MARK_TYPE, SECTOR_NAME, mmlTerrain } from './inspect.js';
+import { tapLayers, pickFeature, pickAt, hitBox, featuresAt, winterAt, WAY_NAMES, MARK_TYPE, SECTOR_NAME, mmlTerrain, liftOf } from './inspect.js';
 import { NAV_TEXT } from './nautical.js';
 import { aadtColor, fmtAadt } from './safety.js';
 import { gradeHere } from './uphill.js';
@@ -221,6 +221,7 @@ export function describe(f, feats, ctx) {
   if (id === 'military-fill') return { title: 'Military area', bits: ['May be closed or have live firing'] };
   if (id === 'property-plot') return { title: `Property ${p.kiinteistotunnuksenEsitysmuoto}`, bits: ['National Land Survey'] };
   if (id.startsWith('pier')) return { title: 'Pier', bits: [] };
+  if (id === 'lift') { const l = liftOf(p); return { title: l.title, bits: l.sub ? [l.sub] : [] }; }
   if (id.startsWith('mml-')) { const t = mmlTerrain(f); return { title: t.title, bits: [t.line, t.survey && `Survey class: ${t.survey.toLowerCase()}`].filter(Boolean) }; }
   if (id === 'lipas-point') return { title: p.name || p.typeName || 'Place', bits: [e(p.typeName || ''), e(p.city || '')].filter(Boolean) };
   if (id === 'lipas-route') {
