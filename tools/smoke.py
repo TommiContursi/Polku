@@ -942,7 +942,7 @@ def layer_coverage(chrome):
           const {finlandInView}=await import('/js/geo.js');
           await go([25.75,59.875],13);
           const vb=m.getBounds();
-          if(finlandInView([vb.getWest(),vb.getSouth(),vb.getEast(),vb.getNorth()]))errs.push('(the test) the view off Kalbådagrund reaches Finland\\'s outline');
+          if(finlandInView&&finlandInView([vb.getWest(),vb.getSouth(),vb.getEast(),vb.getNorth()]))errs.push('(the test) the view off Kalbådagrund reaches Finland\\'s outline');
           if(!await until(()=>row('Shipping lanes')&&!note('Shipping lanes').startsWith('Finland only')))errs.push(`off Kalbådagrund: the Shipping lanes switch says “${note('Shipping lanes')}”, where Traficom draws them`);
           if(note('Depth areas').startsWith('Finland only'))errs.push(`off Kalbådagrund: the Depth areas switch says “${note('Depth areas')}”, where Traficom draws them`);
           // Haparanda, Sweden, with Tornio across the river in view: a view partly in Finland counts as in it
@@ -960,15 +960,15 @@ def layer_coverage(chrome):
           if(!await until(()=>note('Ships (live AIS)')==='Northern Baltic only'))errs.push(`Lofoten: the Ships switch says “${note('Ships (live AIS)')}”`);
           await pause(21000); // (past a tick of the ships' 20 s timer)
           for(const [host,path] of [['lipas.fi',''],['avoinapi.vaylapilvi.fi',''],['meri.digitraffic.fi','/ais/v1/locations']])if(asked(host,path).length)errs.push(`Lofoten: asked ${host}${path}`);
+          if(!note('Sea ice').startsWith('Baltic Sea only'))errs.push(`Lofoten: the Sea ice switch says “${note('Sea ice')}”`);
+          // back in the drawer, which keeps its tiles' words as the map moves
+          document.querySelector('#layers-panel .panel-back').click();
+          if(!await until(()=>small('sfShips')==='Northern Baltic only'))errs.push(`Lofoten: the Ships tile says “${small('sfShips')}”`);
           // near Tallinn, outside Finland where Digitraffic sees ships: a move asks for them at once, without the timer
           clearInterval(polku.safety.shipTimer);
           window.__asked.length=0;
           await go([24.75,59.5],10);
           if(!await until(()=>asked('meri.digitraffic.fi','/ais/v1/locations').length,3000))errs.push('near Tallinn: no ships asked for on a move');
-          if(!note('Sea ice').startsWith('Baltic Sea only'))errs.push(`Lofoten: the Sea ice switch says “${note('Sea ice')}”`);
-          // back in the drawer, which keeps its tiles' words as the map moves
-          document.querySelector('#layers-panel .panel-back').click();
-          if(!await until(()=>small('sfShips')==='Northern Baltic only'))errs.push(`Lofoten: the Ships tile says “${small('sfShips')}”`);
           await go([22.4,65.45],11);
           if(!await until(()=>small('nautical')==='Finland only'))errs.push(`back in Luleå with the drawer open: Nautical marks says “${small('nautical')}”`);
           await go([24.95,60.15],11);
