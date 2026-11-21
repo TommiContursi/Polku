@@ -16922,12 +16922,12 @@ WC_JS = """(async () => {
   const set = (w, error = false) => { a.wind = w; a.windError = error; p.renderAnalysis(); };
   const wind = (o = {}) => ({ start: { speed: 5, gust: 9, dir: 270, temp: 4, precip: 0 }, head: fill(2), cross: fill(0), speed: fill(5), gust: fill(9), dir: fill(270), temp: fill(4), precip: fill(0),
     feel: fill(1), cloud: fill(90), snow: fill(NaN), beyond: -1, beyondSec: t0 + 3 * 3600, unsure: -1, series: [series(1)], cell: new Uint8Array(n), ...o });
-  const k = Math.round(n / 3), km = (a.along[k] / 1000).toFixed(1);
+  const k = Math.round(n / 3), km = (a.along[k] / 1000).toFixed(1), old = Date.now() - 2 * 3600e3, W = await import(location.origin + '/js/weather.js');
   p.openWeather(); await wait(300);
   const states = [
     ['loading', () => set(null), 'loading the forecast…', 'Loading the forecast…'],
     ['failed', () => set(null, true), 'forecast unavailable', 'The forecast couldn’t be loaded.'],
-    ['older', () => set(wind({ stale: true, from: Date.now() - 2 * 3600e3 })), '4 °C · dry', `Older forecast (from ${new Date(Date.now() - 7200e3).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}): Open-Meteo couldn’t be reached.`],
+    ['older', () => set(wind({ stale: true, from: old })), '4 °C · dry', W.olderForecast(old)], // (its time, with the day past midnight: #1288's check)
     ['from a km', () => set(wind({ beyond: k, beyondSec: T.at(k) })), `no forecast yet from km ${km}`, `The forecast only reaches ${p.clockOf(T.at(k))}`],
     ['less certain', () => set(wind({ unsure: k })), 'less certain', 'More than three days ahead: the forecast is less certain.'],
     ['none for the trip', () => set(wind({ beyond: 0 })), 'no forecast yet', 'No forecast yet for '],
@@ -25957,7 +25957,7 @@ def pick_card(chrome):
         old = pg.js("""(async () => { const c = polku.planner.cards.current, pick = c.pick, wx = pick.wx, places = pick.places;
           pick.wx = { ...wx, stale: true, from: Date.now() - 2 * 3600e3 }; pick.places = [{ type: 301, id: 9301, name: 'Testilaavu', at: pick.ll }]; polku.planner.cards.refresh();
           await new Promise((r) => setTimeout(r, 300));
-          const box = document.querySelector('.pl-way.card'), said = /Older forecast \\(from \\d/.test(box.textContent);
+          const box = document.querySelector('.pl-way.card'), said = /Older forecast \\(from /.test(box.textContent);
           [...box.querySelectorAll('.row')].find((r) => r.textContent.includes('Testilaavu')).click();
           await new Promise((r) => setTimeout(r, 500));
           const now = polku.planner.cards.current, out = { said, kind: now && now.kind, follow: /Follow this route/.test(document.querySelector('.pl-way.card')?.textContent || '') };
