@@ -249,11 +249,13 @@ conversation again
   (`python3 serve.py 8771`) and point the tests at it
   (`POLKU_URL=http://localhost:8771/ python3 tools/smoke.py`). Never stop
   another agent's server.
-- **One smoke run at a time on the machine,** across all sessions:
-  `tools/smoke.py` waits for the run that's going, says which one, and
-  starts when it ends, so start yours in the background with no wait loop
-  of your own. A commit from before #1241 doesn't take the lock: start
-  its run only when `pgrep -f '[t]ools/smoke.py'` shows none. Each commit
+- **Two smoke runs at a time on the machine** at most, across all
+  sessions (a trial, #1317): `tools/smoke.py` waits while two are going,
+  says which, and starts when one ends, so start yours in the background
+  with no wait loop of your own. A commit from before #1241 doesn't take
+  the lock: start its run only when `pgrep -f '[t]ools/smoke.py'` shows
+  none. A check that fails while another run is going is run again alone
+  before it's called the change's, and noted on #1317. Each commit
   runs in a frozen worktree that stays put while a run uses it, from its
   start, the wait included. Stop only the Chrome you started, by its
   process id. Before calling a failure the change's, run the same group on
