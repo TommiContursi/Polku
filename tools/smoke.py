@@ -4812,9 +4812,10 @@ HEADS = """(async () => {
   expect('winterWarnings, on the water', p.winterWarnings.call(wt, { ...wa, snow: null, winterCls: null, attr: attrs('paddle', [[0, 60, {}, 'water']]), wind: { ...wa.wind, temp: fill(0), precip: fill(0), snowfall: fill(0) } }), [[/^Ice season/, 'read', ...F]]);
   expect('iceWarnings', p.iceWarnings({ along, attr: Array.from(along, () => ({ ice: true })) }), [[/^On the ice/, 'read', 'calculated', 'your route over the ice']]);
   // thunder in the forecast where you'd be (#869): a warning in any season, from where it starts; none past the forecast's reach
-  const storm = Uint8Array.from({ length: n }, (_, i) => (i >= 20 && i < 30 ? 1 : 0));
-  expect('thunderWarnings', p.thunderWarnings({ along, pts, tAt, start: Date.now() / 1000, activity: 'mtb', attr: attrs('mtb', []), wind: { thunder: storm, beyond: -1 } }), [[/^Thunder possible around \\d\\d:\\d0, near km 1$/, 'read', ...F]]);
-  if (p.thunderWarnings({ along, pts, tAt, start: Date.now() / 1000, activity: 'mtb', attr: attrs('mtb', []), wind: { thunder: storm, beyond: 20 } }).length) errs.push('thunderWarnings: thunder past the forecast\\'s reach is a warning');
+  // (from noon on the day you leave, so the thunder an hour on is at 13:00 at any hour: from 23:00 it was the next day's, #1209)
+  const storm = Uint8Array.from({ length: n }, (_, i) => (i >= 20 && i < 30 ? 1 : 0)), noon = new Date(p.when.start() * 1000).setHours(12, 0, 0, 0) / 1000;
+  expect('thunderWarnings', p.thunderWarnings({ along, pts, tAt, start: noon, activity: 'mtb', attr: attrs('mtb', []), wind: { thunder: storm, beyond: -1 } }), [[new RegExp(`^Thunder possible around ${hhmm}, near km 1$`), 'read', ...F]]);
+  if (p.thunderWarnings({ along, pts, tAt, start: noon, activity: 'mtb', attr: attrs('mtb', []), wind: { thunder: storm, beyond: 20 } }).length) errs.push('thunderWarnings: thunder past the forecast\\'s reach is a warning');
   // the stops: the bike left behind, and a short night
   const sp = ['mtb', 'hike', 'mtb'], four = [[23.80, 61.5], [23.81, 61.5], [23.83, 61.5], [23.84, 61.5]];
   const st = p.stopWarnings.call({ legs: [{}, {}, {}], legSport: (i) => sp[i], points: four, carryAt: () => false, lengthTo: (i) => i * 1000, nameOf: (i) => `P${i}`, gearLabel: () => 'The bike', clockOf: () => '23:00' },
@@ -17174,7 +17175,8 @@ BT_WATER = """(async () => {
   if (Math.max(...reach.f.map((f) => f?.[k] || 0)) < 1000) return [`no kilometre of open water on any side of the leg (${Math.max(...reach.f.map((f) => f?.[k] || 0))} m at most)`];
   const hourOf = (i) => new Date((Math.floor(Date.now() / 3600e3) * 3600 - 3600 + i * 3600) * 1000), tom = new Date(BT.tom(12) * 1000).getDate();
   const day2 = new Date(BT.day(2, 12) * 1000).getDate(); // (the day after tomorrow: a gale until 10:00 and from 15:00)
-  W.n = 100; W.dir = k * 45; W.gust = 0; W.speedAt = (i) => { const d = hourOf(i), hh = d.getHours(); return (d.getDate() === tom && hh >= 15) || (d.getDate() === day2 && (hh < 10 || hh >= 15)) ? 25 : 2; };
+  // (the forecast reaches 12:00 four days ahead at any hour: 100 hours from now reached the fifth day from 23:00, #1210)
+  W.n = (BT.day(4, 12) * 1000 - hourOf(0)) / 3600e3 + 1; W.dir = k * 45; W.gust = 0; W.speedAt = (i) => { const d = hourOf(i), hh = d.getHours(); return (d.getDate() === tom && hh >= 15) || (d.getDate() === day2 && (hh < 10 || hh >= 15)) ? 25 : 2; };
   polku.set({ activity: 'paddle' }); await wait(800);
   const p = polku.planner; p.setActive(true); p.clear(); p.setMode('water'); p.addPoint(from); p.addPoint(to);
   if (!(await BT.until(() => p.legs[0]?.result?.water?.reach && p.analysis))) return ['the planner’s water leg has no open water'];
@@ -17194,7 +17196,7 @@ BT_WATER = """(async () => {
   const two = /^Leave between (\S+) and (\S+) to cross in small waves/.exec(cross()[0] || '');
   if (!two || two[1] !== BT.clock(BT.day(2, 10)) || ![BT.clock(BT.day(2, 13)), BT.clock(BT.day(2, 14))].includes(two[2])) errs.push(`the day after tomorrow, calm from 10:00 to 15:00: “${cross().join(' / ')}”`);
   for (const k of [3, 4, 5]) await step(k);
-  if (cross().length) errs.push(`five days ahead, past the forecast: “${cross().join(' / ')}”`);
+  if (cross().length) errs.push(`five days ahead (${BT.box().querySelector('.bt-day b')?.textContent}), past the forecast: “${cross().join(' / ')}”`);
   // a drawn leg on the water first, then a night, then the routed crossing: the first day's waves aren't known, and the
   // crossing isn't the first day's; without the night, both
   const p0 = [24.9520, 60.1600];
@@ -18261,7 +18263,8 @@ START_LIB = """(() => {
   T.pickSport = (label) => { const b = $$('.menu-pop [role=menuitemradio]').find((x) => (x.querySelector(':scope > span > span') || x).firstChild.textContent.trim() === label); if (b) b.dataset.stPick = '1'; return !!b; };
   T.sportIs = async (sport, label) => {
     await wait(300);
-    const pill = $('#activity-bar .act-current').getAttribute('title'), chip = ($('.pl-way .sport-chip') || { getAttribute: () => '' }).getAttribute('aria-label');
+    // (the pill's name is its sport in words, out of sight on a phone but never gone: no title since #1107, #1214)
+    const pill = $('#activity-bar .act-current').innerText.trim(), chip = ($('.pl-way .sport-chip') || { getAttribute: () => '' }).getAttribute('aria-label');
     if (polku.state.activity !== sport || !pill.includes(label) || !chip.includes(label)) err(`after picking ${label}: the map’s ${polku.state.activity}, the pill’s “${pill}”, the chip’s “${chip}”`);
     return T.errs.splice(0);
   };

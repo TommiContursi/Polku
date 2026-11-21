@@ -4,6 +4,10 @@ What's new in [Polku](https://polku.si), from the latest updates back to the fir
 
 ## 2026-11-21
 
+### The sport pill's name on phones ([#1214](https://github.com/TommiContursi/Polku/issues/1214))
+
+- On a phone, where the sport pill shows only its icon, a screen reader names it by its sport again, as on a desktop.
+
 ### A tap on the National Land Survey's terrain says what it is ([#1175](https://github.com/TommiContursi/Polku/issues/1175))
 
 - In Finland, a tap or a click on the National Land Survey's bogs, paludified land, overgrowing water, rock, boulder fields, stones, cliffs, reeds, power lines and pylons opens a card that names what it is, and so does a tap on its stones, shoals, stone fields and rapids in the water. On a desktop, resting the pointer on one says the same.
