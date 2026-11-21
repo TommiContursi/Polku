@@ -363,11 +363,11 @@ export async function detailsAlong(a, { maxTiles = 40 } = {}) {
       for (let j = 2; j < flat.length; j += 2) {
         const p0 = [flat[j - 2], flat[j - 1]], p1 = [flat[j], flat[j + 1]];
         const seg = { p0, p1, t, ang: bearing(p0, p1) };
-        const x0 = Math.floor(Math.min(p0[0], p1[0]) / CELL), x1 = Math.floor(Math.max(p0[0], p1[0]) / CELL);
-        const y0 = Math.floor(Math.min(p0[1], p1[1]) / CELL), y1 = Math.floor(Math.max(p0[1], p1[1]) / CELL);
-        if ((x1 - x0 + 1) * (y1 - y0 + 1) > 36) continue; // a stray long segment
-        for (let x = x0; x <= x1; x++) for (let y = y0; y <= y1; y++) {
-          const k = `${x},${y}`;
+        // in the cells along it, half a cell at a time (the lookup looks in the cells round too): a long one as well,
+        // as an ice road crosses a lake in a few straight segments kilometres long (#1287)
+        const steps = Math.ceil((2 * Math.max(Math.abs(p1[0] - p0[0]), Math.abs(p1[1] - p0[1]))) / CELL) || 1, cells = new Set();
+        for (let s = 0; s <= steps; s++) cells.add(cell(p0[0] + ((p1[0] - p0[0]) * s) / steps, p0[1] + ((p1[1] - p0[1]) * s) / steps));
+        for (const k of cells) {
           if (!grid.has(k)) grid.set(k, []);
           grid.get(k).push(seg);
         }
